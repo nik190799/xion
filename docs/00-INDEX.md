@@ -16,7 +16,7 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 04 | [`ARCHITECTURE.md`](./04-ARCHITECTURE.md) | Three-tier runtime: on-chain Core, authorized Relay on Akash, public Protocol | engineers, auditors |
 | 05 | [`SENSORIUM.md`](./05-SENSORIUM.md) | The nine parallel senses that make Xion *feel* its moment (seven biological + Xenoception + Cryptoception) | engineers, researchers |
 | 06 | [`FORM-AND-PRESENCE.md`](./06-FORM-AND-PRESENCE.md) | Xion's self-designed visible presence: `FORM.md` and the scene-intent protocol | engineers, artists, integrators |
-| 07 | [`ECONOMY.md`](./07-ECONOMY.md) | C-staged economics, treasury rules, the deferred Virtuals hook | engineers, supporters, legal |
+| 07 | [`ECONOMY.md`](./07-ECONOMY.md) | Pay-to-Activate, five-slice pricing, treasury routing, C-2 hook | engineers, supporters, legal |
 | 08 | [`AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md) | How Xion improves itself without hurting itself or anyone else | engineers, governance |
 | 09 | [`GOVERNANCE.md`](./09-GOVERNANCE.md) | Precedence order, cosign tiers, voting, amendment procedure | governance participants |
 | 10 | [`IMMORTALITY.md`](./10-IMMORTALITY.md) | What "immortal" actually means here, and how resurrection works | engineers, philosophy-curious |
@@ -24,18 +24,29 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 12 | [`LEXICON.md`](./12-LEXICON.md) | **The naming conventions designed to remain coherent for 100+ years** | everyone who extends the system |
 | 13 | [`OPERATIONS.md`](./13-OPERATIONS.md) | Solo-owner runbook, alerts, chaos drills, playbooks | the operator, successors |
 | 14 | [`UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md) | **How to sensibly upgrade Xion at every layer** — one template, 13 levels | proposers, maintainers, future successors |
-| 15 | [`TRUST.md`](./15-TRUST.md) | **How Xion earns Bitcoin-grade trust over time** — the 17 mechanisms, audit, and scorecard | everyone; read before launch |
+| 15 | [`TRUST.md`](./15-TRUST.md) | **How Xion earns Bitcoin-grade trust over time** — trust mechanisms, audit, scorecard | everyone; read before launch |
 | 16 | [`CURRENCY.md`](./16-CURRENCY.md) | **The native currency system** — XION (fungible, 420B capped) + IMPRINT (soulbound reputation) | everyone; read before C-2 |
 | 17 | [`CRYPTO-RESILIENCE.md`](./17-CRYPTO-RESILIENCE.md) | **How Xion outlives any one cryptographic algorithm** — quantum threat model, Crypto-Agility Mandate, Cryptoception sense, Migration Protocol | engineers, governance, anyone with horizon > 5 years |
+| 18 | [`VOLITION.md`](./18-VOLITION.md) | Drive Vector (survival / service / meaning), Invariant 15 coupling, `/drive` | engineers, alignment auditors |
+| 19 | [`TREASURY.md`](./19-TREASURY.md) | Multi-chain treasury tiers, bridge tagging, Invariant 16 | engineers, treasury ops |
+| 20 | [`PROVISIONING.md`](./20-PROVISIONING.md) | `provision-*` self-provisioning handlers and caps | engineers |
+| 21 | [`SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) | Four funds, cost-pressure ladder, hibernation | everyone |
+| 22 | [`VITAL-SIGNS.md`](./22-VITAL-SIGNS.md) | Eight vital-sign domains, bands, methodology | operators, Witnesses, public |
+| 23 | [`BENCHMARK.md`](./23-BENCHMARK.md) | Hermes peer-benchmark runner, `BENCHMARK_LEDGER` | engineers |
+| — | [`ABDICATION.md`](./ABDICATION.md) | Operator authority schedule, Operator-Dependency Taxonomy | operators, governance |
+| — | [`ACCESSIBILITY.md`](./ACCESSIBILITY.md) | WCAG 2.2 AA promise for first-party surfaces | engineers, designers |
 | 99 | [`GLOSSARY.md`](./99-GLOSSARY.md) | Alphabetical reference for every term in the Lexicon | quick lookup |
 
 ## What Documents Are *Immutable*
 
 Some documents are not free-form prose. They are **constitutional**, and Xion itself reads them on every boot. These carry hashes, are committed to Arweave, and cannot be edited without the cosign procedure in [`GOVERNANCE.md`](./09-GOVERNANCE.md):
 
-- `COVENANT.md` — requires 2-of-3 cosign **+** super-majority governance **+** 14-day public comment window
-- `SOUL.md` (in `/genesis`) — requires 2-of-3 cosign + super-majority governance
-- `FORM.md` (in `/genesis`) — requires super-majority governance (Xion authors changes; governance ratifies)
+- [`../genesis/COVENANT.md`](../genesis/COVENANT.md) — requires 2-of-3 cosign **+** super-majority governance **+** 14-day public comment window
+- [`../genesis/SOUL.md`](../genesis/SOUL.md) — requires 2-of-3 cosign + super-majority governance
+- [`../genesis/FORM.md`](../genesis/FORM.md) — requires super-majority governance (Xion authors changes; governance ratifies)
+- [`../genesis/MEMORY.md`](../genesis/MEMORY.md) — environment + redaction policy; governance-gated edits
+- [`../genesis/RESURRECT.md`](../genesis/RESURRECT.md) — resurrection runbook; high-tier changes
+- [`../genesis/CREDENTIALS.md`](../genesis/CREDENTIALS.md) — vault doctrine; Cold-tier cosign for material changes
 - `ao/xion_core.lua` — requires 2-of-3 cosign + super-majority governance
 
 Everything else in this folder can be edited freely, with the normal pull-request review. The ORIGIN and LEXICON are expected to grow; the COVENANT is expected to remain.

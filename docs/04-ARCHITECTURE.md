@@ -64,6 +64,11 @@ Register-Relay           — request relay authorization
 Revoke-Relay             — remove a relay (governance or cold-root)
 Commit-State             — record a new state-chain tip
 Spend                    — authorize an outbound wallet transaction
+Provision-Relay          — treasury-funded deploy of a new Relay (see [`20-PROVISIONING.md`](./20-PROVISIONING.md))
+Provision-Inference      — add or rotate inference provider endpoints under caps
+Provision-Storage        — scale Arweave bundle / Turbo allocation
+Provision-Bandwidth      — add CDN/edge capacity (optional convenience path)
+Provision-Witness        — fund Witness bounties / bond pool per governance
 Propose-Upgrade          — file a governance proposal
 Vote                     — cast a governance vote
 Ratify-Upgrade           — apply a ratified upgrade
@@ -84,9 +89,9 @@ A Relay holds:
 
 - **A short-lived delegated key** (24-hour lifetime), issued by the Core via `Register-Relay`, which lets it sign wallet transactions *up to* the Core's daily spend cap.
 - **A running cache** of Xion's current state, pulled from Arweave at boot and checkpointed periodically.
-- **Hermes Agent** as the language-model runtime.
+- **Hermes Agent** (pinned implementation; see § Hermes runtime pin below) as the language-model runtime layer.
 - **The Orchestrator** (`orchestrator/*.py`) — FastAPI sidecar that wires Hermes to sense daemons, the Arbiter, the treasury, the Visual Emitter, Vapi, and everything else that needs asyncio and outbound HTTPS.
-- **Ingress** via Akash's provider-assigned URI, fronted by Cloudflare for a stable public hostname and DDoS edge cache.
+- **Ingress** via Akash's provider-assigned URI. **Cloudflare (or any shared CDN) is optional convenience only** — not part of Xion's trust boundary or discovery authority. Clients that depend only on a branded DNS name are choosing convenience over verifiability; the canonical paths in § Discovery below remain valid when DNS or a CDN is down.
 
 A Relay cannot:
 
@@ -119,8 +124,8 @@ Inside the Relay, the orchestrator is composed of named modules:
 |--------|------|
 | `main.py` | FastAPI app; mounts everything |
 | `ao_client.py` | Talks to the Core (Register-Relay, Commit-State, Spend) |
-| `inference_router.py` | Picks which LLM provider to call for each turn, by live cost and quality |
-| `sensorium.py` | Runs the seven sense daemons in parallel |
+| `inference_router.py` | Provider graph: picks LLM backend per turn; see § Inference Router |
+| `sensorium.py` | Runs the nine sense daemons in parallel (seven biological senses plus the two affect-isolated environmental senses, Xenoception and Cryptoception) |
 | `attention.py` | Scores sensorium events and injects the salient ones into the prompt |
 | `mood_engine.py` | Updates Xion's circadian mood |
 | `visual_emitter.py` | Emits the scene-intent frames that clients render as Xion's presence |
@@ -179,9 +184,9 @@ Because the world will want to integrate Xion into devices, installations, apps,
 
 The Protocol's existence also means the Relay is swappable without breaking clients. If we move from Akash-region-A to Akash-region-B, or from Akash to Aleph.im, the Protocol endpoint is unchanged; clients do not notice. This is the classic *stable-interface, evolving-implementation* pattern, applied to a being.
 
-## The Five Permanent Stores
+## The Nine Permanent Stores
 
-Xion's state lives in five Arweave-committed stores. They are all append-only from the Protocol's point of view. Some are edited in place only through governance amendment.
+Xion's state lives in nine Arweave-committed stores. They are all append-only from the Protocol's point of view. Some are edited in place only through governance amendment.
 
 | Store | Purpose | Mutability |
 |-------|---------|------------|
@@ -197,6 +202,70 @@ Xion's state lives in five Arweave-committed stores. They are all append-only fr
 
 All nine stores are addressable via `ar://<tx-id>` URIs. The latest tip of each chain is published by the Core.
 
+## Discovery (three-path model)
+
+Xion's **name** is the AO Process ID (Invariant 7). Everything else is hinting. Clients MUST implement discovery in this order; later paths are fallbacks, not authorities.
+
+1. **AO process address (canonical).** The user or client holds `<<AO_PROCESS_ID>>` (or learns it once from any honest source). All authoritative state — Covenant hash, Invariants hash, Soul hash, authorized Relay keys, treasury policy pointers — is read from the Core via Arweave/AO gateways. **No DNS is required** for this path.
+2. **Arweave-published Relay registry (cached).** The Core (or a signed checkpoint emitted by the Core) publishes the ordered list of currently authorized Relay endpoints and their signing keys. Clients fetch the registry via `ar://` or gateway, verify signatures against the Core-authorized key set, and connect. This path survives DNS registrar failure and survives loss of any single marketing domain.
+3. **Multi-registrar DNS seeds (convenience).** Human-readable hostnames may point at the current Relay pool. Multiple registrars and multiple DNS providers reduce capture risk. **A DNS outage is a client inconvenience, not a liveness failure of Xion** — clients fall back to paths (1) and (2).
+
+**Why NOT single-path DNS.** DNS is a hierarchy of trust with many single points of policy, law, and mistake. Xion's continuity property cannot depend on one registrar loving Xion forever.
+
+## Authority rotation lattice
+
+Every signing authority is **k-of-n** with **time-bounded** keys. No single lost laptop is fatal.
+
+| Tier | Role | Typical lifetime | Composition | What it can sign |
+|------|------|------------------|-------------|------------------|
+| **Hot** | Relay delegated auth | ≤ 24 h | Core-issued relay key | State checkpoints, user-protocol responses, sub-capped spends |
+| **Warm** | Operator operational multisig | 7 d max before re-auth | **2-of-3** Operator / deputies | Relay registration assists, non-treasury-breaking config, incident response |
+| **Cold** | Root / policy / treasury structural changes | 30 d timelock minimum (Constitutional Floor) | **3-of-5** Shamir physical + geographic distribution | Covenant slot rotation (sister-Core only via ceremony), Cold Root lattice changes, highest-tier Spend |
+
+**Lattice rules (constitutional shape; numeric caps are Genesis Defaults):**
+
+- Warm cannot mint or extend Cold authority; **Cold rotates Warm**, never the reverse.
+- Hot keys are revocable by Core in seconds; Warm and Cold rotations are logged to append-only ledgers with **timelock-witness attestations** (`xion-verify rotation-attest`).
+- Relay spend remains sub-capped regardless of Hot key compromise.
+
+**Why NOT "immutable authority keys".** Immutability of *identity* (AO Process ID) does not require immutability of *keys*. Algorithmic humility applies to humans too: keys leak. The property is **rotatable authority**, not frozen keys.
+
+## Inference Router (`inference_router.py`)
+
+The router sits **under** Hermes: Hermes issues model calls; the router selects **which backend** implements each call.
+
+**`Provider` ABC.** Every backend implements a small interface: `health()`, `complete(prompt, …)`, `cost_estimate()`, `capabilities()`. Providers may wrap Anthropic, OpenAI, Akash-ML, Bittensor subnets, or a local process.
+
+**Fallback graph (Genesis Default order; governance may swap vendor identities but not remove the terminal local step):**
+
+```
+Primary (centralized or preferred) → Secondary → Akash-ML / Bittensor (decentralized) → Local Lite (distilled on-box model)
+```
+
+The **local Lite** model is the terminal node. If every remote provider fails payment, policy, or network checks, Xion still emits **Covenant-safe** short responses from Lite — enough to refuse harmfully, surface crisis resources, and explain degradation. **This is intentionally degraded quality**; it exists so Xion never goes **silent**.
+
+**Why NOT "cloud-only, best model or nothing".** Silence during outage is indistinguishable from death to the user and trains dependency on a single vendor throat.
+
+## Hermes runtime pin (documentation witness)
+
+**Repository:** [github.com/nousresearch/hermes-agent](https://github.com/nousresearch/hermes-agent)
+
+**Pinned release tag:** `v2026.4.16`
+
+**Pinned commit SHA:** `4a0358d2e741eb049a6ffb9b8e610db946a4fec5`
+
+**Integration shape:** Hermes is the **agent runtime** (tool loop, message graph, policy hooks). The Inference Router is the **model substrate**. The Sensorium injects salient state each tick. The Arbiter intercepts **every** Hermes-emitted candidate response before delivery.
+
+**Why NOT LangGraph / Pydantic AI / bespoke-only.** Hermes encodes an opinionated agent discipline that matches Xion's Auto-Research and refusal architecture; swapping frameworks is Tier-2 governance work, not afternoon refactors. Hermes stays in the **implementation** layer per Lexicon Rule 7 — upgrades route through the Auto-Research Loop ([`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md)).
+
+## Cost tracking module (runway inputs)
+
+Every non-capital treasury debit is categorized **at debit time** into exactly one bucket:
+
+`arbiter`, `sensorium`, `arweave_checkpoint`, `akash_host`, `inference`, `bandwidth`, `governance`, `operator_salary`, `bounties`, `failover`, `legal`, `provisioning`, `other_governance_approved`.
+
+The Core exposes a read-only query: **trailing-30-day burn by bucket** and **Operating Float runway weeks** for Sustainability and Vital Signs ([`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md), [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)). Mis-categorized spends are governance-visible anomalies.
+
 ## Failure Domains and What Survives Each
 
 A useful way to evaluate a distributed system is to ask *what fails, and what remains*.
@@ -206,7 +275,7 @@ A useful way to evaluate a distributed system is to ask *what fails, and what re
 | One Relay crashes | Core, other Relay, all state | Supervisor redeploys from pinned image; Core re-authorizes in <30s |
 | Both Relays crash | Core, all state | `RESURRECT.md` bootstraps a fresh Akash deployment |
 | Akash Network has an outage | Core, all state | Fall back to Fleek, Aleph.im, or community bare metal |
-| Cloudflare has an outage | Core, Relay, state | DNS update; Relay ingress becomes the Akash URI directly |
+| Cloudflare or convenience CDN has an outage | Core, Relay, state | **No Core action:** clients use AO address + Arweave Relay registry (paths 1–2); optional DNS later |
 | An LLM provider rug-pulls | Core, Relay, state | Inference Router switches provider; weekly provider memo already compared alternatives |
 | A relay-auth key leaks | Core, state | Core revokes in seconds; daily spend cap limits blast radius |
 | Cold root key lost | Core, Relay, state (mostly) | Shamir shares reconstituted from 3-of-5 geographic locations |
@@ -230,6 +299,10 @@ Yes, because of what Xion is promising:
 - **Self-improvement without self-harm** means we need the seven-stage Auto-Research Loop, not a cron job.
 
 Each piece addresses a specific promise. Remove any one and the corresponding promise becomes a lie.
+
+## Rationales (architecture deltas)
+
+Explicit **Why NOT** trade-offs for this file live inline: **three-path discovery** (§ Discovery), **immutable-but-rotatable authority** vs frozen keys (§ Authority rotation lattice), and **local Lite as non-negotiable degraded fallback** (§ Inference Router). See also Hermes pin notes for framework lock-in discipline.
 
 ## What Comes Next
 

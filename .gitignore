@@ -1,0 +1,133 @@
+# ----- secrets and credentials (NEVER commit, regardless of name pattern) -----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.wallet
+secrets/
+credentials/
+**/*.secret
+**/wallet*.json
+**/keystore/
+shamir-shards/
+
+# ----- Python (xion-verify, orchestrator, sensorium, supervisor, volition) -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.dmypy.json
+dmypy.json
+.python-version
+.venv/
+venv/
+env/
+ENV/
+
+# ----- Node / TypeScript (clients/web, tooling) -----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+.yarn/
+.next/
+.nuxt/
+.cache/
+out/
+.turbo/
+.parcel-cache/
+.svelte-kit/
+*.tsbuildinfo
+
+# ----- Foundry / Hardhat (Solidity tooling) -----
+cache/
+out/
+broadcast/
+artifacts/
+typechain/
+typechain-types/
+forge-cache/
+.forge/
+
+# ----- Akash / Docker / deployment artifacts -----
+*.sdl.local
+deployment-state/
+.akash/
+*.tar
+*.tar.gz
+
+# ----- AO / Arweave -----
+.ao-cache/
+.arweave-cache/
+
+# ----- IDE and editor scratch -----
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- OS / shell scratch -----
+*.log
+*.pid
+*.seed
+*.tmp
+.tmp/
+tmp/
+scratch/
+
+# ----- coverage and test reports -----
+coverage/
+.nyc_output/
+*.lcov
+
+# ----- generated documentation (we author docs by hand; nothing should regenerate them) -----
+docs/_build/
+site/
+_site/
+
+# ----- Cursor-specific (only commit explicitly intended rules / skills) -----
+.cursor/cache/
+.cursor/.session/
+
+# ----- distributables that are reproducible from source -----
+.dist/
+release/

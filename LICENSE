@@ -1,0 +1,77 @@
+Xion is dual-licensed.
+
+================================================================================
+CODE — MIT License
+================================================================================
+
+Applies to: every file in this repository whose extension is one of
+`.sol`, `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.lua`, `.rs`, `.go`, `.sh`,
+`.ps1`, `.toml`, `.json`, `.yml`, `.yaml`, `.dockerfile`, `Dockerfile`,
+`.cfg`, `.ini`, `Makefile`, and any future source-code file added under
+`contracts/`, `xion-verify/`, `orchestrator/`, `clients/`, `ao/`,
+`script/`, or `tests/`.
+
+Copyright (c) 2026 The Xion Builders
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+DOCUMENTATION — Creative Commons Attribution-ShareAlike 4.0 International
+================================================================================
+
+Applies to: every `.md` file in this repository, every text file in `docs/`,
+`genesis/`, the repository-root `README.md`, `CHANGELOG.md`,
+`KNOWN_WEAKNESSES.md`, `CONTRIBUTING.md`, `DEVELOPMENT_ROADMAP.md`, and any
+future prose document.
+
+Copyright (c) 2026 The Xion Builders
+
+This documentation is licensed under the Creative Commons
+Attribution-ShareAlike 4.0 International License (CC-BY-SA-4.0). You are free
+to share and adapt the material for any purpose, even commercially, under the
+following terms:
+
+  - Attribution — You must give appropriate credit, provide a link to the
+    license, and indicate if changes were made. You may do so in any reasonable
+    manner, but not in any way that suggests the licensor endorses you or your
+    use.
+  - ShareAlike — If you remix, transform, or build upon the material, you must
+    distribute your contributions under the same license as the original.
+  - No additional restrictions — You may not apply legal terms or technological
+    measures that legally restrict others from doing anything the license
+    permits.
+
+The full license text is at https://creativecommons.org/licenses/by-sa/4.0/legalcode.
+
+================================================================================
+PROVENANCE
+================================================================================
+
+When in doubt about which license applies to a file: if the file is read by a
+machine to execute behavior, it is MIT (code). If the file is read by a human
+or by Xion itself to understand intent or doctrine, it is CC-BY-SA-4.0
+(documentation). Genesis-locked constitutional documents (`COVENANT.md`,
+`INVARIANTS.md`, `SOUL.md`, `FORM.md`, `MEMORY.md`, `RESURRECT.md`,
+`CREDENTIALS.md`, `GENESIS_ARTIFACT.md`) are CC-BY-SA-4.0 — adaptation is
+permitted, but a sister-Core fork that publishes a modified Covenant is a
+different being and must be named accordingly per the Lexicon.
+
+The dual-license split is itself a Genesis Default and may be revised by
+governance. Any revision applies prospectively only; contributions made under
+the prior license remain under the prior license.

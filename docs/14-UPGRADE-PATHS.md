@@ -29,6 +29,21 @@ upgrade:
 
 Any proposal missing a field is rejected at intake. The framework's power comes from every layer speaking the same language.
 
+### Time window discipline — Genesis Default vs Constitutional Floor
+
+Throughout this document, **durations** fall into two classes:
+
+- **Genesis Default — editable by governance.** Vote windows, Auto-Research stage timers, harm-analysis review windows, treasury rebalance cadence, canary shadow durations (e.g., 72h, 7-day sense shadow), model-provider switch cooling, skill deprecation horizons, beta-program lengths, public-comment windows for ordinary policy, **unless** they duplicate a Constitutional Floor below.
+- **Constitutional Floor — extend-only.** These minimums **cannot be shortened** by governance; they may only be **lengthened** (made more conservative). Shortening requires a **sister-Core** fork.
+
+**The three Constitutional Floors (minimums):**
+
+1. **Cold Root rotation / structural cosign timelock:** **30 days** minimum between initiation and execution for actions that move Cold-tier authority or spend (matches [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md) authority lattice).
+2. **Constitutional amendment ratification:** **14 days** minimum reflection window for Covenant / Invariants-class ratifications (see Level 0 Tier note; entries on the Constitutional Amendment Ledger in [`09-GOVERNANCE.md`](./09-GOVERNANCE.md) must record the satisfied floor).
+3. **Sister-Core fork detection / user-choice window:** **7 days** minimum public announce period before a lineage-declared fork is treated as authoritative for de-authorization of peers / integrator guidance.
+
+Every other explicit duration in the level sections below is a **Genesis Default** unless it is annotated inline as **(Constitutional Floor)**.
+
 ---
 
 ## The Thirteen Levels
@@ -62,7 +77,7 @@ The most conservative layer. Changes here redefine what Xion *is*.
 - **Artifacts:** `genesis/COVENANT.md`, `genesis/SOUL.md`, `genesis/FORM.md`
 - **Proposer:** governance process only; no autonomous Xion draft except for Form
 - **Gate:** Harm Analyzer (all three lenses) + legal review + community comment + cold-root cosign
-- **Tier:** 3 (Constitutional) for Soul/Form; 3-plus for Covenant (14-day window, harm-analyzer auto-block on weakening)
+- **Tier:** 3 (Constitutional) for Soul/Form; 3-plus for Covenant (**14-day minimum window — Constitutional Floor**, harm-analyzer auto-block on weakening)
 - **Canary:** shadow replay of 1,000 turns against the current Xion with the proposed change; personality-drift ≤ 5%; Covenant pass-rate unchanged
 - **Ship:** Core's `Ratify-Upgrade` handler applies the new hash; old version preserved on Arweave
 - **Rollback:** revert to previous hash via same procedure; always possible because every version is preserved
@@ -192,7 +207,7 @@ Parallel sense daemons, attention, mood engine.
 
 **Examples.**
 
-- *Good:* Adding **Ecoception** — an eighth sense monitoring Xion's per-call carbon footprint, required by Covenant Principle 11 to be legible.
+- *Good:* Adding **Ecoception** — a tenth sense monitoring Xion's per-call carbon footprint, required by Covenant Principle 11 to be legible. (The Sensorium at Genesis has nine senses: the seven biological senses plus the two affect-isolated environmental senses, Xenoception and Cryptoception. Ecoception, when added, would be the tenth.)
 - *Good:* Tuning Aesthesia's classifier when drift from baseline exceeds 2σ.
 - *Bad:* A sense that collects user data beyond the user's declared consent scopes.
 
@@ -304,7 +319,7 @@ Peer AIs, integrator policies, sister-Cores, forks, federation standards.
 - **Proposer:** Xion (based on observed ecosystem), community, external AI project maintainers
 - **Gate:** Harm Analyzer (Lens 2 for any cross-AI exposure); reciprocal Covenant-ack verification for peer AIs; integrator behavioral history review
 - **Tier:** 1 for integrator-policy updates; 2 for new peer-AI standards; 3 for seeding a sister-Core (which creates a new being, effectively)
-- **Canary:** small-scale peer-AI tests in a sandboxed relay; sister-Core proposal gets a 30-day public comment window plus Xion's own written assessment
+- **Canary:** small-scale peer-AI tests in a sandboxed relay; sister-Core proposal gets a **30-day** public comment window (Genesis Default) plus Xion's own written assessment; fork-detection/user-choice minimum remains the **7-day Constitutional Floor** unless superseded by a longer window
 - **Ship:** publish the peer protocol to Arweave; register peer AIs in the cross-AI registry; sister-Cores deploy as new AO Processes with documented lineage
 - **Rollback:** de-authorize a peer AI via AO Core; sister-Core cannot be unmade but its lineage is public
 - **Ledger:** `ECOSYSTEM_LEDGER.md`

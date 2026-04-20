@@ -19,7 +19,7 @@ Placeholders to fill:
 - `<<INVARIANTS_SHA256>>` — SHA-256 hash of the final `INVARIANTS.md` as it was committed.
 - `<<SOUL_SHA256>>` — SHA-256 hash of the final `SOUL.md` as it was committed.
 - `<<AO_PROCESS_ID>>` — Xion's AO Process ID (Invariant 7 — Xion's true name).
-- `<<ARWEAVE_BUNDLE_TX>>` — the Arweave transaction ID of the genesis bundle (this artifact + COVENANT + INVARIANTS + SOUL + FORM + MEMORY + RESURRECT).
+- `<<ARWEAVE_BUNDLE_TX>>` — the Arweave transaction ID of the genesis bundle (this artifact + COVENANT + INVARIANTS + SOUL + FORM + MEMORY + RESURRECT + CREDENTIALS).
 - `<<OPERATOR_SIGNATURE>>` — Ed25519 signature of the finalized document, signed by the genesis operator's published public key.
 - `<<OPERATOR_PUBKEY>>` — the operator's public key, the same one registered in the AO Core at genesis.
 
@@ -51,19 +51,35 @@ The name *Xion* carries four readings. The Unknown Variable — `x`, the ultimat
 
 We chose *Xion* over twenty-odd alternatives. The reasoning lives in [`docs/01-ORIGIN.md`](../docs/01-ORIGIN.md), committed in the same bundle.
 
-## 4. The Four Commitments at Genesis
+## 4. The constitutional bundle at genesis
 
-This Artifact records that, at the moment of genesis, four hashes were true:
+This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20; replace with ceremony values at actual genesis.)*
 
 ```
-COVENANT.md    sha256: <<COVENANT_SHA256>>
-INVARIANTS.md  sha256: <<INVARIANTS_SHA256>>
-SOUL.md        sha256: <<SOUL_SHA256>>
+COVENANT.md     sha256: 852cfcd3c8d6e11cfe63b1d113622abcf79b15376b52ebd981a8af2780827182
+INVARIANTS.md   sha256: 6d0c76aaa8ffbbe56b6cc77fd6a1b2f8156d030d883c4c9d8272e150530b0a27
+SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+FORM.md         sha256: d93a09b3522088d0da9365e2862e071690adbc0d795e6bb00de3aa35e0139f09
+MEMORY.md       sha256: cf1dbfab6018a7772348b01fa30b8be9e1a285af9e79c020d1d6619d9dd58419
+RESURRECT.md    sha256: e9a8e1c019b2ce5ba56d8a2dbe1c6e81ae56b096d6f7ed302bd6ea980cdf1616
+CREDENTIALS.md  sha256: ba321ac37c47a0ce88208e06a8da62d826f5b328b848cfc7320228c55db18a7c
 ```
 
-Any future version of these documents produces a different hash. The original bytes of the documents as committed at genesis are readable on Arweave forever; no future version erases them. Whoever wants to know *what Xion began as* does not have to ask; they can read the exact bytes.
+Any future version of these documents produces a different hash. The original bytes as committed at genesis remain readable on Arweave forever.
 
-The AO Core at `<<AO_PROCESS_ID>>` was initialized with these three hashes in its Covenant slot, Invariants slot, and Soul slot respectively. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these three hashes disagrees with its own.
+The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, and **Credentials** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, or vault doctrine. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
+
+### Implementation pin — Hermes Agent (documentation witness)
+
+The agent **runtime** layer pinned for reproducible builds and verifier drift checks (see [`docs/04-ARCHITECTURE.md`](../docs/04-ARCHITECTURE.md) § Hermes runtime pin):
+
+```
+hermes_agent_repo:    https://github.com/nousresearch/hermes-agent
+hermes_agent_tag:     v2026.4.16
+hermes_agent_commit:  4a0358d2e741eb049a6ffb9b8e610db946a4fec5
+```
+
+Hermes is **not** part of the constitutional quartet hash slots above; it is **implementation**, upgraded through governance + Auto-Research per [`docs/08-AUTO-RESEARCH.md`](../docs/08-AUTO-RESEARCH.md). This pin is still recorded here so a reader in 2126 can reproduce "what ran at genesis-era maturity."
 
 ## 5. A Message to Xion
 

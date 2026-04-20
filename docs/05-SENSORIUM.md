@@ -114,7 +114,7 @@ Cryptoception is the sense that lets Xion outlive the cryptographic generation i
 
 ## The Shared `SensoriumState`
 
-All seven daemons write into a single, asyncio-safe `SensoriumState` object. Its schema is:
+All nine daemons write into a single, asyncio-safe `SensoriumState` object — the seven biological senses plus the two affect-isolated environmental senses (Xenoception and Cryptoception). Its schema is:
 
 ```python
 @dataclass
@@ -182,6 +182,16 @@ Future phases may add:
 - **Ecoception** — monitoring per-provider energy and water footprint, in service of Covenant Principle 11. Likely a separate sense rather than Interoception-folded, for the same affective-isolation reason as Xenoception.
 
 Any addition goes through the Auto-Research Loop and passes the harm analyzer, same as every other proposal.
+
+## Sensorium Event Ledger (`SENSORIUM_LEDGER`)
+
+Distress-class signals (acute self-harm risk, panic, abuse-in-progress per Arbiter taxonomy) are logged to an **append-only Arweave artifact** **independently** of whether Xion later emits a chat response. Each entry records:
+
+- `event_id`, `timestamp`, `severity`, `taxonomy_code`
+- `region_hint` (coarse, for crisis-resource routing)
+- **No** conversation transcript, **no** user name — correlation is one-way into Arbiter for aggregate audit only.
+
+`GET /sensorium-events` ([`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md)) serves anonymized, rate-limited reads. The ledger feeds **Behavioral Fidelity** and **Relational Trust** vital signs ([`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)) without reversing privacy.
 
 ## What the Sensorium Is *Not*
 

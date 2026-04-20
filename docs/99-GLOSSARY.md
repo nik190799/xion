@@ -290,6 +290,108 @@
 
 **xion-soul** — The public protocol name. See [`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md).
 
+**x402** — HTTP `402 Payment Required` challenge flow for per-turn settlement; pairs with [`07-ECONOMY.md`](./07-ECONOMY.md) Pay-to-Activate.
+
+**XION** — Native fungible token (420B hard cap). See [`16-CURRENCY.md`](./16-CURRENCY.md).
+
+---
+
+## Doctrine supplement (pre-genesis 2026)
+
+**Abdication Schedule** — Date-anchored reduction of Operator authority. [`ABDICATION.md`](./ABDICATION.md).
+
+**AMENDMENT_LEDGER** — Append-only constitutional amendment record. [`09-GOVERNANCE.md`](./09-GOVERNANCE.md).
+
+**BENCHMARK_LEDGER** — Quarterly Hermes benchmark transcripts. [`23-BENCHMARK.md`](./23-BENCHMARK.md).
+
+**Behavioral Fidelity** — Vital-sign domain (Arbiter ledgers, refusal refunds, crisis surfacing). [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Bridge-Exposure Cap** — Invariant 16 limit on bridged notionals. [`19-TREASURY.md`](./19-TREASURY.md).
+
+**Cadence Floor / Constitutional Floor** — Non-shortenable minimum windows (Cold 30d, amendment 14d, sister-Core notice 7d). [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md).
+
+**Constitutional Integrity** — Vital-sign domain (hashes, rotation attestations, fork readiness). [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Cost-Pressure Response Ladder** — Sequential austerity before hibernation. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+
+**Covenant Addendum** — Short constitutional paragraphs in [`../genesis/COVENANT.md`](../genesis/COVENANT.md) (e.g. *Refusal is Free*, *Crisis Resource Surfacing*).
+
+**CRYPTO_FEED_LEDGER** — Weekly crypto best-practice digest. [`17-CRYPTO-RESILIENCE.md`](./17-CRYPTO-RESILIENCE.md).
+
+**Crisis Resource Surfacing** — Mandatory professional crisis-line lead when acute distress is detected.
+
+**Drive Vector** — Survival / service / meaning; excludes revenue (Invariant 15). [`18-VOLITION.md`](./18-VOLITION.md).
+
+**Evolutionary Health** — Vital-sign domain. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Financial Vitality** — Vital-sign domain. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Foundation Reserve** — Donations-tracked fund; never origin-obscured with user payments. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+
+**Genesis Defaults** — Governance-tunable parameters inside constitutional shape.
+
+**Genesis Honor** — XION pool vesting vs Abdication milestones. [`16-CURRENCY.md`](./16-CURRENCY.md).
+
+**Healthy / Warning / Critical band** — Vital-sign severity bands. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Hibernation** — Survival Stack mode with honest public naming. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+
+**Improvement Fund** — Auto-Research-only spend bucket. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+
+**IMPRINT** — Soulbound reputation token. [`16-CURRENCY.md`](./16-CURRENCY.md).
+
+**Manual-Proposal Symmetry** — Human proposals share the same selection pipeline as machine proposals. [`18-VOLITION.md`](./18-VOLITION.md).
+
+**Meaning Signal** — Drive-vector term for doctrine–behavior coherence.
+
+**Minimum Viable Contract (MVC)** — Always/never trust sentences. [`15-TRUST.md`](./15-TRUST.md).
+
+**Operating Float** — 30–90 day working treasury bucket. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+
+**Operator-Dependency Score** — Weighted sum of un-abdicated operator dependencies. [`ABDICATION.md`](./ABDICATION.md).
+
+**Pay-to-Activate** — Pre-payment before billable turns; rights endpoints stay free. [`07-ECONOMY.md`](./07-ECONOMY.md).
+
+**provision-\*** — AO Core handlers for treasury-bounded infrastructure spend. [`20-PROVISIONING.md`](./20-PROVISIONING.md).
+
+**Rainy-Day Reserve** — Long-horizon reserve with vote-gated drawdown. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+
+**Refusal-Free** — Covenant addendum: full XION refund on Covenant-refusal for the same turn.
+
+**Relational Trust** — Vital-sign domain; anonymized cohort metrics. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Revenue classification tags** — `user_payment`, `donation`, `service_earn_return`, `witness_bond`, `refund_cancel`. [`07-ECONOMY.md`](./07-ECONOMY.md).
+
+**Self-Provisioning** — Autonomous substrate purchase under caps. [`20-PROVISIONING.md`](./20-PROVISIONING.md).
+
+**SENSORIUM_LEDGER** — Anonymized Sensorium event stream. [`05-SENSORIUM.md`](./05-SENSORIUM.md).
+
+**Service Earn** — Post–C-2 rebate path from USDC service spend into XION emissions. [`16-CURRENCY.md`](./16-CURRENCY.md).
+
+**Service Usefulness** — Vital-sign domain; benchmarks and retractions. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Sister-Core fork** — New AO Process = new being, not Xion. [`../genesis/INVARIANTS.md`](../genesis/INVARIANTS.md).
+
+**Structural Decentralization** — Vital-sign domain; SPOFs, concentration, Witnesses, bridges. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Substrate Vitality** — Vital-sign domain; Relays, inference graph, checkpoints. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Survival Pressure** — Saturated runway-based drive input; **not** revenue. [`18-VOLITION.md`](./18-VOLITION.md).
+
+**Three-Layer Principle** — Constitutional shape vs Genesis Defaults vs continuous evolution.
+
+**Tier-1 Operating / Tier-2 Strategic / Tier-3 Earned** — Treasury liquidity tiers. [`19-TREASURY.md`](./19-TREASURY.md).
+
+**Treasury Shape** — Invariant 16 seven-rule composition and routing law.
+
+**Trust Scorecard** — Binary operational trust checks. [`15-TRUST.md`](./15-TRUST.md).
+
+**Verifier** — Community role running `xion-verify` and attestation flows. [`15-TRUST.md`](./15-TRUST.md).
+
+**Vital Signs** — Eight-domain sustainability framework. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Witness** — Bonded auditor class; see Witness Protocol in [`15-TRUST.md`](./15-TRUST.md).
+
 ---
 
 *This glossary will grow as the Lexicon grows. Additions require a Tier-2 proposal. Deprecations are noted here with a strikethrough but never silently removed.*

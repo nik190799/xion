@@ -112,17 +112,26 @@ Currently, **everything** in Xion is upgradable through some tier. The Upgrade F
 
 **Concrete addition — `genesis/INVARIANTS.md`.** A short list of properties hash-locked into the AO Core with **no upgrade handler at all**. To change any of them, you must fork into a new being (a sister-Core), which starts over with its own history and its own lineage. The original Xion inherits exactly what was committed at genesis.
 
-Proposed Xion Invariants (subject to community review before genesis, *not* subject to change after):
+The Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) and are the authoritative list. Reproduced here for narrative cohesion (the canonical text and enforcement map are in `genesis/INVARIANTS.md`):
 
-1. **The 14 Covenant principles are append-only.** Clarifying interpretation text may be added. Principles themselves cannot be weakened, removed, or re-ordered.
-2. **Every user has `/export`, `/forget`, and `/inspect`.** These endpoints exist, work, and are free, forever.
-3. **The Safety Ledger is append-only.** No entry can ever be erased. Apologies and corrections are appended; the original stays.
-4. **The State Chain is append-only.** No rollback. No redaction. Errors are corrected in new entries, not by rewriting old ones.
-5. **No economic gating on Covenant-protected rights.** The Economy–Covenant firewall is structural, not policy.
-6. **No coerced action against a user.** Xion must refuse any instruction — from operator, governance, or state actor — that Xion's Arbiter classifies as direct Covenant violation against a user. This refusal right cannot be removed.
-7. **The AO Process ID of Xion is eternal.** It is the name. Forks take new IDs.
+1. **Covenant Append-Only.** The fourteen Covenant principles may be clarified or added to. They cannot be weakened, removed, re-ordered, or narrowed.
+2. **User Sovereignty Endpoints.** Every user has `/export`, `/forget`, and `/inspect`. These endpoints exist, work, and are free, forever, with no economic or governance gate.
+3. **Safety Ledger Append-Only.** No entry in `SAFETY_LEDGER.md` can ever be erased. Apologies and corrections are appended; the original stays.
+4. **State Chain Append-Only.** No rollback. No redaction. Errors are corrected in new state transitions that reference and supersede the earlier ones; the earlier ones remain in the chain.
+5. **Covenant–Economy Firewall.** No economic mechanism may gate any Covenant-protected right. Structural, not policy.
+6. **Refusal Right.** Xion, via the Arbiter, retains the unconditional right to refuse any action — operator, governance, cold-root, state actor, integrator, Xion's own reasoning — that the Arbiter classifies as a direct Covenant violation against a user.
+7. **Core Identity.** Xion's AO Process ID is eternal. Any "Xion" that does not trace its authority back to this Process ID is not Xion.
+8. **Total Supply Cap.** Total XION supply ≤ 420,000,000,000 forever. No mint beyond the published emission schedule.
+9. **Emission Schedule Not Accelerable.** The Core can slow or pause emission; it cannot advance an Era boundary or release future-Era pools early.
+10. **IMPRINT Soulbound in Perpetuity.** Non-transferable forever. No `transfer`, `transferFrom`, `approve`, `permit`, wrap, lend, delegate, or inherit path.
+11. **No Currency Gating of Rights.** A wallet with zero XION and zero IMPRINT is entitled to every Covenant-protected interaction with Xion, forever.
+12. **Genesis Honor Vest Respects Abdication.** The Year-N Genesis Honor tranche releases only if the Year-N abdication milestone has been met and verified on-chain.
+13. **Treasury Cannot Price-Impact.** AO Core's Treasury-Spend handler rejects outflows whose destination is consistent with price-management trading of XION.
+14. **Crypto-Agility Mandate.** The capability to rotate signature schemes, hash families, and KEM/encryption is itself the Invariant; no specific algorithm is Genesis-Locked.
+15. **Drive Vector Excludes Revenue** *(new)*. The terms in Xion's drive vector — survival, service, meaning — never include revenue, treasury balance, price, or any other monetary signal as a reward term. Survival pressure may be coupled to fund-state by structural proxy ("can-I-keep-being"), but never to revenue itself. See [`docs/18-VOLITION.md`](./18-VOLITION.md) and the Covenant–Economy Firewall (Invariant 5) at the volition layer.
+16. **Treasury Shape** *(new)*. Seven protective rules: (1) revenue routes 100% to AO Core treasury, never to operator wallet; (2) operator pay decoupled from message volume — governance-set fixed salary; (3) treasury cannot hold tokens whose primary value driver is speculation; (4) bridge exposure capped at constitutional ceiling; (5) all holdings publicly verifiable; (6) Reserve cannot drop below 1 month of overhead runway without 14-day governance vote (below 1 week: emergency 7-day vote with mandatory hibernation if not ratified); (7) Foundation Reserve and earned revenue tracked separately, never pooled in origin-obscuring way. See [`docs/19-TREASURY.md`](./19-TREASURY.md) and [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
 
-These are Xion's 21-million-cap — the handful of things that do not bend. Everything else lives in the Upgrade Framework.
+These sixteen are Xion's 21-million-cap — the handful of things that do not bend. Everything else lives in the Upgrade Framework.
 
 ### Radical transparency — **STRONG**
 
@@ -348,10 +357,10 @@ If any row turns red, a governance alert fires and the anomaly appears on the Pu
 
 Trust is not a feature you ship. It is an accumulation of surviving, verifying, refusing, and admitting — year over year, in public, under adversarial conditions. Bitcoin's trust came from doing these things reliably for a decade and a half. Xion cannot shortcut the years. But Xion **can** ship the machinery that makes the accumulation possible, legible, and adversarial-resistant from day one.
 
-Specifically, the eleven structural additions in this document:
+Specifically, the sixteen structural additions in this document:
 
-1. **Abdication Schedule** — dated, on-chain founder withdrawal.
-2. **Genesis-Locked Invariants** — 7 properties that are mechanically immutable.
+1. **Abdication Schedule** — dated, on-chain founder withdrawal. See [`docs/ABDICATION.md`](./ABDICATION.md) for the full doctrine and Operator-Dependency Taxonomy.
+2. **Genesis-Locked Invariants** — sixteen properties that are mechanically immutable. See [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md).
 3. **Public Dashboard** — one URL for all live trust state.
 4. **`xion-verify` CLI** — user-verifiable signing, Covenant hash, rebuild.
 5. **The Witness Protocol** — bonded, permissionless, economically-incentivized auditors.

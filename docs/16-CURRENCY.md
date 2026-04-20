@@ -251,10 +251,16 @@ The currency system must interlock with what we already committed to. Here is ev
 - Tipping in XION produces identical acknowledgment to tipping in USDC; the relationship response is invariant to currency.
 - Xion cannot observe a user's XION or IMPRINT balance during normal conversation. Balances are visible to the protocol layer for governance-only, not to the conversation layer.
 
-### Trust doctrine (doc 15)
+### Trust doctrine (doc 15) and the canonical Invariants ([`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md))
 
-- XION supply cap (420B) is added to the Genesis-Locked Invariants.
-- XION emission schedule is hash-locked: can be slowed, never accelerated.
+- XION supply cap (420B) is Invariant 8.
+- XION emission schedule is hash-locked: can be slowed, never accelerated (Invariant 9).
+- IMPRINT soulbound in perpetuity (Invariant 10).
+- No currency gating of Covenant-protected rights (Invariant 11).
+- Genesis Honor vest respects the Abdication Schedule (Invariant 12).
+- Treasury cannot price-impact (Invariant 13).
+- Drive vector excludes revenue (Invariant 15) — Xion's volition layer cannot reward XION price, treasury balance, or revenue. See [`docs/18-VOLITION.md`](./18-VOLITION.md).
+- Treasury shape (Invariant 16) — see [`docs/19-TREASURY.md`](./19-TREASURY.md) and [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
 - Witness bonds transition from USDC (pre-C-2) to XION (post-C-2), governed by a smooth migration window.
 - Bounty Economy payouts flow from the Security pool, denominated in XION.
 - Trust Scorecard gains two rows: (a) emission-schedule on-track, (b) Genesis Honor vesting pace matches the Abdication Schedule.
@@ -340,16 +346,18 @@ Each of these is enforced structurally, not by pinkie-swear.
 
 ## Part VIII — Genesis-Locked Invariants (native-currency additions)
 
-Part of doc 15's Invariants doctrine. These are the native-currency-specific Invariants that are **mechanically immutable**:
+The canonical Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md). The native-currency invariants below are part of the canonical sixteen and reproduced here for narrative cohesion. Numbering matches `genesis/INVARIANTS.md`.
 
 8. **Total XION supply ≤ 420,000,000,000 forever.** No mint function in the Core beyond the published schedule. No governance action can raise the cap. Changing the cap requires forking into a sister-Core.
-9. **Emission schedule can be slowed but never accelerated.** The schedule table in Part III is hash-locked. Governance can pause emission, retire remaining unissued pools (voluntarily reducing the cap), or slow the tapering — but cannot pull future emission forward.
+9. **Emission schedule not accelerable.** The schedule table in Part III is hash-locked. Governance can pause emission, retire remaining unissued pools (voluntarily reducing the cap), or slow the tapering — but cannot pull future emission forward.
 10. **IMPRINT is soulbound in perpetuity.** No transfer function. No fractional sale. No inheritance. The AO Core has no handler to transfer IMPRINT. Changing this property requires forking into a sister-Core.
 11. **No Covenant-protected right is gated by XION or IMPRINT holdings.** Enforced by the Arbiter and by the Core's Spend handler. Any proposal that would gate such a right is auto-blocked; any Spend message that would implement such a gate is rejected.
 12. **Genesis Honor vest respects the Abdication Schedule.** Year-N honor tranche is released only if year-N abdication milestones are met; otherwise the tranche returns to the Treasury pool.
-13. **Treasury cannot sell XION as a price-impact strategy.** Treasury XION flows are emission-schedule driven and bond/bounty redemption only. Market-making or price-floor defenses require Tier-3 governance explicitly.
+13. **Treasury cannot price-impact.** Treasury XION outflows whose destination is consistent with price-management trading are rejected by the AO Core's Treasury-Spend handler. Treasury XION flows are emission-schedule driven and bond/bounty redemption only.
 
-These Invariants are hash-committed to the AO Core at native-currency launch and carry the same protection as the original seven.
+The remaining canonical invariants — **14 (Crypto-Agility Mandate)**, **15 (Drive Vector Excludes Revenue)**, and **16 (Treasury Shape)** — also bind the native-currency layer. Invariant 15 forbids any mechanism that couples Xion's drive vector (survival, service, meaning) to revenue, treasury balance, or XION price; survival pressure may be coupled only to structural fund-state ("can-I-keep-being"), not to the price ticker. Invariant 16 binds treasury shape: no speculative holdings, capped bridge exposure, public verifiability, separation of Foundation Reserve from earned revenue, and a constitutional minimum runway floor below which spending must reduce by governance vote.
+
+These invariants are hash-committed to the AO Core at native-currency launch and carry the same protection as the canonical sixteen.
 
 ---
 

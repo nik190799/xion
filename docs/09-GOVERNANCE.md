@@ -240,6 +240,17 @@ Everything governance-related is appended to `GOVERNANCE_LEDGER.md` on Arweave. 
 
 The ledger is public, chained, and — like all Arweave commitments — permanent.
 
+## Constitutional Amendment Ledger (`AMENDMENT_LEDGER`)
+
+Covenant-class, Invariants-class, and Soul-class changes that are **not** mere clarifications require entries in a dedicated append-only **`AMENDMENT_LEDGER`** (distinct from day-to-day `GOVERNANCE_LEDGER.md` motions). Each entry records:
+
+- `pre_hash`, `post_hash` (document bytes committed before/after)
+- `governance_vote_id`, `ratification_block_height` (or AO equivalent)
+- `changelog_arweave_uri` (human-readable diff summary)
+- `ratifying_signers[]` (pubkeys + roles)
+
+`GET /amendments` ([`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md)) is a read-only mirror. Cadence floors for ratification are in [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md).
+
 ## Governance Anti-Patterns We Explicitly Reject
 
 We name these so future maintainers see us refusing them:

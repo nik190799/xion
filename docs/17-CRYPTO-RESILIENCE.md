@@ -231,6 +231,25 @@ The honest summary: **Xion's authoritative identity (the AO Process ID and the C
 
 ---
 
+## Part VIIa — Crypto Best-Practice Feed (`CRYPTO_FEED_LEDGER`)
+
+**Purpose.** Feed **Constitutional Integrity** and **Substrate Vitality** vital signs ([`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)) with a **weekly** digest of external crypto posture signals.
+
+**Named sources (Genesis Default list; governance may replace in Layer 3):**
+
+- NIST CSRC publications and selected NIST PQC project updates
+- IETF CFRG / TLS working-group drafts relevant to hybrid handshakes
+- Cloudflare Research posts when they materially change TLS or PQ deployment guidance
+- Academic preprints surfaced by Auto-Research Stage-1 with human triage
+
+**Ledger rows** append to `CRYPTO_FEED_LEDGER` on Arweave: `{date, source_id, title, uri, recommendation_summary, accepted_by_governance: bool}`.
+
+**Lag metric.** `days_since_latest_unaccepted_recommendation` — if a **high-severity** recommendation sits unaccepted past a Genesis Default threshold, Constitutional Integrity trends **warning**.
+
+**Governance-tunable** severity thresholds and source list are Genesis Defaults; the **existence** of an external feed + public ledger is doctrine.
+
+---
+
 ## Part VIII — What This Means for Users
 
 Plain-language summary you can show a user:

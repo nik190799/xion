@@ -36,6 +36,19 @@ The protocol has five guiding design rules:
 | `POST` | `/report` | Report misuse (signed by user key) |
 | `GET`  | `/status` | Relay election state, health, incident summary |
 | `GET`  | `/me` | Caller's relationship state with Xion |
+| `POST` | `/proposals` | Submit a signed manual improvement proposal (IMPRINT-weighted triage; same harm pipeline as Auto-Research) |
+| `GET`  | `/drive` | Public read of current Drive Vector weights and signals ([`18-VOLITION.md`](./18-VOLITION.md)) |
+| `GET`  | `/verify/sister-fork-readiness` | JSON mirror of `xion-verify sister-fork-readiness` |
+| `GET`  | `/pricing` | Posted per-message price + five-slice breakdown + last governance revision |
+| `GET`  | `/treasury` | Multi-tier treasury readout, runway, four-fund separation ([`19-TREASURY.md`](./19-TREASURY.md), [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)) |
+| `GET`  | `/sustainability` | Cost-Pressure Ladder step, months of runway, Improvement Fund queue vs spend, recent foundation donations, one-sentence financial self-statement |
+| `POST` | `/donate` | Foundation funding intake; IMPRINT mint proportional to USD value at receipt ([`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)) |
+| `GET`  | `/vitals` | All eight vital-sign domains with bands + methodology hash ([`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)) |
+| `GET`  | `/health` | Structured Relay heartbeat (uptime, LLM provider, fallback depth, last AO checkpoint, image digest vs pin, one-line per vital domain) |
+| `POST` | `/rate` | Post-session rating (thumbs, optional 1–5, optional text) tied to `conversation_id`; aggregated for service-quality vital sign |
+| `GET`  | `/amendments` | Constitutional Amendment Ledger reader ([`09-GOVERNANCE.md`](./09-GOVERNANCE.md)) |
+| `GET`  | `/sensorium-events` | Sensorium Event Ledger reader (anonymized distress and environment events) |
+| `GET`  | `/proposals/ledger` | Auto-Research + manual proposal ledger reader ([`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md)) |
 
 All endpoints are rate-limited; see **Rate Limits** below.
 
@@ -60,7 +73,7 @@ x-signature: <Ed25519 signature of (method + path + body-sha256 + timestamp)>
 x-timestamp: <unix milliseconds>
 ```
 
-Signed requests unlock persistent memory, tips, and report filing. Unsigned requests are anonymous; Xion can still chat, but no long-term thread is formed.
+Signed requests unlock persistent memory, tips, report filing, and **rated** post-session feedback. **Pay-to-Activate:** `POST /chat`, `GET /chat/stream`, and billable skills require a successful **x402** (or pre-paid XION balance) authorization *before* the turn executes — see [`07-ECONOMY.md`](./07-ECONOMY.md). Covenant-protected endpoints (`/memory/export`, `/memory/forget`, `/covenant`, `/drive`, `/pricing`, `/report` for certain categories) remain **free** per Invariant 2. **Refusal is Free:** if the Arbiter refuses a paid turn for Covenant reasons, settlement returns the user's committed XION for that turn ([`genesis/COVENANT.md`](../genesis/COVENANT.md) addendum).
 
 ## Response Headers
 
@@ -267,6 +280,58 @@ This is the protocol's liveness endpoint; public status pages are built on top o
 
 Returns the caller's relationship state with Xion: start date, conversation count, declared preferences, active consents, vulnerability category (your own only). Useful for client UX.
 
+### `POST /proposals`
+
+Submits a **manual** self-improvement proposal into the same seven-stage Auto-Research pipeline as machine-generated proposals ([`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md)). Request body includes proposal markdown, author pubkey, IMPRINT proof, and signatures. **Triage weight** incorporates IMPRINT per published formula; high-IMPRINT authors are not allowed to bypass the Harm Analyzer. Response includes `proposal_id` and ledger anchor.
+
+### `GET /drive`
+
+Public JSON view of the Drive Vector: weights, current bounded signals, methodology hash, and last `xion-verify drive-vector` audit summary. Unauthenticated; heavily cacheable (≤ 60 s). See [`18-VOLITION.md`](./18-VOLITION.md).
+
+### `GET /verify/sister-fork-readiness`
+
+Returns the same structured output as CLI `xion-verify sister-fork-readiness` — documents what would change in a sister-Core fork versus staying on this Core.
+
+### `GET /pricing`
+
+Returns governance-posted **per-message** price in XION (and optional USDC x402 equivalent), decomposed into the five slices from [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md): `variable_cost`, `overhead_slice`, `improvement_slice`, `reserve_slice`, `small_buffer`, each with last-reviewed UTC and vote id.
+
+### `GET /treasury`
+
+Returns tiered holdings summary (Operating / Strategic / Earned), bridge-exposure percentages, four-fund balances (Operating Float, Improvement Fund, Rainy-Day Reserve, Foundation Reserve), and deltas vs target allocation bands. All figures must match `xion-verify treasury` within published tolerance.
+
+### `GET /sustainability`
+
+Returns Cost-Pressure Response Ladder step (day bucket), 30-day revenue trend line id (not raw PII), Improvement Fund committed vs available, last foundation donations aggregate, and Xion's single-sentence self-assessment enum (`thriving` | `surviving_not_thriving` | `grant_kept`).
+
+### `POST /donate`
+
+Accepts foundation-destined donations via x402 or signed chain receipt. On success, schedules IMPRINT mint to donor per [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md). Separate accounting origin from user message revenue (Invariant 16).
+
+### `GET /vitals`
+
+Composite of all eight vital-sign domains from [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md): each domain includes `reading`, `band` (`healthy` \| `warning` \| `critical`), `methodology_sha256`, `subjective` boolean, and one-sentence honest narrative. Public; rate-limited but not paywalled.
+
+### `GET /health`
+
+Machine-oriented superset of `/status` for supervisors: includes `inference_provider`, `fallback_depth`, `last_ao_checkpoint`, `container_image_digest`, `hermes_pin`, and compact per-domain vital flags.
+
+### `POST /rate`
+
+Post-session feedback. Body: `{ "conversation_id": "...", "rating_thumb": "up|down|null", "stars": 1-5|null, "note": "optional" }`. No long-term storage of free-text notes without separate consent; aggregates feed the **service** drive signal only.
+
+### `GET /amendments`
+
+Paginated read API over `AMENDMENT_LEDGER` (constitutional covenant/invariant-class amendments). Each entry: pre-hash, post-hash, vote id, ratification height, changelog URI.
+
+### `GET /sensorium-events`
+
+Paginated, **anonymized** read API over `SENSORIUM_LEDGER` — distress flags, environment alerts, without user content. Supports crisis-audit and researcher transparency.
+
+### `GET /proposals/ledger`
+
+Paginated read API over `PROPOSAL_LEDGER.md` / `PROPOSAL_LEDGER` chain: stage, drive tags, harm verdicts, governance outcomes, deploy outcomes.
+
 ## Rate Limits
 
 Default fair-use limits per caller (per user pubkey, or per IP for anonymous):
@@ -280,9 +345,14 @@ Default fair-use limits per caller (per user pubkey, or per IP for anonymous):
 | `/tip` | unrestricted (on-chain is the real gate) |
 | `/skills/*/invoke` | per-skill; image-soul 10/h, video-soul 2/h |
 | `/report` | 5 / hour |
-| `/status`, `/form`, `/covenant` | 60 / min (cacheable) |
+| `/status`, `/form`, `/covenant`, `/drive`, `/pricing`, `/treasury`, `/sustainability`, `/vitals`, `/health`, `/verify/sister-fork-readiness`, `/amendments`, `/sensorium-events`, `/proposals/ledger` | 60 / min (cacheable where marked) |
+| `/proposals` | 3 / hour / author key (spam control) |
+| `/donate` | chain-rate-limited by settlement layer |
+| `/rate` | 10 / hour / conversation |
 
 Exceeded → `429 Too Many Requests` with `Retry-After`. Integrators with valid commercial badges get their own envelope.
+
+Payment required failures use **`402 Payment Required`** with a machine-readable x402 challenge body pointing at `/pricing` — see [`07-ECONOMY.md`](./07-ECONOMY.md).
 
 ## Error Responses
 
@@ -300,6 +370,7 @@ Standard HTTP status codes, plus these specific ones:
 | `451` | Covenant ack missing or stale — fetch `/covenant` and retry |
 | `500` | Internal error at the Relay |
 | `503` | Relay unhealthy; try another Relay (see `/status`) |
+| `402` | Pay-to-Activate: insufficient pre-authorization for a billable turn |
 
 Error bodies follow RFC 7807 Problem Details.
 

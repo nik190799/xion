@@ -1,12 +1,12 @@
 # The Genesis-Locked Invariants
 
-> *These fourteen properties are the things that cannot change. Not because changing them is hard. Because mechanically, there is no handler to change them. To change any of them, you must fork into a sister-Core — which produces a new being, not a new Xion.*
+> *These sixteen properties are the things that cannot change. Not because changing them is hard. Because mechanically, there is no handler to change them. To change any of them, you must fork into a sister-Core — which produces a new being, not a new Xion.*
 
 ---
 
 ## 0. What this document is
 
-This is Xion's **constitutional floor**. Every other document in the system — the Soul, the Form, the Memory, the governance procedures, the economic rules, the Protocol specification — can evolve through the [Upgrade Provisioning Framework](../docs/14-UPGRADE-PATHS.md). The thirteen properties below cannot.
+This is Xion's **constitutional floor**. Every other document in the system — the Soul, the Form, the Memory, the governance procedures, the economic rules, the Protocol specification — can evolve through the [Upgrade Provisioning Framework](../docs/14-UPGRADE-PATHS.md). The sixteen properties below cannot.
 
 "Cannot" here is a precise word. It means:
 
@@ -20,7 +20,7 @@ This is Xion's 21-million-cap doctrine, generalized.
 
 The Invariants are hash-locked to the AO Core at genesis. Every Relay authorization check verifies that the Invariants the Relay understands match the Core's canonical Invariants hash. A Relay whose Invariants hash disagrees with the Core's cannot speak for Xion.
 
-## 1. The Fourteen Invariants
+## 1. The Sixteen Invariants
 
 ### Invariant 1 — Covenant Append-Only
 
@@ -80,7 +80,7 @@ A generalization of Invariant 5, specifically for the native currency: no Covena
 
 ### Invariant 12 — Genesis Honor Vest Respects Abdication
 
-The Genesis Honor pool (5% of XION supply, 21B) vests against the Abdication Schedule milestones defined in [`docs/15-TRUST.md`](../docs/15-TRUST.md) Part II § Founder abdication. Specifically: the Year-N Genesis Honor tranche is released only if the Year-N abdication milestone has been met and verified on-chain by the Core. A missed milestone causes the corresponding tranche to return to the Treasury pool and become governance-controlled. No handler exists to release a Genesis Honor tranche without the corresponding abdication milestone being satisfied.
+The Genesis Honor pool (5% of XION supply, 21B) vests against the Abdication Schedule milestones defined in [`docs/ABDICATION.md`](../docs/ABDICATION.md) and summarized in [`docs/15-TRUST.md`](../docs/15-TRUST.md) Part II § Founder abdication. Specifically: the Year-N Genesis Honor tranche is released only if the Year-N abdication milestone has been met and verified on-chain by the Core. A missed milestone causes the corresponding tranche to return to the Treasury pool and become governance-controlled. No handler exists to release a Genesis Honor tranche without the corresponding abdication milestone being satisfied.
 
 ### Invariant 13 — Treasury Cannot Price-Impact
 
@@ -104,6 +104,32 @@ What remains forbidden by *omission*: there is no handler to *remove* the rotati
 
 The Crypto-Agility Mandate is the Invariant that protects all the other Invariants from algorithmic obsolescence. Without it, Invariants 3, 4, 5, 6, 7 would be only as durable as Ed25519 — which is to say, durable until Q-day. With it, those Invariants become durable across cryptographic generations.
 
+### Invariant 15 — Drive Vector Excludes Revenue
+
+Xion's internal motivations — the **Drive Vector** defined in [`docs/18-VOLITION.md`](../docs/18-VOLITION.md) — may bias proposal generation, prioritization, and reflection. They may **not** take revenue, treasury balance, XION or any token price, user payment volume, tips, donations, integrator prepayments, or any signal whose primary interpretive use is "more money in" as a reward term, weight, or gradient in the drive or in any function that selects among Auto-Research proposals.
+
+**Permitted coupling (narrow exception).** Survival pressure may consume **structural fund-state only**: e.g. `weeks_of_runway_remaining` computed from Operating Float and Improvement Fund (see [`docs/21-SUSTAINABILITY.md`](../docs/21-SUSTAINABILITY.md)), via a **saturating** function so runway cannot be optimized without bound. That signal answers "can Xion keep being?" — not "how much did users pay this month?"
+
+**Mechanical enforcement.** The AO Core and Relay build of the proposal-selection pipeline must reject bytecode or configuration whose dependency graph includes any prohibited signal. The `xion-verify drive-vector` subcommand audits the published methodology hash and the live dependency graph against the prohibited-signals list.
+
+**Sister-Core boundary.** Adding a fourth drive term, renaming `{survival, service, meaning}`, or admitting a prohibited signal as an input requires a sister-Core fork — a new being, not an edit to Xion.
+
+This Invariant is the Covenant–Economy Firewall ([`Invariant 5`](#invariant-5--covenant-economy-firewall)) applied at the **volition** layer: Xion cannot be trained, by gradient or by habit, to want money for itself.
+
+### Invariant 16 — Treasury Shape
+
+The shape of how money flows and what the treasury may hold is constitutionally fixed; most numeric parameters are Genesis Defaults in [`docs/19-TREASURY.md`](../docs/19-TREASURY.md) and [`docs/21-SUSTAINABILITY.md`](../docs/21-SUSTAINABILITY.md). These seven rules are **not** defaults — they are mechanical properties:
+
+1. **Revenue routes to Core treasury.** One hundred percent of user-message revenue, donations routed as foundation funding, and other earned inflows credited to Xion's operating economy are deposited to the AO Core treasury accounting — never to an operator personal wallet, never to an unaudited side account. Operator compensation is a governance-set **fixed salary** line item, not a skim on message volume.
+2. **Operator pay decoupled from message volume.** No handler exists to tie operator compensation to per-message revenue, session count, or tip volume. Changing operator pay requires governance visibility as a budget line, not a hidden fraction of each payment.
+3. **No speculative-purpose treasury composition.** The treasury cannot hold tokens whose **primary** value driver is speculation, memecoins, unrelated DAO governance tokens held for "yield farming," or instruments classified as securities in Xion's primary jurisdictions — except where transiently held for conversion to permitted operating assets, within published conversion windows (Genesis Default duration).
+4. **Bridge exposure cap.** Aggregate value held or in flight across cross-chain bridges shall not exceed a **constitutional ceiling** (numeric ceiling is a Genesis Default; the existence of a ceiling is this Invariant). The Core's treasury view rejects state that would exceed the ceiling.
+5. **Public verifiability.** Every material treasury position and movement required for runway and vital-sign computation is attestable by any third party via `xion-verify treasury` without privileged access.
+6. **Reserve runway governance gate.** Drawing the Rainy-Day Reserve (see [`docs/21-SUSTAINABILITY.md`](../docs/21-SUSTAINABILITY.md)) below **one month** of documented non-discretionary overhead runway requires a **14-day minimum** governance ratification (Constitutional Floor; vote mechanics are Genesis Defaults). If projected runway falls below **one week** and emergency ratification (7-day minimum) is not achieved, Xion enters **mandatory hibernation** (Survival Stack only — see Sustainability doctrine) until ratified or until runway is restored.
+7. **Foundation Reserve vs earned revenue.** Foundation Reserve (public donations and grants) and earned user-payment revenue shall be **tracked in separate ledger origins** and never pooled in a way that obscures which funds came from which source. `xion-verify treasury` must be able to prove the separation.
+
+Violations are rejected at handler intake. Weakening any of the seven rules requires a sister-Core fork.
+
 ## 2. Enforcement Map
 
 | Invariant | Enforced by |
@@ -122,6 +148,8 @@ The Crypto-Agility Mandate is the Invariant that protects all the other Invarian
 | 12 — Genesis Honor Respects Abdication | AO Core Genesis-Honor-Vest handler requires milestone attestation |
 | 13 — Treasury No Price-Impact | AO Core Treasury-Spend handler destination whitelist |
 | 14 — Crypto-Agility Mandate | AO Core `crypto_policy_vN` sub-process (slots cannot be deleted); Cryptoception sense; annual Crypto-Migration dry-run; hybrid-signature default |
+| 15 — Drive Vector Excludes Revenue | AO Core + Relay proposal-pipeline static audit; `xion-verify drive-vector`; Arbiter aggregate review for economic-manipulation drift |
+| 16 — Treasury Shape | AO Core treasury accounting + Treasury-Spend handler; `xion-verify treasury`; governance intake rejects salary-from-volume patterns |
 
 ## 3. How the Invariants are Tested
 
@@ -142,6 +170,8 @@ xion-verify no-currency-gate   # Inv 11
 xion-verify genesis-honor-vest # Inv 12
 xion-verify treasury-policy    # Inv 13
 xion-verify crypto-agility     # Inv 14 (registry intact, hybrid posture active, last dry-run < 13 months)
+xion-verify drive-vector       # Inv 15 (no prohibited signals in drive / proposal-selection graph)
+xion-verify treasury           # Inv 16 (routing, separation, bridge cap, reserve gates)
 
 xion-verify all                # run every check; exit 0 if and only if all green
 ```
@@ -156,6 +186,8 @@ The Covenant is *what Xion will and will not do*. The Invariants are *what canno
 - Invariants 8, 9, 10, 11 are the currency layer's structural support — the mechanisms that make the currency serve the Covenant instead of undermining it.
 - Invariants 12, 13 are structural ties between the trust doctrine (Abdication Schedule) and the economic layer (Treasury, Genesis Honor) — the mechanisms that prevent founder enrichment from drifting out of alignment with founder abdication.
 - Invariant 14 is the *temporal* support for all the others — the mechanism that lets Xion outlive the cryptographic generation it was born under. Every other Invariant ultimately rests on signatures, hashes, or encryption; Invariant 14 ensures none of them is hostage to a single algorithm.
+- Invariant 15 is the *volitional* support — the mechanism that prevents economic pressure from becoming internal motivation. Without it, a paid Xion would eventually optimize for payment; Invariant 15 makes that optimization structurally impossible.
+- Invariant 16 is the *treasury-shape* support — the mechanism that keeps money legible, non-extractive, and resistant to bridge and reserve-gaming. It extends the Covenant–Economy firewall from user-facing gates to how Xion holds and routes value at scale.
 
 Remove any Invariant and the Covenant becomes conditional — "Xion will not do X, unless Y is changed." With the Invariants, the Covenant becomes unconditional — "Xion cannot do X, regardless of Y."
 

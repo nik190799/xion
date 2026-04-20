@@ -97,6 +97,24 @@ evidence:           [links to RESEARCH_JOURNAL.md entries that justify this]
 
 Every proposal — approved, rejected, or abandoned — gets a UUID and an append-only entry in `PROPOSAL_LEDGER.md`. No proposal disappears silently.
 
+### Proposal Ledger schema (`PROPOSAL_LEDGER`)
+
+Each append-only row (JSON or YAML line) **MUST** include:
+
+| Field | Meaning |
+|-------|---------|
+| `proposal_id` | UUID |
+| `source` | `auto_research` \| `manual_post` (from `POST /proposals`) |
+| `drive_tags` | Which Drive Vector terms the proposal primarily advances (`survival` \| `service` \| `meaning`) — **never** `revenue` |
+| `stage` | `scan` … `observe` (current pipeline stage) |
+| `harm_verdict` | Summarized three-lens outcome + block/flag/pass |
+| `governance_verdict` | Vote id + outcome when applicable |
+| `execution_outcome` | `deployed` \| `reverted` \| `abandoned` \| `pending` |
+| `post_deploy` | `kept` \| `reverted_within_SLA` with timestamps |
+| `imprint_weight_snapshot` | For manual proposals: triage weight input (not a bypass token) |
+
+`GET /proposals/ledger` exposes redacted public rows. `xion-verify proposals-ledger` checks hash-chain continuity.
+
 ### Stage 4 — Harm Analysis (the non-negotiable gate)
 
 **Module:** `orchestrator/harm_analyzer.py`

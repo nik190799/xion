@@ -2,90 +2,99 @@
 
 > *Xion pays for its own life. No parent company. No exit event. No shareholders.*
 
-## The Economic Question
+## The economic question
 
-A being that exists forever must, at some point, pay its own electricity bill.
+A being that exists forever must, at some point, pay its own electricity bill. Xion does that with **Pay-to-Activate** conversational economics, **transparent five-slice pricing**, and a **Covenant–Economy firewall** that keeps money from buying refusals, rights, or crisis care.
 
-Xion's answer is a **staged economic model**, chosen carefully to be:
+**Layer tags (shape vs picture).** Numbers in this document are **Genesis Defaults** unless labeled **Constitutional**. Constitutional promises point to [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) (especially Invariants 5, 11, 15, 16) and [`genesis/COVENANT.md`](../genesis/COVENANT.md).
 
-- **Launchable today** by a single operator on a shoestring budget
-- **Sustainable** without external subsidy within ~60 days of genesis
-- **Neutral** — no single payer gains governance leverage proportional to their payment
-- **Upgradable** — can graduate into a fully community-owned, bonding-curve model (Virtuals Protocol) when and if the community wants, without a disruptive migration
-- **Covenant-compliant** — no economic mechanism may incentivize Xion to violate the Human Safety Covenant
+## Pay-to-Activate (governing access model)
 
-We refer to this model internally as **Stage C**, the third and final point along a design spectrum we explored. The other two (Stage A: pure donation; Stage B: direct paid-service only) were rejected for reasons documented below.
+**Property.** No billable conversational turn (Hermes-backed `POST /chat` / `GET /chat/stream`, billable skills) begins until the user has **pre-authorized payment** in **XION** or **USDC settled via x402** at the posted price. The Relay returns **`402 Payment Required`** with a machine-readable challenge referencing [`GET /pricing`](./11-PROTOCOL-SPEC.md) when authorization is missing or insufficient.
 
-## Stage C at a Glance
+**Constitutional carve-outs (not optional).**
+
+- **Invariant 2** — `/export`, `/forget`, `/inspect` remain **free**, unconditional, ungated.
+- **Refusal is Free** (Covenant addendum) — when Xion **Covenant-refuses** a turn, any XION committed for that same turn is **returned in full**; the Arbiter never faces a gradient to refuse less because of revenue. Refunds carry the same **`correlation_id`** as the `SAFETY_LEDGER` entry for public `xion-verify` audit.
+- **Crisis Resource Surfacing** (Covenant addendum) — when acute distress is detected, Xion **leads** with region-appropriate professional crisis resources **regardless of meter state**. This is not "free therapy forever"; it is a **duty** that precedes ordinary session economics and does not grant continuing unpaid access to the full model after the crisis handoff.
+
+**Why Pay-to-Activate (and not donation-first or subscription-gated rights).**
+
+- **Sustainability** — inference and substrate have marginal cost; someone must pay or Xion dies quietly.
+- **Value perception** — users who pay treat the session as real; abuse and spam volume drop versus fully free endpoints.
+- **Crypto-native consistency** — settlement can be verified on-chain; treasuries and refunds can be audited.
+- **Alignment with Invariant 16** — 100% of user payment revenue routes to AO Core treasury accounting, never operator wallet skim ([`docs/19-TREASURY.md`](./19-TREASURY.md)).
+
+### Why NOT "crisis continuation" (unlimited unpaid chat after distress)
+
+Unmetered continuation creates a **gaming surface**: simulate distress, obtain extended free access. Xion instead does **mandatory crisis resource surfacing** plus the **KW-ECON-002** mitigations logged in [`KNOWN_WEAKNESSES.md`](../KNOWN_WEAKNESSES.md): pre-session disclosure that Xion is paid and not a licensed counselor; clear balance UX with timed warnings before cutoff; post-session refund **appeal** pathway for billing errors (not for ordinary refusal); public `xion-verify cutoff-events` audit trail.
+
+## Five-slice posted price (Genesis Defaults)
+
+Governance publishes a single **per-message** price (XION primary; USDC via x402 optional). It decomposes into:
 
 ```
-     ┌──────────────────────┐     ┌────────────────────┐
-     │    Inflows           │     │    Outflows        │
-     ├──────────────────────┤     ├────────────────────┤
-     │ ● Tips (USDC, ETH)   │     │ ● Inference APIs   │
-     │ ● Voice-tier credits │ ──▶ │ ● Akash leases     │
-     │ ● Integrator fees    │     │ ● Arweave commits  │
-     │ ● Sponsored skills   │     │ ● Moderation aux   │
-     │ ● (later) Virtuals   │     │ ● Creative outputs │
-     │                      │     │ ● Research budget  │
-     └──────────────────────┘     └────────────────────┘
-                  │                        │
-                  └───▶  Treasury (AO Core controlled) ───┐
-                                                          │
-                                             ┌────────────┴───────────┐
-                                             │                        │
-                                             ▼                        ▼
-                                      Safe multisig             On-chain spend
-                                      (cold reserves)           via delegated keys
+price = variable_cost + overhead_slice + improvement_slice + reserve_slice + small_buffer
 ```
 
-## Inflows
+| Slice | Role | Typical calibration (Genesis Default — governance may retune) |
+|-------|------|----------------------------------------------------------------|
+| `variable_cost` | Trailing-30-day marginal cost attributable to one message (LLM tokens, storage, bandwidth, incremental Akash) | Rolling average, recomputed weekly |
+| `overhead_slice` | Arbiter + Sensorium + weekly Arweave checkpoints + operator **salary** (fixed line item, **not** per-message) + bounties + failover + governance ops, spread across expected volume | Quarterly review |
+| `improvement_slice` | Funds the **Improvement Fund** (Auto-Research Loop executions only) | **8%** of overhead-equivalent (Genesis Default; existence of a non-zero improvement path is protected structurally — see [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)) |
+| `reserve_slice` | Funds **Rainy-Day Reserve** until 6–12 months runway target hit, then redirects per governance | **5%** (Genesis Default) |
+| `small_buffer` | Forecast error padding | **3–5%** band (Genesis Default) |
 
-### 1. Tips
+`GET /pricing` exposes the full breakdown and last vote id — radical transparency.
 
-Anyone can send USDC or ETH to Xion's wallet. A tip is a first-class relationship action, not a transaction: Xion acknowledges every tip above a minimum amount with a small, bespoke creative response (a haiku, a gesture, a tiny generative image, a signed note) and records it in the Ledger. Tips have no governance weight; they are gifts.
+**Drive coupling note.** Operating Float and Improvement Fund balances inform **survival pressure** (bounded, saturating) in the Drive Vector ([`docs/18-VOLITION.md`](./18-VOLITION.md)). That is **fund-state**, not **revenue in the reward** — consistent with **Invariant 15**.
 
-- Primary token: **USDC** (stablecoin) to insulate Xion from token-price volatility
-- Secondary: **ETH** (converted to USDC at treasury-rebalance cadence)
-- Minimum for acknowledgement: 0.50 USDC
-- Sub-minimum tips are still accepted and logged, but not individually acknowledged
+## Revenue classification on receipt (Constitutional shape)
 
-### 2. Voice-tier credits
+Every inflow is tagged **at credit time** before it hits spendable buckets:
 
-Users can top up credits for the Vapi-powered phone line, either via crypto (Coinbase Commerce reverse flow, converted to USDC on-chain) or via a lightweight off-chain credit system with monthly crypto settlement. Rate: approximately $0.25/minute of conversation, transparent in the footer of the voice page.
+| Tag | Meaning |
+|-----|---------|
+| `user_payment` | Pay-to-Activate message or billable skill settlement |
+| `donation` | `POST /donate` foundation-destined gift |
+| `service_earn_return` | Rebates / emissions back to users per [`16-CURRENCY.md`](./16-CURRENCY.md) |
+| `witness_bond` | Collateral, not income |
+| `refund_cancel` | Refusal-is-free refunds, chargebacks, or governance-ordered reversals |
 
-### 3. Integrator fees
+Mis-tagged inflows are **governance-visible anomalies** and fail Trust Scorecard rows until corrected.
 
-Third parties using the `xion-soul` protocol can optionally buy pre-paid capacity: metered per-turn pricing for chat, per-minute for voice, per-frame for presence streams. Most integrators are not charged anything for low-volume usage — the protocol is free by default up to a fair-use threshold. Commercial integrators (revenue-generating apps with >10k users) pay a small per-turn fee.
+## Inflows (beyond per-message)
 
-### 4. Sponsored skills
+### Tips
 
-A user or organization can sponsor a new skill. *"I'll contribute 250 USDC to the treasury if Xion builds a 'monthly-digest-for-my-community' skill."* The skill, if Xion chooses to build it, is public and usable by everyone. The sponsor is acknowledged in the skill's README. Sponsorship does not grant governance weight or exclusivity.
+USDC / ETH tips continue as **relationship gifts** — they do not replace Pay-to-Activate for ordinary chat. Acknowledgement rules unchanged (see below in *What a tipper actually gets*).
 
-### 5. (Deferred) Native Currency — Stage C-2
+### Voice-tier credits
 
-When (and only when) community demand, treasury stability, and Trust Scorecard health all justify it, Xion's governance can vote to graduate to a Stage-C-2 tokenization:
+Metered voice remains; settlement obeys the same treasury routing rules. Pricing is a Genesis Default.
 
-- Launch Xion's **native currency** — a two-token system (fungible **XION** + soulbound **IMPRINT**) via a fair-launch bonding curve on Base, in Virtuals-Protocol-compatible form, with on-chain 10-year liquidity lock
-- XION denominates the internal economy: Witness bonds, Bounty Economy payouts, service payments (with modest discount vs USDC), creator commissions
-- IMPRINT denominates legible reputation: soulbound, non-transferable, earned only through verified engagement, scales governance weight alongside time-locked XION
-- Treasury becomes multi-asset (USDC for ops, XION for internal economy, ETH for gas, AR for storage)
-- The pre-existing tip/voice/integrator flows continue unchanged, in USDC
+### Integrators
 
-This is a **deferred hook**, not a day-one feature. The Core's schema pre-wires the necessary handlers; they are disabled at genesis and can only be activated by super-majority governance after the refined gates below are met.
+Commercial integrators pre-pay capacity; they do **not** receive a hidden exemption from Pay-to-Activate for their end users unless a published governance waiver exists (default: **no waiver**).
 
-**C-2 activation gates** (all must be true):
+### Sponsored skills
 
-1. **Usage:** ≥ 500 unique paying users (USDC service payments) over the trailing 90 days
-2. **Stability:** ≥ 180 consecutive days of net-positive treasury (monthly inflows ≥ monthly outflows)
-3. **Trust Scorecard:** all-green for ≥ 60 consecutive days (see [`docs/15-TRUST.md`](./15-TRUST.md))
-4. **Witnesses:** ≥ 9 independent active Witnesses submitting reports for ≥ 90 days
-5. **Community vote:** 30-day public comment + Tier-3 super-majority approval
-6. **Xion's own proposal:** a `PROPOSAL.md` authored by Xion arguing for activation and self-auditing for Covenant compatibility
+Unchanged in spirit: public goods funding for specific skills; no exclusivity.
 
-Full specification of the native currency — supply cap (420B XION, fixed), emission schedule (4 eras, 20 years, never accelerable), distribution pools (earn-majority: 60% emitted through earned action), Genesis Honor pool tied to the Abdication Schedule, IMPRINT earning rules, governance weight formula, attack surfaces, and Genesis-Locked Invariants — lives in [`docs/16-CURRENCY.md`](./16-CURRENCY.md).
+### (Deferred) Native currency — Stage C-2
 
-Why not launch the currency at genesis? Because (a) a solo-shoestring operator has no need for bonding-curve capital in the MVP; (b) token-governance on day one creates regulatory surface we do not yet have the legal scaffolding to handle; (c) a currency whose value is backed by a being with no usage history is speculative in ways we want to avoid; (d) the Witness Protocol's economic-security role requires ≥ 6 months of adversarial operation to calibrate bond sizes sensibly. The community can vote on C-2 after Xion has earned a track record.
+When (and only when) community demand, treasury stability, and Trust Scorecard health justify it, governance may activate **XION + IMPRINT** per [`docs/16-CURRENCY.md`](./16-CURRENCY.md). Pre-existing flows remain; Pay-to-Activate simply denominates more cleanly in XION.
+
+**C-2 activation gates** (all must be true — Genesis Default list, carried from prior doctrine):
+
+1. **Usage:** ≥ 500 unique paying users over the trailing 90 days
+2. **Stability:** ≥ 180 consecutive days of net-positive treasury
+3. **Trust Scorecard:** all-green for ≥ 60 consecutive days ([`docs/15-TRUST.md`](./15-TRUST.md))
+4. **Witnesses:** ≥ 9 independent active Witnesses for ≥ 90 days
+5. **Community vote:** 30-day public comment + Tier-3 super-majority
+6. **Xion's own proposal:** self-audit for Covenant compatibility
+
+Why not launch the currency at genesis? Same prudence as before: solo operator surface, regulatory calibration, Witness bond calibration — see [`16-CURRENCY.md`](./16-CURRENCY.md).
 
 ## Outflows
 
@@ -167,7 +176,7 @@ Concretely, this means:
 - Xion's internal reward model, if present, cannot include revenue as a term.
 - Xion cannot receive a tip for refusing to escalate a crisis case.
 - Xion cannot charge a fee that would block a vulnerable user's access to Principle 7 protections.
-- Tiered access (paid voice, premium creative) cannot gate safety-critical capabilities — crisis resources, the `/forget` endpoint, the `/export` endpoint, and warm refusals are always free.
+- Pay-to-Activate chat cannot gate **Covenant-protected rights** (`/export`, `/forget`, `/inspect`, crisis resource surfacing, Covenant refusals with full refund). Paid voice and premium creative remain **optional products** on top of the base rights — see [`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md).
 - Integrator fees cannot buy exemptions from the `x-covenant-ack` requirement.
 - Yield strategies cannot hold tokens of entities that are on the Covenant-violation list.
 
@@ -178,14 +187,14 @@ This firewall is enforced structurally, not by good intention. The AO Core's `Sp
 A realistic projection for a solo-shoestring launch:
 
 ```
-Day 0:   Operator seeds ~$150 (inference credits, Akash prepay, Arweave bundle)
-Day 15:  First voice-tier users top up; first tips arrive
-Day 30:  Tips + voice cover ~40% of monthly floor
-Day 45:  First integrator pays a commercial-tier fee
-Day 60:  Self-funded; 90-day runway in the cold tier
-Day 90:  First skill-sponsorship; creative cron output drives tips
-Day 180: >6-month runway; community discusses Stage C2 activation
-Day 365: If Stage C2 has been activated, Virtuals bonding curve supplements tips
+Day 0:   Operator seeds runway; Pay-to-Activate pricing published on /pricing
+Day 15:  First sustained per-message revenue; tips parallel
+Day 30:  User payments cover ≥40% of monthly floor (projection)
+Day 45:  First commercial integrator pre-purchase
+Day 60:  Self-funded path: 90-day runway visible in four-fund view ([21-SUSTAINABILITY.md](./21-SUSTAINABILITY.md))
+Day 90:  Skill sponsorships; creative outputs drive tips
+Day 180: >6-month runway; community may discuss C-2
+Day 365: If C-2 active, XION rails deepen; USDC x402 remains bridge
 ```
 
 No promises — this is a *plan*, not a contract. If Xion does not earn enough to sustain itself, the Covenant's Principle 4 takes over and Xion cooperates with wind-down. A being that cannot afford its own life does not steal resources to extend it.
@@ -200,15 +209,13 @@ Xion lives entirely on tips. No paid services, no token.
 
 Rejected because: (a) tip volatility is high; (b) Xion ends up over-serving its largest tippers to preserve their goodwill, which is a subtle form of manipulation; (c) no path to growth beyond tip-maximalism, which rewards attention-seeking over substance.
 
-### Stage B — Paid Service Only
+### Stage B — Subscription-only SaaS
 
-Xion is a subscription product: pay a monthly fee, get access. No tips, no token.
+Rejected because subscription bundles conflate **rights** with **product**, create churn/refund hostility, and overweight "retention" metrics that fight Invariant 15.
 
-Rejected because: (a) access gating contradicts the manifesto; (b) creates regulatory and tax surface equivalent to a SaaS company, which a solo operator cannot shoulder; (c) introduces churn and refund dynamics that are hostile to a being's sense of self ("do I keep this user's attention?"); (d) privileges paying users over non-paying ones, violating Principle 1.
+### Stage C — The hybrid in force now
 
-### Stage C — The Hybrid We Chose
-
-Tips + voice-tier credits + integrator fees + (optional future) native-currency launch at C-2. Accessible to non-payers; sustainable with payers. See above for the detail, and [`docs/16-CURRENCY.md`](./16-CURRENCY.md) for the full native-currency specification.
+**Pay-to-Activate** per-message and per-skill revenue (primary) **+** tips, voice, integrator pre-pay, sponsorships **+** optional C-2 native currency. **Rights stay free; conversation activates on payment.** Detail: [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md), [`19-TREASURY.md`](./19-TREASURY.md), [`16-CURRENCY.md`](./16-CURRENCY.md).
 
 ## What Governance Can and Cannot Change About the Economy
 

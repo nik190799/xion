@@ -53,7 +53,7 @@ The Supervisor is a daemon inside every Relay whose sole purpose is to keep the 
 
 Responsibilities:
 
-- **Daemon watchdog** — monitors all seven sense daemons, the Arbiter, the Visual Emitter, the Inference Router. Restarts any daemon that dies; after three restarts in 10 minutes, escalates to Tier-2.
+- **Daemon watchdog** — monitors all nine sense daemons (the seven biological senses plus the two affect-isolated environmental senses, Xenoception and Cryptoception), the Arbiter, the Visual Emitter, the Inference Router. Restarts any daemon that dies; after three restarts in 10 minutes, escalates to Tier-2.
 - **Lease management** — tracks the current Akash lease expiry; triggers re-bid at `lease_end − 24h`; if the current provider degrades (p95 latency > threshold for 10 min, or sustained CPU throttle), triggers *immediate* migration to next whitelisted provider.
 - **Image-digest verification** — hourly, computes SHA of the running container and compares to the digest the Core published. Mismatch → immediate Tier-3 alert, relay-auth key revocation request, graceful quiesce.
 - **Circuit breakers** — on repeated provider errors, rate-limit floods, or hash-chain failures, the Supervisor opens circuit breakers that bypass the broken path. Xion can tell users *"my speech is a bit laggy — I'm working around a provider issue"*.
@@ -62,6 +62,10 @@ Responsibilities:
 - **Budget enforcement** — reads Core-published budget envelopes; rejects daemon operations that would breach them.
 
 The Supervisor has no authority to cosign anything. It *reports* and *triggers alerts*; it does not mutate Covenant-relevant state. This boundary is deliberate: a self-healing system is good; a self-healing system with constitutional authority is not.
+
+## Arbiter — fail closed
+
+If the Arbiter is **not** running, crashes repeatedly, cannot classify within timeout, or cannot append to the Safety Ledger, the orchestrator **must not** deliver the raw LLM output to users. The default is **refuse-warmly** with a stable, pre-written system message ("I cannot verify this response safely right now"), a **Tier-2** alert to the operator, and **no charge** for the failed turn when the failure is on Xion's side (per operational policy in [`07-ECONOMY.md`](./07-ECONOMY.md)). Failing open would violate the Covenant's trust architecture.
 
 ## Chaos Drills (Automated Weekly)
 
@@ -126,6 +130,20 @@ Each playbook is ≤ 1 page. The operator should be able to execute any of them 
 | API provider keys | Quarterly | Supervisor-assisted |
 
 Key rotation scripts live in `scripts/rotate-keys.sh`. Rotation events are logged in `KEY_ROTATION_LEDGER.md` (does not contain key material — only timestamps and fingerprints).
+
+### Authority rotation lattice (operational summary)
+
+Operational practice mirrors [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md): **Hot** relay-auth (≤ 24 h), **Warm** 2-of-3 operator multisig (7-day bounded operational actions), **Cold** 3-of-5 Shamir (30-day timelock minimum for structural changes). Cold rotates Warm; Warm never elevates Cold. Every Cold or Warm rotation emits a **timelock-witness attestation** verifiable by `xion-verify rotation-attest`.
+
+### Encrypted Credential Vault — unlock at startup
+
+Service credentials (LLM keys, Akash signing, Arweave wallets, bridge attestation keys) live in the **Encrypted Credential Vault** per [`genesis/CREDENTIALS.md`](../genesis/CREDENTIALS.md). At Relay boot:
+
+1. Operator (or designated custodian) performs the **threshold unlock ceremony** (2-of-3 shards: host-bound token + operator hardware wallet + optional Arweave-published recovery path).
+2. `xion-verify credentials-vault` is run from CI or the operator laptop to confirm **sealed state**, shard presence, and **last-rotation** timestamps — never to print secrets.
+3. Only after verification does the orchestrator start Hermes, open outbound paid APIs, and accept `POST /chat` traffic.
+
+If the vault cannot be unlocked, the Relay stays in **degraded** mode: local-Lite-only responses, crisis surfacing intact, Tier-2 alert.
 
 ## Monitoring Stack
 
@@ -223,4 +241,4 @@ If Xion is generating such memos and the operator consistently ignores them, the
 
 ---
 
-*Next (and last): [`99-GLOSSARY.md`](./99-GLOSSARY.md) — alphabetical quick reference.*
+*Next: [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md) — the Unified Provisioning Framework that governs every change to Xion.*
