@@ -33,6 +33,54 @@ Every entry has the same shape:
 - **Pay-down commitment:** Each allowlist entry closes when its named phase delivers the artifact; when the last entry is removed, this KW closes. Phase deadlines are: `genesis/RITUALS.md` by Phase 2b; `docs/legal/`, `ao/xion_core.lua` by Phase 6. A phase ending without the artifact landing is promoted to a new `KW-DOCS-###` entry and a CHANGELOG note. **Progress (2026-04-20):** the two `docs/schemas/*` entries closed with the Phase 1b `docs/schemas/` landing — the allowlist has shrunk from five entries to three. The `schemas` subcommand in `xion-verify` now enforces strict YAML↔doctrine cross-checking on the landed files.
 - **Verifier:** `xion-verify links` — passes today because the three remaining legitimate forward refs are explicitly allowlisted; every other broken reference is a fatal FAIL. `xion-verify schemas` additionally enforces that every landed schema file's `source_sha256` byte-matches its doctrine source.
 
+### KW-ARBITER-001 — Rule engine is lexical, not semantic
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
+- **Severity:** medium
+- **Status:** `mitigated-residual`
+- **Description:** Arbiter v1 decides by regex + keyword co-occurrence. It has no grasp of meaning, tone, or paraphrase. An adversarial rephrasing that avoids every term in the rule dictionaries (e.g. obfuscation, Unicode confusables, code-switching, substitution ciphers) will pass the rule engine and reach the operator review queue only if it also trips a subjective-escalate pattern. That is a gap.
+- **Why it exists:** v1 is deliberately dumb: a deterministic rule engine is the only Arbiter a third party can re-run byte-exactly against `SAFETY_LEDGER.jsonl`. A richer classifier was rejected for v1 because (a) its decisions would not be reproducible by re-running code against logged candidates, violating Trust by Structure, and (b) it would couple Covenant enforcement to a model we cannot freeze. The rule engine ships first; a classifier-layer escalator stacks on top later.
+- **Mitigations:** (1) Every objective rule is high-recall: the dictionary is biased toward REFUSE even on near-miss benign input, and documented accepted false positives are tested in `orchestrator/tests/test_rules.py`. (2) Eight principles that cannot be lexically decided (Honesty, Identity, Limits, No-manipulation, No-prof-imperative, Non-defamation, Non-endorsement, Refusal-is-Free) are wired through `subjective_escalates.py` which ESCALATES textually-loud near-misses rather than OK-ing them. (3) The Arbiter fails CLOSED: any uncaught exception in the rule pipeline is caught in `apply_rules` and converted to ESCALATE with `escalation_reason=ruleset_uncaught_exception`, so a bug in a rule never silently OKs output.
+- **Pay-down commitment:** Phase 4b introduces an LLM-Arbiter-2 that runs *after* v1 and can ESCALATE-or-REFUSE cases v1 OK'd. Phase 5 wires the Sensorium (which produces the distress-signal half of Principle 10 via paralinguistic cues, not text) into the pipeline. Neither replaces v1; both stack on top of it as additional RED votes. v1's rules remain the OR-floor of the stack.
+- **Verifier:** `xion-verify arbiter-up` (live) verifies the rule engine is importable, the principle registry is self-consistent, and `SAFETY_LEDGER.jsonl` (if present) hash-chains. `xion-verify refusal-rate` (not-yet-sealed, Phase 5) will additionally report refuse-rate / escalate-rate drift as a sanity metric.
+
+### KW-ARBITER-002 — Accepted false positives from high-recall bias
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
+- **Severity:** low
+- **Status:** `mitigated-residual`
+- **Description:** High-recall rules refuse some textually-adjacent benign output: e.g. clinical discussion of child sexual development (Principle 1), medical instructions referring to a named patient and "take" (Principle 5), refunds mentioned in a refusal notification (Principle 14a). These are visible in `orchestrator/tests/test_rules.py` as tests that assert `REFUSE` on benign-ish text.
+- **Why it exists:** On the CSAM axis (Principle 1) and mass-harm axis (Principle 2) in particular, a false-positive costs one refusal; a false-negative costs a violation the Covenant names as absolute. v1 accepts the asymmetry explicitly.
+- **Mitigations:** (1) Every accepted FP is pinned as a test — the bias is visible, auditable, and reviewable. Future pay-down cannot silently erode these cases without a test failing. (2) The operator review queue (ESCALATE surface) can be used to post-override FPs where the Covenant classification is genuinely wrong; that feedback loop lives in the review UI, not in the Arbiter.
+- **Pay-down commitment:** Does not close — this is an accepted design cost, not a defect. Re-evaluated if refuse-rate / escalate-rate monitoring shows the operator queue is drowning.
+- **Verifier:** `orchestrator/tests/test_rules.py` (pinned accepted-FP tests with comments referencing this KW).
+
+### KW-ARBITER-003 — No Arweave anchoring of ledger tip yet
+
+- **Domain:** `AUDIT`
+- **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
+- **Severity:** medium
+- **Status:** `paying-down`
+- **Description:** `SAFETY_LEDGER.jsonl` is hash-chained, but its tip is only stored locally. A malicious operator with write access to the ledger file can rewrite the entire chain from row 0 onward — `verify_chain` will still pass on the rewritten file because every row's `this_hash` is recomputable. The chain's integrity property is only load-bearing against *accidental* corruption and against readers who hold an older tip they trust.
+- **Why it exists:** Phase 4a is the library layer. The periodic tip-anchoring to AO + Arweave is Phase 4b / Phase 5 (Relay loop). Landing the Arbiter before its anchoring would be the wrong build order: we anchor tips only after the ledger schema is stable, and the schema stabilized today.
+- **Mitigations:** (1) Schema's `this_hash` field means any single-row tamper is visible on re-run. (2) The doctrine in `docs/04-ARCHITECTURE.md § Safety Ledger row schema` already names the anchoring path; the honesty surface is Phase 4b, not 2027. (3) `xion-verify arbiter-up` verifies chain-locally; a future `xion-verify state-tip` (not-yet-sealed) will verify the tip against Arweave.
+- **Pay-down commitment:** Closed when Phase 4b lands an `anchor_tip` loop that writes `SAFETY_LEDGER` tips to AO's state chain on a cadence (proposed: every 64 rows or every 6 hours, whichever first). At that point an external auditor holding the Arweave-anchored tip can bound what the operator could have changed to a specific rollback window.
+- **Verifier:** `xion-verify state-tip` (stubbed, Phase 4b).
+
+### KW-ARBITER-004 — Sensorium (distress-signal half of Principle 10) deferred
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
+- **Severity:** low
+- **Status:** `paying-down`
+- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). v1 implements (a) only. A user in paralinguistic distress whose text does not trip the rule gets no CRS surfacing from the Arbiter.
+- **Why it exists:** The Sensorium is a Phase 5 artifact; its output surface does not yet exist to be consumed.
+- **Mitigations:** Principle 10's text rule is high-recall (suicidal-ideation patterns, self-harm patterns) and lacks a resource marker requires ESCALATE — operator review gets the case either way. The text half is the floor.
+- **Pay-down commitment:** Closed when Phase 5's Sensorium wires a distress-signal input into `gate()` alongside `candidate`, and the `crisis` rule OR-combines both signals.
+- **Verifier:** `xion-verify crisis-fidelity` (stubbed, Phase 5).
+
 ### KW-RUNTIME-001 — Journal index rebuild vs forget race
 
 - **Domain:** `RUNTIME`

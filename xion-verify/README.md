@@ -19,7 +19,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 1. Covenant Supremacy | `xion-verify covenant` confirms the Covenant on disk byte-matches GENESIS_ARTIFACT § 4. |
 | 2. Memory Permanence | `xion-verify memory` confirms the MEMORY doctrine. Live archive sweep is `Phase 6`. |
 | 4. State Chain Append-Only | `xion-verify state-chain` is a pre-D2 stub; live Merkle re-verification lands in Phase 6. |
-| 6. Arbiter Refusal Right | `xion-verify arbiter-up`, `refusal-rate`, `refund-fidelity` are `NOT_YET_SEALED`. |
+| 6. Arbiter Refusal Right | `xion-verify arbiter-up` is live and verifies the Arbiter library + local `SAFETY_LEDGER` hash chain; `refusal-rate` and `refund-fidelity` remain `NOT_YET_SEALED`. |
 | 7. Core Identity Singularity | `xion-verify identity` is `NOT_YET_SEALED` until AO Core deploys. |
 | 8–9. Supply Caps | `xion-verify supply` is `NOT_YET_SEALED` until contracts deploy. |
 | 14. Crypto-Agility Mandate | `xion-verify crypto-currency` is `NOT_YET_SEALED`; `hashing.py` is the single algorithmic cite-point. |
@@ -43,7 +43,7 @@ Then the constitutional hash-check layer. Every subcommand in the constitutional
 
 Then the corpus-wide link integrity check. `xion-verify links` walks every `*.md` in the repo (excluding `.git/`, `node_modules/`, `.venv/`, and `xion-verify/` itself), extracts inline and reference-style markdown links, and fails loud on any broken cross-reference. This is the mechanical version of what Phase 0 did by hand.
 
-Finally, the explicit `NOT_YET_SEALED` layer. Every v1 subcommand named in `DEVELOPMENT_ROADMAP.md:48` exists today, and every one whose artifact does not yet exist prints a specific honest reason and exits code 2 (`NOT_YET_SEALED`). Truthful, never fake-green.
+Finally, the explicit `NOT_YET_SEALED` layer. Every roadmap-named subcommand exists today; the landed ones return `OK`/`FAIL`, and the ones whose artifact does not yet exist print a specific honest reason and exit code 2 (`NOT_YET_SEALED`). Truthful, never fake-green.
 
 Exit code contract:
 
@@ -82,6 +82,7 @@ xion-verify covenant
 xion-verify invariants
 xion-verify links
 xion-verify schemas
+xion-verify arbiter-up
 xion-verify all
 ```
 
@@ -107,6 +108,7 @@ xion-verify/
       constitutional.py               — covenant/invariants/soul/form/memory/resurrect/credentials/unknowns
       links.py                        — markdown cross-reference integrity
       schemas.py                      — strict docs/schemas/*.yaml ↔ doctrine cross-check
+      arbiter_up.py                   — Arbiter library + SAFETY_LEDGER verifier
       self_test.py                    — tree-hash vs pinned
       cognition.py                    — docs/24-COGNITION.md §11 (static only until D2)
       drive_vector.py                 — Invariant 15 (static only until D2)

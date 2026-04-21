@@ -21,6 +21,7 @@ import click
 
 from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
+from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.cognition import cognition
 from xion_verify.commands.constitutional import (
     covenant,
@@ -55,6 +56,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "cognition": cognition,
     "drive-vector": drive_vector,
     "state-chain": state_chain,
+    "arbiter-up": arbiter_up,
 }
 
 

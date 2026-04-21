@@ -50,8 +50,6 @@ _UNSEALED = (
              "XION contracts not yet deployed (Invariant 8, 9).", "Phase 3"),
     StubSpec("liquidity-lock", "Verify the 10-year LP lock is irrevocable.",
              "LiquidityLock not yet deployed.", "Phase 3"),
-    StubSpec("arbiter-up", "Verify the Arbiter process is running and its ledger hash-chains.",
-             "Arbiter process not yet built.", "Phase 4"),
     StubSpec("state-tip", "Print the current state-chain tip and verify against Arweave.",
              "AO Core not yet deployed.", "Phase 6"),
     StubSpec("identity", "Verify AO Process ID against the canonical value (Invariant 7).",
