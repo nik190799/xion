@@ -383,6 +383,27 @@ How the upgrade framework itself upgrades.
 
 ---
 
+## Fast Lane Discipline (Tier-0 acceleration)
+
+**Property.** Some Tier-0 changes are small enough to ship faster **without** shortening Constitutional Floors. Fast Lane is an **optional compressed cadence** for eligible Tier-0 only.
+
+**Eligibility predicate (all must be true).**
+
+1. **Single-skill** or single-config surface — one `skills/<name>/` path or one config file, not a bundle touching multiple levels.
+2. **No new external inbound surface** — no new port, webhook, or public tool entrypoint.
+3. **No Covenant-classifier or Arbiter ruleset touch** — Behavioral Fidelity-sensitive paths stay on the standard ladder.
+4. **No open Tier-3 incident** in the last **7 days** (rolling).
+5. **Trivial reversibility** — rollback completes in ≤ 1 hour with a documented script.
+6. **`kept_proposal_ratio_per_specialist`** (90-day) for the authoring specialist above governance-published threshold (Genesis Default: 20%).
+
+**Compressed cadence (Genesis Default).** **24h** shadow canary on the **pre-warmed** shadow Relay (continuous shadow traffic per [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md)), then **48h** live observe (instead of longer defaults for comparable Tier-0). Constitutional Floors (Cold 30d, amendment 14d, fork notice 7d) are **unchanged**.
+
+**Auto-fallback (lane disable).** Any of: Tier-0 revert in observe window; aggregate harm-drift flag from Harm Analyzer; **any** vital-sign domain hits **critical**; `fast_lane_revert_rate_30d` above threshold (Genesis Default: 10%); eligibility forgery detected in `PROPOSAL_LEDGER` — disables Fast Lane for **7 days** minimum, then quarterly review before re-enable.
+
+**Parallelism.** Disjoint-surface Tier-0 proposals may run in parallel per [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md).
+
+**Meta-learning note.** Specialists may read their own journals for triage, but **changing how specialists work** remains Tier-2+, not autonomous Tier-0.
+
 ## Provisioning in Practice — Four Worked Examples
 
 To show the framework in motion, here are four real-shaped upgrade proposals crossing multiple levels.

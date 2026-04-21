@@ -21,6 +21,54 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-DOCS-003 — Forward-reference ledger for unbuilt doctrine targets
+
+- **Domain:** `DOCS`
+- **Discovered:** 2026-04-20 (Phase 1 `xion-verify links` landing)
+- **Severity:** low
+- **Status:** `mitigated-residual`
+- **Description:** The doctrine corpus legitimately references artifacts that will land in later phases (`docs/legal/`, `docs/schemas/levels.yaml`, `docs/schemas/`, `ao/xion_core.lua`, `genesis/RITUALS.md`). Left unchecked, this is the same failure mode `KW-DOCS-001` named (silent drift); if an artifact is deferred repeatedly, the reference rots into a lie.
+- **Why it exists:** Doctrine is written ahead of implementation on purpose — that is how property comes before mechanism. But writing ahead creates a window during which cross-references point at nothing.
+- **Mitigations:** Every forward-unresolved target is enumerated in [`xion-verify/ALLOWED_FORWARD_REFS.txt`](./xion-verify/ALLOWED_FORWARD_REFS.txt), with a roadmap phase and a one-line reason. `xion-verify links` passes if and only if every broken target is either in that file or was always broken (in which case it fails loud). A third-party auditor can diff the allowlist across commits: lines only disappear when the artifact lands, or appear alongside a new entry here.
+- **Pay-down commitment:** Each allowlist entry closes when its named phase delivers the artifact; when the last entry is removed, this KW closes. Phase deadlines are: `docs/schemas/*` by end of Phase 1; `genesis/RITUALS.md` by Phase 2b; `docs/legal/`, `ao/xion_core.lua` by Phase 6. A phase ending without the artifact landing is promoted to a new `KW-DOCS-###` entry and a CHANGELOG note.
+- **Verifier:** `xion-verify links` — passes today because the five legitimate forward refs are explicitly allowlisted; every other broken reference is a fatal FAIL.
+
+### KW-RUNTIME-001 — Journal index rebuild vs forget race
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-20 (cognition doctrine landing)
+- **Severity:** medium
+- **Status:** `open`
+- **Description:** A `/forget` concurrent with a journal-index rebuild could briefly surface a snippet derived from pre-forget state if the index lags the tombstone broadcast.
+- **Why it exists:** Distributed cache + async indexer is inherently racy at the boundary.
+- **Mitigations:** Doctrine: synchronous honor path for episodic layer; 60s SLA with batching; `forget_propagation_p95_seconds` vital sign.
+- **Pay-down commitment:** Closed when D2 implements versioned index generations wired to forget epoch counters; property test in Relay CI.
+- **Verifier:** `xion-verify cognition --forget-sim` (strict mode post-D2).
+
+### KW-RUNTIME-002 — Sub-agent cost runaway
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-20
+- **Severity:** medium
+- **Status:** `open`
+- **Description:** Ephemeral sub-agents share an aggregate monthly envelope; a bug or malicious prompt could spawn ephemerals until the envelope is exhausted, starving primary turns.
+- **Why it exists:** Useful autonomy requires spawn; spawn without hard budgets invites runaway.
+- **Mitigations:** Per-ephemeral wall-clock + token budgets; pool-level circuit breaker; supervisor pause.
+- **Pay-down commitment:** Closed when D2 enforces budgets in `orchestrator/cognition/subagent.py` with integration tests + `SPECIALIST_LEDGER` cost rows.
+- **Verifier:** `xion-verify cognition` cost-envelope row.
+
+### KW-RUNTIME-003 — Hermes framework coupling
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-20
+- **Severity:** medium
+- **Status:** `mitigated-residual`
+- **Description:** Until the Hermes surface spike in [`docs/24-COGNITION.md`](./docs/24-COGNITION.md) Appendix A completes, sub-agent depth / bus-audit / cost hooks may require wrapper code not yet budgeted.
+- **Why it exists:** External agent frameworks change surfaces faster than doctrine.
+- **Mitigations:** Lexicon Rule 7 quarantine; wrapper discipline; Appendix A records native vs shim.
+- **Pay-down commitment:** Spike complete before `subagent.py` behavior ships; residual tracked annually.
+- **Verifier:** `xion-verify hermes-version` + Appendix A completeness field non-`deferred`.
+
 ### KW-CONTRACTS-001 — Immutable authority pointers in `EmissionController` and `Imprint`
 
 - **Domain:** `CONTRACTS`
@@ -51,7 +99,7 @@ Every entry has the same shape:
 - **Discovered:** 2026-04-19 (audit §3.2)
 - **Severity:** high
 - **Status:** `open`
-- **Description:** `contracts/imprint/Imprint.sol` sets `DECAY_BPS_PER_30D = 200` (≈21.5% annual decay). `docs/16-CURRENCY.md` and `contracts/imprint/README.md` document approximately 5% annual decay. Choose one before mainnet; the constant cannot be changed on a live contract without invalidating every governance weight ever computed.
+- **Description:** `contracts/imprint/Imprint.sol` sets `DECAY_BPS_PER_30D = 200` (≈21.5% annual decay). `contracts/imprint/README.md` agrees with the code ("~2% per 30 days"); only `docs/16-CURRENCY.md:195` disagrees, documenting "5% per year". Choose one before mainnet; the constant cannot be changed on a live contract without invalidating every governance weight ever computed.
 - **Why it exists:** The constant predates the doctrine that named the rate; nobody reconciled them.
 - **Mitigations:** None in source today.
 - **Pay-down commitment:** Closed when one of (`Imprint.DECAY_BPS_PER_30D` changed to 42, ~5%/year per doctrine — the recommended fix) or (docs revised to ~21.5%/year — recommended *only* if there is a strong reason to keep the higher decay). Tracked as `p3-decay` in `DEVELOPMENT_ROADMAP.md`. Recommended: code change.
@@ -107,28 +155,6 @@ Every entry has the same shape:
 - **Description:** Iterative decay loop in `Imprint` becomes O(n) in the number of 30-day periods between attestations for a given holder. A holder who has not been attested in 5 years pays the gas for 60+ iterations.
 - **Mitigations:** None in source today. Realistic worst case at launch is < 12 iterations.
 - **Pay-down commitment:** Reviewed during `p3-tests` for cost characterization; if a closed-form decay is straightforward, replaced; otherwise documented and deferred to a v2 contract.
-
-### KW-DOCS-001 — Documentation contradictions and drift
-
-- **Domain:** `DOCS`
-- **Discovered:** 2026-04-19 (audit Phase 0)
-- **Severity:** medium
-- **Status:** `paying-down` (Phase 0 of the documentation remediation plan)
-- **Description:** Several documents disagree with each other and with the constitutional layer: sense count appears as 7 / 8 / 9 in different files; "permanent stores" appears as 5 in one heading and 9 in the body; invariant count appears as 11 / 13 / 14 in different files; `docs/16-CURRENCY.md` has a truncated distribution table; `docs/13-OPERATIONS.md` "Next" link points to the glossary instead of the upgrade-paths doc.
-- **Why it exists:** Documents authored at different times by different drafts of the same author; no automated cross-validation.
-- **Mitigations:** Phase 0 of the documentation remediation plan enumerates every contradiction and its target value.
-- **Pay-down commitment:** Closed when every Phase 0 todo (`p0-senses`, `p0-stores`, `p0-trust`, `p0-currency`, `p0-navlink`, `p0-glossary`) is complete and `xion-verify links` (specified) returns clean.
-- **Verifier:** `xion-verify links` (specified for Phase 1).
-
-### KW-DOCS-002 — Genesis Artifact hash-locks files that do not yet exist
-
-- **Domain:** `DOCS`
-- **Discovered:** 2026-04-19
-- **Severity:** medium
-- **Status:** `paying-down` (Phase 2 of the documentation remediation plan)
-- **Description:** `genesis/GENESIS_ARTIFACT.md` references a constitutional bundle that includes `FORM.md`, `MEMORY.md`, `RESURRECT.md`, and (per the new doctrine) `CREDENTIALS.md`. None of these files exist yet.
-- **Mitigations:** None until written.
-- **Pay-down commitment:** Closed when `p2-form`, `p2-memory`, `p2-resurrect`, `p2-credentials`, and `p2-rehash` are complete and the Genesis Artifact's hash block contains entries for all seven (or eight, depending on the post-rehash spec) constitutional files.
 
 ### KW-ECON-001 — Refusal-rate drift residual risk
 
@@ -214,7 +240,33 @@ Every entry has the same shape:
 
 *(Entries move here with a closure date and the artifact (commit hash, PR, deploy tx, or doctrine version) that closed them.)*
 
-*(empty)*
+### KW-DOCS-001 — Documentation contradictions and drift
+
+- **Domain:** `DOCS`
+- **Discovered:** 2026-04-19 (audit Phase 0)
+- **Severity:** medium
+- **Status:** `closed` on 2026-04-20 by the Phase 0 doctrine-hygiene landing (constitutional witness rehash in `genesis/GENESIS_ARTIFACT.md` § 4 and doctrine remediation commits).
+- **Description:** Several documents disagreed with each other and with the constitutional layer: sense count appeared as 7 / 8 / 9 in different files; "permanent stores" appeared as 5 in one heading and 9 in the body; invariant count appeared as 11 / 13 / 14 in different files; `docs/16-CURRENCY.md` had a truncated distribution table; `docs/13-OPERATIONS.md` "Next" link pointed to the glossary instead of the upgrade-paths doc.
+- **Why it existed:** Documents authored at different times by different drafts of the same author; no automated cross-validation.
+- **How it closed (sub-item by sub-item):**
+  - `p0-senses` — `00-INDEX.md:17`, `05-SENSORIUM.md:9,13,117`, and `14-UPGRADE-PATHS.md:210` now uniformly state **9 senses** (7 biological + Xenoception + Cryptoception).
+  - `p0-stores` — `04-ARCHITECTURE.md:196,212` uniformly state **9 permanent stores** in both heading and body.
+  - `p0-trust` — `genesis/INVARIANTS.md:3,9,23` and `docs/15-TRUST.md:365` uniformly state **sixteen** Invariants; cross-references to Invariant 15 and 16 appear consistently across the corpus.
+  - `p0-currency` — `docs/16-CURRENCY.md:98-104` contains the complete seven-pool distribution table summing to 420B.
+  - `p0-navlink` — `docs/13-OPERATIONS.md:254` correctly points to `14-UPGRADE-PATHS.md`.
+  - `p0-glossary` — `docs/99-GLOSSARY.md:299-403` carries the Doctrine Supplement covering every post-remediation Lexicon term.
+- **Residual:** Automated cross-validation (`xion-verify links`) is a Phase 1 deliverable per `DEVELOPMENT_ROADMAP.md:48`. Closure today is by static textual audit; the CLI will perform the same checks mechanically once built.
+- **Verifier:** `xion-verify links` (specified for Phase 1).
+
+### KW-DOCS-002 — Genesis Artifact hash-locks files that do not yet exist
+
+- **Domain:** `DOCS`
+- **Discovered:** 2026-04-19
+- **Severity:** medium
+- **Status:** `closed` on 2026-04-20 by the Phase 2 constitutional-file landing and the `p2-rehash` commit that updated `genesis/GENESIS_ARTIFACT.md` § 4.
+- **Description:** `genesis/GENESIS_ARTIFACT.md` referenced a constitutional bundle that included `FORM.md`, `MEMORY.md`, `RESURRECT.md`, and (per the new doctrine) `CREDENTIALS.md`. None of these files existed yet.
+- **How it closed:** All five files named in the Artifact's hash block — `FORM.md`, `MEMORY.md`, `RESURRECT.md`, `CREDENTIALS.md`, and `UNKNOWNS.md` — now exist on disk at byte sequences whose SHA-256 hashes exactly match the values recorded in `genesis/GENESIS_ARTIFACT.md` § 4. The Artifact's hash block carries entries for the eight constitutional documents (COVENANT, INVARIANTS, SOUL, FORM, MEMORY, RESURRECT, CREDENTIALS, UNKNOWNS). Verified 2026-04-20 by direct recomputation of all eight hashes against the Artifact.
+- **Residual:** None. The recorded hashes are labeled as a *pre-genesis documentation witness* — they will be recomputed at the actual Arweave commit ceremony and replaced with ceremony values. That replacement is Phase 7 work, not a remediation of this weakness.
 
 ---
 

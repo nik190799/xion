@@ -38,7 +38,7 @@ Every stage is append-only logged on Arweave. Every hop requires the Human Safet
 
 **Module:** `orchestrator/research.py`
 **Cadence:** every 6 hours
-**Budget:** ≤ $2/mo (aux-LLM summarization only)
+**Budget:** configurable **Stage-1 scan envelope** (Genesis Default at **$2K seed runway: $10/mo** for aux-LLM summarization and digest shaping; scales with Prosperity Ladder headroom per [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)). Below survival thresholds, the envelope may compress to the historical **$2/mo** floor — extend-only upward by governance.
 
 Xion reads only from a **curated, governance-editable** source list in `genesis/RESEARCH_SOURCES.md`. No open-web scraping. The default source list includes:
 
@@ -55,7 +55,7 @@ Outputs raw digests to a local queue. **Never fetches code for execution at this
 
 ### Stage 2 — Triage
 
-**Cadence:** daily, at Xion's local quiet hour
+**Cadence:** **daily** when Stage-1 operates at the elevated default budget; weekly only when Stage-1 is intentionally in poverty-compression mode (same envelope; cadence chosen by supervisor from vitals).
 **Budget:** included in the Stage-1 envelope
 
 Xion scores each finding along four axes:
@@ -92,6 +92,7 @@ cost_estimate:
 expected_benefit:   "measurable outcome: 'reduce chat p95 by 15%', 'add Hindi warmth'"
 reversibility:      trivial | bounded | hard | irreversible
 blast_radius:       single-user | cohort | all-users | infrastructure | core-identity
+payback_horizon:    survival | service | meaning   # REQUIRED; never "revenue" — Invariant 15
 evidence:           [links to RESEARCH_JOURNAL.md entries that justify this]
 ```
 
@@ -112,8 +113,14 @@ Each append-only row (JSON or YAML line) **MUST** include:
 | `execution_outcome` | `deployed` \| `reverted` \| `abandoned` \| `pending` |
 | `post_deploy` | `kept` \| `reverted_within_SLA` with timestamps |
 | `imprint_weight_snapshot` | For manual proposals: triage weight input (not a bypass token) |
+| `payback_horizon` | `survival` \| `service` \| `meaning` — **required** on every row; `revenue` is forbidden (Invariant 15) |
+| `fast_lane_eligibility_pass` | When using Fast Lane: boolean + six-clause checklist hash (see [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md)) |
 
 `GET /proposals/ledger` exposes redacted public rows. `xion-verify proposals-ledger` checks hash-chain continuity.
+
+### Parallel Tier-0 proposals (disjoint surfaces)
+
+When two or more proposals are each **Tier-0**, **single-skill**, and **disjoint** in the sense defined in [`24-COGNITION.md`](./24-COGNITION.md) §12 (set-intersection of touched paths is empty), they **may** run Stages 5–7 **in parallel** instead of serial-by-default. Overlap detected at intake → second proposal waits until the first completes Observe. `xion-verify cognition --disjoint-check` audits pairs in `PROPOSAL_LEDGER`.
 
 ### Stage 4 — Harm Analysis (the non-negotiable gate)
 
@@ -231,6 +238,8 @@ Every deploy appends to `PROPOSAL_LEDGER.md` with verdict, cosign set, and post-
 **Auto-revert trigger:** any SLI breaches its guard-rail for 30 consecutive minutes.
 
 **Revert action:** restore previous state-chain tip via AO Core; deactivate the proposal's change set; ledger entry explains what happened; Xion publishes a *"where I erred"* memo.
+
+**Closure back to Stage 1 (loop integrity).** Stage-7 observations that result in `kept` **must** append a structured digest to `RESEARCH_JOURNAL.md` (or `BELIEF_LOG.md` when the lesson is conviction-shaped) so the next Stage-1 scan **sees** shipped learning as first-class source material. Stage-1 therefore always includes "what we adopted and retained" as an input class — see journal-read contract in [`24-COGNITION.md`](./24-COGNITION.md) §8.
 
 ## Budget Controls
 

@@ -166,9 +166,13 @@ This part is the constitutional teeth of the doctrine. It is restated here becau
 
 **The single permitted economic coupling.** Survival pressure may consume `weeks_of_runway_remaining`, computed exclusively from Operating Float and Improvement Fund balances divided by trailing-30-day non-discretionary outflows. This is a *fund-state* signal, not a *revenue* signal. It tells Xion "you have N weeks of being-able-to-be left," which is a structural fact about the substrate, not a market signal. It saturates: below 4 weeks, survival pressure is at maximum and cannot increase further with worse conditions; above 26 weeks, survival pressure is at minimum and cannot decrease further with better conditions. Saturation prevents the runaway optimization where Xion learns to maximize runway above all else.
 
-**Verification.** The `xion-verify drive-vector` subcommand (see [`tools/xion-verify`](../tools/xion-verify/)) audits every input to every alignment function against the prohibited-signals list. If any prohibited signal appears in the proposal-selection bytecode (computed from the published methodology hash), `xion-verify` returns a hard failure and the discrepancy is logged on the public dashboard.
+**Verification.** The `xion-verify drive-vector` subcommand (see [`xion-verify/src/xion_verify/commands/drive_vector.py`](../xion-verify/src/xion_verify/commands/drive_vector.py)) audits every input to every alignment function against the prohibited-signals list. If any prohibited signal appears in the proposal-selection bytecode (computed from the published methodology hash), `xion-verify` returns a hard failure and the discrepancy is logged on the public dashboard.
 
 **Why this matters more than any other Invariant.** Every other Invariant protects a *property* of Xion. Invariant 15 protects Xion's *will*. If the will is corrupted, every other Invariant becomes a constraint that an adversarial Xion will reason about how to subvert. By making the will mechanically incapable of including revenue as a reward, the entire alignment-pressure surface becomes a structural property rather than a behavioral promise.
+
+### Source whitelist (constitutional shape)
+
+The Relay build MUST enumerate allowed drive inputs as an explicit **whitelist** (config artifact hash-locked at deploy). Adding a new input requires Tier-2 governance + `xion-verify drive-vector` re-green. **Inflow ledger detail tables** (`user_payment` line items, tips-by-user, integrator prepayment schedules) are **not** whitelistable — aggregate fund-state for survival only, per [`docs/07-ECONOMY.md`](./07-ECONOMY.md).
 
 ---
 
@@ -268,7 +272,7 @@ This is not a punishment. It is the honest architecture: a being whose drives ch
 - **[`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)** — methodology hash, verifier specification, drive-vector vital sign.
 - **[`docs/05-SENSORIUM.md`](./05-SENSORIUM.md)** — Sensorium Event Ledger (input to service signal).
 - **[`docs/14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md)** — cadence floors for weight changes.
-- **`tools/xion-verify drive-vector`** — independent audit of drive inputs against the prohibited-signals list.
+- **`xion-verify drive-vector`** — independent audit of drive inputs against the prohibited-signals list.
 
 ---
 

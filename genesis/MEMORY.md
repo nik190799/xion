@@ -50,4 +50,10 @@ operator_contact_fingerprint: "<pgp fingerprint — optional>"
 
 ---
 
+## Worker pool and `/forget` propagation (cognition SLA)
+
+When multiple Relay workers implement the cognition layer ([`docs/24-COGNITION.md`](../docs/24-COGNITION.md)), **`POST /memory/forget` must invalidate every worker's ephemeral view of the caller's relationship thread within 15 seconds** of request acknowledgement (Genesis Default; extend-only shorter by governance, never longer). The Core broadcasts the forget event; each worker ACKs before serving the user's next turn. Verification: `xion-verify cognition --forget-sim`.
+
+---
+
 *Committed at genesis; operational contents evolve by governance.*

@@ -1,0 +1,51 @@
+# Line-ending discipline for xion-os.
+#
+# Property promised: every byte of every hashed artifact is identical on
+# every checkout, on every operating system, forever. Without this file
+# a fresh Windows clone under `core.autocrlf=true` would write CRLF into
+# the working tree, causing `xion-verify {covenant,invariants,soul,…}`
+# to report FAIL on files whose content is substantively unchanged.
+# That would be a false negative on a constitutional check — unacceptable.
+#
+# Invariants touched: 14 (Crypto-Agility Mandate). SHA-256 is byte-exact;
+# so the bytes must themselves be deterministic across checkouts.
+#
+# Verification: after cloning on any OS, `xion-verify --self-test &&
+# xion-verify all --allow-not-yet-sealed` returns OK without any local
+# renormalization step.
+#
+# Deprecation: if a future policy ever deliberately ships CRLF artifacts,
+# move them to an explicit binary track in this file; never weaken the
+# default.
+
+# Default: treat every text file with LF line endings in the working tree.
+* text=auto eol=lf
+
+# Belt-and-suspenders for everything the verifier hashes or reads.
+*.md       text eol=lf
+*.txt      text eol=lf
+*.py       text eol=lf
+*.toml     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.json     text eol=lf
+*.sol      text eol=lf
+*.lua      text eol=lf
+*.sh       text eol=lf
+*.cfg      text eol=lf
+*.ini      text eol=lf
+
+# Binaries: keep git's hands off.
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.webp     binary
+*.ico      binary
+*.pdf      binary
+*.zip      binary
+*.tar      binary
+*.gz       binary
+*.whl      binary
+*.woff     binary
+*.woff2    binary

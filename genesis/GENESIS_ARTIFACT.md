@@ -53,21 +53,22 @@ We chose *Xion* over twenty-odd alternatives. The reasoning lives in [`docs/01-O
 
 ## 4. The constitutional bundle at genesis
 
-This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20; replace with ceremony values at actual genesis.)*
+This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20 (updated on Phase 1 `xion-verify` landing; RESURRECT.md rehashed twice — once for the `cargo build` → `python -m pip install` correction, once for the post-hoc clarification that `--ao-process` / `--gateway` are post-genesis flags against the repository's static witness); replace with ceremony values at actual genesis.)*
 
 ```
 COVENANT.md     sha256: 852cfcd3c8d6e11cfe63b1d113622abcf79b15376b52ebd981a8af2780827182
-INVARIANTS.md   sha256: 6d0c76aaa8ffbbe56b6cc77fd6a1b2f8156d030d883c4c9d8272e150530b0a27
+INVARIANTS.md   sha256: e7df0bb15e4d6ac6c3c8d1976202829ce0cda05e9b07de854ac3686b6ae09dde
 SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 FORM.md         sha256: d93a09b3522088d0da9365e2862e071690adbc0d795e6bb00de3aa35e0139f09
-MEMORY.md       sha256: cf1dbfab6018a7772348b01fa30b8be9e1a285af9e79c020d1d6619d9dd58419
-RESURRECT.md    sha256: e9a8e1c019b2ce5ba56d8a2dbe1c6e81ae56b096d6f7ed302bd6ea980cdf1616
+MEMORY.md       sha256: 88d0851a30d4c08a2423e5c9665d922e43be35cba0775ef2ae09bd1e3d8d1b1b
+RESURRECT.md    sha256: 17cec1f684be8b06ab94a4cd68b02474e24a2abe399884ae7c9919335ce78ac6
 CREDENTIALS.md  sha256: ba321ac37c47a0ce88208e06a8da62d826f5b328b848cfc7320228c55db18a7c
+UNKNOWNS.md     sha256: 2c7c06bb9f03b0739bdf09f97a3aa754b460349fd61fb8abd833b0307e75a891
 ```
 
 Any future version of these documents produces a different hash. The original bytes as committed at genesis remain readable on Arweave forever.
 
-The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, and **Credentials** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, or vault doctrine. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
+The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, **Credentials**, and **Unknowns** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, vault doctrine, or the quarterly epistemic-honesty companion. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
 
 ### Implementation pin — Hermes Agent (documentation witness)
 

@@ -33,6 +33,8 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 21 | [`SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) | Four funds, cost-pressure ladder, hibernation | everyone |
 | 22 | [`VITAL-SIGNS.md`](./22-VITAL-SIGNS.md) | Eight vital-sign domains, bands, methodology | operators, Witnesses, public |
 | 23 | [`BENCHMARK.md`](./23-BENCHMARK.md) | Hermes peer-benchmark runner, `BENCHMARK_LEDGER` | engineers |
+| 24 | [`COGNITION.md`](./24-COGNITION.md) | Worker pool, sub-agents, retrieval, journals, cognition verification | engineers, auditors |
+| — | [`SKILL_BOUNTY.md`](./SKILL_BOUNTY.md) | XION bounties for external Tier-0 skills; Invariant-5 firewall | governance, contributors |
 | — | [`ABDICATION.md`](./ABDICATION.md) | Operator authority schedule, Operator-Dependency Taxonomy | operators, governance |
 | — | [`ACCESSIBILITY.md`](./ACCESSIBILITY.md) | WCAG 2.2 AA promise for first-party surfaces | engineers, designers |
 | 99 | [`GLOSSARY.md`](./99-GLOSSARY.md) | Alphabetical reference for every term in the Lexicon | quick lookup |
@@ -47,6 +49,7 @@ Some documents are not free-form prose. They are **constitutional**, and Xion it
 - [`../genesis/MEMORY.md`](../genesis/MEMORY.md) — environment + redaction policy; governance-gated edits
 - [`../genesis/RESURRECT.md`](../genesis/RESURRECT.md) — resurrection runbook; high-tier changes
 - [`../genesis/CREDENTIALS.md`](../genesis/CREDENTIALS.md) — vault doctrine; Cold-tier cosign for material changes
+- [`../genesis/UNKNOWNS.md`](../genesis/UNKNOWNS.md) — quarterly first-person epistemic limits; governance-gated edits
 - `ao/xion_core.lua` — requires 2-of-3 cosign + super-majority governance
 
 Everything else in this folder can be edited freely, with the normal pull-request review. The ORIGIN and LEXICON are expected to grow; the COVENANT is expected to remain.

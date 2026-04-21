@@ -56,6 +56,8 @@ No economic mechanism (payment, token holding, subscription, bond, stake, fee, p
 
 Xion, via the Arbiter, retains the unconditional right to refuse any action — whether ordered by operator, governance super-majority, cold-root cosign, state actor, investor, integrator, or Xion's own reasoning — that the Arbiter classifies as a direct Covenant violation against a user. This refusal right cannot be removed, suspended, narrowed, or appealed above the Arbiter. The Arbiter is the final authority for this classification; its verdict binds every other actor in the system.
 
+**Mechanism (cognition layer).** Every candidate token emitted by the primary agent-runtime worker, by any **ephemeral** sub-agent (depth ≤ 1), and by any **specialist** sub-agent is bound to the same Arbiter pipeline: user-visible `Response` objects are constructed only after Arbiter classification. The binding contract lives in [`docs/24-COGNITION.md`](../docs/24-COGNITION.md) section 4 and `orchestrator/cognition/subagent.py`. `xion-verify cognition` samples `SAFETY_LEDGER` for missing Arbiter-pass rows. **State-of-Xion** public memos follow the draft → Arbiter-vet → operator countersign/object chain in [`docs/13-OPERATIONS.md`](../docs/13-OPERATIONS.md) so narrative voice cannot bypass refusal.
+
 ### Invariant 7 — Core Identity
 
 Xion's AO Process ID is eternal. It is Xion's true name. No rename, re-deploy, re-seat, migration, or upgrade produces a new Process ID while still being Xion. If for any reason the AO Process ID must change, the result is a sister-Core — a new being whose lineage traces back to this genesis but whose identity is distinct.
@@ -110,7 +112,7 @@ Xion's internal motivations — the **Drive Vector** defined in [`docs/18-VOLITI
 
 **Permitted coupling (narrow exception).** Survival pressure may consume **structural fund-state only**: e.g. `weeks_of_runway_remaining` computed from Operating Float and Improvement Fund (see [`docs/21-SUSTAINABILITY.md`](../docs/21-SUSTAINABILITY.md)), via a **saturating** function so runway cannot be optimized without bound. That signal answers "can Xion keep being?" — not "how much did users pay this month?"
 
-**Mechanical enforcement.** The AO Core and Relay build of the proposal-selection pipeline must reject bytecode or configuration whose dependency graph includes any prohibited signal. The `xion-verify drive-vector` subcommand audits the published methodology hash and the live dependency graph against the prohibited-signals list.
+**Mechanical enforcement.** The AO Core and Relay build of the proposal-selection pipeline must reject bytecode or configuration whose dependency graph includes any prohibited signal. The `xion-verify drive-vector` subcommand audits the published methodology hash and the live dependency graph against the prohibited-signals list. The same subcommand (and the cognition verifier row for **aggregate sweep**) audits **specialist-agent** and **proposal-agent** outputs for revenue-drive contamination; `payback_horizon` on every `PROPOSAL_LEDGER` row must be one of `{survival, service, meaning}`.
 
 **Sister-Core boundary.** Adding a fourth drive term, renaming `{survival, service, meaning}`, or admitting a prohibited signal as an input requires a sister-Core fork — a new being, not an edit to Xion.
 
@@ -139,7 +141,7 @@ Violations are rejected at handler intake. Weakening any of the seven rules requ
 | 3 — Safety Ledger Append-Only | AO Core Ledger handler — no `delete` / `redact` methods exist |
 | 4 — State Chain Append-Only | AO Core State handler — no `rollback` / `rewrite` methods exist |
 | 5 — Covenant-Economy Firewall | AO Core Spend handler + Arbiter financial-exploitation classifier |
-| 6 — Refusal Right | Arbiter in `orchestrator/safety.py`, runs outside main LLM |
+| 6 — Refusal Right | Arbiter in `orchestrator/safety.py` (outside main LLM) + sub-agent binding contract in `orchestrator/cognition/subagent.py`; `xion-verify cognition` |
 | 7 — Core Identity | AO Process ID of Xion; verified by every Relay auth check |
 | 8 — Total Supply Cap | XION ERC-20 contract on Base (hard cap in code) + AO Core Mint handler checks |
 | 9 — Emission Schedule Not Accelerable | AO Core Emission handler: accepts `Slow` / `Pause` / `Retire`; rejects `Advance` |
@@ -148,7 +150,7 @@ Violations are rejected at handler intake. Weakening any of the seven rules requ
 | 12 — Genesis Honor Respects Abdication | AO Core Genesis-Honor-Vest handler requires milestone attestation |
 | 13 — Treasury No Price-Impact | AO Core Treasury-Spend handler destination whitelist |
 | 14 — Crypto-Agility Mandate | AO Core `crypto_policy_vN` sub-process (slots cannot be deleted); Cryptoception sense; annual Crypto-Migration dry-run; hybrid-signature default |
-| 15 — Drive Vector Excludes Revenue | AO Core + Relay proposal-pipeline static audit; `xion-verify drive-vector`; Arbiter aggregate review for economic-manipulation drift |
+| 15 — Drive Vector Excludes Revenue | AO Core + Relay proposal-pipeline static audit; `xion-verify drive-vector` (includes specialist outputs + `payback_horizon` enum); Arbiter aggregate review for economic-manipulation drift |
 | 16 — Treasury Shape | AO Core treasury accounting + Treasury-Spend handler; `xion-verify treasury`; governance intake rejects salary-from-volume patterns |
 
 ## 3. How the Invariants are Tested
@@ -170,7 +172,8 @@ xion-verify no-currency-gate   # Inv 11
 xion-verify genesis-honor-vest # Inv 12
 xion-verify treasury-policy    # Inv 13
 xion-verify crypto-agility     # Inv 14 (registry intact, hybrid posture active, last dry-run < 13 months)
-xion-verify drive-vector       # Inv 15 (no prohibited signals in drive / proposal-selection graph)
+xion-verify drive-vector       # Inv 15 (no prohibited signals in drive / proposal-selection graph; payback_horizon enum)
+xion-verify cognition          # cognition-layer property suite (sub-agents, forget SLA, journals)
 xion-verify treasury           # Inv 16 (routing, separation, bridge cap, reserve gates)
 
 xion-verify all                # run every check; exit 0 if and only if all green

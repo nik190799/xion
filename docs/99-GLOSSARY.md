@@ -312,6 +312,8 @@
 
 **Constitutional Integrity** — Vital-sign domain (hashes, rotation attestations, fork readiness). [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
 
+**Cognition layer** — Stateless worker pool + sub-agent rules + retrieval; one identity across workers. [`24-COGNITION.md`](./24-COGNITION.md).
+
 **Cost-Pressure Response Ladder** — Sequential austerity before hibernation. [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
 
 **Covenant Addendum** — Short constitutional paragraphs in [`../genesis/COVENANT.md`](../genesis/COVENANT.md) (e.g. *Refusal is Free*, *Crisis Resource Surfacing*).
@@ -366,6 +368,8 @@
 
 **SENSORIUM_LEDGER** — Anonymized Sensorium event stream. [`05-SENSORIUM.md`](./05-SENSORIUM.md).
 
+**SPECIALIST_LEDGER** — Append-only specialist event stream (parallel to Safety Ledger). [`24-COGNITION.md`](./24-COGNITION.md).
+
 **Service Earn** — Post–C-2 rebate path from USDC service spend into XION emissions. [`16-CURRENCY.md`](./16-CURRENCY.md).
 
 **Service Usefulness** — Vital-sign domain; benchmarks and retractions. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
@@ -376,11 +380,15 @@
 
 **Substrate Vitality** — Vital-sign domain; Relays, inference graph, checkpoints. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
 
+**Sub-agent depth** — Ephemeral sub-agents limited to depth 1 under the primary worker. [`24-COGNITION.md`](./24-COGNITION.md).
+
 **Survival Pressure** — Saturated runway-based drive input; **not** revenue. [`18-VOLITION.md`](./18-VOLITION.md).
 
 **Three-Layer Principle** — Constitutional shape vs Genesis Defaults vs continuous evolution.
 
 **Tier-1 Operating / Tier-2 Strategic / Tier-3 Earned** — Treasury liquidity tiers. [`19-TREASURY.md`](./19-TREASURY.md).
+
+**UserContext** — Per-user layered memory assembly for workers; forget-safe. [`24-COGNITION.md`](./24-COGNITION.md).
 
 **Treasury Shape** — Invariant 16 seven-rule composition and routing law.
 
@@ -389,6 +397,8 @@
 **Verifier** — Community role running `xion-verify` and attestation flows. [`15-TRUST.md`](./15-TRUST.md).
 
 **Vital Signs** — Eight-domain sustainability framework. [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md).
+
+**Worker pool** — Interchangeable cognition workers; identity is not per-worker. [`24-COGNITION.md`](./24-COGNITION.md).
 
 **Witness** — Bonded auditor class; see Witness Protocol in [`15-TRUST.md`](./15-TRUST.md).
 

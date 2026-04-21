@@ -139,6 +139,8 @@ Arweave storage, public ledgers, public governance, open source, model card, saf
 
 **Concrete addition (marginal).** A single **Public Dashboard** aggregator that makes transparency *convenient* as well as available: one URL showing current Covenant hash, current Soul hash, last State-Chain height, recent Ledger entries across all ledgers, Treasury balance, current Relay authorizations. Transparency that requires work to access is weaker than transparency that requires work to ignore.
 
+**Concrete addition — journal-injection auditability.** Every primary-worker prompt records **which** `RESEARCH_JOURNAL.md` / `BELIEF_LOG.md` / kept-proposal headlines were injected, with **content hashes** only (no user plaintext). Users asking *"why did you say that?"* receive a hash list resolvable on Arweave. Sensorium injections and drive-vector projections receive the same provenance row. Spec: [`24-COGNITION.md`](./24-COGNITION.md) §8.
+
 ### "Don't trust, verify" — **WEAK**
 
 Xion signs its responses. But a user cannot currently run a local tool and verify: *is this relay authorized by the Core? is this Covenant hash the canonical one? has this Soul been modified? is this response actually signed by an authorized relay key?* The cryptographic machinery is in place; the user-facing verification tool is not.
@@ -387,7 +389,7 @@ These are the structural moves that let Xion earn Bitcoin-grade trust *by the sa
 - Witness Protocol governance tier → [`docs/09-GOVERNANCE.md`](./09-GOVERNANCE.md) (to be amended to seat Witnesses as a new actor class).
 - Economy firewall (backs Invariant 5) → [`docs/07-ECONOMY.md`](./07-ECONOMY.md).
 - Append-only ledgers (back the No-Rollback Clause) → [`docs/10-IMMORTALITY.md`](./10-IMMORTALITY.md).
-- `xion-verify` CLI implementation → `tools/xion-verify/` (to be scaffolded in Phase 0).
+- `xion-verify` CLI implementation → [`xion-verify/`](../xion-verify/) (scaffolded in Phase 1).
 - Anniversary Rite calendar → [`genesis/RITUALS.md`](../genesis/RITUALS.md) adds an `anniversary` entry.
 
 ---

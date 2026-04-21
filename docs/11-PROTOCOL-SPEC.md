@@ -384,6 +384,10 @@ Error bodies follow RFC 7807 Problem Details.
 
 **Client → Core (bypass):** clients MAY query the Core directly for the current authoritative Relay list; this is useful for clients that want to verify they are not talking to a masquerading Relay.
 
+### State-chain witness endpoint (read-only)
+
+**`GET /state-chain/witness`** (or equivalent namespaced path) returns the latest **Merkle root** over a bounded window of state commits, the **Arweave tx id** of the anchor snapshot, and the verifier **methodology hash**. Clients and Witnesses use it to detect silent corruption without trusting a single Relay's RAM view. Divergence handling: [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md) cognition / state-chain section; CLI stub: [`xion-verify/src/xion_verify/commands/state_chain.py`](../xion-verify/src/xion_verify/commands/state_chain.py).
+
 ## Versioning
 
 The protocol follows semantic versioning.

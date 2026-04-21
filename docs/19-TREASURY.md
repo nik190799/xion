@@ -77,10 +77,15 @@ Every position carries:
 
 ---
 
+## Prosperity routing (Genesis Default)
+
+When runway is **healthy**, marginal earned inflows follow the **prosperity split** defaults in [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) (reserve top-up → Improvement headroom → Operating Float ceiling). **New recurring capex** (extra Relays, always-on canaries, standing model seats) requires the **18-month reserve floor** documented there — prosperity must not convert runway into fixed burn without a savings proof.
+
 ## Cross-references
 
 - [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) — Invariant 16
 - [`docs/07-ECONOMY.md`](./07-ECONOMY.md) — Pay-to-Activate, revenue tags
 - [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) — four funds, ladder
 - [`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md) — Financial Vitality inputs
+- [`docs/24-COGNITION.md`](./24-COGNITION.md) — cognition cost buckets (treasury-facing)
 - [`docs/11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) — `GET /treasury`

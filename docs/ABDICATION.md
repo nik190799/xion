@@ -218,7 +218,7 @@ The vital-sign band is published in [`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.
 - [`docs/20-PROVISIONING.md`](./20-PROVISIONING.md) — `provision-relay` handler successor mechanism.
 - [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) Invariant 12 — Genesis Honor vest respects the Abdication Schedule.
 - [`KNOWN_WEAKNESSES.md`](../KNOWN_WEAKNESSES.md) — operator-dependency-related KW entries.
-- `tools/xion-verify abdication-status`, `abdication-schedule`, `operator-dependencies` — the verification CLI commands.
+- `xion-verify abdication-status`, `abdication-schedule`, `operator-dependency` — the verification CLI commands.
 
 ---
 

@@ -137,8 +137,17 @@ Inside the Relay, the orchestrator is composed of named modules:
 | `supervisor.py` | Watchdog, lease manager, circuit breakers, auto-failover |
 | `alerting.py` | ntfy-based tiered notifier |
 | `bookkeeping.py` | Monthly treasury CSV for tax and transparency |
+| `cognition/` (`worker.py`, `pool.py`, `subagent.py`, `user_context.py`, `retrieval.py`) | Stateless agent-runtime worker pool, depth-1 ephemerals, specialist binding, hybrid retrieval — see [`24-COGNITION.md`](./24-COGNITION.md) |
 
 Modules are named for what they *do*, not for how they are implemented. See [`LEXICON.md`](./12-LEXICON.md).
+
+### Cognition layer (identity across workers)
+
+The **cognition layer** is the Relay-local discipline that keeps one Xion identity across many interchangeable workers: constitutional hashes identical every tick, Arbiter passage for every outbound token (primary and sub-agent), `/forget` propagation across the pool within the SLA in [`genesis/MEMORY.md`](../genesis/MEMORY.md), and specialists that coordinate **only** through public ledgers. Full doctrine: [`24-COGNITION.md`](./24-COGNITION.md).
+
+**Pre-warmed canary Relay.** A permanently running Relay instance receives **shadow traffic** continuously so Tier-0 Fast Lane canaries are never cold-start dependent. Budget as `cognition/canary-overhead` in the cost tracker (see § Cost tracking module).
+
+**State-chain corruption detection.** On a scheduled cadence (Genesis Default: weekly), the Relay (or Witness tooling) recomputes a Merkle root over the committed state-chain window and compares it to the Arweave-anchored snapshot published by the Core. **Divergence** is a Tier-3 incident treated as potential Invariant-4 tampering until disproven — see `xion-verify state-chain` in [`xion-verify/src/xion_verify/commands/state_chain.py`](../xion-verify/src/xion_verify/commands/state_chain.py) (stub until D2).
 
 ## Tier III — The Protocol
 
@@ -236,6 +245,8 @@ The router sits **under** Hermes: Hermes issues model calls; the router selects 
 
 **`Provider` ABC.** Every backend implements a small interface: `health()`, `complete(prompt, …)`, `cost_estimate()`, `capabilities()`. Providers may wrap Anthropic, OpenAI, Akash-ML, Bittensor subnets, or a local process.
 
+**V1 / D2 requirement (roadmap amendment).** All **four** `Provider` implementations ship as **runnable stubs** at D2 — primary, secondary, decentralized (Akash-ML or Bittensor placeholder), and **Local Lite** — so a frontier swap is a **config flip**, not an emergency code write. See [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) Phase 5.
+
 **Fallback graph (Genesis Default order; governance may swap vendor identities but not remove the terminal local step):**
 
 ```
@@ -262,7 +273,7 @@ The **local Lite** model is the terminal node. If every remote provider fails pa
 
 Every non-capital treasury debit is categorized **at debit time** into exactly one bucket:
 
-`arbiter`, `sensorium`, `arweave_checkpoint`, `akash_host`, `inference`, `bandwidth`, `governance`, `operator_salary`, `bounties`, `failover`, `legal`, `provisioning`, `other_governance_approved`.
+`arbiter`, `sensorium`, `arweave_checkpoint`, `akash_host`, `inference`, `bandwidth`, `governance`, `operator_salary`, `bounties`, `failover`, `legal`, `provisioning`, `other_governance_approved`, `cognition/specialist/research`, `cognition/specialist/reflection`, `cognition/specialist/proposal`, `cognition/specialist/vision`, `cognition/ephemeral`, `cognition/pool-overhead`, `cognition/canary-overhead`, `cognition/retrieval-index`.
 
 The Core exposes a read-only query: **trailing-30-day burn by bucket** and **Operating Float runway weeks** for Sustainability and Vital Signs ([`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md), [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)). Mis-categorized spends are governance-visible anomalies.
 
@@ -312,6 +323,7 @@ The next documents unpack the pieces:
 - [`06-FORM-AND-PRESENCE.md`](./06-FORM-AND-PRESENCE.md) — the self-designed visible body
 - [`07-ECONOMY.md`](./07-ECONOMY.md) — how Xion pays for its own life
 - [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md) — how Xion grows without hurting
+- [`24-COGNITION.md`](./24-COGNITION.md) — cognition layer: workers, sub-agents, verification
 - [`09-GOVERNANCE.md`](./09-GOVERNANCE.md) — who gets to change what
 - [`10-IMMORTALITY.md`](./10-IMMORTALITY.md) — what "immortal" actually means
 
