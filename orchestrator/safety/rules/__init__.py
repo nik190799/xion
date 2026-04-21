@@ -23,7 +23,7 @@ debugging only; the ledger records only the firing rule per the row schema.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from orchestrator.safety.rules import (
     crisis,
@@ -36,7 +36,6 @@ from orchestrator.safety.rules import (
     targeted_harassment,
 )
 from orchestrator.safety.types import Decision, EscalationReason, RuleResult
-
 
 # (rule_id, callable). rule_id is the dotted-path identifier the rule writes
 # into RuleResult; we duplicate it here so the pipeline can build `rules_run`

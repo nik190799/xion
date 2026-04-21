@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from orchestrator.safety import ledger
 from orchestrator.safety.ledger import (
     SCHEMA_VERSION,
     ZERO_HASH,

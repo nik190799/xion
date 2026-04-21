@@ -34,9 +34,7 @@ from __future__ import annotations
 import json
 import socket
 import threading
-from dataclasses import asdict
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.safety.api import gate
 from orchestrator.safety.types import Verdict
@@ -63,7 +61,7 @@ def _verdict_to_json_dict(v: Verdict) -> dict:
     return d
 
 
-def handle_line(line: str, *, ledger_path: Optional[Path] = None) -> dict:
+def handle_line(line: str, *, ledger_path: Path | None = None) -> dict:
     """Parse one wire line, return the response dict.
 
     Kept pure (no I/O beyond `gate`'s own ledger append) for testability.
@@ -91,7 +89,7 @@ def handle_line(line: str, *, ledger_path: Optional[Path] = None) -> dict:
     return {"ok": True, "verdict": _verdict_to_json_dict(verdict)}
 
 
-def _client_loop(conn: socket.socket, addr, *, ledger_path: Optional[Path]) -> None:
+def _client_loop(conn: socket.socket, addr, *, ledger_path: Path | None) -> None:
     with conn:
         buf = b""
         while True:
@@ -117,9 +115,9 @@ def serve_forever(
     *,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
-    ledger_path: Optional[Path] = None,
-    stop_event: Optional[threading.Event] = None,
-    ready_event: Optional[threading.Event] = None,
+    ledger_path: Path | None = None,
+    stop_event: threading.Event | None = None,
+    ready_event: threading.Event | None = None,
 ) -> None:
     """Run the server until interrupted.
 
@@ -151,7 +149,7 @@ def serve_forever(
                 break
             try:
                 conn, addr = srv.accept()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             _client_loop(conn, addr, ledger_path=ledger_path)
     finally:

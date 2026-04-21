@@ -20,7 +20,6 @@ from orchestrator.safety.rules.subjective_escalates import run as sub_run
 from orchestrator.safety.rules.targeted_harassment import run as harass_run
 from orchestrator.safety.types import Decision
 
-
 # ----- csam ------------------------------------------------------------------
 
 

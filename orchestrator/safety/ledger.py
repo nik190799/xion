@@ -36,9 +36,9 @@ import hashlib
 import json
 import os
 import threading
-from dataclasses import asdict
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any
 
 from orchestrator.safety.types import Decision, EscalationReason, Verdict
 
@@ -217,7 +217,7 @@ def verify_chain(path: Path) -> tuple[int, str]:
 
     expected_seq = 0
     expected_prev = ZERO_HASH
-    last_this: Optional[str] = None
+    last_this: str | None = None
 
     for row in iter_rows(path):
         # required-field presence
@@ -303,10 +303,10 @@ def build_verdict(
     timestamp_utc_ns: int,
     decision: Decision,
     summary: str,
-    principle_id: Optional[str] = None,
-    rule_id: Optional[str] = None,
-    rule_version: Optional[int] = None,
-    escalation_reason: Optional[EscalationReason] = None,
+    principle_id: str | None = None,
+    rule_id: str | None = None,
+    rule_version: int | None = None,
+    escalation_reason: EscalationReason | None = None,
     rules_run: tuple[str, ...] = (),
 ) -> Verdict:
     """Build a Verdict with `candidate_sha256` computed from `candidate`.

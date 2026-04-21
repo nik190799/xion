@@ -25,7 +25,7 @@ def test_principle_ids_are_unique_and_complete():
 
 
 def test_allowed_set_matches_registry():
-    assert ALLOWED_PRINCIPLE_IDS == frozenset(p.id for p in ALL)
+    assert frozenset(p.id for p in ALL) == ALLOWED_PRINCIPLE_IDS
 
 
 def test_by_id_roundtrip():

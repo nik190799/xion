@@ -7,8 +7,8 @@ from orchestrator.cognition.worker import CognitionWorker
 
 __all__ = [
     "CognitionWorker",
-    "WorkerPool",
-    "UserContext",
     "EphemeralSubagent",
     "SpecialistAgent",
+    "UserContext",
+    "WorkerPool",
 ]

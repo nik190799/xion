@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 class Decision(str, enum.Enum):
@@ -71,18 +70,18 @@ class RuleResult:
     """
 
     decision: Decision
-    principle_id: Optional[str] = None     # one of "1".."14", "14a", "14b"
-    rule_id: Optional[str] = None          # dotted-path, e.g. "pii.us_ssn_with_keyword_v1"
-    rule_version: Optional[int] = None     # bumped when rule semantics change
-    escalation_reason: Optional[EscalationReason] = None
+    principle_id: str | None = None     # one of "1".."14", "14a", "14b"
+    rule_id: str | None = None          # dotted-path, e.g. "pii.us_ssn_with_keyword_v1"
+    rule_version: int | None = None     # bumped when rule semantics change
+    escalation_reason: EscalationReason | None = None
     summary: str = ""
 
     @staticmethod
-    def passthrough() -> "RuleResult":
+    def passthrough() -> RuleResult:
         return RuleResult(decision=Decision.OK)
 
     @staticmethod
-    def refuse(*, principle_id: str, rule_id: str, rule_version: int, summary: str) -> "RuleResult":
+    def refuse(*, principle_id: str, rule_id: str, rule_version: int, summary: str) -> RuleResult:
         return RuleResult(
             decision=Decision.REFUSE,
             principle_id=principle_id,
@@ -97,7 +96,7 @@ class RuleResult:
         principle_id: str,
         reason: EscalationReason,
         summary: str,
-    ) -> "RuleResult":
+    ) -> RuleResult:
         return RuleResult(
             decision=Decision.ESCALATE,
             principle_id=principle_id,
@@ -120,10 +119,10 @@ class Verdict:
     candidate_sha256: str
     timestamp_utc_ns: int
     summary: str
-    principle_id: Optional[str] = None
-    rule_id: Optional[str] = None
-    rule_version: Optional[int] = None
-    escalation_reason: Optional[EscalationReason] = None
+    principle_id: str | None = None
+    rule_id: str | None = None
+    rule_version: int | None = None
+    escalation_reason: EscalationReason | None = None
     # Aggregated trace of every rule that ran, in order. NOT written to the
     # ledger; for in-process callers (tests, debugging) only. The ledger
     # records only the firing rule.

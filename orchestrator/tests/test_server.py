@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import socket
 import threading
-import time
 from pathlib import Path
 
 import pytest
@@ -19,7 +18,6 @@ from orchestrator.safety.server import (
     handle_line,
     serve_forever,
 )
-
 
 # ----- handle_line (pure) ----------------------------------------------------
 

@@ -31,12 +31,10 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.safety import ledger
 from orchestrator.safety.rules import apply_rules
 from orchestrator.safety.types import Decision, Verdict
-
 
 _REPO_DEFAULT_LEDGER_NAME = "SAFETY_LEDGER.jsonl"
 
@@ -60,8 +58,8 @@ def gate(
     candidate: str,
     *,
     correlation_id: str,
-    ledger_path: Optional[Path] = None,
-    now_utc_ns: Optional[int] = None,
+    ledger_path: Path | None = None,
+    now_utc_ns: int | None = None,
 ) -> Verdict:
     """Render a verdict on `candidate` and append it to the ledger.
 
