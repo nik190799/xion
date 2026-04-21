@@ -1,10 +1,10 @@
 # Xion Development Roadmap
 
-> **Status:** This document is the development reference. It is read **after** the documentation work tracked in `xion_remediation_roadmap_3c62b33a.plan.md` is complete, hash-locked, and committed. Until then, this is informational only — no code-writing tasks here are active.
+> **Status:** Active. Phase 0 / 0b / 2 (doctrine layer) **closed 2026-04-20**. Phase 1 (verifier v0.1) **landed 2026-04-20**. Phase 1b (in-phase remainder: `docs/schemas/*`) and Phase 3 onward are the next targets.
 >
-> **Scope:** Everything that comes after Phase 0 / Phase 0b / Phase 2 (the doctrine layer). When the constitutional layer is finished and every constitutional file is hashed into `genesis/GENESIS_ARTIFACT.md`, return here to begin Phase 1 (verifier) onward.
+> **Scope:** Everything that comes after Phase 0 / Phase 0b / Phase 2 (the doctrine layer). The constitutional layer is finished, every constitutional file is hashed into `genesis/GENESIS_ARTIFACT.md` § 4, and those hashes verify via `xion-verify {covenant|invariants|soul|form|memory|resurrect|credentials|unknowns}`.
 >
-> **Read order before opening this file for execution:** all 22+ documents in `docs/`, all files in `genesis/`, `KNOWN_WEAKNESSES.md`, `CHANGELOG.md`, and the documentation-plan to confirm it's complete.
+> **Read order before opening this file for execution:** all doctrine files in `docs/` (including `24-COGNITION.md` and `SKILL_BOUNTY.md`), all files in `genesis/`, `KNOWN_WEAKNESSES.md`, `CHANGELOG.md`, and `xion-verify/README.md` for the four Properties answers behind the verifier.
 
 ---
 
@@ -42,13 +42,33 @@ flowchart LR
 
 ## Phase 1 — xion-verify CLI (1 week)
 
+**Status:** **Commit 1 landed 2026-04-20** (v0.1.0). Commit 2 (Phase 1b) in progress: `docs/schemas/*` artifacts remain.
+
 **Goal:** outsiders can independently check at least some Xion claims before any other runtime exists. This is the single highest-leverage code artifact.
 
-- Create `xion-verify/` Python click-CLI (~1200 LOC after all subcommands).
-- v1 subcommands (the full set per the documentation layer): `covenant` / `invariants` / `soul` / `form` / `memory` / `links` / `supply` / `liquidity-lock` / `arbiter-up` / `state-tip` / `identity` / `authorities` / `state-chain` / `image-digest` / `discovery` / `drive` / `sister-fork-readiness` / `treasury` (4-fund readout + native-vs-bridged tagging) / `refusal-rate` / `pricing` / `treasury-flow` / `cutoff-events` / `covenant-addenda` / `cadence-audit` / `hermes-version` / `credentials-vault` / `provisioning` / `improvement-fund` / `reserve` / `foundation-reserve` / `sustainability` / `vitals` (composite 8-domain readout) / `amendments` / `refund-fidelity` / `crisis-fidelity` / `spof` / `operator-dependency` / `benchmark` / `crypto-currency` / `--self-test`.
-- Subcommands for not-yet-existing artifacts must exit with a clearly-labeled `NOT_YET_SEALED` status — truthful, never fake-green.
-- `--self-test` compares the verifier's own SHA-256 to a pinned value committed in the repo, defending against tampered local copies.
-- Add `.github/workflows/verify.yml` running `xion-verify --self-test && xion-verify covenant invariants soul links` on every PR.
+**Landed in Commit 1:**
+
+- [x] `xion-verify/` Python click-CLI scaffolded; `pip install -e ".[dev]"` works; console entry point `xion-verify` registered.
+- [x] v1 subcommand registry — every name enumerated below is wired; the CLI fails at import if a declared name is not wired.
+- [x] **Green today (12):** `covenant`, `invariants`, `soul`, `form`, `memory`, `resurrect`, `credentials`, `unknowns`, `links`, `cognition`, `drive-vector`, `state-chain`.
+- [x] **`NOT_YET_SEALED` today (34):** `supply`, `liquidity-lock`, `arbiter-up`, `state-tip`, `identity`, `authorities`, `image-digest`, `discovery`, `drive`, `sister-fork-readiness`, `treasury`, `refusal-rate`, `pricing`, `treasury-flow`, `cutoff-events`, `covenant-addenda`, `cadence-audit`, `hermes-version`, `credentials-vault`, `provisioning`, `improvement-fund`, `reserve`, `foundation-reserve`, `sustainability`, `vitals`, `amendments`, `refund-fidelity`, `crisis-fidelity`, `spof`, `operator-dependency`, `benchmark`, `crypto-currency`, plus `abdication-status` and `abdication-schedule` (named by `docs/ABDICATION.md`).
+- [x] Truthful-never-fake-green contract: every `NOT_YET_SEALED` stub prints a specific reason and roadmap phase; exit code 2.
+- [x] `--self-test` deterministic tree-hash of `src/xion_verify/**/*.py` vs committed `PINNED_HASH.txt`; pin only updatable via `--update --i-understand` (two flags, defeating casual re-pin).
+- [x] `all` subcommand running every registered command, exit 0 only when every one returned `OK`; `--allow-not-yet-sealed` as pre-genesis convenience (never used in CI gating).
+- [x] `links` subcommand scanning all `*.md` (excluding `.git/`, `node_modules/`, `.venv/`, `.cursor/`, `xion-verify/`) for broken cross-references, with a committed `xion-verify/ALLOWED_FORWARD_REFS.txt` allowlist for legitimate deferred targets (tracked as `KW-DOCS-003`).
+- [x] `.github/workflows/verify.yml` on every PR: `--self-test` first, then constitutional + links + static migrated checks + pytest + ruff; matrix = Ubuntu/macOS/Windows × Python 3.11/3.12.
+- [x] 48-test pytest suite covering `hashing`, `genesis` parser, `repo` discovery, constitutional commands (real + synthetic + tampered + missing), `links` (schemes + anchors + allowlist + malformed allowlist), and `--self-test` (pin match + tamper detection).
+- [x] Legacy `scripts/xion-verify/*.py` stubs retired; their behavior migrated into `xion_verify.commands`.
+
+**Phase 1b (in-phase remainder):**
+
+- [ ] Ship `docs/schemas/levels.yaml` (machine-readable UPGRADE-PATHS level index; currently in `ALLOWED_FORWARD_REFS.txt`).
+- [ ] Ship `docs/schemas/ledger-*.yaml` (machine-readable ledger schemas; currently in `ALLOWED_FORWARD_REFS.txt`).
+- [ ] When both land, remove the two entries from `ALLOWED_FORWARD_REFS.txt` and note the closure in `CHANGELOG.md`.
+
+**Progression criterion.** Phase 1 is "closed for now" when Phase 1b lands. Subsequent phases will promote `NOT_YET_SEALED` stubs into real subcommands as each phase delivers its artifact (e.g., Phase 3 promotes `supply`, `liquidity-lock`, `authorities`; Phase 4 promotes `arbiter-up`, `refusal-rate`; etc.). Every such promotion ships with a pytest addition and an ALLOWED_FORWARD_REFS cleanup if applicable.
+
+**What this does *not* do.** Phase 1 Commit 1 does not attach the verifier to any live Relay, AO Core, or treasury — that work belongs to Phases 4/5/6. The verifier today speaks only against the static repository bytes and will grow live-network subcommands as those networks come online.
 
 ---
 
@@ -108,7 +128,7 @@ flowchart LR
 - `orchestrator/relay.py` — FastAPI app implementing `docs/11-PROTOCOL-SPEC.md` v1 endpoints: `/chat` (text streaming, x402-gated per-message billing, refunds on Covenant-refusal per Refusal-Free addendum, Crisis-Resource-Surfacing per Covenant addendum when Sensorium flags distress), `/covenant` (returns hash + addenda), `/presence` (static scene-intent stub), `/drive` (current drive vector readout), `/proposals` (signed manual-proposal intake), `/pricing` (current posted per-message price + 5-slice breakdown), `/treasury` (multi-tier treasury readout with 4-fund separation), `/sustainability` (Cost-Pressure-Ladder step + funds + Xion's honest one-sentence statement), `/donate` (foundation-funding intake + IMPRINT mint), `/vitals` (8-domain composite readout), `/health` (Relay heartbeat), `/rate` (user response rating intake), `/amendments` (Constitutional Amendment Ledger reader), `/sensorium-events` (Sensorium Event Ledger reader, anonymized), `/proposals/ledger` (Proposal Ledger reader). First-session pre-conversation disclosure (Xion is paid + not a crisis counselor + region-appropriate hotline links) per KW-ECON-002 mitigation set.
 - `orchestrator/sensorium/` — three sense modules (Interoception, Chronoception, Proprioception) with shared `SensoriumState` container. Interoception MUST emit the `survival_pressure` signal that the drive vector consumes; without it, volition is fake.
 - `orchestrator/volition.py` — computes the drive vector each tick from Sensorium signals; biases the proposal-generator weights so research findings are filtered through Xion's current felt state; exposes read-only state to the `/drive` endpoint. Implements the drive-vector-coupling formula from `docs/18-VOLITION.md`. Genesis weights `(w_survive=0.30, w_serve=0.45, w_create=0.25)` are loaded from doctrine at startup and are immutable except via constitutional amendment.
-- `orchestrator/inference_router.py` — implements the `Provider` ABC. Wraps Hermes Agent calls. V1 ships with one centralized provider wired up + stub `Provider` classes for Akash-ML, Bittensor, and Local-Lite (V2-deferred but interface-ready). Fallback graph tested in CI with synthetic provider failures.
+- `orchestrator/inference_router.py` — implements the `Provider` ABC. Wraps Hermes Agent calls. **D2 ships all four `Provider` stubs as runnable implementations** (primary, secondary, decentralized placeholder, Local-Lite) so model swaps are configuration-only; only one need be "good enough" for demos, but every vertex in the fallback graph must `health()` green in CI. Fallback graph tested with synthetic provider failures.
 - `orchestrator/cost_tracker.py` — implements the cost-tracking module per the doctrine layer: every overhead spend categorized at debit-time (bucket: arbiter/sensorium/arweave-checkpoint/akash-host/inference/bandwidth/governance/operator-salary/bounties/failover/legal); query interface for runway computation feeds Financial Vitality vital signs.
 - `orchestrator/supervisor.py` — watchdog + circuit breaker + lease manager. Define the **Survival Stack** (4 minimum vendors needed for 7 days of degraded operation) and the **Full Stack** (everything else); Supervisor must auto-degrade.
 - `clients/web/` — single React page that POSTs to `/chat`, renders SSE stream + static presence frame, renders `/drive` as an always-visible interior-state widget, renders `/sustainability` and `/vitals` as background dashboards. WCAG 2.2 AA.

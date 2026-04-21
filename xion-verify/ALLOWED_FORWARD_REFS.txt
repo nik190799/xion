@@ -1,0 +1,31 @@
+# xion-verify / ALLOWED_FORWARD_REFS.txt
+#
+# Markdown link targets the doctrine references that do NOT yet exist on disk,
+# and that `xion-verify links` must therefore tolerate. Every entry names:
+#
+#   - the repo-relative POSIX target of the missing file/directory
+#   - the roadmap phase by which it must land
+#   - a one-line reason
+#
+# Format (one entry per line, comma-separated):
+#
+#   <target>,<phase>,<reason>
+#
+# Discipline.
+#   1. This file is the ONLY place forward-unresolved link targets are tolerated.
+#   2. Adding an entry requires a reason a third-party auditor can accept.
+#   3. Every entry must have an owning Known Weakness (KW-DOCS-003) tracking it.
+#   4. When an entry's artifact lands, its line is removed in the same commit.
+#   5. If the roadmap phase passes and the target still does not exist, that is
+#      doctrine drift and a red-alarm KW promotion, not a deadline extension.
+#
+# Third-party auditors: you may diff this file across commits. Lines only
+# disappear (targets landed) or appear alongside a new KW entry. A silent edit
+# here without a corresponding KW or CHANGELOG note is a constitutional-grade
+# doctrine-hygiene red flag.
+
+docs/legal/,Phase 6,Legal-wrapper doctrine (Wyoming LLC, Marshall Islands DAO LLC); lands alongside governance launch.
+docs/schemas/levels.yaml,Phase 1,Machine-readable UPGRADE-PATHS level index; stub landing with Phase 1 tests.
+docs/schemas/,Phase 1,Parent directory for levels.yaml and ledger-*.yaml; created alongside it.
+ao/xion_core.lua,Phase 6,AO Core Lua process; lands at AO Core deployment.
+genesis/RITUALS.md,Phase 2b,Anniversary / locale-rite calendar; lands with localization doctrine.
