@@ -1,31 +1,40 @@
-"""`xion-verify arbiter-up` — Arbiter posture check (Phase 4a live).
+"""`xion-verify arbiter-up` — Arbiter posture check (Phase 4b live).
 
-Property promised. The Arbiter library is importable, its principle registry
-is self-consistent, and — if `SAFETY_LEDGER.jsonl` is present — the ledger's
-hash chain verifies byte-exactly.
+Properties promised:
+
+  1. The Arbiter library (`orchestrator.safety`) is importable.
+  2. Its principle registry is internally self-consistent.
+  3. If `SAFETY_LEDGER.jsonl` is present, its hash chain verifies
+     byte-exactly under both v1 and v2 row rules (Phase 4b).
+  4. If `SAFETY_LEDGER_ANCHORS.jsonl` is present, its own hash chain
+     verifies AND every anchor's claimed `ledger_tip_hash` matches
+     the ledger's row at `ledger_row_count - 1` (truncation-defense
+     property).
 
 Exit codes:
-  0 OK              library importable AND registry self-consistent AND
-                    (ledger absent OR ledger chain passes `verify_chain`).
-  1 FAIL            library unimportable, registry mismatch, or a present
-                    ledger failed a structural check. The failure message
-                    names the specific failure.
-  2 NOT_YET_SEALED  never returned from here once Phase 4 has landed; the
-                    Arbiter exists now. (A future version may introduce
-                    this if `orchestrator.safety` is relocated and not yet
-                    wired.)
+  0 OK              every required property holds. A missing anchors
+                    file is NOT a failure in Phase 4b — anchoring is
+                    an honest layer-2 and absence is labelled.
+  1 FAIL            library unimportable, registry mismatch, ledger
+                    chain broken, anchors chain broken, or cross-check
+                    mismatch. The failure message names the specific
+                    failure.
+  2 NOT_YET_SEALED  never returned from here once Phase 4 has landed.
 
-Why no TCP ping in v1. `orchestrator.safety.server` is optional; the
-library is the source of truth. `arbiter-up` checking a TCP endpoint would
+Why no TCP ping. `orchestrator.safety.server` is optional; the library
+is the source of truth. `arbiter-up` checking a TCP endpoint would
 require deciding where that endpoint lives. The operator's supervisor
-monitors the daemon directly; this verifier's job is "is the Arbiter
-artifact sound", not "is my daemon running".
+monitors the daemon; this verifier's job is "is the Arbiter artifact
+sound", not "is my daemon running".
 
-What this subcommand DOES NOT verify (yet):
-  - Arweave anchoring of the chain tip (Phase 4b).
+Not yet implemented (tracked in KNOWN_WEAKNESSES):
+  - `--gateway <URL>` mode for cross-Arweave-gateway re-fetch of each
+    anchor's `ar_tx_id` (KW-ANCHOR-002). Semantics: fetch the stored
+    bytes from multiple gateways, canonical-hash them, and require
+    every gateway to agree with the row's `this_hash`. Disagreement
+    is a hard FAIL.
   - Refund-fidelity ledger-to-ledger join (Phase 5).
   - Sensorium / CRS pairing (Phase 5).
-Each of these has its own honest `NOT_YET_SEALED` stub.
 """
 
 from __future__ import annotations
@@ -38,6 +47,7 @@ from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _LEDGER_NAMES: tuple[str, ...] = ("SAFETY_LEDGER.jsonl",)
+_ANCHORS_NAME = "SAFETY_LEDGER_ANCHORS.jsonl"
 
 
 def _fail(message: str) -> None:
@@ -47,11 +57,17 @@ def _fail(message: str) -> None:
 
 @click.command(name="arbiter-up")
 def arbiter_up() -> None:
-    """Verify the Arbiter library and its local ledger posture."""
+    """Verify the Arbiter library, its local ledger, and its anchors."""
 
     # 1. Library importable.
     try:
-        from orchestrator.safety.ledger import ChainBroken, chain_tip, verify_chain
+        from orchestrator.safety.anchor import (
+            AnchorChainBroken,
+            AnchorCrossCheckFailed,
+            cross_check_anchors_against_ledger,
+            verify_anchor_chain,
+        )
+        from orchestrator.safety.ledger import ChainBroken, verify_chain
         from orchestrator.safety.principles import ALL, ALLOWED_PRINCIPLE_IDS, by_id
     except Exception as exc:  # ImportError, SyntaxError, etc.
         _fail(
@@ -75,16 +91,15 @@ def arbiter_up() -> None:
         if by_id(p.id) is not p:
             _fail(f"principle registry: by_id({p.id!r}) does not round-trip.")
 
-    # 3. Ledger chain, if present.
+    # 3. Locate the repo root for file-based checks.
     try:
         repo_root = find_repo_root(Path.cwd())
     except RepoRootNotFound as exc:
         _fail(f"{exc}")
 
-    rows_total = 0
-    tip_total = "0" * 64
+    # 4. Ledger chain, if present.
     ledger_paths_checked: list[str] = []
-
+    ledger_path: Path | None = None
     for name in _LEDGER_NAMES:
         p = repo_root / name
         if not p.is_file():
@@ -96,15 +111,77 @@ def arbiter_up() -> None:
                 f"ledger {name}: chain broken at {exc}. "
                 "See docs/04-ARCHITECTURE.md § Safety Ledger row schema."
             )
-        rows_total += rows
-        tip_total = tip  # last non-empty tip wins; there is only one ledger in v1
+        ledger_path = p
         ledger_paths_checked.append(f"{name}(rows={rows}, tip={tip[:16]}...)")
 
-    principles_tally = f"{len(ALL)} principles ({len([p for p in ALL if p.enforcement_mode.value == 'rules'])} rules-mode, {len([p for p in ALL if p.enforcement_mode.value == 'escalate'])} escalate-mode)"
-    ledger_summary = "no ledger file present (no verdicts yet)" if not ledger_paths_checked else "; ".join(ledger_paths_checked)
+    # 5. Anchors file, if present. Absence is an HONEST state in Phase 4b:
+    #    the operator has not yet run the anchor loop (or has chosen to
+    #    defer it). We label it and move on. Presence triggers both the
+    #    structural chain check AND the cross-check to the ledger.
+    anchors_path = repo_root / _ANCHORS_NAME
+    anchors_summary: str
+    if anchors_path.is_file():
+        try:
+            a_count, a_tip = verify_anchor_chain(anchors_path)
+        except AnchorChainBroken as exc:
+            _fail(
+                f"anchors {_ANCHORS_NAME}: chain broken at {exc}. "
+                "See docs/schemas/ledger-safety-anchors.yaml."
+            )
+        if ledger_path is not None:
+            try:
+                _, rows_covered = cross_check_anchors_against_ledger(
+                    anchors_path, ledger_path,
+                )
+            except AnchorCrossCheckFailed as exc:
+                _fail(
+                    f"anchors {_ANCHORS_NAME}: cross-check failed: {exc}. "
+                    "The ledger or the anchors file has been silently modified."
+                )
+            anchors_summary = (
+                f"anchors(rows={a_count}, tip={a_tip[:16]}..., "
+                f"covers={rows_covered}/{_ledger_rows_from_summary(ledger_paths_checked)})"
+            )
+        else:
+            # Anchors file exists but no ledger. That is a schema violation
+            # in itself — anchors commit to a ledger that is not present.
+            _fail(
+                f"anchors {_ANCHORS_NAME} present but ledger {_LEDGER_NAMES[0]} is missing. "
+                "An anchors file without a ledger is a truncation-to-zero attack signature."
+            )
+    else:
+        anchors_summary = "no anchors file present (anchor loop not yet run)"
+
+    principles_tally = (
+        f"{len(ALL)} principles "
+        f"({len([p for p in ALL if p.enforcement_mode.value == 'rules'])} rules-mode, "
+        f"{len([p for p in ALL if p.enforcement_mode.value == 'escalate'])} escalate-mode)"
+    )
+    ledger_summary = (
+        "no ledger file present (no verdicts yet)"
+        if not ledger_paths_checked
+        else "; ".join(ledger_paths_checked)
+    )
 
     click.echo(
         f"arbiter-up: OK  library importable; registry consistent ({principles_tally}); "
-        f"ledger: {ledger_summary}"
+        f"ledger: {ledger_summary}; {anchors_summary}"
     )
     raise SystemExit(OK)
+
+
+def _ledger_rows_from_summary(entries: list[str]) -> int:
+    """Parse the last 'rows=<N>' from the summary entries. Purely for
+    the human-readable output. Returns 0 if nothing parseable."""
+    for entry in reversed(entries):
+        i = entry.find("rows=")
+        if i == -1:
+            continue
+        j = entry.find(",", i)
+        if j == -1:
+            continue
+        try:
+            return int(entry[i + 5:j])
+        except ValueError:
+            return 0
+    return 0

@@ -6,6 +6,10 @@ Subcommands:
                   stdout. Exit 0 if verdict.egress_allowed else 1.
   serve           Start the loopback TCP server on 127.0.0.1:<port>.
   verify-ledger   Walk SAFETY_LEDGER.jsonl and report chain integrity.
+  verify-anchors  Walk SAFETY_LEDGER_ANCHORS.jsonl, verify its hash chain,
+                  and cross-check every anchor against the ledger.
+  anchor          Run one anchor cycle: evaluate cadence, and if it
+                  fires (or --force), publish and append one row.
   principles      Print the principle registry (debug / inspection).
 
 The CLI is a thin wrapper around the library. Every operator-visible
@@ -22,10 +26,23 @@ import sys
 from pathlib import Path
 
 from orchestrator.safety import gate
+from orchestrator.safety.anchor import (
+    AnchorChainBroken,
+    AnchorCrossCheckFailed,
+    ArweaveSubmitter,
+    LocalOnlySubmitter,
+    anchor_chain_tip,
+    cross_check_anchors_against_ledger,
+    run_anchor_once,
+    verify_anchor_chain,
+)
 from orchestrator.safety.ledger import ChainBroken, chain_tip, verify_chain
 from orchestrator.safety.principles import principles_summary
 from orchestrator.safety.server import DEFAULT_HOST, DEFAULT_PORT, serve_forever
 from orchestrator.safety.types import Verdict
+
+_DEFAULT_LEDGER = "SAFETY_LEDGER.jsonl"
+_DEFAULT_ANCHORS = "SAFETY_LEDGER_ANCHORS.jsonl"
 
 
 def _print_verdict_json(v: Verdict) -> None:
@@ -86,6 +103,91 @@ def _cmd_verify_ledger(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_verify_anchors(args: argparse.Namespace) -> int:
+    anchors_path = Path(args.anchors) if args.anchors else Path(_DEFAULT_ANCHORS)
+    ledger_path = Path(args.ledger) if args.ledger else Path(_DEFAULT_LEDGER)
+    try:
+        count, tip = verify_anchor_chain(anchors_path)
+    except AnchorChainBroken as exc:
+        print(f"verify-anchors: FAIL (chain): {exc}", file=sys.stderr)
+        return 1
+    # Internal sanity: anchor_chain_tip must agree.
+    count_live, tip_live = anchor_chain_tip(anchors_path)
+    if count != count_live or tip != tip_live:
+        print(
+            f"verify-anchors: FAIL: internal inconsistency between "
+            f"verify_anchor_chain({count}, {tip}) and anchor_chain_tip({count_live}, {tip_live})",
+            file=sys.stderr,
+        )
+        return 1
+    # Structural chain is OK. Now cross-check against the ledger.
+    try:
+        a_count, rows_covered = cross_check_anchors_against_ledger(anchors_path, ledger_path)
+    except AnchorCrossCheckFailed as exc:
+        print(f"verify-anchors: FAIL (cross-check): {exc}", file=sys.stderr)
+        return 1
+    ledger_count, _ = chain_tip(ledger_path)
+    truncation_window = max(0, ledger_count - rows_covered)
+    print(
+        f"verify-anchors: OK  anchors={count}  tip={tip}  "
+        f"rows_covered={rows_covered}/{ledger_count}  truncation_window={truncation_window}"
+    )
+    if a_count != count:
+        # Should be impossible but name it if it happens.
+        print(
+            f"verify-anchors: WARN: verify_anchor_chain count={count} != "
+            f"cross_check count={a_count}",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def _cmd_anchor(args: argparse.Namespace) -> int:
+    anchors_path = Path(args.anchors) if args.anchors else Path(_DEFAULT_ANCHORS)
+    ledger_path = Path(args.ledger) if args.ledger else Path(_DEFAULT_LEDGER)
+    submitter = _build_submitter_from_args(args)
+    try:
+        result = run_anchor_once(
+            anchors_path=anchors_path,
+            ledger_path=ledger_path,
+            submitter=submitter,
+            force=args.force,
+        )
+    except Exception as exc:
+        # Any submitter exception surfaces as nonzero exit. The anchors
+        # file is not touched (no partial writes), preserving the
+        # "honest record; no false claims of having anchored" property.
+        print(f"anchor: FAIL: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+    if result.anchored:
+        assert result.row is not None
+        print(
+            f"anchor: OK  trigger={result.trigger}  "
+            f"seq={result.row['seq']}  "
+            f"submitted_to={result.row['submitted_to']}  "
+            f"ar_tx_id={result.row.get('ar_tx_id') or '-'}"
+        )
+    else:
+        print(f"anchor: SKIP  reason={result.reason}")
+    return 0
+
+
+def _build_submitter_from_args(args: argparse.Namespace):
+    """Select submitter: local-only by default; arweave if --arweave.
+
+    Honest about what each choice means: passing --arweave without a
+    configured wallet will fail at submit time and exit nonzero, not
+    silently downgrade to local. The operator is the one making that
+    choice.
+    """
+    if args.arweave:
+        return ArweaveSubmitter(
+            jwk_path=args.wallet_jwk,
+            gateway=args.arweave_gateway,
+        )
+    return LocalOnlySubmitter()
+
+
 def _cmd_principles(args: argparse.Namespace) -> int:
     print(principles_summary())
     return 0
@@ -118,6 +220,34 @@ def _build_parser() -> argparse.ArgumentParser:
     v.add_argument("--ledger", default=None,
                    help="Ledger path (default ./SAFETY_LEDGER.jsonl).")
     v.set_defaults(func=_cmd_verify_ledger)
+
+    va = sub.add_parser(
+        "verify-anchors",
+        help="Verify SAFETY_LEDGER_ANCHORS and cross-check against the ledger.",
+    )
+    va.add_argument("--anchors", default=None,
+                    help="Anchors path (default ./SAFETY_LEDGER_ANCHORS.jsonl).")
+    va.add_argument("--ledger", default=None,
+                    help="Ledger path (default ./SAFETY_LEDGER.jsonl).")
+    va.set_defaults(func=_cmd_verify_anchors)
+
+    an = sub.add_parser(
+        "anchor",
+        help="Evaluate cadence and, if fired (or --force), publish one anchor row.",
+    )
+    an.add_argument("--anchors", default=None,
+                    help="Anchors path (default ./SAFETY_LEDGER_ANCHORS.jsonl).")
+    an.add_argument("--ledger", default=None,
+                    help="Ledger path (default ./SAFETY_LEDGER.jsonl).")
+    an.add_argument("--force", action="store_true",
+                    help="Bypass cadence; anchor immediately (labels trigger=startup).")
+    an.add_argument("--arweave", action="store_true",
+                    help="Use ArweaveSubmitter instead of the LocalOnlySubmitter default.")
+    an.add_argument("--wallet-jwk", default=None,
+                    help="Override $XION_ANCHOR_WALLET_JWK_PATH for --arweave.")
+    an.add_argument("--arweave-gateway", default=None,
+                    help="Override $XION_ANCHOR_ARWEAVE_GATEWAY (default https://arweave.net).")
+    an.set_defaults(func=_cmd_anchor)
 
     pr = sub.add_parser("principles", help="Print the principle registry.")
     pr.set_defaults(func=_cmd_principles)

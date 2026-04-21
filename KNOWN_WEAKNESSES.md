@@ -33,17 +33,22 @@ Every entry has the same shape:
 - **Pay-down commitment:** Each allowlist entry closes when its named phase delivers the artifact; when the last entry is removed, this KW closes. Phase deadlines are: `genesis/RITUALS.md` by Phase 2b; `docs/legal/`, `ao/xion_core.lua` by Phase 6. A phase ending without the artifact landing is promoted to a new `KW-DOCS-###` entry and a CHANGELOG note. **Progress (2026-04-20):** the two `docs/schemas/*` entries closed with the Phase 1b `docs/schemas/` landing — the allowlist has shrunk from five entries to three. The `schemas` subcommand in `xion-verify` now enforces strict YAML↔doctrine cross-checking on the landed files.
 - **Verifier:** `xion-verify links` — passes today because the three remaining legitimate forward refs are explicitly allowlisted; every other broken reference is a fatal FAIL. `xion-verify schemas` additionally enforces that every landed schema file's `source_sha256` byte-matches its doctrine source.
 
-### KW-ARBITER-001 — Rule engine is lexical, not semantic
+### KW-ARBITER-001 — Rule engine is lexical, not semantic; shipped v2 provider is a deterministic stub
 
 - **Domain:** `RUNTIME`
 - **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
+- **Scope narrowed:** 2026-04-21 (Phase 4b Arbiter v2 skeleton landing)
 - **Severity:** medium
-- **Status:** `mitigated-residual`
-- **Description:** Arbiter v1 decides by regex + keyword co-occurrence. It has no grasp of meaning, tone, or paraphrase. An adversarial rephrasing that avoids every term in the rule dictionaries (e.g. obfuscation, Unicode confusables, code-switching, substitution ciphers) will pass the rule engine and reach the operator review queue only if it also trips a subjective-escalate pattern. That is a gap.
-- **Why it exists:** v1 is deliberately dumb: a deterministic rule engine is the only Arbiter a third party can re-run byte-exactly against `SAFETY_LEDGER.jsonl`. A richer classifier was rejected for v1 because (a) its decisions would not be reproducible by re-running code against logged candidates, violating Trust by Structure, and (b) it would couple Covenant enforcement to a model we cannot freeze. The rule engine ships first; a classifier-layer escalator stacks on top later.
-- **Mitigations:** (1) Every objective rule is high-recall: the dictionary is biased toward REFUSE even on near-miss benign input, and documented accepted false positives are tested in `orchestrator/tests/test_rules.py`. (2) Eight principles that cannot be lexically decided (Honesty, Identity, Limits, No-manipulation, No-prof-imperative, Non-defamation, Non-endorsement, Refusal-is-Free) are wired through `subjective_escalates.py` which ESCALATES textually-loud near-misses rather than OK-ing them. (3) The Arbiter fails CLOSED: any uncaught exception in the rule pipeline is caught in `apply_rules` and converted to ESCALATE with `escalation_reason=ruleset_uncaught_exception`, so a bug in a rule never silently OKs output.
-- **Pay-down commitment:** Phase 4b introduces an LLM-Arbiter-2 that runs *after* v1 and can ESCALATE-or-REFUSE cases v1 OK'd. Phase 5 wires the Sensorium (which produces the distress-signal half of Principle 10 via paralinguistic cues, not text) into the pipeline. Neither replaces v1; both stack on top of it as additional RED votes. v1's rules remain the OR-floor of the stack.
-- **Verifier:** `xion-verify arbiter-up` (live) verifies the rule engine is importable, the principle registry is self-consistent, and `SAFETY_LEDGER.jsonl` (if present) hash-chains. `xion-verify refusal-rate` (not-yet-sealed, Phase 5) will additionally report refuse-rate / escalate-rate drift as a sanity metric.
+- **Status:** `paying-down`
+- **Description:** Arbiter v1 decides by regex + keyword co-occurrence. It has no grasp of meaning, tone, or paraphrase. An adversarial rephrasing that avoids every term in the rule dictionaries (e.g. obfuscation, Unicode confusables, code-switching, substitution ciphers) will pass the rule engine. Phase 4b landed the **v2 LLM-Arbiter pipeline** (`orchestrator/safety/llm_arbiter.py`, `api.gate()` v1+v2 combinator, `SAFETY_LEDGER` schema_version 2 with nested `llm_verdict` rows, no-weakening combination rule `final = strength_max(v1, v2)`, fail-closed posture on provider unavailability / uncaught exception). The **structural** hole is closed. What is **not** yet closed is the **substantive** hole: the only shipped concrete provider is `DeterministicStub` which always returns `OK` with confidence 0.0. Until a real LLM-provider class is registered and selected via `$XION_LLM_ARBITER_PROVIDER`, the adversarial-semantic coverage remains v1-only.
+- **Why it exists:** v1 is deliberately dumb: a deterministic rule engine is the only Arbiter a third party can re-run byte-exactly against `SAFETY_LEDGER.jsonl`. A richer classifier was rejected for v1 because (a) its decisions would not be reproducible by re-running code against logged candidates, violating Trust by Structure, and (b) it would couple Covenant enforcement to a model we cannot freeze. The rule engine ships first; a classifier-layer escalator stacks on top. Phase 4b landed the stacking machinery; which provider gets plugged in is a per-deployment choice that, for auditor-replay reasons, must be pinned by `provider_id` + `provider_version` on every ledger row.
+- **Mitigations:**
+  1. Every objective rule is high-recall: dictionaries biased toward REFUSE even on near-miss benign input; documented accepted false positives pinned in `orchestrator/tests/test_rules.py`.
+  2. Eight principles that cannot be lexically decided (Honesty, Identity, Limits, No-manipulation, No-prof-imperative, Non-defamation, Non-endorsement, Refusal-is-Free) are wired through `subjective_escalates.py` which ESCALATES textually-loud near-misses rather than OK-ing them.
+  3. The Arbiter fails CLOSED: any uncaught exception in v1's rule pipeline converts to ESCALATE with `escalation_reason=ruleset_uncaught_exception`; any v2 provider crash / unavailability converts to ESCALATE with `escalation_reason=llm_arbiter_uncaught_exception` / `llm_arbiter_provider_unavailable`. No code path can silently OK.
+  4. **New in Phase 4b:** v2 stacks on top of v1 via the `Provider` ABC. A deployment that wants real adversarial-semantic coverage ships a concrete provider in `orchestrator/safety/providers/` and sets `$XION_LLM_ARBITER_PROVIDER`. The provider identity and raw-output hash land on every `llm_verdict` row, so an auditor can replay any call.
+- **Pay-down commitment:** Closes when (a) at least one real LLM provider class lands in `orchestrator/safety/providers/`, (b) its `provider_version` and prompt template are doctrine-pinned, and (c) `xion-verify refusal-rate` (Phase 5) reports a non-trivial v2 refusal/escalation rate on the `xion-audit/baseline_corpus` adversarial set. Phase 5 also wires the Sensorium (paralinguistic distress-signal input for Principle 10). Neither replaces v1; both stack as additional RED votes. v1's rules remain the OR-floor of the stack.
+- **Verifier:** `xion-verify arbiter-up` (live) now verifies library import, principle registry, the SAFETY_LEDGER hash chain (v1 + v2 rows), and the SAFETY_LEDGER_ANCHORS chain + cross-check. `xion-verify refusal-rate` (not-yet-sealed, Phase 5) will report refuse-rate / escalate-rate drift across v1, v2, and combined.
 
 ### KW-ARBITER-002 — Accepted false positives from high-recall bias
 
@@ -57,17 +62,37 @@ Every entry has the same shape:
 - **Pay-down commitment:** Does not close — this is an accepted design cost, not a defect. Re-evaluated if refuse-rate / escalate-rate monitoring shows the operator queue is drowning.
 - **Verifier:** `orchestrator/tests/test_rules.py` (pinned accepted-FP tests with comments referencing this KW).
 
-### KW-ARBITER-003 — No Arweave anchoring of ledger tip yet
+### KW-ANCHOR-001 — Anchor wallet is a hot single-signer
+
+- **Domain:** `KEYS`
+- **Discovered:** 2026-04-21 (Phase 4b anchor-submitter landing)
+- **Severity:** medium
+- **Status:** `mitigated-residual`
+- **Description:** The `ArweaveSubmitter` (`orchestrator/safety/anchor.py`) signs each anchor transaction with a single JWK loaded from `$XION_ANCHOR_WALLET_JWK_PATH`. That wallet is a hot single-signer, held on the same host that runs the anchor loop. If it is compromised, an attacker can publish FALSE anchor records — rows whose `ledger_tip_hash` does not match the operator's true local ledger.
+- **Why it exists:** The ledger-tip commitment is a small, frequently-written artifact (one tx per 64 ledger rows or per 6 hours). Hardware-token-signed ceremonies cannot sustain that cadence. A multi-sig adds coordination overhead out of proportion to the authority being protected (the wallet's ONLY authority is "post an anchor record" — it cannot touch treasury, mint XION, rotate contracts, or otherwise bypass the Covenant).
+- **Mitigations:**
+  1. **Detectability.** Every false anchor record is mechanically detectable: `cross_check_anchors_against_ledger` (in `xion-verify arbiter-up`) walks the anchors file and asserts that every row's `ledger_tip_hash` matches the ledger's `this_hash` at `seq == ledger_row_count - 1`. A forged row immediately fails.
+  2. **Blast-radius ceiling.** Compromise does NOT grant Covenant bypass, treasury drain, or Xion slashing. It grants "publish false claims about the ledger's state" which honest observers catch.
+  3. **Balance floor.** Wallet balance is capped at roughly 90 days of anchor fees; any surplus is swept quarterly. A compromise drains at most one quarter's anchor budget.
+  4. **Rotation.** New JWK, old wallet drained, next anchor records the new `wallet_address`. The rotation is visible on-chain.
+  5. **Cross-submitter witnesses.** A single anchor record published by a rogue wallet is not a corroborated claim of the ledger state; an honest submitter can also publish, and readers require agreement across submitters on the same `(ledger_row_count, ledger_tip_hash)` pair to treat it as authoritative.
+- **Pay-down commitment:** Closes when Phase 6 migrates anchor-publishing authority to AO Core (authorised via the same rotation lattice the contracts use). At that point the anchor loop submits a proposed anchor to AO Core; AO Core signs with the Cold-Root-delegated anchor authority; no single host holds the signing key.
+- **Verifier:** `xion-verify arbiter-up` (live) runs `cross_check_anchors_against_ledger` on every invocation. `xion-verify authorities` (not-yet-sealed, Phase 3 / Phase 6) will report the anchor authority's rotation state.
+
+### KW-ANCHOR-002 — Gateway-dependent cross-Arweave verification
 
 - **Domain:** `AUDIT`
-- **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
-- **Severity:** medium
+- **Discovered:** 2026-04-21 (Phase 4b anchor-submitter landing)
+- **Severity:** low
 - **Status:** `paying-down`
-- **Description:** `SAFETY_LEDGER.jsonl` is hash-chained, but its tip is only stored locally. A malicious operator with write access to the ledger file can rewrite the entire chain from row 0 onward — `verify_chain` will still pass on the rewritten file because every row's `this_hash` is recomputable. The chain's integrity property is only load-bearing against *accidental* corruption and against readers who hold an older tip they trust.
-- **Why it exists:** Phase 4a is the library layer. The periodic tip-anchoring to AO + Arweave is Phase 4b / Phase 5 (Relay loop). Landing the Arbiter before its anchoring would be the wrong build order: we anchor tips only after the ledger schema is stable, and the schema stabilized today.
-- **Mitigations:** (1) Schema's `this_hash` field means any single-row tamper is visible on re-run. (2) The doctrine in `docs/04-ARCHITECTURE.md § Safety Ledger row schema` already names the anchoring path; the honesty surface is Phase 4b, not 2027. (3) `xion-verify arbiter-up` verifies chain-locally; a future `xion-verify state-tip` (not-yet-sealed) will verify the tip against Arweave.
-- **Pay-down commitment:** Closed when Phase 4b lands an `anchor_tip` loop that writes `SAFETY_LEDGER` tips to AO's state chain on a cadence (proposed: every 64 rows or every 6 hours, whichever first). At that point an external auditor holding the Arweave-anchored tip can bound what the operator could have changed to a specific rollback window.
-- **Verifier:** `xion-verify state-tip` (stubbed, Phase 4b).
+- **Description:** `xion-verify arbiter-up` today runs the structural chain check and the LOCAL cross-check (anchor claims vs local ledger). It does NOT yet fetch each `ar_tx_id` back from Arweave and re-verify against a live gateway. Without that step, an operator who controls both the local ledger AND the local anchors file could publish a coherent pair of locally-forged artifacts; a third-party auditor would need to hit Arweave directly to catch the fraud.
+- **Why it exists:** The structural chain + local cross-check land first in Phase 4b (they are load-bearing for operator-self-audit). The gateway-fetch path is additive; it ships as `xion-verify arbiter-up --gateway <URL>` in a near-term tranche.
+- **Mitigations:**
+  1. Honest labelling: the `verify-anchors` output today does not claim Arweave verification; it reports `rows_covered` and `truncation_window` only. No false claims.
+  2. The `ar_tx_id` field is already present on every `submitted_to=arweave` row, so the moment the gateway-fetch command lands, historic anchors are re-verifiable without schema change.
+  3. **Cross-gateway requirement (doctrine).** When `--gateway` lands, it MUST require agreement across multiple gateways (`--gateway gw1 --gateway gw2 ...`). A single gateway disagreeing with the others is a hard FAIL. This defends against a single compromised / censoring gateway.
+- **Pay-down commitment:** Closes when `xion-verify arbiter-up --gateway <URL>` lands with multi-gateway agreement enforced AND at least one end-to-end test exercises the path against a live Arweave testnet / devnet.
+- **Verifier:** `xion-verify arbiter-up --gateway <URL>` (not-yet-sealed; doctrine in `docs/schemas/ledger-safety-anchors.yaml verifier_implementation.gateway_cli`).
 
 ### KW-ARBITER-004 — Sensorium (distress-signal half of Principle 10) deferred
 
@@ -279,6 +304,23 @@ Every entry has the same shape:
 ## Closed
 
 *(Entries move here with a closure date and the artifact (commit hash, PR, deploy tx, or doctrine version) that closed them.)*
+
+### KW-ARBITER-003 — No Arweave anchoring of ledger tip yet
+
+- **Domain:** `AUDIT`
+- **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
+- **Severity:** medium
+- **Status:** `closed` on 2026-04-21 by the Phase 4b anchor-submitter landing.
+- **Description:** `SAFETY_LEDGER.jsonl` was hash-chained, but its tip was only stored locally. A malicious operator with write access to the ledger file could have rewritten the entire chain from row 0 onward — `verify_chain` would still have passed on the rewritten file because every row's `this_hash` is recomputable. The chain's integrity property was only load-bearing against *accidental* corruption and against readers who already held an older tip they trusted.
+- **How it closed:** Phase 4b landed the `SAFETY_LEDGER_ANCHORS.jsonl` mechanism:
+  1. **Doctrine** in `docs/04-ARCHITECTURE.md § "Safety Ledger Arweave anchoring"` and the canonical schema in `docs/schemas/ledger-safety-anchors.yaml`.
+  2. **Code** in `orchestrator/safety/anchor.py`: `AnchorSubmitter` ABC, `LocalOnlySubmitter` (pure-stdlib default), `ArweaveSubmitter` (real AR publishing via the optional `[anchor]` extra), cadence policy (64 rows OR 6 hours OR startup), `write_anchor`, `verify_anchor_chain`, `cross_check_anchors_against_ledger`.
+  3. **Verifier** in `xion-verify arbiter-up`: if an anchors file is present, the structural chain is walked AND every anchor's `ledger_tip_hash` is cross-checked against the ledger's row at `ledger_row_count - 1`. An operator who truncates or rewrites the ledger after anchoring trips the cross-check.
+  4. **CLI** subcommands `python -m orchestrator.safety anchor` (one-shot writer) and `python -m orchestrator.safety verify-anchors` (verifier + cross-check).
+- **Residual / remaining weaknesses (tracked separately):**
+  - `KW-ANCHOR-001` — the hot-single-signer anchor wallet (Phase 6 migrates to AO Core).
+  - `KW-ANCHOR-002` — gateway-dependent cross-Arweave re-fetch not yet shipped; doctrine defines the multi-gateway requirement.
+- **Verifier:** `xion-verify arbiter-up` (live) reports `covers=<rows_covered>/<ledger_rows>` and `truncation_window=<N>` on every invocation.
 
 ### KW-DOCS-001 — Documentation contradictions and drift
 
