@@ -1,0 +1,134 @@
+# docs/schemas/ledger-safety-anchors.yaml
+#
+# CANONICAL. schema_version: 1 as of Phase 4b (2026-04-21).
+#
+# SAFETY_LEDGER_ANCHORS is a second append-only hash-chained JSONL file
+# alongside SAFETY_LEDGER.jsonl. Each row records a published commitment to
+# the ledger's chain tip — either locally (submitted_to: local) or on
+# Arweave (submitted_to: arweave). An auditor holding any anchor record
+# bounds what the operator could have silently changed to exactly the
+# ledger rows written after that anchor's `ledger_row_count`.
+#
+# Doctrine source for the row-level field schema is
+# `docs/04-ARCHITECTURE.md` § "Safety Ledger Arweave anchoring". The
+# implementation that writes these rows is `orchestrator/safety/anchor.py`.
+#
+# Honesty clauses:
+#   - `submitted_to` is the truthful label of where THIS anchor actually
+#     went. It is never a forward-looking promise. A LocalOnlySubmitter
+#     run writes `submitted_to: local`; an auditor reading a file of all-
+#     local anchors has hash-chain integrity over the anchor file but no
+#     third-party durability, and must trust the operator's local storage.
+#     Honest label; honest limits.
+#   - `ar_tx_id` is the Arweave transaction id. It is required iff
+#     `submitted_to == "arweave"`. A tx posted but dropped from the
+#     Arweave mempool remains recorded; the cross-gateway check in
+#     `xion-verify arbiter-up --gateway` will fail loudly for that row,
+#     which is the correct behavior.
+
+schema_version: 1
+
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256:   5e7b19e5acec3e640fd4d1386af496f2872fafda4567e91de88d448079b5344e
+
+status: canonical
+
+ledger_name: SAFETY_LEDGER_ANCHORS
+append_only: true
+storage:     local_jsonl_plus_optional_arweave_per_row
+redactable:  false
+
+# Cadence policy (Genesis Defaults; Layer 2 per docs/14-UPGRADE-PATHS.md).
+cadence:
+  row_count_threshold: 64        # trigger when ledger_row_count - last_anchor_row_count >= this
+  wall_time_threshold_s: 21600   # trigger when now - last_anchor_timestamp >= 6 hours
+  startup_anchor_required: true  # at anchor-loop startup, if ledger non-empty and no anchor file exists, anchor immediately
+  triggers:
+    - row_count    # label written into cadence_trigger when the row-count threshold fired
+    - wall_time    # label written when the wall-time threshold fired
+    - startup      # sentinel for the first-anchor-at-startup case
+
+# The canonical row schema.
+row:
+  required_fields:
+    - schema_version       # uint; matches this file's schema_version
+    - seq                  # uint64; per-anchor-file monotonic, starting at 0
+    - prev_hash            # hex64; sha256 of previous anchor's canonical bytes
+    - this_hash            # hex64; sha256 of this row's canonical bytes excluding this_hash
+    - timestamp_utc_ns     # uint64; UTC ns since epoch
+    - ledger_name          # string; "SAFETY_LEDGER" in v1
+    - ledger_row_count     # uint64; count of rows in the ledger at anchor time
+    - ledger_tip_hash      # hex64; this_hash of last ledger row (or "0"*64 for empty ledger)
+    - cadence_trigger      # enum {row_count, wall_time, startup}
+    - submitted_to         # enum {local, arweave}
+    - submitter_id         # string; e.g. 'local_only_v1', 'arweave_v1'
+    - submitter_version    # uint; bumped on submitter semantic change
+  conditional_fields:
+    ar_tx_id:
+      type:     "string | null"
+      required: "iff submitted_to == arweave"
+      shape:    "Arweave tx id, base64url-encoded"
+    wallet_address:
+      type:     "string | null"
+      required: "iff submitted_to == arweave"
+      shape:    "Arweave wallet address (public); NEVER the JWK"
+
+# Canonicalization rule (identical to SAFETY_LEDGER).
+hash:
+  algorithm:        sha256
+  canonicalization: |
+    json.dumps(
+      {k: v for k, v in row.items() if k != "this_hash"},
+      sort_keys=True,
+      separators=(",", ":"),
+      ensure_ascii=False,
+    ).encode("utf-8")
+  algorithm_pin_note: >-
+    Pinned by schema_version. Invariant 14 applied one level up.
+
+# Verifier.
+verifier_implementation:
+  in_process: orchestrator.safety.anchor.verify_anchor_chain
+  cross_check: orchestrator.safety.anchor.cross_check_anchors_against_ledger
+  cli:        xion-verify arbiter-up
+  gateway_cli: "xion-verify arbiter-up --gateway <URL> [--gateway <URL> ...]"
+  semantics: |
+    verify_anchor_chain walks the anchors file and verifies the same
+    structural rules as ledger.verify_chain (seq contiguity, prev_hash
+    linkage, this_hash recomputation).
+    cross_check_anchors_against_ledger, for every anchor row, asserts that
+    ledger_tip_hash equals the ledger's row this_hash at
+    seq == ledger_row_count - 1. This is the property an auditor needs to
+    detect silent ledger rewriting.
+    The --gateway mode additionally fetches each ar_tx_id from every named
+    gateway and asserts the Arweave-stored payload's canonical bytes hash
+    to the row's this_hash. Multiple gateways must all agree; a single
+    disagreement is a hard FAIL (cross-gateway corroboration).
+
+# Wallet-custody posture (honest).
+wallet_custody:
+  role: "hot single-signer; authority limited to 'post an anchor record'"
+  blast_radius_if_compromised: >-
+    Attacker can publish FALSE anchor records (ledger_tip_hash that does
+    not match the local ledger). Such records are detectable by
+    cross_check_anchors_against_ledger and by any other honest anchor
+    submitter. Blast radius does NOT include Covenant bypass, treasury
+    drain, or Xion slashing.
+  balance_floor_days: 90
+  rotation: >-
+    new JWK, old wallet drained, next anchor names the new wallet_address
+  long_term_migration: >-
+    Phase 6 moves this authority to AO Core; tracked in KW-ANCHOR-001.
+
+# Pay-down commitment history.
+pay_down_commitment_history:
+  closes_known_weaknesses:
+    - id: KW-ARBITER-003
+      phase: Phase 4b
+      note: "Truncation-defense mechanism landed; real Arweave TXs flow when XION_ANCHOR_WALLET_JWK is configured."
+  opens_known_weaknesses:
+    - id: KW-ANCHOR-001
+      note: "Hot single-signer anchor wallet; migrates to AO Core in Phase 6."
+    - id: KW-ANCHOR-002
+      note: "Gateway-dependent --gateway check; mitigated by cross-gateway requirement."
+  landed_on: 2026-04-21

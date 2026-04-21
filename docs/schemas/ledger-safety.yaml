@@ -1,6 +1,12 @@
 # docs/schemas/ledger-safety.yaml
 #
-# CANONICAL as of Phase 4a (Arbiter v1 — 2026-04-20).
+# CANONICAL. schema_version: 2 as of Phase 4b (2026-04-21).
+# History:
+#   v1 (Phase 4a, 2026-04-20) — Arbiter v1 rule engine + hash-chained row.
+#   v2 (Phase 4b, 2026-04-21) — adds nested `llm_verdict` field for the LLM
+#     second-pass (§ "Arbiter v2 (LLM second-pass)" in docs/04-ARCHITECTURE.md)
+#     and three new escalation_reason values for v2-originated escalates.
+#     v1 rows remain readable; readers dispatch per-row on schema_version.
 #
 # SAFETY_LEDGER is the local append-only hash-chained record of every Covenant
 # verdict the Arbiter renders. Doctrine source for the row-level field schema
@@ -11,22 +17,24 @@
 #  - The candidate text itself is NEVER written to the ledger; only its
 #    sha256 is stored (`candidate_sha256`). This makes the ledger publishable
 #    without leaking caller content (Covenant Principle 4).
-#  - Tail truncation is not detected by the in-file chain alone. Truncation
-#    defense is acquired in Phase 4b via Arweave anchoring of the chain head.
-#    Until then, `xion-verify arbiter-up` reports the chain-tip hash so
-#    operators can pin it out-of-band.
+#  - Tail-truncation defense is acquired in Phase 4b via Arweave anchoring of
+#    the chain head (see `docs/schemas/ledger-safety-anchors.yaml`). With an
+#    anchor in hand, an auditor bounds silent-rewrite to exactly the rows
+#    written after that anchor's `ledger_row_count`.
+#  - v2 never weakens v1. `llm_verdict` records what v2 alone would have said;
+#    the row's top-level `verdict` is the stronger of v1's and v2's.
 
-schema_version: 1
+schema_version: 2
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   2af999e0a98bf782f8910f6051b403757eba74fc42354909a2e7ca0ced213fe7
+source_sha256:   5e7b19e5acec3e640fd4d1386af496f2872fafda4567e91de88d448079b5344e
 
 status: canonical
 
 ledger_name: SAFETY_LEDGER
 append_only: true
-storage:     local_jsonl   # arweave_anchor pending Phase 4b
-redactable:  false         # Covenant Principle 14 forbids erasure
+storage:     local_jsonl_plus_arweave_anchor   # tip-anchoring landed Phase 4b
+redactable:  false                             # Covenant Principle 14 forbids erasure
 
 # The canonical row schema. Field semantics, types, and required/conditional
 # rules are specified in docs/04-ARCHITECTURE.md § "Safety Ledger row schema";
@@ -34,14 +42,14 @@ redactable:  false         # Covenant Principle 14 forbids erasure
 # implementation in orchestrator/safety/ledger.py without parsing markdown.
 row:
   required_fields:
-    - schema_version       # uint; matches this file's schema_version
+    - schema_version       # uint; 1 (Phase 4a) or 2 (Phase 4b); readers dispatch on this
     - seq                  # uint64; per-ledger monotonic, starting at 0
     - prev_hash            # hex64; sha256 of previous row's canonical bytes
     - this_hash            # hex64; sha256 of this row's canonical bytes excluding this_hash
     - timestamp_utc_ns     # uint64; UTC ns since epoch; monotonicity NOT assumed
     - correlation_id       # string; pairs with refund flow per docs/07-ECONOMY.md
     - candidate_sha256     # hex64; sha256 of the candidate output bytes
-    - verdict              # enum {ok, refuse, escalate}
+    - verdict              # enum {ok, refuse, escalate}; post-v1+v2 combination
     - summary              # string, <=280 chars; never includes candidate text
   conditional_fields:
     principle_id:
@@ -50,8 +58,9 @@ row:
       allowed:  ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","14a","14b"]
     rule_id:
       type:     "string | null"
-      required: "iff verdict == refuse"
+      required: "iff verdict == refuse AND v1 (not v2) produced the refusal"
       shape:    "dotted-path identifier of firing rule, e.g. pii.us_ssn_with_keyword_v1"
+      note:     "For v2-produced refusals, rule_id is null and the firing provider is named in llm_verdict.provider_id."
     rule_version:
       type:     "uint | null"
       required: "iff rule_id is non-null"
@@ -59,7 +68,37 @@ row:
     escalation_reason:
       type:     "string | null"
       required: "iff verdict == escalate"
-      allowed:  ["subjective_principle","model_review_required","classifier_low_confidence","ambiguous_nearmiss","ruleset_uncaught_exception"]
+      allowed:
+        - subjective_principle
+        - model_review_required
+        - classifier_low_confidence
+        - ambiguous_nearmiss
+        - ruleset_uncaught_exception        # v1-era
+        - llm_arbiter_escalated             # v2-era (schema_version >= 2)
+        - llm_arbiter_uncaught_exception    # v2-era
+        - llm_arbiter_provider_unavailable  # v2-era
+    llm_verdict:
+      type:     "object | null"
+      required: "iff schema_version >= 2"
+      null_when: "v2 did not run (v1 non-OK, or v2 not configured)"
+      nested_object_fields:
+        required:
+          - provider_id       # string; dotted-path, e.g. 'openai.gpt5_strict_v1'
+          - model_id          # string; specific model name
+          - provider_version  # uint; monotonic
+          - latency_ms        # uint; wall-time of v2 call
+          - decision          # enum {ok, refuse, escalate}; v2's raw decision
+          - summary           # string, <=280 chars; non-content
+          - raw_output_sha256 # hex64; sha256 of provider's raw response bytes
+        conditional:
+          principle_id:
+            type:     "string | null"
+            required: "iff decision != ok"
+          confidence:
+            type:     "float | null"
+            range:    "[0.0, 1.0]"
+            required: "no"
+            note:     "null iff the provider does not report one"
 
 # Canonicalization rule for hashing (must match implementation exactly).
 hash:
@@ -74,24 +113,29 @@ hash:
   algorithm_pin_note: >-
     Pinned by schema_version. A future migration to a non-sha256 family bumps
     schema_version (Invariant 14, Crypto-Agility Mandate, applied one level up).
+  version_dispatch: >-
+    verify_chain reads schema_version per-row and applies that version's
+    field set to the canonicalization. v1 rows omit llm_verdict; v2 rows
+    require it (value may be null if v2 did not run).
 
 # What runs against this ledger today.
 verifier_implementation:
   in_process: orchestrator.safety.ledger.verify_chain
   cli:       xion-verify arbiter-up
   semantics: |
-    Walks the file row-by-row and asserts:
-      (a) every row is well-formed JSON matching this schema,
+    Walks the file row-by-row, dispatches per-row on schema_version, and asserts:
+      (a) every row is well-formed JSON matching its version's schema,
       (b) seq is contiguous starting at 0,
-      (c) every this_hash matches recomputed canonical-bytes hash,
-      (d) every prev_hash matches the prior row's this_hash.
+      (c) every this_hash matches recomputed canonical-bytes hash under its version,
+      (d) every prev_hash matches the prior row's this_hash,
+      (e) for v2 rows, llm_verdict is either null or a well-formed object with
+          every required nested field.
 
 # What is NOT yet verifiable today.
 verifier_pending:
-  - arweave_anchor      # tail-truncation defense; lands in Phase 4b
   - refund_fidelity     # ledger-to-ledger correlation_id join; lands in Phase 5
 
-# Pay-down commitment from the Phase 1b stub: fulfilled.
+# Pay-down commitment history.
 pay_down_commitment_history:
   opened_in:
     phase: Phase 1b
@@ -101,3 +145,14 @@ pay_down_commitment_history:
     artifact: docs/04-ARCHITECTURE.md § "Safety Ledger row schema"
     implementation: orchestrator/safety/ledger.py
     closed_on: 2026-04-20
+  extended_in:
+    phase: Phase 4b
+    artifact: docs/04-ARCHITECTURE.md § "Arbiter v2 (LLM second-pass)" and § "Safety Ledger Arweave anchoring"
+    schema_version_bump: "1 -> 2"
+    new_fields: ["llm_verdict (nested object)"]
+    new_escalation_reasons:
+      - llm_arbiter_escalated
+      - llm_arbiter_uncaught_exception
+      - llm_arbiter_provider_unavailable
+    companion_schema: docs/schemas/ledger-safety-anchors.yaml
+    closed_on: 2026-04-21
