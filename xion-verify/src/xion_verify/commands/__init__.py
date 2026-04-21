@@ -26,6 +26,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "credentials",
     "unknowns",
     "links",
+    "schemas",
     "cognition",
     "drive-vector",
     "state-chain",

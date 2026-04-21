@@ -25,6 +25,12 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.1.7,<9",
+    # PyYAML is used exclusively by `xion-verify schemas` to parse
+    # docs/schemas/*.yaml. It is a widely-audited, non-optional dep for any
+    # auditor to reproduce the schemas check. Pinned to >=6.0 because that is
+    # the first release safe under CVE-2020-14343 and with libyaml bindings
+    # available on all our matrix OSes.
+    "PyYAML>=6.0,<7",
 ]
 
 [project.optional-dependencies]

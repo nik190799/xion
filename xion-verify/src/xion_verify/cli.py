@@ -35,6 +35,7 @@ from xion_verify.commands.constitutional import (
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.links import links
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
+from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.state_chain import state_chain
 from xion_verify.exit_codes import FAIL, OK
@@ -50,6 +51,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "credentials": credentials,
     "unknowns": unknowns,
     "links": links,
+    "schemas": schemas,
     "cognition": cognition,
     "drive-vector": drive_vector,
     "state-chain": state_chain,

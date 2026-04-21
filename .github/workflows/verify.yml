@@ -60,6 +60,9 @@ jobs:
       - name: Cross-reference integrity
         run: xion-verify links
 
+      - name: Schemas ↔ doctrine cross-check (strict source_sha256)
+        run: xion-verify schemas
+
       - name: Static cognition / drive-vector / state-chain checks
         run: |
           xion-verify cognition

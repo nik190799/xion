@@ -1,0 +1,66 @@
+# docs/schemas/ledger-safety.yaml
+#
+# INTENTIONAL STUB. SAFETY_LEDGER is referenced across the doctrine corpus
+# (03-COVENANT, 04-ARCHITECTURE, 05-SENSORIUM, 08-AUTO-RESEARCH, 09-GOVERNANCE,
+# 10-IMMORTALITY, 15-TRUST, 24-COGNITION, and Covenant Principle 14) as an
+# append-only Arweave record of every Covenant-relevant action. However, its
+# row-level field schema is NOT yet formally canonicalized in any doctrine
+# file. Shipping a "best-effort" schema here would be fabrication — the
+# schema's source_sha256 would point at doctrine that does not actually
+# specify the fields the schema claims.
+#
+# The honest posture: record the references we have, flag the absence we
+# have, and defer field-level canonicalization to the roadmap phase that
+# will need it (Phase 4, Arbiter v1, is when SAFETY_LEDGER first gets written
+# to in anger).
+
+schema_version: 1
+
+# Cite the strongest single reference as the current source, so CI can verify
+# it still exists and its hash matches what we saw when this stub was written.
+# When the schema is canonicalized in a new doctrine section, that section's
+# path replaces this.
+source_doctrine: docs/03-COVENANT.md
+source_sha256:   77ef30e49e3ac3d142172c7aea5c801c4412ffe7fcb397e9845068ef7b5abc1b
+
+status:   underspecified
+defer_to: Phase 4
+reason: >-
+  Covenant Principle 14 names SAFETY_LEDGER as the public record of every
+  Covenant-relevant action, and many doctrine files write against it, but no
+  file yet enumerates the row-level fields (beyond `correlation_id`, implied
+  by docs/07-ECONOMY.md §"Refusal is Free", and `timestamp`, implied
+  throughout). Canonicalizing the fields belongs to the phase that first
+  writes to the ledger live — Phase 4 (Arbiter v1) — so the schema is
+  specified by the code that actually uses it, not invented in advance.
+
+ledger_name: SAFETY_LEDGER
+append_only: true
+storage:     arweave
+redactable:  false   # Invariant-adjacent: Covenant Principle 14 forbids erasure
+
+# Known, referenced fields (collected across doctrine). This is NOT a
+# definitive row schema; the canonical schema supersedes this list in Phase 4.
+referenced_fields_observed_in_doctrine:
+  - correlation_id         # docs/07-ECONOMY.md — refund flow pairs with ledger entry
+  - timestamp              # implied throughout
+  - arbiter_verdict        # docs/04-ARCHITECTURE.md; pass | refuse | rewrite
+  - principle_cited        # Covenant principle triggering the entry
+  - summary                # short human-readable description
+
+# What verifies a SAFETY_LEDGER entry today: nothing (the ledger does not yet
+# exist on a live network). What will verify it in Phase 4+: `xion-verify
+# refusal-rate` (already registered as NOT_YET_SEALED) will enumerate rows in
+# a sampling window and require every outbound Relay token to have a paired
+# arbiter_verdict in the ledger within its correlation_id.
+verifier_pending: xion-verify refusal-rate
+
+# Pay-down commitment. When Phase 4 ships Arbiter v1, the canonical schema
+# lands here, `status` flips to `canonical`, `defer_to` is removed, the full
+# required-field list is filled in from the Arbiter implementation it just
+# built, and CHANGELOG records the transition in the same commit.
+pay_down_commitment:
+  phase: Phase 4
+  artifact: docs/04-ARCHITECTURE.md §"Safety Ledger row schema" (to be added)
+  implementation: orchestrator/arbiter.py (to be built)
+  blocker: Arbiter v1 is not yet built; schema inventions here would precede use

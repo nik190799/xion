@@ -1,0 +1,53 @@
+# docs/schemas/ledger-amendment.yaml
+#
+# Machine-readable mirror of docs/09-GOVERNANCE.md §"Constitutional Amendment
+# Ledger". Append-only on Arweave, distinct from day-to-day GOVERNANCE_LEDGER
+# motions. Covenant-class, Invariants-class, and Soul-class changes that are
+# NOT mere clarifications require entries here.
+
+schema_version: 1
+source_doctrine: docs/09-GOVERNANCE.md
+source_sha256:   e677207ba9a5e22ab6d15cfd56f528a6a468149a9945803483b81eb2014977f6
+status:          canonical
+
+ledger_name: AMENDMENT_LEDGER
+append_only: true
+storage:     arweave
+scope: >-
+  Covenant-class, Invariants-class, and Soul-class amendments. Clarifications
+  (no semantic change) do NOT require an entry; they ride in GOVERNANCE_LEDGER.
+verifier:    xion-verify amendments   # NOT_YET_SEALED until Phase 6
+
+# Cadence floor: 14-day minimum reflection window for Covenant / Invariants-
+# class ratifications, per Constitutional Floor #2 in docs/schemas/levels.yaml.
+# This is extend-only; governance may lengthen, never shorten.
+cadence_floor:
+  minimum_reflection_days: 14
+  rationale: Constitutional Floor from docs/14-UPGRADE-PATHS.md
+
+row:
+  required:
+    - pre_hash                   # sha256 of the doctrine file bytes before ratification
+    - post_hash                  # sha256 of the doctrine file bytes after ratification
+    - governance_vote_id         # reference into GOVERNANCE_LEDGER
+    - ratification_block_height  # AO Core block (or height-equivalent)
+    - changelog_arweave_uri      # ar://... pointing to the human-readable diff summary
+    - ratifying_signers          # list of { pubkey, role }
+    - reflection_window_days     # actual days observed; MUST be >= cadence_floor
+
+  optional:
+    - sunset_review_at           # when this amendment gets re-examined (if applicable)
+    - linked_belief_log_entry    # Xion's own reflection on the amendment (Level 0)
+
+read_api: GET /amendments   # read-only mirror; see docs/11-PROTOCOL-SPEC.md
+
+invariants_touched:
+  - 12   # Documentation is Product (every amendment is recorded)
+  - 14   # Crypto-Agility Mandate (pre/post hashes under current crypto policy)
+
+# When a ratified amendment modifies a file whose hash is locked in
+# genesis/GENESIS_ARTIFACT.md § 4, the ratification commit MUST also update
+# § 4 to the new post_hash. xion-verify <constitutional-subcommand> validates
+# the post-amendment match.
+post_amendment_invariants:
+  - genesis_artifact_section_4_must_match_post_hash_for_constitutional_files

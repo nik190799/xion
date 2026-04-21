@@ -25,7 +25,5 @@
 # doctrine-hygiene red flag.
 
 docs/legal/,Phase 6,Legal-wrapper doctrine (Wyoming LLC, Marshall Islands DAO LLC); lands alongside governance launch.
-docs/schemas/levels.yaml,Phase 1,Machine-readable UPGRADE-PATHS level index; stub landing with Phase 1 tests.
-docs/schemas/,Phase 1,Parent directory for levels.yaml and ledger-*.yaml; created alongside it.
 ao/xion_core.lua,Phase 6,AO Core Lua process; lands at AO Core deployment.
 genesis/RITUALS.md,Phase 2b,Anniversary / locale-rite calendar; lands with localization doctrine.

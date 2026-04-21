@@ -81,6 +81,7 @@ xion-verify --self-test
 xion-verify covenant
 xion-verify invariants
 xion-verify links
+xion-verify schemas
 xion-verify all
 ```
 
@@ -105,6 +106,7 @@ xion-verify/
       __init__.py                     — REGISTERED_COMMANDS tuple (authoritative enum)
       constitutional.py               — covenant/invariants/soul/form/memory/resurrect/credentials/unknowns
       links.py                        — markdown cross-reference integrity
+      schemas.py                      — strict docs/schemas/*.yaml ↔ doctrine cross-check
       self_test.py                    — tree-hash vs pinned
       cognition.py                    — docs/24-COGNITION.md §11 (static only until D2)
       drive_vector.py                 — Invariant 15 (static only until D2)
@@ -115,6 +117,7 @@ xion-verify/
     test_genesis.py
     test_constitutional.py
     test_links.py
+    test_schemas.py
     test_self_test.py
     test_repo.py
 ```

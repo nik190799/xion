@@ -1,0 +1,81 @@
+# docs/schemas/ledger-specialist.yaml
+#
+# Machine-readable mirror of docs/24-COGNITION.md §14 SPECIALIST_LEDGER schema.
+# Append-only on Arweave, parallel to SAFETY_LEDGER. Every specialist event is
+# hash-chained to the previous entry. No AO Core handler exists to delete,
+# redact, or re-sign any entry.
+
+schema_version: 1
+source_doctrine: docs/24-COGNITION.md
+source_sha256:   9f72e7d52d7fa8750fa85ee30ae4a6c3b41ac044b5e1bb98f585777ba9473be2
+status:          canonical
+
+ledger_name: SPECIALIST_LEDGER
+append_only: true
+storage:     arweave
+hash_chained: true
+redactable:   false
+verifier:     xion-verify specialist-ledger   # NOT_YET_SEALED until Phase 6
+
+row:
+  required:
+    - ledger            # literal string "SPECIALIST_LEDGER"
+    - entry_id          # UUID
+    - prev_hash         # sha256 of the previous entry
+    - this_hash         # sha256(entry_id + specialist_name + timestamp + payload + prev_hash)
+    - signature         # Ed25519 today (Invariant 14: crypto-policy-resolved)
+    - timestamp         # ISO-8601 UTC
+    - specialist_name   # one of row.enums.specialist_name
+    - event_type        # one of row.enums.event_type
+    - correlation_id    # links to PROPOSAL_LEDGER, SAFETY_LEDGER, or RESEARCH_JOURNAL
+    - payload           # see row.payload
+    - drive_vector_snapshot   # see row.drive_vector_snapshot
+
+  enums:
+    specialist_name:
+      - research-agent
+      - reflection-agent
+      - proposal-agent
+      - vision-agent
+      # Future specialists are added here in the same commit that adds their
+      # SKILL.md; CI enforces mirror discipline.
+
+    event_type:
+      - error
+      - refusal
+      - drift_detected
+      - proposal_drafted
+      - proposal_kept
+      - proposal_reverted
+      - cost_envelope_breach
+      - auto_pause
+      - governance_resume
+
+  payload:
+    fields:
+      summary:          required string    # short human-readable description
+      cost_usdc:        optional number    # USDC at debit time
+      arbiter_verdict:  optional enum      # pass | refuse | rewrite
+      detail_uri:       optional string    # ar://... for long-form payloads
+
+  drive_vector_snapshot:
+    fields:
+      survival: required number
+      service:  required number
+      meaning:  required number
+
+read_api: GET /specialist-events   # anonymized, paginated
+
+# Kept-proposal ratio (see docs/24-COGNITION.md §14 "Kept-proposal ratio
+# computation"). A specialist whose 90-day ratio drops below 0.20 auto-pauses
+# for review.
+kept_proposal_ratio:
+  window_days: 90
+  genesis_default_threshold: 0.20
+  vital_sign: kept_proposal_ratio_per_specialist
+
+invariants_touched:
+  - 5    # Truth First
+  - 6    # Refusal Right (event_type includes 'refusal')
+  - 14   # Public Safety Ledger (this ledger is parallel to, not replacing, SAFETY_LEDGER)
+  - 15   # Volition: drive_vector_snapshot at event time
