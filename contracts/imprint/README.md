@@ -35,7 +35,9 @@ The earning rules and amounts live in the AO Core's `engagement_policy_vN` sub-p
 
 ## Decay
 
-IMPRINT decays at a slow rate (~2% per 30 days) if the wallet has no IMPRINT-earning activity in the period. This rewards sustained presence over one-time accumulation. Decay is computed lazily at read-time (no gas burn for inactive wallets). A wallet that resumes activity after a long absence still has a baseline decayed amount; it does not go to zero unless many months pass.
+IMPRINT decays at a slow rate — `DECAY_BPS_PER_30D = 42` basis points per 30 days, which compounds to **~5% per year**. This matches the rate named in [`docs/16-CURRENCY.md`](../../docs/16-CURRENCY.md) (§"IMPRINT — Specification" → "Slowly decaying: e.g., 5% per year, with a floor"). Decay applies only if the wallet has no IMPRINT-earning activity in the period; it rewards sustained presence over one-time accumulation. Decay is computed lazily at read-time (no gas burn for inactive wallets). A wallet that resumes activity after a long absence still has a baseline decayed amount; it does not go to zero unless many years pass.
+
+The rate is a compile-time constant on the deployed contract and cannot be changed without deploying a new IMPRINT contract (which would invalidate every governance weight ever computed — see `KW-CONTRACTS-003` closure notes).
 
 ## Anti-farm features
 

@@ -21,12 +21,14 @@ pragma solidity ^0.8.24;
 //    - After unlock, only the beneficiary can call `withdraw`. If the
 //      beneficiary address is lost, the LP tokens are effectively burned.
 //
-//  Fee policy (optional, commented out):
-//    A portion of LP trading fees accrued during the lock period could be
-//    claimable by Xion's treasury on a per-quarter cadence. If enabled, the
-//    fee-claim function must be implemented such that it CANNOT withdraw the
-//    underlying LP tokens, only the fee-delta. This is omitted from the MVP
-//    deployment to keep the contract minimal and un-attackable.
+//  Out of scope:
+//    This contract holds LP tokens and has exactly one exit path (`withdraw`
+//    after `unlockTimestamp`, callable only by `beneficiary`). It has no
+//    fee-claim, no partial-withdraw, no rebalancing, no hook surface. Any
+//    forward-looking discussion of LP fee policy lives in
+//    `LIQUIDITY_LOCK_NOTES.md`, not in this source file, to keep the
+//    contract's surface as small as the property it promises.
+//    (KW-CONTRACTS-006 remediation.)
 // =============================================================================
 
 interface IERC20 {

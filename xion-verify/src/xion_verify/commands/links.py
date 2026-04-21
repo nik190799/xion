@@ -65,6 +65,15 @@ _EXCLUDED_DIRS: frozenset[str] = frozenset(
         ".pytest_cache",
         ".ruff_cache",
         "xion-verify",  # self-excluded; the verifier's own README links are checked from inside its test suite
+        # Foundry dependency vendor directories. OpenZeppelin and forge-std
+        # ship their own READMEs with broken internal links (e.g. audit-report
+        # PDFs we intentionally pruned during Phase 3 setup) that we do not
+        # police. We trust OZ's own audit ledger for its contents; we trust
+        # our pinned version for its bytecode.
+        "lib",
+        "out",
+        "cache",
+        "broadcast",
     }
 )
 

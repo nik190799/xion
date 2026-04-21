@@ -22,15 +22,30 @@ pragma solidity ^0.8.24;
 //  Minting:
 //    - Only the registered `engagementAttestor` can mint.
 //    - The `mintReason` tag is required on every mint for audit.
-//    - The Attestor address is set once at construction and cannot be changed
-//      after the owner renounces. After renounce, minting authority is fixed
-//      until the AO Core itself rotates its relay-auth key (handled upstream,
-//      not at this layer).
+//    - The Attestor address is rotatable via the two-role timelock lattice
+//      (KW-CONTRACTS-001 remediation; see Rotation lattice section below).
 //
 //  Slashing:
 //    - The Attestor can slash a wallet's IMPRINT with a reason tag.
 //    - Slashed amounts are permanently burned.
 //    - Slash events are indexed for auditability.
+//
+//  Rotation lattice (KW-CONTRACTS-001):
+//    Two separate authorities:
+//      - `engagementAttestor` — operational; signs `attest` and `slash`.
+//      - `governance` — constitutional; can rotate `engagementAttestor` and
+//        can rotate itself.
+//    Both rotations are two-phase propose/execute with a minimum delay:
+//      - Attestor rotation: 7-day timelock, proposed and cancellable by
+//        `governance`.
+//      - Governance rotation: 30-day timelock, proposed and cancellable by
+//        `governance` itself (which is expected to be a Cold-Root-gated
+//        multisig with 3-of-5 Shamir custody per docs/13-OPERATIONS.md).
+//    The lattice is documented in docs/04-ARCHITECTURE.md and
+//    docs/13-OPERATIONS.md; the constitutional property is "every authority
+//    held in this contract rotates on a publicly-visible timelock", not
+//    "this specific address can never change", which would be a
+//    single-key-loss bricking path.
 // =============================================================================
 
 contract Imprint {
@@ -53,30 +68,53 @@ contract Imprint {
     uint256 public totalSlashed;
 
     // -------------------------------------------------------------------------
-    // Decay parameters: ~2% per 30 days, compounded continuously, applied on
-    // read. Rate expressed in "basis-points per 30 days" = 200. A wallet that
-    // was last touched more than ~10 years ago tends toward a residual floor
-    // (we stop at a minimum of 1 wei per decimal to avoid dust math issues).
+    // Decay parameters: ~5% per year (≈ 42 basis-points per 30 days when
+    // compounded 12.17 times/year). Matches docs/16-CURRENCY.md's documented
+    // decay rate ("slowly decaying ... e.g., 5% per year, with a floor").
+    // Changed from 200 BPS/30d (~21.5%/year) to 42 BPS/30d (~5%/year) as part
+    // of KW-CONTRACTS-003 remediation; decay math:
+    //   (1 - 0.0042)^12.17 ≈ 0.950  →  ~5% per year
     // -------------------------------------------------------------------------
-    uint256 public constant DECAY_BPS_PER_30D = 200; // 2%
+    uint256 public constant DECAY_BPS_PER_30D = 42; // ~5% per year
     uint256 public constant DECAY_PERIOD = 30 days;
 
     // -------------------------------------------------------------------------
-    // Authorization
+    // Authorization — rotation lattice (KW-CONTRACTS-001).
     // -------------------------------------------------------------------------
-    address public immutable engagementAttestor;
+    address public engagementAttestor;
+    address public governance;
+
+    // Pending rotations. `eta` is the earliest block.timestamp at which the
+    // proposed rotation can be executed. zero `eta` means "no pending rotation".
+    address public pendingAttestor;
+    uint256 public pendingAttestorEta;
+    address public pendingGovernance;
+    uint256 public pendingGovernanceEta;
+
+    uint256 public constant ATTESTOR_ROTATION_DELAY = 7 days;
+    uint256 public constant GOVERNANCE_ROTATION_DELAY = 30 days;
 
     // -------------------------------------------------------------------------
-    // Events — intentionally NOT the ERC-20 Transfer/Approval set, to reduce
-    // the risk of dapps mistakenly wiring IMPRINT into transfer pipelines.
+    // Events
     // -------------------------------------------------------------------------
     event Attested(address indexed to, uint256 amount, bytes32 indexed reasonTag, uint256 newBalance);
     event Slashed(address indexed from, uint256 amount, bytes32 indexed reasonTag, uint256 newBalance);
     event Locked(address indexed holder); // ERC-5192 spirit — emitted on first mint
 
+    event AttestorRotationProposed(address indexed proposed, uint256 eta);
+    event AttestorRotationExecuted(address indexed previous, address indexed current);
+    event AttestorRotationCancelled(address indexed cancelled);
+    event GovernanceRotationProposed(address indexed proposed, uint256 eta);
+    event GovernanceRotationExecuted(address indexed previous, address indexed current);
+    event GovernanceRotationCancelled(address indexed cancelled);
+
     error NotAttestor();
+    error NotGovernance();
     error ZeroAddress();
     error InsufficientBalance();
+    error AmountOverflow();
+    error NoPendingRotation();
+    error RotationNotMatured();
 
     // -------------------------------------------------------------------------
     // There is no `transfer`, `transferFrom`, `approve`, `permit`, `delegate`,
@@ -92,13 +130,19 @@ contract Imprint {
         _;
     }
 
-    constructor(address _engagementAttestor) {
-        if (_engagementAttestor == address(0)) revert ZeroAddress();
+    modifier onlyGovernance() {
+        if (msg.sender != governance) revert NotGovernance();
+        _;
+    }
+
+    constructor(address _engagementAttestor, address _governance) {
+        if (_engagementAttestor == address(0) || _governance == address(0)) revert ZeroAddress();
         engagementAttestor = _engagementAttestor;
+        governance = _governance;
     }
 
     // -------------------------------------------------------------------------
-    // Mint — called by the AO Core's engagement attestor after verifying that
+    // Mint — called by the registered engagement attestor after verifying that
     // a qualifying engagement event occurred (sustained thread, accepted
     // contribution, correct Witness report).
     //
@@ -111,6 +155,8 @@ contract Imprint {
         uint256 current = _decayedBalance(to);
         bool firstMint = (current == 0 && _balances[to].lastTouched == 0);
         uint256 newBal = current + amount;
+        // KW-CONTRACTS-004: explicit overflow check on the uint128 narrowing.
+        if (newBal > type(uint128).max) revert AmountOverflow();
 
         _balances[to] = Balance({
             rawAmount: uint128(newBal),
@@ -144,6 +190,74 @@ contract Imprint {
     }
 
     // -------------------------------------------------------------------------
+    // Rotation lattice — KW-CONTRACTS-001.
+    //
+    // Attestor rotation (7-day timelock, gated by `governance`):
+    //   1. governance.proposeAttestorRotation(newAttestor)   → sets pending + eta
+    //   2. wait ATTESTOR_ROTATION_DELAY
+    //   3. anyone.executeAttestorRotation()                  → swaps attestor
+    //
+    // Governance rotation (30-day timelock, gated by `governance` itself):
+    //   1. governance.proposeGovernanceRotation(newGovernance)
+    //   2. wait GOVERNANCE_ROTATION_DELAY
+    //   3. anyone.executeGovernanceRotation()
+    //
+    // Cancel paths are available while the rotation is still pending, to
+    // handle the "signed the wrong address" case cleanly.
+    // -------------------------------------------------------------------------
+    function proposeAttestorRotation(address newAttestor) external onlyGovernance {
+        if (newAttestor == address(0)) revert ZeroAddress();
+        pendingAttestor = newAttestor;
+        pendingAttestorEta = block.timestamp + ATTESTOR_ROTATION_DELAY;
+        emit AttestorRotationProposed(newAttestor, pendingAttestorEta);
+    }
+
+    function cancelAttestorRotation() external onlyGovernance {
+        if (pendingAttestor == address(0)) revert NoPendingRotation();
+        address cancelled = pendingAttestor;
+        pendingAttestor = address(0);
+        pendingAttestorEta = 0;
+        emit AttestorRotationCancelled(cancelled);
+    }
+
+    function executeAttestorRotation() external {
+        if (pendingAttestor == address(0)) revert NoPendingRotation();
+        if (block.timestamp < pendingAttestorEta) revert RotationNotMatured();
+        address previous = engagementAttestor;
+        address next = pendingAttestor;
+        engagementAttestor = next;
+        pendingAttestor = address(0);
+        pendingAttestorEta = 0;
+        emit AttestorRotationExecuted(previous, next);
+    }
+
+    function proposeGovernanceRotation(address newGovernance) external onlyGovernance {
+        if (newGovernance == address(0)) revert ZeroAddress();
+        pendingGovernance = newGovernance;
+        pendingGovernanceEta = block.timestamp + GOVERNANCE_ROTATION_DELAY;
+        emit GovernanceRotationProposed(newGovernance, pendingGovernanceEta);
+    }
+
+    function cancelGovernanceRotation() external onlyGovernance {
+        if (pendingGovernance == address(0)) revert NoPendingRotation();
+        address cancelled = pendingGovernance;
+        pendingGovernance = address(0);
+        pendingGovernanceEta = 0;
+        emit GovernanceRotationCancelled(cancelled);
+    }
+
+    function executeGovernanceRotation() external {
+        if (pendingGovernance == address(0)) revert NoPendingRotation();
+        if (block.timestamp < pendingGovernanceEta) revert RotationNotMatured();
+        address previous = governance;
+        address next = pendingGovernance;
+        governance = next;
+        pendingGovernance = address(0);
+        pendingGovernanceEta = 0;
+        emit GovernanceRotationExecuted(previous, next);
+    }
+
+    // -------------------------------------------------------------------------
     // Public read — returns the decayed balance as of now.
     // -------------------------------------------------------------------------
     function balanceOf(address holder) external view returns (uint256) {
@@ -169,11 +283,12 @@ contract Imprint {
     //
     // We avoid on-chain exponentiation over arbitrary periods by capping at a
     // reasonable `periods` bound (240 periods ≈ 20 years; beyond that, balance
-    // is effectively zero for governance purposes, and the rawAmount is
+    // is effectively small for governance purposes, and the rawAmount is
     // preserved untouched until the next mint/slash).
     //
-    // For the MVP we use a straightforward loop; production optimization would
-    // precompute a lookup table or use log-time exponentiation.
+    // KW-CONTRACTS-008 (gas-grenade decay loop): for the MVP we use a
+    // straightforward loop; realistic worst case at launch is < 12 iterations.
+    // A v2 contract may replace this with a closed-form fixed-point exp.
     // -------------------------------------------------------------------------
     function _decayedBalance(address holder) internal view returns (uint256) {
         Balance memory b = _balances[holder];

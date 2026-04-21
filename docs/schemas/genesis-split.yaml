@@ -1,0 +1,96 @@
+# docs/schemas/genesis-split.yaml
+#
+# Machine-readable mirror of the seven-way genesis emission split committed
+# in docs/16-CURRENCY.md "Genesis emission split" subsection. This schema is
+# the pre-genesis witness that the on-chain GENESIS_SPLIT constant in
+# contracts/xion-token/EmissionController.sol matches what doctrine actually
+# says. `xion-verify schemas` strictly requires that source_sha256 byte-exact
+# matches docs/16-CURRENCY.md at every commit.
+
+schema_version:  1
+source_doctrine: docs/16-CURRENCY.md
+source_sha256:   3894146bdcdf1038693a1e0df05b415be408b7d309e29d4f6c24cb5b26fb1a2e
+status:          canonical
+
+# ---------------------------------------------------------------------------
+# The seven pools, indexed identically to EmissionController.poolCap / poolMinted.
+# Amounts here are in whole XION (not wei); the Solidity constant multiplies
+# by 10**18 at compile time.
+# ---------------------------------------------------------------------------
+genesis_total_xion: 84_000_000_000
+
+split:
+  - index: 0
+    pool:  FAIR_LAUNCH
+    genesis_xion: 84_000_000_000
+    lifetime_cap_xion: 168_000_000_000
+    reasoning: >
+      Only pool with "none — available to market per bonding curve" vesting
+      (docs/16-CURRENCY.md line 98). Seeds the bonding-curve LP at t=0; the
+      remaining 84B of the 168B lifetime cap emits into the curve via
+      scheduledMint during Era 1.
+  - index: 1
+    pool:  SERVICE_EARN
+    genesis_xion: 0
+    lifetime_cap_xion: 63_000_000_000
+    reasoning: "Emitted per-use over 20 years (line 99). Lifetime-to-date at t=0 is 0."
+  - index: 2
+    pool:  SECURITY
+    genesis_xion: 0
+    lifetime_cap_xion: 63_000_000_000
+    reasoning: "Emitted per earned event over 20 years (line 100). Lifetime-to-date at t=0 is 0."
+  - index: 3
+    pool:  TREASURY
+    genesis_xion: 0
+    lifetime_cap_xion: 42_000_000_000
+    reasoning: "Explicit 2-year cliff (line 101). Pre-cliff balance is 0."
+  - index: 4
+    pool:  CREATOR_COMMISSIONS
+    genesis_xion: 0
+    lifetime_cap_xion: 42_000_000_000
+    reasoning: "Emitted per accepted contribution over 20 years (line 102). Lifetime-to-date at t=0 is 0."
+  - index: 5
+    pool:  FOUNDATION_OPS
+    genesis_xion: 0
+    lifetime_cap_xion: 21_000_000_000
+    reasoning: >
+      4-year linear drip (line 103). First tranche emits via scheduledMint at
+      the 1/4-year mark, not at t=0.
+  - index: 6
+    pool:  GENESIS_HONOR
+    genesis_xion: 0
+    lifetime_cap_xion: 21_000_000_000
+    reasoning: >
+      3-year linear with year-N tranches gated by the Abdication Schedule
+      (lines 118-120). Year-1 tranche emits via scheduledMint after the
+      year-1 abdication milestone goes green, not at t=0.
+
+# ---------------------------------------------------------------------------
+# Invariant: sum of split[i].genesis_xion == genesis_total_xion.
+# Invariant: for each i, split[i].genesis_xion <= split[i].lifetime_cap_xion.
+# Invariant: split has exactly 7 entries, indices 0..6 inclusive.
+# These are enforced by the test suite for this schema, not by xion-verify
+# schemas directly (which only cross-checks source_sha256).
+# ---------------------------------------------------------------------------
+
+invariants_touched:
+  - 8   # Total supply <= 420B forever.
+  - 9   # Emission schedule cannot accelerate.
+  - 10  # (Indirect — IMPRINT is unaffected by this file; listed for future-reader context.)
+
+verifier:
+  # Pre-deploy (what xion-verify already does today):
+  pre_deploy: "xion-verify schemas"
+  # Post-deploy (promoted from NOT_YET_SEALED after Base Sepolia/mainnet):
+  post_deploy: "xion-verify supply  (checks the on-chain GENESIS_SPLIT constant equals this schema)"
+
+# ---------------------------------------------------------------------------
+# Amendment path.
+# ---------------------------------------------------------------------------
+# Pre-genesis (before emitGenesis is ever called on a live EmissionController):
+#   Deploy a new EmissionController with a different inlined GENESIS_SPLIT.
+#   No data lost; the old controller was never activated.
+# Post-genesis:
+#   Cannot be changed. The Solidity constant is inlined and the contract has
+#   no upgrade path. Governance that wants a different split must wait for a
+#   sister-Core fork (Invariant 6).

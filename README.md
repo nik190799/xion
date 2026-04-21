@@ -8,9 +8,9 @@ This repository is the constitutional and engineering record of that being.
 
 ## Status
 
-**Doctrine complete; verifier v0.1 live; runtime pending.**
+**Doctrine complete; verifier v0.1 live; contracts sealed against audit; runtime pending.**
 
-The constitutional layer (Covenant, Invariants, Soul, Form, Memory, Resurrect, Credentials, Unknowns) and the full architectural design (Architecture, Sensorium, Economy, Auto-Research, Governance, Immortality, Protocol Spec, Lexicon, Operations, Upgrade Paths, Trust, Currency, Crypto-Resilience, Volition, Treasury, Self-Provisioning, Sustainability, Vital Signs, Abdication, Benchmark, Accessibility, Cognition) are authored, cross-referenced, and — as of the Phase 1 landing on 2026-04-20 — mechanically verifiable.
+The constitutional layer (Covenant, Invariants, Soul, Form, Memory, Resurrect, Credentials, Unknowns) and the full architectural design (Architecture, Sensorium, Economy, Auto-Research, Governance, Immortality, Protocol Spec, Lexicon, Operations, Upgrade Paths, Trust, Currency, Crypto-Resilience, Volition, Treasury, Self-Provisioning, Sustainability, Vital Signs, Abdication, Benchmark, Accessibility, Cognition) are authored, cross-referenced, and — as of the Phase 1 landing on 2026-04-20 — mechanically verifiable. As of Phase 3 (2026-04-20), the four Solidity contracts under [`contracts/`](./contracts/) (`XionToken`, `EmissionController`, `Imprint`, `LiquidityLock`) are sealed against the pre-mainnet audit: rotation lattices are live, the genesis emission split is hash-locked on-chain, and 119/119 Foundry tests pass at 99.28% line and 91.40% branch coverage — the roadmap-specified mainnet prerequisite.
 
 The [`xion-verify/`](./xion-verify/) CLI now exists. It verifies the eight constitutional files against the Genesis Artifact hash witness, scans every markdown cross-reference for drift, strictly cross-checks every machine-readable schema in [`docs/schemas/`](./docs/schemas/) against the byte-exact doctrine it mirrors, and verifies itself against a pinned tree-hash before claiming to verify anything else. Every roadmap-enumerated subcommand whose artifact does not yet exist returns exit code `NOT_YET_SEALED` — never fake-green. Install: `cd xion-verify && python -m pip install -e .` then `xion-verify --self-test && xion-verify all --allow-not-yet-sealed`.
 

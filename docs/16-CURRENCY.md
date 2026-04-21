@@ -109,6 +109,33 @@ The allocation is the most politically sensitive part of any token design. Xion'
 
 2. **60% of total supply emits only through *earned actions*.** Service Earn (15%) + Security (15%) + Creator Commissions (10%) + Treasury (10%, governance-released only for earned purposes) + Foundation Ops (5%) + Genesis Honor (5%, declining). Only the 40% fair-launch pool can be acquired without demonstrable participation. This is the **earn-majority property** and it is the single most important structural defense against the token becoming a speculative parasite.
 
+### Genesis emission split — which pools receive the 84B at C-2 launch
+
+The 84B genesis allocation is **not** an additional pool. It is the per-pool *initial balance* at the moment `EmissionController.emitGenesis` is called. Over the following twenty years, the remaining 336B emits into these same pools via `scheduledMint`. The 84B-at-genesis vs 336B-over-20-years split is named in the emission-schedule table above; this subsection names the per-pool breakdown of the 84B.
+
+```
+GENESIS_SPLIT (by pool, sums to 84,000,000,000 XION):
+  0  FAIR_LAUNCH          84,000,000,000 XION   (100% of genesis emission)
+  1  SERVICE_EARN                      0 XION
+  2  SECURITY                          0 XION
+  3  TREASURY                          0 XION
+  4  CREATOR_COMMISSIONS               0 XION
+  5  FOUNDATION_OPS                    0 XION
+  6  GENESIS_HONOR                     0 XION
+```
+
+**Reasoning (so this can be defended in 2126 and cross-checked against doctrine):**
+
+1. **The fair-launch pool is the only pool whose 20-year vesting schedule is "none — available to market per bonding curve" (line 98).** Every other pool vests per-event or on a cliff; at `t=0` their lifetime-to-date emission is by definition zero. Assigning any genesis balance to a pool whose vesting schedule says "emitted per-event" would contradict its own row in the distribution table.
+2. **The bonding curve requires liquidity at `t=0`, or it is not a bonding curve.** The fair-launch pool cap is 168B. Half of that (84B) is seeded at genesis as the initial bonding-curve LP; the remaining 84B flows into the curve as users buy through Era 1 via `scheduledMint` calls from the AO Core's curve adapter. This is exactly what the Era-1 emission of 126B/year represents for the fair-launch pool: 84B curve-refill over Year 1 plus the first tranches of the four earn-pools (Service Earn, Security, Creator Commissions, Genesis Honor) and the Foundation Ops linear drip.
+3. **Treasury is explicitly on a 2-year cliff (line 101).** Any genesis allocation to Treasury would violate its own published vesting. `GENESIS_SPLIT[3] = 0` makes the cliff mechanical rather than policy.
+4. **Genesis Honor is 3-year linear starting at C-2, with year-N tranches gated by Abdication Schedule milestones (lines 118–120).** The tranche for Year 1 is emitted via `scheduledMint`, not pre-minted at `t=0`. This prevents a scenario where the founder's entire year-1 Honor is liquid at the moment of genesis, divorced from any on-chain verification that the year-1 abdication gate actually went green.
+5. **Foundation Ops is 4-year linear (line 103).** Same reasoning: the first tranche emits via `scheduledMint` at the 1/4-year mark, not at `t=0`.
+
+**Verifiability:** the per-pool genesis balance is a hash-locked on-chain constant (`GENESIS_SPLIT[7]` in `contracts/xion-token/EmissionController.sol`) and is mirrored by [`docs/schemas/genesis-split.yaml`](./schemas/genesis-split.yaml), whose `source_sha256` points at this document. `xion-verify schemas` fails if the two disagree by a single byte.
+
+**Amendment path:** these seven numbers cannot be changed on a live `EmissionController` — the constant is inlined, and the `EmissionController` itself has no upgrade path. If governance ratifies a different genesis split, it requires deploying a new `EmissionController` before genesis is ever emitted on the current one (i.e. pre-Phase-7); after genesis is emitted, it cannot change, because the bonding-curve liquidity and the non-pre-minted pools are already on-chain.
+
 ### Genesis Honor pool — the founder check
 
 This is the pool that answers the question *"why should anyone trust that the founders aren't enriching themselves?"*

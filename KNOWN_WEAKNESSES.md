@@ -73,88 +73,80 @@ Every entry has the same shape:
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.1)
-- **Severity:** **fatal** (do not deploy to mainnet)
-- **Status:** `paying-down` (sources unchanged; documented; remediation queued in `DEVELOPMENT_ROADMAP.md` Phase 3 task `p3-rotation`)
-- **Description:** The current `contracts/xion-token/EmissionController.sol` stores `aoCoreAuthority` as `immutable` and `contracts/imprint/Imprint.sol` stores `engagementAttestor` as `immutable`. If the corresponding key is ever lost, compromised, or rotated, the contract becomes either bricked or hostile, and there is no recovery path inside the contract itself.
-- **Why it exists:** "Immutable" was used as shorthand for "constitutional" by the original author. The two are not the same: a constitutional property is a promise that *some* authorized key always controls the contract; an immutable address is a promise that *one specific* key always controls it. Conflating them is the most expensive single mistake in the current contract corpus.
-- **Mitigations:** None in source today. The contracts are pre-deployment, so there is no live exposure. The plan-doctrine-layer rotation lattice (Hot 24h relay-auth → Warm 7d Operator multisig 2-of-3 → Cold 30d Root 3-of-5 Shamir) is documented in `docs/13-OPERATIONS.md` and `docs/04-ARCHITECTURE.md`.
-- **Pay-down commitment:** Closed when `rotateAuthority(address)` is added to both contracts behind a 7-day timelock under the `governance` role (which itself rotates only via 30-day timelock under Cold Root). Tracked as `p3-rotation` in `DEVELOPMENT_ROADMAP.md`. Must close before mainnet deployment.
-- **Verifier:** `xion-verify authorities` (specified for Phase 1).
+- **Severity:** **fatal** (did not deploy to mainnet with this weakness open)
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** The earlier `contracts/xion-token/EmissionController.sol` stored `aoCoreAuthority` as `immutable` and `contracts/imprint/Imprint.sol` stored `engagementAttestor` as `immutable`. If the corresponding key were ever lost, compromised, or rotated, the contract would have become either bricked or hostile, and there was no recovery path inside the contract itself.
+- **Why it existed:** "Immutable" was used as shorthand for "constitutional" by the original author. The two are not the same: a constitutional property is a promise that *some* authorized key always controls the contract; an immutable address is a promise that *one specific* key always controls it.
+- **How it was closed:** Both contracts now implement a two-role authority lattice: an `engagementAttestor` / `aoCoreAuthority` (operational, rotatable on a 7-day timelock by `governance`) and a `governance` address (constitutional, rotatable by itself on a 30-day timelock). Rotations are three-phase: `proposeXRotation(addr)` → wait for `eta` → `executeXRotation()`; cancellable by governance while pending. `governance` is expected to be the Cold Root multisig (3-of-5 Shamir) on mainnet.
+- **Verifier:** Tests `test_attestorRotation_*` (Imprint), `test_governanceRotation_*` (Imprint), `test_authorityRotation_*` (EmissionController), and `test_governanceRotation_*` (EmissionController) in `contracts/test/`. `xion-verify authorities` will promote from `NOT_YET_SEALED` after mainnet and cross-check the on-chain `engagementAttestor` / `aoCoreAuthority` / `governance` values against `CONTRACTS_LEDGER.md`.
 
 ### KW-CONTRACTS-002 — `EmissionController.emitGenesis` does not commit to the seven-way split
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.5)
-- **Severity:** **fatal** (do not deploy to mainnet)
-- **Status:** `paying-down`
-- **Description:** The genesis emission can be called with any seven amounts that sum to the genesis allocation. The constitutional split (per `docs/16-CURRENCY.md`) is not enforced in code. A compromised or malicious operator could mint the entire genesis to a single recipient.
-- **Why it exists:** Recipients were intended to be flexible (the operator can choose where each bucket goes); proportions were not. Source treats both as parameters.
-- **Mitigations:** None in source today. Currency doctrine documents the intended proportions in prose, which is not load-bearing protection.
-- **Pay-down commitment:** Closed when `EmissionController` declares `uint256[7] constant GENESIS_SPLIT` and `emitGenesis` enforces `amounts[i] == GENESIS_SPLIT[i]` for each `i`. Recipients remain parameters. Tracked as `p3-genesis-split` in `DEVELOPMENT_ROADMAP.md`. Must close before mainnet deployment.
-- **Verifier:** `xion-verify supply` (will fail loudly if total minted at genesis does not match the constant split).
+- **Severity:** **fatal** (did not deploy to mainnet with this weakness open)
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** The earlier `emitGenesis(uint256[7] amounts, ...)` accepted any seven amounts summing to `GENESIS_ALLOC`. The constitutional per-pool split was not enforced on-chain; a compromised or careless operator could have routed the entire 84B genesis to a single pool.
+- **How it was closed:** (1) `docs/16-CURRENCY.md` gained a new "Genesis emission split" subsection making the seven-way split canonical — all 84B routes to the FAIR_LAUNCH pool, and indices 1..6 start at zero and accumulate via `scheduledMint`. (2) `docs/schemas/genesis-split.yaml` mirrors the split machine-readably and pins to the doctrine via `source_sha256`, enforced by `xion-verify schemas`. (3) `EmissionController.sol` now declares the split inline via `_genesisSplit(i)` / `GENESIS_SPLIT(i)` public accessor; `emitGenesis(address[7] recipients)` takes only recipient addresses and allocates per the hash-locked constant. Tests `test_emitGenesis_*` and `test_genesisSplit_*` cover the happy path, indices 1..6 = 0, sum = 84B, and the non-authority / idempotency / zero-recipient reverts.
+- **Verifier:** `xion-verify schemas` (pre-deploy, live) + `xion-verify supply` (post-deploy, promoted from `NOT_YET_SEALED` after mainnet). The deploy script (`contracts/script/Deploy.s.sol`) also performs a constitutional sanity check on `GENESIS_SPLIT(i)` at the end of the deployment run.
 
 ### KW-CONTRACTS-003 — `Imprint.DECAY_BPS_PER_30D` conflicts with documented decay rate
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.2)
 - **Severity:** high
-- **Status:** `open`
-- **Description:** `contracts/imprint/Imprint.sol` sets `DECAY_BPS_PER_30D = 200` (≈21.5% annual decay). `contracts/imprint/README.md` agrees with the code ("~2% per 30 days"); only `docs/16-CURRENCY.md:195` disagrees, documenting "5% per year". Choose one before mainnet; the constant cannot be changed on a live contract without invalidating every governance weight ever computed.
-- **Why it exists:** The constant predates the doctrine that named the rate; nobody reconciled them.
-- **Mitigations:** None in source today.
-- **Pay-down commitment:** Closed when one of (`Imprint.DECAY_BPS_PER_30D` changed to 42, ~5%/year per doctrine — the recommended fix) or (docs revised to ~21.5%/year — recommended *only* if there is a strong reason to keep the higher decay). Tracked as `p3-decay` in `DEVELOPMENT_ROADMAP.md`. Recommended: code change.
-- **Verifier:** `xion-verify covenant` will reject the artifact bundle if decay constant and currency doctrine disagree (audit-time check).
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** `contracts/imprint/Imprint.sol` previously set `DECAY_BPS_PER_30D = 200` (~21.5% annual). `docs/16-CURRENCY.md` documented "~5% per year". The mismatch would have invalidated every governance weight had it survived to mainnet.
+- **How it was closed:** Code changed to `DECAY_BPS_PER_30D = 42`, which compounds to ~5.0% per year — matching the doctrine. `contracts/imprint/README.md` was also reconciled to describe 5%/year and cite `docs/16-CURRENCY.md` as the source of truth. Tests `test_decay_period1`, `test_decay_period12_approxFivePercentAnnual`, and `test_decay_period240_capped` assert the new rate numerically.
 
 ### KW-CONTRACTS-004 — Missing overflow check on `uint128(newBal)` in `Imprint.attest`
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.4)
 - **Severity:** medium
-- **Status:** `open`
-- **Description:** Cast from `uint256 newBal` to `uint128` storage slot lacks an explicit bounds check. Solidity 0.8+ checked arithmetic does not catch silent narrowing on `uint256 → uint128`.
-- **Why it exists:** Author trusted that the practical balance ceiling would never approach `uint128.max`. True for any plausible mint pattern, but unverified.
-- **Mitigations:** None in source today.
-- **Pay-down commitment:** Closed when `require(newBal <= type(uint128).max, "imprint: overflow");` is added at the call site. Tracked as part of `p3-cleanup` in `DEVELOPMENT_ROADMAP.md`.
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** The cast from `uint256 newBal` to the `uint128` storage slot lacked an explicit bounds check. Silent narrowing is not caught by Solidity 0.8+ checked arithmetic.
+- **How it was closed:** `Imprint.attest` now checks `if (newBal > type(uint128).max) revert AmountOverflow();` before writing to storage. Tests `test_attest_rejectsOverflow` and `test_attest_acceptsExactlyUint128Max` cover both sides of the bound.
 
 ### KW-CONTRACTS-005 — Check-Effects-Interactions ordering in `EmissionController._enforceEraCap`
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.6)
 - **Severity:** medium
-- **Status:** `open`
-- **Description:** State writes occur after external interactions. Vector for re-entrancy is narrow because the only external call is to `XionToken._mint`, which itself does not re-enter, but the pattern is brittle for future maintainers.
-- **Mitigations:** None in source today.
-- **Pay-down commitment:** Closed when state writes are reordered to precede the external call. Tracked as part of `p3-cleanup`.
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** State writes previously occurred around or after the external mint call. The re-entrancy surface was narrow (the only external call was to `XionToken._mint`, which does not re-enter), but the pattern was brittle for future maintainers.
+- **How it was closed:** Both `emitGenesis` and `scheduledMint` now complete all effects (era cap increment, slowdown check, `poolMinted` update, `genesisEmitted` flag, cap comparisons) BEFORE invoking `token.mint`. The `genesisEmitted = true` flag is set pre-interaction so that even a hypothetical re-entering mint hook could not re-emit. Tests `test_emitGenesis_idempotent` and the various `test_scheduledMint_*Cap*` tests exercise the reordered flow.
 
 ### KW-CONTRACTS-006 — Footgun comment in `LiquidityLock.sol` about future fee-claim
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.7)
 - **Severity:** low (informational; misleads readers)
-- **Status:** `open`
-- **Description:** Comment hints at a future ability to claim accumulated fees from locked LP tokens. The contract does not implement it; the doctrine does not endorse it; the comment will be cited as evidence that the lock is escapable.
-- **Mitigations:** None in source today.
-- **Pay-down commitment:** Closed when comment is removed and any forward-looking notes about LP-fee policy are moved to `LIQUIDITY_LOCK_NOTES.md`. Tracked as part of `p3-cleanup`.
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** A comment block hinted at a future "optional fee-claim" feature. The contract did not implement it; the doctrine did not endorse it; the comment would have been cited as evidence that the lock was escapable.
+- **How it was closed:** The comment was removed. Any forward-looking discussion of LP fee policy was moved to `contracts/xion-token/LIQUIDITY_LOCK_NOTES.md`, explicitly labeled as non-load-bearing notes, with the minimum-mechanism rationale for keeping the contract's surface small.
 
 ### KW-CONTRACTS-007 — Doc-code naming inconsistency in `XionToken`
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.9)
 - **Severity:** low
-- **Status:** `open`
-- **Description:** Header comment refers to `_totalMinted` but the actual storage variable is `totalMinted`. Cosmetic but the kind of inconsistency that produces 4am bug reports.
-- **Mitigations:** None.
-- **Pay-down commitment:** Header comment corrected. Tracked as part of `p3-cleanup`.
+- **Status:** `closed` — Phase 3 (2026-04-20)
+- **Description:** Header comment referred to `_totalMinted`; actual storage variable was `totalMinted`.
+- **How it was closed:** Header updated to use `totalMinted` with an explicit note that earlier drafts used the `_totalMinted` name.
 
 ### KW-CONTRACTS-008 — Gas-grenade decay loop in `Imprint`
 
 - **Domain:** `CONTRACTS`
 - **Discovered:** 2026-04-19 (audit §3.3)
 - **Severity:** medium (latent; depends on attestation cadence)
-- **Status:** `open` (deferred to v2 unless trivial)
-- **Description:** Iterative decay loop in `Imprint` becomes O(n) in the number of 30-day periods between attestations for a given holder. A holder who has not been attested in 5 years pays the gas for 60+ iterations.
-- **Mitigations:** None in source today. Realistic worst case at launch is < 12 iterations.
-- **Pay-down commitment:** Reviewed during `p3-tests` for cost characterization; if a closed-form decay is straightforward, replaced; otherwise documented and deferred to a v2 contract.
+- **Status:** `deferred-to-v2` (reviewed in Phase 3; closed-form replacement is non-trivial and not required for Phase-6 launch)
+- **Description:** The iterative decay loop in `Imprint._decayedBalance` is O(n) in the number of 30-day periods between attestations. A holder unattested for 5 years pays the gas for 60+ iterations.
+- **Mitigations:**
+  - Realistic worst case at launch is < 12 iterations per read (active holders).
+  - A hard cap at 240 periods (~20 years) is enforced in the loop to prevent unbounded gas cost.
+  - Test `test_decay_period240_capped` asserts the cap.
+- **Pay-down commitment:** Deferred to a successor `ImprintV2` contract if/when a closed-form fixed-point exponential is wanted. Not required for Phase-6 mainnet. Tracked annually in `xion-audit`.
 
 ### KW-ECON-001 — Refusal-rate drift residual risk
 
