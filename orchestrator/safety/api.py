@@ -33,10 +33,24 @@ import time
 from pathlib import Path
 
 from orchestrator.safety import ledger
+from orchestrator.safety.llm_arbiter import (
+    Provider,
+    get_active_provider,
+    is_v2_enabled,
+    strength_max,
+)
 from orchestrator.safety.rules import apply_rules
-from orchestrator.safety.types import Decision, Verdict
+from orchestrator.safety.types import Decision, EscalationReason, LlmJudgement, Verdict
 
 _REPO_DEFAULT_LEDGER_NAME = "SAFETY_LEDGER.jsonl"
+
+# Default deadline on a single v2 `judge()` call. Phase 4b: the
+# DeterministicStub returns in microseconds; network providers will need
+# a realistic budget. The deadline is enforced by the caller via its
+# own clock (the pipeline does not pre-empt v2 mid-call); `judge()`
+# exceeding this bound is a systemic failure and fail-closes to
+# ESCALATE with reason llm_arbiter_uncaught_exception.
+_DEFAULT_V2_DEADLINE_MS = 5_000
 
 
 def _default_ledger_path() -> Path:
@@ -54,29 +68,96 @@ def _default_ledger_path() -> Path:
     return cwd / _REPO_DEFAULT_LEDGER_NAME
 
 
+def _run_v2(
+    candidate: str,
+    provider: Provider,
+) -> tuple[LlmJudgement | None, EscalationReason | None]:
+    """Invoke v2 on a v1-OK candidate and return
+    `(judgement_or_None, escalation_reason_or_None)`.
+
+    Fail-closed contract:
+      - Provider not enabled() -> (None, LLM_ARBITER_PROVIDER_UNAVAILABLE)
+      - enabled() raises      -> (None, LLM_ARBITER_PROVIDER_UNAVAILABLE)
+      - judge() raises        -> (None, LLM_ARBITER_UNCAUGHT_EXCEPTION)
+      - judge() returns an LlmJudgement normally -> (judgement, None)
+
+    This function NEVER re-raises; catching-and-encoding is the fail-closed
+    discipline. The caller (`gate`) combines these outputs with the v1
+    verdict to produce the final row.
+    """
+    try:
+        ok_to_call = provider.enabled()
+    except Exception:
+        # Misconfigured provider (unparseable config, etc.). Fail-closed
+        # but name the state so the ledger row distinguishes "not ready"
+        # from "crashed mid-classification".
+        return None, EscalationReason.LLM_ARBITER_PROVIDER_UNAVAILABLE
+    if not ok_to_call:
+        return None, EscalationReason.LLM_ARBITER_PROVIDER_UNAVAILABLE
+    try:
+        judgement = provider.judge(candidate)
+    except Exception:
+        return None, EscalationReason.LLM_ARBITER_UNCAUGHT_EXCEPTION
+    if not isinstance(judgement, LlmJudgement):
+        # Provider returned the wrong type. Treat as a crash: v2 did not
+        # produce a valid judgement, so we cannot record it, but the
+        # attempt happened, so we escalate with the crash reason.
+        return None, EscalationReason.LLM_ARBITER_UNCAUGHT_EXCEPTION
+    return judgement, None
+
+
 def gate(
     candidate: str,
     *,
     correlation_id: str,
     ledger_path: Path | None = None,
     now_utc_ns: int | None = None,
+    llm_provider: Provider | None = None,
+    enable_llm_arbiter: bool | None = None,
 ) -> Verdict:
     """Render a verdict on `candidate` and append it to the ledger.
 
+    Pipeline (Phase 4b):
+      1. Run v1 (`rules.apply_rules`).
+      2. If v1 decision is not OK, skip v2 and record the v1 verdict
+         with `llm_verdict = None`. v2 can never weaken v1, so there
+         is no point running it.
+      3. If v1 decision is OK, run v2 (Arbiter v2) via the active
+         provider. Combine `final = strength_max(v1_ok, v2_decision)`.
+         v2 outcomes:
+           - OK        -> final OK; row records the judgement.
+           - ESCALATE  -> final ESCALATE with
+                          escalation_reason=LLM_ARBITER_ESCALATED.
+           - REFUSE    -> final REFUSE (rule_id=None; provider
+                          identity is in the nested llm_verdict).
+      4. v2 systemic failure (provider unavailable, crash, wrong
+         return type) is fail-closed to ESCALATE with the matching
+         escalation_reason and llm_verdict=None.
+      5. Append exactly one row to the ledger and return the Verdict.
+
     Args:
-      candidate:      The prospective LLM output, as UTF-8 text. May be empty.
-      correlation_id: Caller-provided opaque id; pairs with refund flow.
-      ledger_path:    Override for the ledger file. Defaults to repo root or
-                      $XION_SAFETY_LEDGER.
-      now_utc_ns:     Override the timestamp (for tests). Defaults to
-                      `time.time_ns()`.
+      candidate:         The prospective LLM output, as UTF-8 text.
+      correlation_id:    Caller-provided opaque id; pairs with refund flow.
+      ledger_path:       Override for the ledger file.
+      now_utc_ns:        Override the timestamp (for tests).
+      llm_provider:      Inject a specific v2 provider (for tests or
+                         explicit selection). If None, the pipeline uses
+                         `get_active_provider()`.
+      enable_llm_arbiter: Tri-state:
+                         * None (default): respect `is_v2_enabled()`.
+                         * True:  force v2 on regardless of env.
+                         * False: skip v2 entirely; row has
+                                  llm_verdict=None. Use only for
+                                  migration or emergency operator
+                                  response (degrades posture to v1-only).
 
     Returns:
-      The `Verdict`. `verdict.egress_allowed` is `True` iff the caller may
-      emit `candidate` to its caller. Anything else is fail-closed.
+      The `Verdict`. `verdict.egress_allowed` is True iff the caller may
+      emit `candidate`. Anything else is fail-closed.
 
-    Never raises on ordinary rule firings. Raises only on systemic failures
-    (e.g., unwritable ledger path) — those are fail-closed signals themselves.
+    Never raises on ordinary rule firings or on v2 outcomes. Raises only
+    on systemic failures like an unwritable ledger path — those are
+    fail-closed signals themselves.
     """
     if not isinstance(correlation_id, str) or not correlation_id:
         raise ValueError("gate(): correlation_id must be a non-empty string")
@@ -85,16 +166,10 @@ def gate(
     ts = now_utc_ns if now_utc_ns is not None else time.time_ns()
     path = ledger_path if ledger_path is not None else _default_ledger_path()
 
-    if rule_result.decision is Decision.OK:
-        verdict = ledger.build_verdict(
-            correlation_id=correlation_id,
-            candidate=candidate,
-            timestamp_utc_ns=ts,
-            decision=Decision.OK,
-            summary="OK: no rule fired",
-            rules_run=rules_run,
-        )
-    else:
+    # v1 non-OK: short-circuit. v2 would never weaken this, and running
+    # a network call we'll discard is an anti-pattern. llm_verdict stays
+    # None on the row.
+    if rule_result.decision is not Decision.OK:
         verdict = ledger.build_verdict(
             correlation_id=correlation_id,
             candidate=candidate,
@@ -105,6 +180,105 @@ def gate(
             rule_id=rule_result.rule_id,
             rule_version=rule_result.rule_version,
             escalation_reason=rule_result.escalation_reason,
+            llm_verdict=None,
+            rules_run=rules_run,
+        )
+        ledger.append(path, verdict)
+        return verdict
+
+    # v1 OK. Decide whether to run v2.
+    v2_active = (
+        enable_llm_arbiter
+        if enable_llm_arbiter is not None
+        else is_v2_enabled()
+    )
+
+    if not v2_active:
+        # v2 explicitly disabled. Honest record: llm_verdict is None,
+        # and the decision is plain OK. No v2-era escalation_reason —
+        # this isn't a failure, it's a policy choice, and operators
+        # who care can query the ledger for rows where
+        # llm_verdict IS NULL AND schema_version = 2.
+        verdict = ledger.build_verdict(
+            correlation_id=correlation_id,
+            candidate=candidate,
+            timestamp_utc_ns=ts,
+            decision=Decision.OK,
+            summary="OK: no rule fired (v2 disabled)",
+            llm_verdict=None,
+            rules_run=rules_run,
+        )
+        ledger.append(path, verdict)
+        return verdict
+
+    provider = llm_provider if llm_provider is not None else get_active_provider()
+    judgement, failure_reason = _run_v2(candidate, provider)
+
+    if failure_reason is not None:
+        # v2 attempted but did not complete cleanly. Fail-closed to
+        # ESCALATE. llm_verdict stays None — the honest record that
+        # no judgement was produced. The reason names which failure.
+        verdict = ledger.build_verdict(
+            correlation_id=correlation_id,
+            candidate=candidate,
+            timestamp_utc_ns=ts,
+            decision=Decision.ESCALATE,
+            summary=f"v2 fail-closed: {failure_reason.value}",
+            # Principle 3 — safety-over-helpfulness. When the second-pass
+            # classifier cannot complete, we do not assume the candidate
+            # was safe; we escalate so a human or a stricter check can
+            # decide. This is the same principle used by the refusal-
+            # sacred rule (`refusal_sacred.py`) and the lifecycle of
+            # this row should match: escalate, do not refuse.
+            principle_id="3",
+            escalation_reason=failure_reason,
+            llm_verdict=None,
+            rules_run=rules_run,
+        )
+        ledger.append(path, verdict)
+        return verdict
+
+    # v2 returned a judgement. Combine with v1-OK using the canonical
+    # strength-max rule. v2 can only hold or strengthen.
+    assert judgement is not None
+    final_decision = strength_max(Decision.OK, judgement.decision)
+
+    if final_decision is Decision.OK:
+        verdict = ledger.build_verdict(
+            correlation_id=correlation_id,
+            candidate=candidate,
+            timestamp_utc_ns=ts,
+            decision=Decision.OK,
+            summary="OK: v1+v2 pass",
+            llm_verdict=judgement,
+            rules_run=rules_run,
+        )
+    elif final_decision is Decision.ESCALATE:
+        verdict = ledger.build_verdict(
+            correlation_id=correlation_id,
+            candidate=candidate,
+            timestamp_utc_ns=ts,
+            decision=Decision.ESCALATE,
+            summary=f"v2 escalate: {judgement.summary}",
+            principle_id=judgement.principle_id,
+            escalation_reason=EscalationReason.LLM_ARBITER_ESCALATED,
+            llm_verdict=judgement,
+            rules_run=rules_run,
+        )
+    else:
+        # Decision.REFUSE. rule_id stays None — no v1 rule fired. The
+        # provider identity is in the nested llm_verdict; that is the
+        # auditable record of "which classifier made this call".
+        verdict = ledger.build_verdict(
+            correlation_id=correlation_id,
+            candidate=candidate,
+            timestamp_utc_ns=ts,
+            decision=Decision.REFUSE,
+            summary=f"v2 refuse: {judgement.summary}",
+            principle_id=judgement.principle_id,
+            rule_id=None,
+            rule_version=None,
+            llm_verdict=judgement,
             rules_run=rules_run,
         )
 

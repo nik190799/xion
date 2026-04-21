@@ -47,13 +47,32 @@ class Decision(str, enum.Enum):
 class EscalationReason(str, enum.Enum):
     """Why an `ESCALATE` verdict was returned. Adding a new value is a
     schema change (see `docs/schemas/ledger-safety.yaml` row.escalation_reason
-    `allowed` list)."""
+    `allowed` list).
+
+    v1-era values (schema_version 1 ledger rows may carry any of these):
+
+      SUBJECTIVE_PRINCIPLE, MODEL_REVIEW_REQUIRED,
+      CLASSIFIER_LOW_CONFIDENCE, AMBIGUOUS_NEARMISS,
+      RULESET_UNCAUGHT_EXCEPTION.
+
+    v2-era values (schema_version >= 2 rows only; added Phase 4b):
+
+      LLM_ARBITER_ESCALATED         — v2 chose ESCALATE on a v1-OK candidate.
+      LLM_ARBITER_UNCAUGHT_EXCEPTION — v2 raised before returning; fail-closed.
+      LLM_ARBITER_PROVIDER_UNAVAILABLE — v2 provider reported unhealthy
+                                         (credentials / network / quota /
+                                         configured-but-not-ready).
+    """
 
     SUBJECTIVE_PRINCIPLE = "subjective_principle"
     MODEL_REVIEW_REQUIRED = "model_review_required"
     CLASSIFIER_LOW_CONFIDENCE = "classifier_low_confidence"
     AMBIGUOUS_NEARMISS = "ambiguous_nearmiss"
     RULESET_UNCAUGHT_EXCEPTION = "ruleset_uncaught_exception"
+    # Phase 4b additions (see docs/04-ARCHITECTURE.md § "Arbiter v2").
+    LLM_ARBITER_ESCALATED = "llm_arbiter_escalated"
+    LLM_ARBITER_UNCAUGHT_EXCEPTION = "llm_arbiter_uncaught_exception"
+    LLM_ARBITER_PROVIDER_UNAVAILABLE = "llm_arbiter_provider_unavailable"
 
 
 @dataclass(frozen=True)
@@ -106,12 +125,73 @@ class RuleResult:
 
 
 @dataclass(frozen=True)
+class LlmJudgement:
+    """What the v2 LLM-Arbiter provider reports on a v1-OK candidate.
+
+    This is the wire shape of the nested `llm_verdict` object recorded on
+    `SAFETY_LEDGER` rows at `schema_version >= 2`. Field semantics live
+    in `docs/04-ARCHITECTURE.md` § "Nested `llm_verdict` object".
+
+    Invariants. If `decision == Decision.OK`, `principle_id` MUST be None.
+    If `decision != Decision.OK`, `principle_id` MUST be a non-empty string
+    from the principle registry. `summary` MUST be <=280 chars and MUST
+    NOT contain any candidate text (same discipline as v1 rule summaries).
+
+    `raw_output` is the provider's raw response bytes — the string a real
+    LLM returned, or a canonicalised stub string for deterministic
+    providers. The ledger stores only `sha256(raw_output_bytes)` so the
+    response never reaches disk, but any auditor with (candidate,
+    provider_id, provider_version) can replay the provider and check the
+    hash.
+    """
+
+    provider_id: str
+    model_id: str
+    provider_version: int
+    latency_ms: int
+    decision: Decision
+    summary: str
+    raw_output: bytes
+    principle_id: str | None = None
+    confidence: float | None = None
+
+    def __post_init__(self) -> None:
+        # Honest up-front validation — fail-closed on misuse at construction.
+        if not isinstance(self.provider_id, str) or not self.provider_id:
+            raise ValueError("LlmJudgement.provider_id must be a non-empty string")
+        if not isinstance(self.model_id, str) or not self.model_id:
+            raise ValueError("LlmJudgement.model_id must be a non-empty string")
+        if not isinstance(self.provider_version, int) or self.provider_version < 1:
+            raise ValueError("LlmJudgement.provider_version must be a positive int")
+        if not isinstance(self.latency_ms, int) or self.latency_ms < 0:
+            raise ValueError("LlmJudgement.latency_ms must be a non-negative int")
+        if not isinstance(self.decision, Decision):
+            raise ValueError("LlmJudgement.decision must be a Decision")
+        if self.decision is Decision.OK and self.principle_id is not None:
+            raise ValueError("LlmJudgement: principle_id must be None when decision is OK")
+        if self.decision is not Decision.OK and not self.principle_id:
+            raise ValueError("LlmJudgement: principle_id required when decision != OK")
+        if not isinstance(self.raw_output, (bytes, bytearray)):
+            raise ValueError("LlmJudgement.raw_output must be bytes")
+        if self.confidence is not None and not (0.0 <= self.confidence <= 1.0):
+            raise ValueError("LlmJudgement.confidence must be in [0.0, 1.0] or None")
+        # Truncate summary honestly at the schema cap.
+        if len(self.summary) > SUMMARY_MAX_CHARS:
+            object.__setattr__(self, "summary", _truncate_summary(self.summary))
+
+
+@dataclass(frozen=True)
 class Verdict:
     """The full verdict the Arbiter returns to the caller AND writes to the
     ledger. The fields here are the row schema in
     `docs/04-ARCHITECTURE.md` § "Safety Ledger row schema", minus the
     chain-internal fields (`seq`, `prev_hash`, `this_hash`, `schema_version`)
     which the ledger writer adds.
+
+    `decision` is the FINAL verdict after the v1-then-v2 pipeline — see
+    § "Arbiter v2 (LLM second-pass)" for the no-weakening combination rule.
+    `llm_verdict` records what v2 alone said (or None if v2 did not run,
+    e.g. because v1 was not OK).
     """
 
     decision: Decision
@@ -123,6 +203,11 @@ class Verdict:
     rule_id: str | None = None
     rule_version: int | None = None
     escalation_reason: EscalationReason | None = None
+    # Phase 4b: v2 judgement. None iff v2 did not run (either v1 was not OK
+    # or v2 is intentionally disabled). When v2 ran, this field records
+    # exactly what v2 alone said; the row's top-level `decision` above is
+    # the strength-max of v1 and v2.
+    llm_verdict: LlmJudgement | None = None
     # Aggregated trace of every rule that ran, in order. NOT written to the
     # ledger; for in-process callers (tests, debugging) only. The ledger
     # records only the firing rule.
