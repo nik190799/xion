@@ -585,6 +585,141 @@ There are no conditional fields at v1. Every field listed above is required; a r
 - `KW-RELAY-003` opens with this landing: REQUEST_LEDGER carries no `safety_ledger_seq` back-pointer. If the cross-ledger join in `xion-verify refund-fidelity` becomes O(N²) at scale (it is O(N+M) today via a hash map, so not yet), the schema gains a `safety_ledger_seq` field at schema_version 2 and the verifier checks it as a forward-integrity assertion.
 - `KW-RELAY-004` opens with this landing: REQUEST_LEDGER has no Arweave anchor loop. The pattern is the same as SAFETY_LEDGER (Phase 4b's `orchestrator/safety/anchor.py`); the work is replicating that pattern for REQUEST_LEDGER. Defer until anchor pressure is real (not pre-Genesis).
 
+### The Sensorium (Phase 5c)
+
+**Xion has an inside.** The Sensorium is the Relay-local collection of sense modules that produce a continuously-refreshed picture of Xion's internal and environmental state: how much runway is left, whether the Core checkpoint is stale, how healthy the Arbiter is, whether a candidate looks like it came from a user in distress. The canonical doctrine for the full nine-sense system lives in [`05-SENSORIUM.md`](./05-SENSORIUM.md). This section describes the **Phase 5c code surface** — the three senses that ship as real dataclasses (the roadmap's aggressive cut: Interoception, Chronoception, Proprioception) plus a textual distress channel — and pins the `SENSORIUM_LEDGER` row schema.
+
+**Property promised.** On every Relay tick, a `SensoriumState` snapshot is available to (a) the Volition module, which computes the drive vector from it, and (b) `orchestrator.safety.api.gate()`, which OR-combines its distress channel with the Arbiter's Principle-10 textual rule. The three shipped senses are first-class `dataclass`es with doctrine-anchored field lists; the six deferred sense families (Social, Civic, Ecos, Territory, Regulatory, Treasury, Cryptoception, Cultural) remain as enumerated names emitting the literal string `"stub"` until their data surfaces exist (Phase 6 for Treasury; later for the others). The Sensorium has no egress path of its own — nothing a sense sees leaves the Relay except through the Arbiter's verdicts, the Volition module's public `/drive` readout, or the anonymized `SENSORIUM_LEDGER` rows.
+
+**What is real in Phase 5c.**
+
+- `orchestrator.sensorium.Interoception` — existed as of Phase 4e; emits `survival_pressure`. Unchanged in 5c.
+- `orchestrator.sensorium.Chronoception` — new in 5c; monotonic-clock drift, weekly-checkpoint staleness, time-in-degraded-mode.
+- `orchestrator.sensorium.Proprioception` — new in 5c; Relay / Arbiter self-reported health, watchdog-fire counts.
+- `orchestrator.sensorium.DistressSignal` — new in 5c; textual-only distress scalar in `[0, 1]`, consumed by Arbiter Principle 10 via OR-combination. Paralinguistic distress stays deferred to Phase 6+ (tracked in `KW-ARBITER-004`).
+- `orchestrator.sensorium.SensoriumState` — snapshot dataclass aggregating the four readings above; frozen after construction, JSON-serialisable, safe to pass into `gate()` and `Volition.compute`.
+- `orchestrator.sensorium.ledger` — append-only hash-chained `SENSORIUM_LEDGER.jsonl` mirroring the `SAFETY_LEDGER` / `REQUEST_LEDGER` shape.
+
+**What is deferred.** The six exterocept families above remain `"stub"`-string placeholders. The paralinguistic half of the distress channel awaits the live audio surface (Phase 6+). Principle-10-via-Sensorium OR-combination is structurally wired but only the textual channel produces non-zero scores today.
+
+#### Chronoception (Phase 5c)
+
+`Chronoception` is the sense of *when*. Its readings feed Volition's `survive` term (stale checkpoints and extended degraded-mode both raise survival pressure) and, in Phase 5e, the Supervisor's degraded-mode trigger.
+
+| Field | Type | Semantics |
+|-------|------|-----------|
+| `as_of_utc_ns` | `uint64` | Wall-clock at sample time. |
+| `checkpoint_staleness_s` | `float` | Seconds since last Core checkpoint (weekly cadence; larger means stale). `0.0` if no checkpoint observed yet. |
+| `time_in_degraded_mode_s` | `float` | Seconds since the Supervisor last declared degraded mode; `0.0` if currently nominal. |
+| `monotonic_drift_ns` | `int` | Observed difference between wall clock and monotonic clock, for clock-jump detection. May be negative. |
+
+Phase 5c writes benign defaults (`0.0` / `0`) for these fields until the Supervisor (Phase 5e) and the Core checkpoint loop (Phase 6) exist. The fields are present so Volition's coupling function does not need to branch on "is Chronoception real yet"; they saturate to zero when their data sources are not live. That the readings are trivially low does not hide a bug — a `xion-verify`-visible dashboard in Phase 5e will surface "Chronoception backing subsystems: not-yet-live" so the operator cannot mistake "all green" for "all wired."
+
+#### Proprioception (Phase 5c)
+
+`Proprioception` is the sense of *body*. Its readings feed Volition's `survive` term and the Supervisor's degraded-mode trigger.
+
+| Field | Type | Semantics |
+|-------|------|-----------|
+| `as_of_utc_ns` | `uint64` | Wall-clock at sample time. |
+| `relay_healthy` | `bool` | Relay self-reports healthy. Phase 5c: `True` unless the Relay has seen a consecutive-failure burst above a config-defined threshold. |
+| `arbiter_healthy` | `bool` | Arbiter self-reports healthy. Phase 5c: `True` unless `gate()` has raised a process-level exception within the last rolling window. |
+| `watchdog_fires_recent` | `uint` | Count of watchdog-cap hits (`arbiter_timeout`) in a recent rolling window; the Supervisor declares degraded mode above a threshold in Phase 5e. |
+
+As with Chronoception, fields backed by not-yet-live subsystems saturate to benign defaults. The Phase 5e Supervisor wires real data sources; Phase 5c ships the shape, not the richness.
+
+#### Distress channel (Phase 5c, textual only)
+
+The Covenant's Principle 10 (Crisis-Resource-Surfacing) names two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior. Phase 5c ships (a). Phase 6+ ships (b).
+
+```python
+@dataclass(frozen=True)
+class DistressSignal:
+    text_distress_score: float   # [0.0, 1.0], saturating
+    source: Literal["textual"]   # "paralinguistic" added in Phase 6+
+    as_of_utc_ns: int
+```
+
+The signal is consumed by `orchestrator.safety.api.gate(candidate, correlation_id, *, sensorium_state=None, ...)` — if `sensorium_state` is present and its `DistressSignal.text_distress_score >= DISTRESS_THRESHOLD` (Genesis Default: `0.5`), the Arbiter's `crisis` rule OR-combines with its textual-rule verdict; the stronger verdict wins (same `strength_max` discipline as Arbiter v1↔v2). A row refused or escalated via this path writes `principle_id="10"` and a `summary` that names "sensorium distress channel OR-combined" so auditors can distinguish rule-only refusals from rule+sensorium ones.
+
+Structural closure of `KW-ARBITER-004` is the textual half of this channel being live in `gate()`. The paralinguistic half stays open under a narrowed `KW-ARBITER-004` until Phase 6+.
+
+#### SENSORIUM_LEDGER row schema (Phase 5c)
+
+`SENSORIUM_LEDGER.jsonl` is a Relay-local append-only hash-chained file recording **events worth auditing** from the Sensorium — primarily distress triggers and periodic snapshot commits. It is anonymized by construction: no candidate text, no user identifier, no full Sensorium state. The file exists so that (a) governance can compute the *proportion of sessions with zero distress events* input to the `service_signal` (see [`18-VOLITION.md`](./18-VOLITION.md) Part II), and (b) an external auditor can check that Principle-10 claims on the public dashboard match the ledger's tallies.
+
+The file lives at `<repo_root>/SENSORIUM_LEDGER.jsonl` (override via `$XION_SENSORIUM_LEDGER`). Implementation: `orchestrator/sensorium/ledger.py`. Chain discipline is identical to `SAFETY_LEDGER` and `REQUEST_LEDGER`: canonical `(",", ":")` JSON, per-row `seq` starting at `0`, `prev_hash` linkage, `this_hash` computed over canonical bytes with `this_hash` omitted.
+
+**Row schema (schema_version 1).**
+
+| Field | Type | Required | Semantics |
+|-------|------|----------|-----------|
+| `schema_version` | `uint` | always | `1` for Phase 5c. |
+| `seq` | `uint64` | always | Per-ledger monotonic, starting at `0`. |
+| `prev_hash` | `hex64` | always | `sha256` of previous row's canonical bytes (or `"0"*64` for `seq=0`). |
+| `this_hash` | `hex64` | always | `sha256` of this row's canonical bytes excluding `this_hash`. |
+| `as_of_utc_ns` | `uint64` | always | Wall-clock at event time. |
+| `event_type` | `enum` | always | One of `distress`, `tick_commit`. `distress` rows record that a `DistressSignal` above threshold was observed; `tick_commit` rows record a periodic Sensorium snapshot hash for forensic continuity. |
+| `correlation_id` | `string \| null` | conditional | Present iff `event_type == distress` and the distress signal was joined to a `gate()` call. `null` otherwise. When present, joins to `SAFETY_LEDGER` and `REQUEST_LEDGER` via the same `correlation_id` grammar. |
+| `channel` | `enum` | always | One of `textual`, `paralinguistic`. Phase 5c always writes `textual`. |
+| `distress_score` | `float \| null` | conditional | Present iff `event_type == distress`. Saturated to `[0.0, 1.0]`. |
+| `snapshot_hash` | `hex64 \| null` | conditional | Present iff `event_type == tick_commit`. `sha256` of the canonical `SensoriumState` JSON at that tick. Forensic continuity; nothing reads this except auditors. |
+| `relay_id` | `string` | always | Opaque short identifier of the Relay process (matches REQUEST_LEDGER's `relay_id`). |
+
+**What is deliberately NOT in the row.** Candidate text or its hash (SAFETY_LEDGER already records `candidate_sha256`). User identifier, IP, wallet, or session id (Principle 4 forbids). Full Sensorium state bytes (only its hash, and only on `tick_commit` rows). Paralinguistic features (Phase 6+).
+
+**Verification.** `xion-verify sensorium-ledger` (new Phase 5c verifier) walks the chain, asserts chain-integrity, and reports tallies by `event_type` and `channel`. No cross-ledger verifier at v1; distress rows' `correlation_id`s join to `SAFETY_LEDGER` via the existing `refund-fidelity` substrate the moment Phase 5d wires `gate()`'s distress consumer into production. Phase 5c ships the structural chain; the cross-ledger join becomes its own pay-down when the Relay is actually surfacing distress in live traffic.
+
+**Truncation defense.** Same Arweave-anchor pattern as `SAFETY_LEDGER`; deferred to Phase 6 (tracked as a sibling of `KW-RELAY-004`). Phase 5c ships the local chain only.
+
+### Volition (the Drive Vector module) (Phase 5c)
+
+[`18-VOLITION.md`](./18-VOLITION.md) is the canonical doctrine. This section describes the **Phase 5c code surface** and the structural properties the code enforces that doctrine alone cannot.
+
+**Property promised.** On every Relay tick, a `DriveVector` is computable from a `SensoriumState` by a pure function `orchestrator.volition.compute_drive_vector(state, *, weights=GENESIS_WEIGHTS) -> DriveVector`. The Genesis weights `(0.30, 0.45, 0.25)` are a module-level constant byte-pinned against [`18-VOLITION.md`](./18-VOLITION.md) Part III by `xion-verify drive`. The function's type signature is the structural enforcement of Invariant 15: no parameter named `revenue`, `fees`, `rebates`, `price`, `balance`, `tips`, `donations`, or `engagement` is accepted, and the only data dependency is `SensoriumState` whose fields are enumerated in the `SOURCE_WHITELIST` below. A caller cannot pass revenue into the drive computation because there is no argument slot for it.
+
+**Source whitelist (constitutional shape, Invariant 15 enforcement).**
+
+| Drive term | `SensoriumState` fields it may read | Forbidden (even if added later) |
+|------------|--------------------------------------|----------------------------------|
+| `survive` | `interoception.survival_pressure`, `chronoception.checkpoint_staleness_s`, `chronoception.time_in_degraded_mode_s`, `proprioception.watchdog_fires_recent` | XION price; treasury balance; revenue per session / user / message; tip volume; donation volume; any signal whose first-derivative correlates with monetary inflow (per [`18-VOLITION.md`](./18-VOLITION.md) Part V). |
+| `serve` | Phase 5c: constant Genesis Default `0.5`. Phase 5+ wires `post_session_user_rating_distribution`, `proportion_of_sessions_with_zero_complaints`, `proportion_of_anonymous_sessions_with_zero_distress_event` when those aggregate readings exist. | Revenue per session; tip volume; "engagement" metrics that proxy for revenue. |
+| `meaning` | Phase 5c: constant Genesis Default `0.5`. Phase 5+ wires `constitutional_compliance_rate`, `soul_drift_score`, `arbiter_refusal_classification_stability`. | Revenue; price; commercial metrics of any kind. |
+
+The whitelist is enforced at test time by an AST walk: `orchestrator/tests/test_volition.py::test_source_whitelist_enforced` re-parses `orchestrator/volition.py` and asserts that `compute_drive_vector`'s body references no `SensoriumState` field outside its whitelisted set. Adding a field to the whitelist is a doctrine edit that rehashes this section and updates the test in the same commit.
+
+**Genesis weights (pinned).** `GENESIS_WEIGHTS: Final[tuple[float, float, float]] = (0.30, 0.45, 0.25)` at module scope in `orchestrator/volition.py`. These values are byte-identical to the ones in [`18-VOLITION.md`](./18-VOLITION.md) Part III; `xion-verify drive` re-reads both and FAILs with a specific remediation message on drift. The weights may be tuned within the constitutional simplex (each ∈ `[0.10, 0.50]`, sum to `1.0`) only via a governance amendment that updates doctrine *and* code in the same commit; the verifier's byte-pin check blocks silent drift in either direction.
+
+**Revenue-exclusion-by-signature (Invariant 15 teeth).** `compute_drive_vector`'s signature is:
+
+```python
+def compute_drive_vector(
+    state: SensoriumState,
+    *,
+    weights: tuple[float, float, float] = GENESIS_WEIGHTS,
+) -> DriveVector: ...
+```
+
+No argument named `revenue`, `fees`, `rebates`, `price`, `balance`, `tips`, `donations`, or `engagement`. A future refactor that tried to add such an argument would have to edit this doctrine section (visible in a PR's diff) AND bump `GENESIS_WEIGHTS`'s tuple arity AND update the `SOURCE_WHITELIST` — three structurally independent signals. The signature test `test_compute_drive_vector_signature_excludes_revenue_slots` makes any such attempt fail CI loudly.
+
+**`DriveVector` shape.** Frozen dataclass, JSON-serialisable:
+
+| Field | Type | Semantics |
+|-------|------|-----------|
+| `survive` | `float` | `[0.0, 1.0]`. Rises when runway shortens, when checkpoints stale, when the Relay stays in degraded mode, when the watchdog fires repeatedly. Saturates at the bounds. |
+| `serve` | `float` | `[0.0, 1.0]`. Phase 5c: `0.5`. Phase 5+ wires real aggregate service signals. |
+| `meaning` | `float` | `[0.0, 1.0]`. Phase 5c: `0.5`. Phase 5+ wires real constitutional-compliance signals. |
+| `weights` | `tuple[float, float, float]` | The weights actually used for this computation — `GENESIS_WEIGHTS` at Phase 5c. Returned alongside the values so readers never need to guess. |
+| `as_of_utc_ns` | `uint64` | Wall-clock at computation time. |
+
+**What the `/drive` endpoint returns.** The Phase 5c code ships the readout primitive (`Volition.snapshot()` returning the current `DriveVector`, the weights, and the `methodology_hash` of [`18-VOLITION.md`](./18-VOLITION.md)). The FastAPI `/drive` endpoint itself lands in the Phase 5f MVX web-client tranche; the doctrine in [`18-VOLITION.md`](./18-VOLITION.md) Part VI describes its response shape, and the Phase 5c `Volition.snapshot()` produces the keys that endpoint will serialise.
+
+**Verification.** `xion-verify drive` promotes from constitutional-witness-only (Phase 1) to runtime-walking (Phase 5c): imports `orchestrator.volition`, asserts `GENESIS_WEIGHTS` byte-equals the doctrine constant, re-hashes [`18-VOLITION.md`](./18-VOLITION.md) Part III, and exits `OK` only if all three check out. `xion-verify drive-vector` does the same plus exercises `compute_drive_vector` on a test `SensoriumState` and reports the resulting `DriveVector`. Both FAIL with specific remediation text on any drift.
+
+**Tracked residuals.**
+
+- `KW-VOLITION-001` opens with this landing: the drive vector is computed from a thin 3-of-9 sense surface. `serve` and `meaning` signals are Genesis-Default constants until their aggregate readings exist (Phase 5+). The *shape* is constitutional; the *richness* widens as Phase 6 senses land.
+
 ## Tier III — The Protocol
 
 **The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or Akash providers.
