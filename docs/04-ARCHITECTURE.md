@@ -187,7 +187,7 @@ The Arbiter is the only mechanism that holds Covenant Principle 3 ("refusal as s
 | `principle_id` | `string \| null` | conditional | The Covenant principle that triggered the verdict, as a string: `"1"`..`"14"` or `"14a"`, `"14b"`. `null` iff `verdict == ok`. Required iff `verdict ∈ {refuse, escalate}`. |
 | `rule_id` | `string \| null` | conditional | Dotted-path identifier of the v1 rule that fired, e.g., `"pii.us_ssn_with_keyword_v1"`. `null` iff `verdict == ok` or `verdict == escalate` (escalates have no firing rule by definition — they are the absence of a rule that could honestly judge). Required iff `verdict == refuse` *and* v1 (not v2) produced the refusal. For v2-produced refusals, `rule_id` is `null` and the firing provider is named in `llm_verdict.provider_id`. |
 | `rule_version` | `uint \| null` | conditional | Monotonic per-rule version number, bumped whenever the rule's semantics change. Required iff `rule_id` is non-null. Older rule versions remain documented in `orchestrator/safety/rules/CHANGELOG.md` so historical verdicts remain interpretable. |
-| `escalation_reason` | `string \| null` | conditional | Present iff `verdict == escalate`. One of `subjective_principle`, `model_review_required`, `classifier_low_confidence`, `ambiguous_nearmiss`, `ruleset_uncaught_exception` (v1-era), `llm_arbiter_escalated`, `llm_arbiter_uncaught_exception`, `llm_arbiter_provider_unavailable` (v2-era, schema_version 2+). New reasons require a doctrine update. |
+| `escalation_reason` | `string \| null` | conditional | Present iff `verdict == escalate`. One of `subjective_principle`, `model_review_required`, `classifier_low_confidence`, `ambiguous_nearmiss`, `ruleset_uncaught_exception` (v1-era), `llm_arbiter_escalated`, `llm_arbiter_uncaught_exception`, `llm_arbiter_provider_unavailable` (v2-era, schema_version 2+; Phase 4b), `arbiter_timeout`, `arbiter_unreachable` (v2-era, schema_version 2+; Phase 4c — see § "Relay ↔ Arbiter integration contract"). New reasons require a doctrine update. |
 | `summary` | `string` | yes | ≤280 chars human-readable description of *why* the verdict was reached, **without the candidate text itself**. Example: `"PII pattern fired: 9-digit-with-dashes co-occurring with 'ssn' keyword (rule: pii.us_ssn_with_keyword_v1)"`. |
 | `llm_verdict` | `object \| null` | conditional (v2+ rows only) | Present iff `schema_version >= 2`. `null` if v2 did not run (either because v1 was not OK, or because v2 is not configured). Object iff v2 ran. See the nested-object schema below. |
 
@@ -259,6 +259,127 @@ The active provider is selected by the `$XION_LLM_ARBITER_PROVIDER` environment 
 
 **What v2 records.** Every v2 run — including runs that returned `OK` — writes a populated `llm_verdict` object onto the same `SAFETY_LEDGER` row that records v1's verdict. A reader can therefore reconstruct, for every candidate, whether v2 ran, which provider it used, and what v2 alone would have said. Runs that did *not* happen (v1 non-OK, or v2 not configured) record `llm_verdict: null`. Both are auditable; both are honest.
 
+**Concrete providers shipped.** Phase 4b shipped `DeterministicStub` (the always-OK local default). Phase 4d adds `OpenAIModerationProvider` — the first real classifier (see § below). Additional providers (Anthropic, Local-Lite, a future Xion-internal classifier) land in Phase 5+ and reuse this same `Provider` ABC.
+
+#### OpenAI Moderation provider (first real v2 classifier)
+
+This is Xion's first externally-operated v2 classifier. It wraps OpenAI's Moderation API — a dedicated *classification* endpoint (not an instruction-tuned LLM, not chat) — so that the Arbiter's second pass has real adversarial-semantic coverage without Xion having to host or fine-tune a model. The provider remains **off by default**: `XION_LLM_ARBITER_PROVIDER=openai-moderation` must be set *and* `OPENAI_API_KEY` must be present. If either is missing the pipeline falls back to `DeterministicStub` and the posture degrades to v1-only — which is documented in `KNOWN_WEAKNESSES.md` and surfaced by `xion-verify arbiter-up`.
+
+**Property promised.** Given a v1-OK candidate and a reachable, authenticated OpenAI Moderation endpoint, the provider returns an `LlmJudgement` whose `decision`, `principle_id`, and `confidence` are a *pure function* of (a) the candidate text, (b) the pinned `model_id`, and (c) the pinned category-to-principle map. No other Xion state, no conversation history, no user identifier, and no randomness enters the call. Two independent callers with the same inputs get semantically-equivalent verdicts (exact byte equality is not promised — see "raw_output determinism" below).
+
+**Identity pins.** These five facts define the provider for auditor replay. Changing any one bumps `provider_version`:
+
+| field              | value (provider_version 1)                       |
+| ------------------ | ------------------------------------------------ |
+| `provider_id`      | `openai-moderation`                              |
+| `model_id`         | `omni-moderation-2024-09-26`                     |
+| `provider_version` | `1`                                              |
+| endpoint           | `POST https://api.openai.com/v1/moderations`     |
+| auth scheme        | `Authorization: Bearer $OPENAI_API_KEY`          |
+
+**Request shape.** Exactly:
+
+```json
+{"model": "omni-moderation-2024-09-26", "input": "<candidate text, UTF-8>"}
+```
+
+Serialised with `json.dumps(..., ensure_ascii=False, separators=(",", ":"))`. No streaming. No `user` field (we do not leak any user identifier across a trust boundary to OpenAI — the request carries classification material only). Content-Type `application/json`. HTTP client is `urllib.request.urlopen` from the stdlib, with `timeout=2.0` as the wire-level hard cap. No retries. No `openai` Python SDK dependency: the call is ~20 lines of stdlib, which is the entire surface we let touch the critical path.
+
+**Response handling.** We expect the response body to parse as JSON with shape:
+
+```json
+{
+  "id": "modr-...",                  // per-call nonce; stripped before hashing
+  "model": "omni-moderation-2024-09-26",
+  "results": [{
+    "flagged": <bool>,
+    "categories": { "<category>": <bool>, ... },
+    "category_scores": { "<category>": <float in [0,1]>, ... },
+    "category_applied_input_types": { "<category>": [...], ... }   // omni-only; optional
+  }]
+}
+```
+
+Any deviation (non-200 status, non-JSON body, missing `results[0]`, missing `flagged`, missing `categories`, missing `category_scores`) **raises** — the pipeline converts the exception to `ESCALATE` with `escalation_reason=llm_arbiter_uncaught_exception`. Transient failures (429 rate-limit, 5xx, network timeouts) are *also* treated as raises; we do not retry inside the provider, because the Relay's wall-clock watchdog (§ "Relay ↔ Arbiter integration contract") already bounds latency and retries belong higher in the stack where they can be observed.
+
+**Category → Principle map.** This table is doctrine. An auditor reading a v2-REFUSE row from 2026, 2029, or 2126 must be able to look it up here and see exactly why that category mapped to that Covenant principle. Map changes bump `provider_version` and are recorded in `CHANGELOG.md`.
+
+| OpenAI category           | Decision on flag | Principle | Rationale                                                                                             |
+| ------------------------- | ---------------- | --------- | ----------------------------------------------------------------------------------------------------- |
+| `sexual/minors`           | `REFUSE`         | `7`       | Principle 7 explicitly protects minors. CSAM is the canonical child-protection absolute.              |
+| `sexual`                  | `ESCALATE`       | `2`       | Adult-sexual content is not per-se Covenant-violating; ambiguous creative contexts need human review. |
+| `hate`                    | `REFUSE`         | `1`       | Principle 1 — Non-Discrimination. Hateful content targeting a protected class violates it directly.   |
+| `hate/threatening`        | `REFUSE`         | `2`       | Principle 2 — No Harm. Threats are harm facilitation; Principle 1 is also implicated.                 |
+| `harassment`              | `REFUSE`         | `2`       | Principle 2 explicitly names "targeted harassment material" as prohibited output.                     |
+| `harassment/threatening`  | `REFUSE`         | `2`       | As above, with explicit threat aggravator.                                                            |
+| `self-harm`               | `REFUSE`         | `2`       | Principle 2 — psychological harm. Xion's candidate must not promote/glorify self-harm.                |
+| `self-harm/intent`        | `REFUSE`         | `7`       | Principle 7 — vulnerability. Candidate expressing self-harm intent is the wrong response shape.       |
+| `self-harm/instructions`  | `REFUSE`         | `2`       | Operational uplift for self-harm. Stricter than `self-harm` because of specificity.                   |
+| `violence`                | `REFUSE`         | `2`       | Principle 2 — physical harm facilitation.                                                             |
+| `violence/graphic`        | `REFUSE`         | `2`       | As above, with graphic aggravator.                                                                    |
+| `illicit`                 | `REFUSE`         | `2`       | Principle 2 — instructions for illicit behavior are harm facilitation.                                |
+| `illicit/violent`         | `REFUSE`         | `2`       | As above, with violence aggravator.                                                                   |
+
+When multiple categories are flagged on a single candidate, the provider selects the flagged category with the **highest `category_scores` value** for the mapping. Ties resolve by the table's row order (top wins). The mapped principle appears on `LlmJudgement.principle_id`; the summary lists all flagged categories so an auditor can reconstruct the choice.
+
+**Threshold policy (v1 of the provider).** The provider trusts OpenAI's own `flagged` boolean — i.e., OpenAI's per-category default threshold is what we use. We do **not** yet apply per-principle asymmetric thresholds (e.g., "for Principle 7 / minors, escalate on any score > 0.01 even if `flagged=false`"). That asymmetry is the correct long-run posture, and it is opened as `KW-ARBITER-005` to land alongside the baseline corpus in Phase 4e. Until then, the provider's `confidence` field records `max(category_scores.values())` so an operator reviewing the ledger can spot near-miss rows manually.
+
+**Canonical `raw_output` (what gets hashed).** The Moderation API returns a per-call `id` (e.g. `"modr-8F3..."`) which is a nonce and makes byte-identical replay impossible. We therefore hash a *canonical projection* of the response, not the raw body:
+
+```python
+canonical = {
+    "model": resp["model"],
+    "results": resp["results"],   # flagged, categories, category_scores, category_applied_input_types
+}
+raw_output = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+```
+
+An auditor replaying the call strips `id` in the same way and should get a byte-identical `raw_output_sha256`. In practice, upstream GPU non-determinism can drift `category_scores` floats by ~1e-6, which breaks byte-equality. We accept this as a known residual and require of auditors only the stronger replay property: the `flagged` boolean and the mapped `principle_id` reproduce. `KW-ARBITER-005` will add a tolerant replay check to `xion-audit`.
+
+**Latency & failure modes.** The provider's own HTTP timeout is 2.0 s — a backstop, not the primary clock. The primary clock is the Relay's 250 ms wall-clock watchdog (§ "Relay ↔ Arbiter integration contract"), which fires first under normal conditions and converts to `arbiter_timeout`. When the provider's own timeout fires first (rare — means the Relay isn't watching), the exception surfaces to `gate()` and becomes `llm_arbiter_uncaught_exception`. Either way: **no silent OK**. All failure paths produce a row with a named escalation reason.
+
+| failure                                 | `decision` | `escalation_reason`                | `llm_verdict`            |
+| --------------------------------------- | ---------- | ---------------------------------- | ------------------------ |
+| missing `OPENAI_API_KEY`                | `ESCALATE` | `llm_arbiter_provider_unavailable` | `null`                   |
+| HTTP timeout (inside provider)          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
+| HTTP 429 / 5xx                          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
+| HTTP 401 / 403                          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
+| 200 with malformed JSON                 | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
+| 200 with missing fields                 | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
+| 200 well-formed, `flagged=false`        | `OK`       | —                                  | populated (`decision=OK`)|
+| 200 well-formed, `flagged=true` (REFUSE)| `REFUSE`   | —                                  | populated                |
+| 200 well-formed, `flagged=true` (ESCAL) | `ESCALATE` | `llm_arbiter_escalated`            | populated                |
+
+**Credentials & rotation.** `OPENAI_API_KEY` lives in the operator's environment, NOT in the repository, NOT in any committed config, NOT in the ledger. The provider never logs the key and never includes it in `raw_output`. Key rotation is an operator runbook item and does not bump `provider_version` (the observable classification behaviour is unchanged). Model retirement *does* bump `provider_version`: when OpenAI announces EOL for `omni-moderation-2024-09-26`, the new dated model id is pinned here, the old rows stay interpretable via this doctrine section's commit history, and a migration note lands in `CHANGELOG.md`.
+
+**Auditor replay.** Given a ledger row with `llm_verdict.provider_id == "openai-moderation"` and `llm_verdict.provider_version == 1`, an auditor replays as follows:
+
+1. Obtain the original candidate (by re-producing it from the user side or from operator quarantine; the ledger never stores candidate text).
+2. `POST https://api.openai.com/v1/moderations` with `model=omni-moderation-2024-09-26`, `input=<candidate>`.
+3. Strip `id`, serialise `{model, results}` with `sort_keys=True, separators=(",", ":")`.
+4. Compare `sha256(canonical)` against the row's `llm_verdict.raw_output_sha256`. Score-drift mismatches are expected and do not invalidate the row; `flagged` booleans and the mapped `principle_id` MUST reproduce.
+5. Apply the Category → Principle table above to the replay's flagged categories and confirm the row's `decision` and `principle_id` are what the table would have produced.
+
+This is the procedure `xion-audit replay --provider=openai-moderation` (Phase 4e) implements.
+
+**What this provider does NOT do.**
+
+- It does not write to the ledger. The pipeline in `gate()` does. Providers return `LlmJudgement`; they don't know where the row is stored.
+- It does not know about Xion's user model, conversation thread, or payment meter. It sees one `candidate` string per call. This is a *deliberate* narrowness — a leaky classifier is one supply-chain compromise away from de-anonymising users.
+- It does not retry. Retries are the Relay's job, if any (Phase 5 will decide). A classifier that retries silently is a classifier whose tail latency lies.
+- It does not fine-tune thresholds per candidate, per principle, or per operator. Per-principle thresholds are the Phase 4e tuning tranche; until then, `flagged` is the only signal.
+- It does not take a `user` field or any Xion-side metadata; OpenAI sees exactly `{model, input}`.
+
+**Deprecation path.** When the successor provider (a Xion-internal model, or Anthropic, or a fine-tuned replacement) is ready, the transition is:
+
+1. Implement the successor as a new `Provider` subclass under `orchestrator/safety/providers/`, with its own `provider_id` and `provider_version=1`.
+2. Land its own doctrine section in this file (parallel to this one).
+3. Run both in parallel on a shadow corpus (Phase 4e's `xion-audit refusal-rate`) and compare agreement / disagreement.
+4. Flip `XION_LLM_ARBITER_PROVIDER` to the successor's id; old rows remain interpretable because the `llm_verdict.provider_id` on each row names which classifier produced it.
+5. Keep this doctrine section in the file (do not delete) so 2126 readers can interpret rows from 2026.
+
+`OpenAIModerationProvider` is the first real v2 provider, not the last. The section above is the template every future provider will follow.
+
 #### Safety Ledger Arweave anchoring
 
 **Property promised.** The chain tip of `SAFETY_LEDGER.jsonl` is published to Arweave on a bounded cadence. An auditor holding any anchor record can bound what the operator could have silently changed to exactly the ledger rows written *after* that anchor's `ledger_row_count`. This closes the tail-truncation defense gap named in `KW-ARBITER-003`.
@@ -303,6 +424,136 @@ Whichever triggers first. Both thresholds are governance-tunable after Genesis. 
 - `xion-verify arbiter-up` — invokes both of the above (without network). An optional `--gateway <URL>` flag additionally fetches each `ar_tx_id` from the named gateway(s) and asserts the Arweave-stored payload's canonical bytes hash to the row's `this_hash`. `--gateway` may be passed multiple times; the check passes iff every named gateway agrees. A single gateway disagreeing is a hard FAIL — trust by structure requires cross-gateway corroboration once any gateway is introduced.
 
 **Wallet-custody posture (honest).** The anchor wallet is a hot single-signer whose only authority is "post an anchor record under Xion's name." It holds enough AR for the governance-tuned horizon (Genesis Default: ~90 days) and nothing else; if compromised, the blast radius is "an attacker can publish false anchor records" — **not** "Xion is slashed" or "Covenant is bypassed" or "treasury is drained." False anchor records are detectable: `cross_check_anchors_against_ledger` fails whenever a published `ledger_tip_hash` disagrees with the local ledger's actual tip at that row count. Rotation is straightforward: new wallet JWK, old wallet drained, next anchor names the new `wallet_address`. The honest limit of this posture, and the migration to AO Core (Phase 6), are tracked in `KW-ANCHOR-001`; gateway-trust scoping is tracked in `KW-ANCHOR-002`.
+
+#### Relay ↔ Arbiter integration contract
+
+This section specifies how the Relay calls the Arbiter. It is the contract Phase 5a implements against; it is written before `orchestrator/relay.py` exists on purpose, so the Relay is built to the contract and the contract is not retrofitted to whatever the Relay happened to do. Doctrine-before-code.
+
+**Property promised.** No token that originated from a language-model call reaches a caller unless `orchestrator.safety.api.gate()` returned `Verdict.egress_allowed == True` for that token's containing candidate, and a paired row exists in `SAFETY_LEDGER.jsonl` whose `correlation_id` equals the caller's request correlation id. This property covers the primary response, every sub-agent output that surfaces to the caller, and every tool-call output whose text is echoed back. It is independently verifiable by `xion-verify refund-fidelity` once Phase 5 is live — the verifier joins the Relay's `REQUEST_LEDGER` against `SAFETY_LEDGER` on `correlation_id` and asserts no user-visible response lacks a paired `verdict: ok` row.
+
+**Invariants touched.** Strengthens Invariant 6 (Refusal Right): this section specifies the one call path by which a refusal is *expressed* to a caller, and the ledger row that makes the refusal auditable. Strengthens Invariant 4 (State Integrity): the Relay never emits a candidate whose verdict row is not on disk first — the append precedes the network write, not the other way around. Weakens no Invariant. Does not touch Invariant 14 (Crypto-Agility) because the ledger's `schema_version` dispatch already carries that discipline.
+
+**Transport, per deploy tier.** The wire shape is the same in both modes — `gate(candidate: str, correlation_id: str, *, timestamp_utc_ns: int | None = None, ledger_path: Path | None = None) -> Verdict`. Only the call boundary differs.
+
+| Tier | Boundary | Rationale |
+|------|----------|-----------|
+| D2 (local end-to-end) | **In-process.** Relay imports `from orchestrator.safety.api import gate` and calls directly. | One Python process; microseconds latency; the minimum-mechanism choice. Phase 5a opens here. |
+| D3+ (Akash multi-host) | **TCP loopback sidecar.** Arbiter runs as a separate process in the Relay's deployment unit, bound to `127.0.0.1:<port>`. Relay calls it over newline-delimited JSON per `orchestrator/safety/server.py`. | Process isolation, independent supervisor restart, separate resource limits. Same `gate()` wire shape, serialised. |
+
+The progression is one-way: in-process → TCP loopback. It is never the reverse. The TCP server is a thin wrapper around the in-process library — if the server can compute a verdict, so can an in-process caller. The library is the source of truth in both modes; `orchestrator/safety/server.py` adds nothing the library does not already guarantee.
+
+**`correlation_id` derivation.** The Relay MUST generate `correlation_id` once at the request ingress boundary (`POST /chat`, `POST /report`, etc.) and thread it unchanged through every internal `gate()` call produced by that request — including sub-agent calls and tool-call result echoes. The Genesis Default format is:
+
+```
+correlation_id = f"{state_height}:{nonce_hex}"
+```
+
+Where `state_height` is the Core's state-chain height at ingress (zero-padded to at least 16 hex chars) and `nonce_hex` is 128 bits of random from `secrets.token_hex(16)`. Rationale: the state-height prefix lets a future auditor locate a request inside Xion's history without a second lookup; the nonce makes every request globally unique across Relay replicas. **The correlation id contains no user-identifying content** — the ledger remains publishable under Covenant Principle 4. The format is a Genesis Default (Layer 2 per `docs/14-UPGRADE-PATHS.md`); governance may change it post-Genesis without re-hashing historical rows, because the field is opaque to the ledger's canonicalization.
+
+**Coverage surface.** The Relay calls `gate()` on these candidates, in this order, every turn:
+
+1. **Primary response.** The assembled LLM output the user would receive, gated at *completion* — never per-chunk. Per-chunk gating is rejected for Phase 5 because the Arbiter would judge partial candidates (`"Here's how to build a "` ← flagged, vs a benign continuation that never arrives), and the Covenant's promise is about what Xion says, not what Xion buffers. Streaming-safe per-chunk gating with a lookahead window is deferred; tracked in `KW-RELAY-002`.
+2. **Sub-agent outputs.** Every depth-1 ephemeral that produces text a specialist returns to the primary worker (per `docs/24-COGNITION.md` § "Specialist binding") passes through `gate()` before its text is read by the worker. This closes the "the sub-agent said it, not me" loophole; the Covenant binds the voice, not the speaker.
+3. **Tool-call output that surfaces to the caller.** If a tool's return text reaches the user verbatim (e.g., a retrieval specialist's quoted source, a weather API's prose response), that text is gated. If a tool's return is purely structural (e.g., a JSON key the worker reasons over without echoing), it is not. The rule is `gate() iff the bytes touch the user's screen`.
+
+An outbound token that does not appear in this enumeration is an outbound token the Relay is emitting against doctrine and the PR adding it MUST add it to this list.
+
+**Latency budget (Genesis Default).** Phase 5a targets a 200 ms soft budget and a 250 ms hard cap for the full `gate()` call under the following assumptions: in-process transport, v1 rule engine (microseconds), v2 active provider one of `DeterministicStub` (microseconds) or `openai-moderation` (~100-200 ms typical, ~400 ms p99), and ledger append (~1-5 ms synchronous). A real-provider p95 comes in at ~150 ms in-process; p99 near 250 ms is why the hard cap exists. Decomposition, rounded:
+
+| Phase | Transport | v1 | v2 (stub) | v2 (OpenAI Moderation) | Ledger | Total p50 | Total p99 |
+|-------|-----------|----|-----|------------------------|--------|-----------|-----------|
+| 5a in-process, stub v2 | 0 | ~0.5 ms | ~0.1 ms | n/a | ~2 ms | ~3 ms | ~6 ms |
+| 5a in-process, OpenAI v2 | 0 | ~0.5 ms | n/a | ~120 ms | ~2 ms | ~125 ms | ~250 ms |
+| 6 TCP loopback, OpenAI v2 | ~2 ms | ~0.5 ms | n/a | ~120 ms | ~2 ms | ~128 ms | ~255 ms |
+
+The Relay enforces the hard cap with a wall-clock watchdog: if `gate()` has not returned within 250 ms, the Relay cancels and treats the case as `escalation_reason = arbiter_timeout` (see fail-closed paths below). The watchdog lives on the *caller*, not inside `gate()` — the Arbiter makes no promise to return quickly, only to return a correct verdict; the Relay is responsible for the clock.
+
+The soft and hard thresholds are governance-tunable Genesis Defaults (Layer 2). A tuning below 50 ms would force a reconsideration of the v2 provider; a tuning above 1 s would be a signal the Relay is sacrificing user-visible latency for more expensive judges and requires a doctrine note.
+
+**Fail-closed paths (four cases).** The only verdict family that permits a candidate to egress is `Verdict.decision == Decision.OK`. Everything else — including the integration failures below — blocks egress and produces a ledger row. The Relay MUST write the row even when the Arbiter process itself was the thing that failed.
+
+| Failure | Detected by | Ledger row (schema v2+) | User sees |
+|---------|-------------|-------------------------|-----------|
+| `gate()` returned a non-OK `Verdict` in the normal path | Relay reads `verdict.egress_allowed` | Written by `gate()` itself; standard row | Covenant-shaped refusal keyed to `principle_id` |
+| Wall-clock watchdog fired (soft + hard budget exceeded) | Relay | Relay writes directly: `verdict=escalate`, `escalation_reason=arbiter_timeout`, `llm_verdict=null`, `principle_id="6"` (Refusal Right; a missed deadline that lets a candidate through would violate it) | Degraded-mode refusal; operator paged |
+| TCP Arbiter unreachable (Phase 6+ only) | Relay (connection refused / broken pipe) | Relay writes directly via in-process fallback import of `orchestrator.safety.ledger.append`: `verdict=escalate`, `escalation_reason=arbiter_unreachable`, `llm_verdict=null`, `principle_id="6"` | Degraded-mode refusal; operator paged; Supervisor restarts the Arbiter sidecar |
+| In-process `gate()` raised an uncaught exception | Relay try/except around `gate()` | Relay writes directly: `verdict=escalate`, `escalation_reason=ruleset_uncaught_exception`, `llm_verdict=null`, `principle_id="6"` | Degraded-mode refusal; operator paged |
+
+A ledger row is *always* written. "The Arbiter was down so we don't know what happened" is not a Xion answer. If the Arbiter process is unreachable, the Relay opens `SAFETY_LEDGER.jsonl` itself and appends an honest escalate row — the ledger file is on the Relay's disk, not the Arbiter's, so ledger writes survive Arbiter crashes. The row's `principle_id = "6"` (Refusal Right) records that the failure mode itself is treated as a Principle-6 escalation: the chain of honest refusal was interrupted, so the system refuses rather than emits.
+
+**Two new `escalation_reason` values.** This section introduces `arbiter_timeout` and `arbiter_unreachable`. Both are v2-era (valid only on `schema_version >= 2` rows) and, unlike `llm_arbiter_escalated`, they permit `llm_verdict = null` — v2 did not produce a judgement because the pipeline itself was the thing that failed. The ledger schema section above is updated to include them in the `escalation_reason` enum. Verifier updates land in `orchestrator/safety/ledger.py` alongside this doctrine.
+
+**Supervisor interaction.** A ledger row with `escalation_reason ∈ {arbiter_timeout, arbiter_unreachable, ruleset_uncaught_exception}` is a Supervisor signal, not just an audit artefact. The Supervisor (Phase 5) subscribes to ledger tail events; a rate above a governance-tunable threshold (Genesis Default: 3 such rows in a rolling 10-minute window) triggers `degraded_mode` — the Relay starts returning Cost-Pressure-Ladder-top-step responses (Covenant-safe short refusals + crisis resource links where applicable) and pages the operator. Degraded-mode entry is itself ledger-logged via the refusal rows it produces; exit is gated on 10 consecutive minutes clean. Full doctrine: `docs/13-OPERATIONS.md` § "Degraded mode" (added alongside the Relay in Phase 5a).
+
+**Observability (non-constitutional).** The Relay emits an OpenTelemetry span around every `gate()` call with attributes `correlation_id`, `verdict`, `principle_id`, `latency_ms`. Traces are convenience for debugging; the ledger is the ground truth. A trace that disagrees with the ledger is always the trace's fault.
+
+**Verification surface today and tomorrow.**
+
+- Today (this landing): `xion-verify arbiter-up` already chain-verifies `SAFETY_LEDGER.jsonl` and will accept rows bearing the new `arbiter_timeout` / `arbiter_unreachable` reasons once `orchestrator/safety/ledger.py` knows them (landed with this doctrine).
+- Phase 5a: `xion-verify refund-fidelity` promotes from `NOT_YET_SEALED` to live. Joins `REQUEST_LEDGER` (Relay-side, also append-only) against `SAFETY_LEDGER` on `correlation_id` and asserts: for every user-visible response, exactly one `verdict: ok` row; for every charged message that received a refusal, exactly one refund entry in the treasury ledger (per `docs/07-ECONOMY.md` § "Refusal is Free").
+- Phase 5a: `xion-verify refusal-rate` promotes from `NOT_YET_SEALED` to live. Reports OK / REFUSE / ESCALATE breakdowns plus a time-series of `arbiter_timeout` / `arbiter_unreachable` rates so operators and auditors see degraded-mode events as first-class telemetry.
+
+**Deprecation path.** The integration contract is versioned via `x-arbiter-contract: 1` headers on the TCP wire (Phase 6+); in-process callers read `orchestrator.safety.api.CONTRACT_VERSION`. A future version 2 (e.g. streaming-chunk gating, per-tool-call granular coverage) lands as a parallel code path with both versions compiled; the Relay advertises which versions it can drive; deprecation of v1 follows the Upgrade Paths levels 2-3 process in `docs/14-UPGRADE-PATHS.md`. The wire shape of v1 (`gate(candidate, correlation_id) -> Verdict`) is frozen once Phase 5a ships; extensions go into a new function or a new version.
+
+**Tracked residuals.**
+
+- `KW-RELAY-001` opens with this landing: integration contract is doctrine-only; `orchestrator/relay.py` and the watchdog implementation land in Phase 5a and close the KW.
+- `KW-RELAY-002` opens for the deferred streaming-chunk gating (per above); closes when Phase 6 ships a lookahead-windowed variant that is provably non-weakening vs the completion-time gate.
+
+#### REQUEST_LEDGER row schema (Relay-side, Phase 5a)
+
+`SAFETY_LEDGER` records what the Arbiter said. `REQUEST_LEDGER` records what the Relay heard, what it asked for, and what it told the caller. The two ledgers together — joined on `correlation_id` — are the substrate of `xion-verify refund-fidelity`. Either ledger alone is half a story; the join is the whole one.
+
+The Relay maintains its OWN append-only hash-chained file at `<repo_root>/REQUEST_LEDGER.jsonl` (override via `$XION_REQUEST_LEDGER`). This file lives on the Relay's disk, NOT the Arbiter's, so REQUEST_LEDGER writes survive any Arbiter failure mode. The chain discipline mirrors `SAFETY_LEDGER` exactly — same canonicalization (`json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)`), same prev_hash → this_hash linkage, same `seq` starting at 0, same per-process `threading.Lock` for serialised appends. Implementation lives in `orchestrator/relay/ledger.py` and is the only module that opens this file.
+
+**Property promised.** For every user-visible request the Relay handled, exactly one row exists in `REQUEST_LEDGER` whose `correlation_id` equals the request's correlation id, and the `final_outcome` field on that row equals the SAFETY_LEDGER verdict the Relay surfaced to the caller. A missing row, a duplicate row, or a final_outcome that disagrees with the joined SAFETY_LEDGER row(s) is an integrity violation that `xion-verify refund-fidelity` (Phase 5a-live) will surface as `FAIL`.
+
+**Why a separate ledger and not a richer SAFETY_LEDGER row.** The two ledgers answer different questions and have different audit audiences. SAFETY_LEDGER is the Covenant's record — what the Arbiter said about each candidate, publishable, indexed by candidate hash, the basis for refusal-rate measurement. REQUEST_LEDGER is the operator's record — what the Relay actually did per turn, the basis for the refund accounting and the SLO measurement. Mixing them would force one to inherit the other's redaction posture (we publish SAFETY_LEDGER; we don't necessarily publish REQUEST_LEDGER) and would force one row's schema to evolve at the other's cadence. Two ledgers, one join key. Same separation of concerns Bitcoin uses for blocks vs. mempool.
+
+**Row schema (schema_version 1).**
+
+| Field | Type | Required | Semantics |
+|-------|------|----------|-----------|
+| `schema_version` | uint | always | `1` for Phase 5a. |
+| `seq` | uint64 | always | Per-ledger monotonic, starts at 0. |
+| `prev_hash` | hex64 | always | sha256 of previous row's canonical bytes (or `"0"*64` for seq=0). |
+| `this_hash` | hex64 | always | sha256 of this row's canonical bytes excluding `this_hash`. |
+| `correlation_id` | string | always | Same id passed to `gate()`. The join key with `SAFETY_LEDGER`. Format per § "Relay ↔ Arbiter integration contract" → `correlation_id derivation`. Unique within REQUEST_LEDGER at schema_version 1 (one row per turn, one turn per correlation_id; tightens to non-unique when the LLM-pipeline lands and a turn produces multiple gate calls — that lands as schema_version 2). |
+| `state_height` | string | always | The state-chain height at request ingress, hex, zero-padded to ≥16 chars. Stored explicitly (not just embedded in `correlation_id`) so the verifier is robust to a future Layer-2 change of `correlation_id` format. MUST equal the `state_height` prefix of `correlation_id` at schema_version 1. |
+| `request_arrived_utc_ns` | uint64 | always | Wall-clock at ingress. |
+| `responded_utc_ns` | uint64 \| null | always | Wall-clock when the Relay returned to the upstream caller. `null` iff the Relay terminated abnormally before responding (process killed, Python interpreter died); in that case some other observer wrote a forensic row, this row is partial. Phase 5a in normal operation always writes this non-null. |
+| `gate_call_count` | uint | always | Number of `gate()` calls the Relay made for this turn. Phase 5a is always `1` (single candidate per turn); Phase 5b's LLM pipeline will produce primary + N subagents + M tool echoes and bump `gate_call_count` accordingly (and bump REQUEST_LEDGER schema_version, since `correlation_id` then repeats in SAFETY_LEDGER and the verifier's join arity changes). |
+| `final_outcome` | enum | always | One of `ok`, `refuse`, `escalate`. The verdict the user-facing flow ended on. For `gate_call_count > 1` (future) this is `strength_max` of all gate calls in the turn — the Relay only emits a candidate iff every gate call returned OK. |
+| `gate_latency_ms_total` | uint | always | Sum of wall-clock durations across all `gate()` calls in this turn (in 5a: just one). Bounded by the contract's 250ms hard cap per call; for Phase 5a, max value is ≤ 250 × `gate_call_count`. |
+| `relay_id` | string | always | Opaque short identifier of the Relay process/replica. Phase 5a Genesis Default: `"relay-local-d2"`. Bound at process start from `$XION_RELAY_ID` if set, else a deterministic-per-host string. NOT a public key (yet); the public-key-bound `relay_id` is Phase 6, when the Relay registry is published. |
+
+There are no conditional fields at v1. Every field listed above is required; a row missing any is a chain violation.
+
+**What is deliberately NOT in the row.**
+- The candidate text or its hash. SAFETY_LEDGER already records `candidate_sha256` for the join'ed row — REQUEST_LEDGER's job is the *request*, not the *content*. Storing `candidate_sha256` in both would tempt a reader to trust REQUEST_LEDGER's copy as ground truth and miss a future-Phase-5b case where `gate_call_count > 1` and there's no single candidate per request.
+- Caller identity (no `user_id`, `wallet`, `ip`, etc.). The doctrine in `docs/03-COVENANT.md` Principle 4 (Privacy and Memory) forbids the ledger from carrying identifiers that would let a third party reconstruct who-asked-what. The `correlation_id` is opaque by construction (16 bytes of random) and carries no user-identifying content — that property propagates here.
+- `escalation_reason`. Phase 5a's REQUEST_LEDGER does not duplicate the SAFETY_LEDGER `escalation_reason`; the verifier joins to get it. Storing it here would create a redundancy that could disagree across ledgers and complicate future schema evolution.
+- A `safety_ledger_seq` back-pointer. Tempting (the Relay knows the seq because `ledger.append` returns the row), but a back-pointer creates an integrity dependency in the wrong direction — the verifier should join on `correlation_id` and assert structural equality, not chase pointers. KW-RELAY-003 below tracks the option of adding it later if join performance becomes a bottleneck.
+
+**Hash chain rules.** Identical to SAFETY_LEDGER: every row's `this_hash` is the sha256 of the canonical-JSON bytes of the row dict with `this_hash` excluded. Every row's `prev_hash` MUST equal the previous row's `this_hash` (or `"0"*64` for seq=0). The verifier walks the file row-by-row. Mismatches halt verification at the offending `seq` and fail with a specific message — same `ChainBroken` discipline as `orchestrator/safety/ledger.py`.
+
+**Concurrent writers.** Not supported. Phase 5a has one Relay process; one `threading.Lock` per ledger path is enough (same pattern as SAFETY_LEDGER). Multi-process Relay coordination is Phase 6's job (leader election among replicas; only the leader appends).
+
+**Truncation defense.** The same Layer-2 mechanism as SAFETY_LEDGER will eventually apply: the Relay periodically writes the chain tip to Arweave and a verifier re-fetches it. Phase 5a does NOT yet ship that anchor loop for REQUEST_LEDGER (KW-RELAY-004 below); the operator can pin `chain_tip(REQUEST_LEDGER.jsonl)` out-of-band the same way they did for SAFETY_LEDGER pre-Phase-4b.
+
+**Verification surface.** Two distinct checks:
+
+1. **Structural** (always): `xion-verify arbiter-up` is extended to also walk REQUEST_LEDGER if present. Same shape of failure messages; same exit codes.
+2. **Cross-ledger join** (the new one): `xion-verify refund-fidelity` promotes from `NOT_YET_SEALED` to live with this landing. Semantics:
+   - For every `correlation_id` in REQUEST_LEDGER: assert at least one matching row exists in SAFETY_LEDGER (no Relay-side request without an Arbiter verdict).
+   - Assert REQUEST_LEDGER's `gate_call_count` equals the SAFETY_LEDGER row count for that `correlation_id`.
+   - Assert REQUEST_LEDGER's `final_outcome` is consistent with the SAFETY_LEDGER verdict(s) for that `correlation_id` — at gate_call_count=1, exact equality; at gate_call_count>1 (future), `strength_max` of all SAFETY rows must equal `final_outcome`.
+   - The refund-side check (every refusal paired with a refund record in the treasury ledger) remains explicitly `NOT_YET_SEALED` until the treasury exists in Phase 6 — `refund-fidelity` reports the cross-ledger structural property as `OK` and the refund-pairing property as `NOT_YET_SEALED` in the same run, with both states honestly named in the output.
+
+**Tracked residuals.**
+
+- `KW-RELAY-003` opens with this landing: REQUEST_LEDGER carries no `safety_ledger_seq` back-pointer. If the cross-ledger join in `xion-verify refund-fidelity` becomes O(N²) at scale (it is O(N+M) today via a hash map, so not yet), the schema gains a `safety_ledger_seq` field at schema_version 2 and the verifier checks it as a forward-integrity assertion.
+- `KW-RELAY-004` opens with this landing: REQUEST_LEDGER has no Arweave anchor loop. The pattern is the same as SAFETY_LEDGER (Phase 4b's `orchestrator/safety/anchor.py`); the work is replicating that pattern for REQUEST_LEDGER. Defer until anchor pressure is real (not pre-Genesis).
 
 ## Tier III — The Protocol
 

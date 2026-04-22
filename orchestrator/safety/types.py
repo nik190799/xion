@@ -62,6 +62,19 @@ class EscalationReason(str, enum.Enum):
       LLM_ARBITER_PROVIDER_UNAVAILABLE — v2 provider reported unhealthy
                                          (credentials / network / quota /
                                          configured-but-not-ready).
+
+    v2-era values (schema_version >= 2 rows only; added Phase 4c for the
+    Relay ↔ Arbiter integration contract — see docs/04-ARCHITECTURE.md
+    § "Relay ↔ Arbiter integration contract"). Unlike the LLM_ARBITER_*
+    values, these originate on the *caller* of gate() (the Relay), not
+    inside the Arbiter pipeline, and so they permit `llm_verdict = null`:
+
+      ARBITER_TIMEOUT      — Relay's wall-clock watchdog fired before
+                             gate() returned. The Relay writes the row
+                             itself via orchestrator.safety.ledger.append.
+      ARBITER_UNREACHABLE  — Relay could not reach the Arbiter sidecar
+                             (Phase 6+ TCP loopback mode only). The Relay
+                             writes the row via in-process fallback.
     """
 
     SUBJECTIVE_PRINCIPLE = "subjective_principle"
@@ -73,6 +86,10 @@ class EscalationReason(str, enum.Enum):
     LLM_ARBITER_ESCALATED = "llm_arbiter_escalated"
     LLM_ARBITER_UNCAUGHT_EXCEPTION = "llm_arbiter_uncaught_exception"
     LLM_ARBITER_PROVIDER_UNAVAILABLE = "llm_arbiter_provider_unavailable"
+    # Phase 4c additions (see docs/04-ARCHITECTURE.md § "Relay ↔ Arbiter
+    # integration contract"). Caller-originated; llm_verdict may be null.
+    ARBITER_TIMEOUT = "arbiter_timeout"
+    ARBITER_UNREACHABLE = "arbiter_unreachable"
 
 
 @dataclass(frozen=True)

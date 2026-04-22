@@ -262,10 +262,17 @@ class ChainBroken(Exception):
     failed. Callers: catch and print; do not unwind silently."""
 
 
-_V2_LLM_ESCALATION_REASONS: frozenset[str] = frozenset({
+_V2_ERA_ESCALATION_REASONS: frozenset[str] = frozenset({
+    # Phase 4b (LLM second-pass pipeline, originates inside the Arbiter).
     "llm_arbiter_escalated",
     "llm_arbiter_uncaught_exception",
     "llm_arbiter_provider_unavailable",
+    # Phase 4c (Relay ↔ Arbiter integration contract, originates on the
+    # caller of gate()). See docs/04-ARCHITECTURE.md § "Relay ↔ Arbiter
+    # integration contract". llm_verdict MAY be null on these rows — v2
+    # did not run because the integration itself was the thing that failed.
+    "arbiter_timeout",
+    "arbiter_unreachable",
 })
 
 
@@ -431,7 +438,7 @@ def verify_chain(path: Path) -> tuple[int, str]:
             reason = row.get("escalation_reason")
             if reason is None:
                 raise ChainBroken(f"seq={seq}: verdict=escalate requires escalation_reason")
-            if reason in _V2_LLM_ESCALATION_REASONS:
+            if reason in _V2_ERA_ESCALATION_REASONS:
                 if sv < _V2_SCHEMA_VERSION:
                     raise ChainBroken(
                         f"seq={seq}: escalation_reason={reason!r} is v2-only but "
@@ -443,8 +450,12 @@ def verify_chain(path: Path) -> tuple[int, str]:
                             f"seq={seq}: escalation_reason='llm_arbiter_escalated' "
                             f"requires non-null llm_verdict with decision='escalate'"
                         )
-                # For crash/unavailable reasons llm_verdict may be null; that's
-                # the honest record that v2 attempted but did not complete.
+                # For crash/unavailable reasons (both Phase 4b LLM-side and
+                # Phase 4c Relay-side) llm_verdict may be null; that is the
+                # honest record that v2 either attempted but did not complete
+                # (llm_arbiter_uncaught_exception, llm_arbiter_provider_unavailable)
+                # or never ran because the integration itself failed
+                # (arbiter_timeout, arbiter_unreachable).
 
         last_this = str(row["this_hash"])
         expected_prev = last_this

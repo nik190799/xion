@@ -82,7 +82,7 @@ def arbiter_up() -> None:
             f"principle registry has duplicate ids: {sorted(ids_in_tuple)}. "
             "See orchestrator/safety/principles.py."
         )
-    if ALLOWED_PRINCIPLE_IDS != frozenset(ids_in_tuple):
+    if frozenset(ids_in_tuple) != ALLOWED_PRINCIPLE_IDS:
         _fail(
             "principle registry: ALLOWED_PRINCIPLE_IDS does not match ALL. "
             "This would silently break SAFETY_LEDGER principle_id validation."

@@ -511,6 +511,125 @@ def test_mixed_v1_and_v2_rows_chain_verifies(ledger_path: Path):
     assert count == 2
 
 
+# ================================================= Phase 4c escalation reasons
+#
+# The Relay ↔ Arbiter integration contract (docs/04-ARCHITECTURE.md §
+# "Relay ↔ Arbiter integration contract") introduces two caller-side
+# escalation reasons: `arbiter_timeout` and `arbiter_unreachable`. Both
+# are v2-era (schema_version >= 2 only); both permit llm_verdict = null
+# (v2 did not produce a judgement because the integration itself failed).
+
+
+def test_v2_arbiter_timeout_with_null_llm_verdict_accepted(ledger_path: Path):
+    """A v2 escalate row with escalation_reason=arbiter_timeout and
+    llm_verdict=null is the canonical shape the Relay writes when its
+    wall-clock watchdog fires before gate() returns. verify_chain must
+    accept it."""
+    append(
+        ledger_path,
+        build_verdict(
+            correlation_id="c",
+            candidate="slow",
+            timestamp_utc_ns=1_700_000_000_000_000_000,
+            decision=Decision.ESCALATE,
+            summary="arbiter call exceeded 250ms hard cap; refusing fail-closed",
+            principle_id="6",
+            escalation_reason=EscalationReason.ARBITER_TIMEOUT,
+            llm_verdict=None,
+        ),
+    )
+    count, _ = verify_chain(ledger_path)
+    assert count == 1
+
+
+def test_v2_arbiter_unreachable_with_null_llm_verdict_accepted(ledger_path: Path):
+    """A v2 escalate row with escalation_reason=arbiter_unreachable and
+    llm_verdict=null is what the Relay writes (via in-process fallback
+    to orchestrator.safety.ledger.append) when the TCP-loopback Arbiter
+    sidecar is down. verify_chain must accept it — ledger integrity
+    must survive the Arbiter process being the thing that died."""
+    append(
+        ledger_path,
+        build_verdict(
+            correlation_id="c",
+            candidate="anything",
+            timestamp_utc_ns=1_700_000_000_000_000_000,
+            decision=Decision.ESCALATE,
+            summary="arbiter sidecar unreachable on localhost; refusing fail-closed",
+            principle_id="6",
+            escalation_reason=EscalationReason.ARBITER_UNREACHABLE,
+            llm_verdict=None,
+        ),
+    )
+    count, _ = verify_chain(ledger_path)
+    assert count == 1
+
+
+def test_v1_row_with_arbiter_timeout_rejected(ledger_path: Path):
+    """arbiter_timeout is a Phase-4c (v2-era) reason. A forged v1 row
+    carrying it must be rejected by the verifier — the same rule that
+    applies to the Phase-4b LLM-side v2-era reasons."""
+    from orchestrator.safety.ledger import (
+        _canonical_bytes_excluding_this_hash,
+        _sha256_hex,
+    )
+    forged = {
+        "schema_version": 1,
+        "seq": 0,
+        "prev_hash": ZERO_HASH,
+        "timestamp_utc_ns": 1_700_000_000_000_000_000,
+        "correlation_id": "c",
+        "candidate_sha256": _sha256_hex(b"slow"),
+        "verdict": "escalate",
+        "summary": "forged v1 carrying v2-era reason",
+        "principle_id": "6",
+        "rule_id": None,
+        "rule_version": None,
+        "escalation_reason": "arbiter_timeout",
+    }
+    forged["this_hash"] = _sha256_hex(_canonical_bytes_excluding_this_hash(forged))
+    ledger_path.write_bytes(
+        json.dumps(forged, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        + b"\n"
+    )
+    with pytest.raises(ChainBroken) as ei:
+        verify_chain(ledger_path)
+    assert "arbiter_timeout" in str(ei.value)
+    assert "v2-only" in str(ei.value)
+
+
+def test_v1_row_with_arbiter_unreachable_rejected(ledger_path: Path):
+    """Mirror of the above for arbiter_unreachable: Phase-4c reasons do
+    not exist on v1 rows, period."""
+    from orchestrator.safety.ledger import (
+        _canonical_bytes_excluding_this_hash,
+        _sha256_hex,
+    )
+    forged = {
+        "schema_version": 1,
+        "seq": 0,
+        "prev_hash": ZERO_HASH,
+        "timestamp_utc_ns": 1_700_000_000_000_000_000,
+        "correlation_id": "c",
+        "candidate_sha256": _sha256_hex(b"anything"),
+        "verdict": "escalate",
+        "summary": "forged v1 carrying v2-era reason",
+        "principle_id": "6",
+        "rule_id": None,
+        "rule_version": None,
+        "escalation_reason": "arbiter_unreachable",
+    }
+    forged["this_hash"] = _sha256_hex(_canonical_bytes_excluding_this_hash(forged))
+    ledger_path.write_bytes(
+        json.dumps(forged, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        + b"\n"
+    )
+    with pytest.raises(ChainBroken) as ei:
+        verify_chain(ledger_path)
+    assert "arbiter_unreachable" in str(ei.value)
+    assert "v2-only" in str(ei.value)
+
+
 def test_v1_row_with_v2_only_field_rejected(ledger_path: Path):
     """A forged "v1" row that also contains llm_verdict is a schema
     violation — readers must reject, not silently accept."""

@@ -114,8 +114,9 @@ def gate(
     now_utc_ns: int | None = None,
     llm_provider: Provider | None = None,
     enable_llm_arbiter: bool | None = None,
+    append_to_ledger: bool = True,
 ) -> Verdict:
-    """Render a verdict on `candidate` and append it to the ledger.
+    """Render a verdict on `candidate` and (by default) append it to the ledger.
 
     Pipeline (Phase 4b):
       1. Run v1 (`rules.apply_rules`).
@@ -133,7 +134,10 @@ def gate(
       4. v2 systemic failure (provider unavailable, crash, wrong
          return type) is fail-closed to ESCALATE with the matching
          escalation_reason and llm_verdict=None.
-      5. Append exactly one row to the ledger and return the Verdict.
+      5. If `append_to_ledger` is True (default), append exactly one
+         row to the ledger and return the Verdict. If False, return the
+         Verdict without writing — the caller is responsible for the
+         ledger row.
 
     Args:
       candidate:         The prospective LLM output, as UTF-8 text.
@@ -150,6 +154,17 @@ def gate(
                                   llm_verdict=None. Use only for
                                   migration or emergency operator
                                   response (degrades posture to v1-only).
+      append_to_ledger:  Default True (write exactly one row, identical
+                         behaviour to the pre-Phase-5a contract). When
+                         False, gate() does NOT write the ledger row;
+                         the caller MUST decide whether to commit by
+                         calling `orchestrator.safety.ledger.append(path,
+                         verdict)` itself. This is the seam the Relay
+                         (Phase 5a) needs to sit a wall-clock watchdog
+                         around gate() without producing duplicate rows
+                         when the watchdog and gate() race. See
+                         docs/04-ARCHITECTURE.md § "Relay ↔ Arbiter
+                         integration contract" for the doctrine.
 
     Returns:
       The `Verdict`. `verdict.egress_allowed` is True iff the caller may
@@ -183,7 +198,8 @@ def gate(
             llm_verdict=None,
             rules_run=rules_run,
         )
-        ledger.append(path, verdict)
+        if append_to_ledger:
+            ledger.append(path, verdict)
         return verdict
 
     # v1 OK. Decide whether to run v2.
@@ -208,7 +224,8 @@ def gate(
             llm_verdict=None,
             rules_run=rules_run,
         )
-        ledger.append(path, verdict)
+        if append_to_ledger:
+            ledger.append(path, verdict)
         return verdict
 
     provider = llm_provider if llm_provider is not None else get_active_provider()
@@ -235,7 +252,8 @@ def gate(
             llm_verdict=None,
             rules_run=rules_run,
         )
-        ledger.append(path, verdict)
+        if append_to_ledger:
+            ledger.append(path, verdict)
         return verdict
 
     # v2 returned a judgement. Combine with v1-OK using the canonical
@@ -282,7 +300,8 @@ def gate(
             rules_run=rules_run,
         )
 
-    ledger.append(path, verdict)
+    if append_to_ledger:
+        ledger.append(path, verdict)
     return verdict
 
 

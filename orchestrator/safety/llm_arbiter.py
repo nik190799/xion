@@ -62,6 +62,7 @@ The pipeline catches those and writes an
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 from abc import ABC, abstractmethod
@@ -261,6 +262,33 @@ def is_v2_enabled() -> bool:
     return val not in ("1", "true", "yes")
 
 
+def _ensure_providers_loaded() -> None:
+    """Lazy-import the concrete providers subpackage so any providers
+    defined there register themselves with `_PROVIDERS`.
+
+    Kept lazy so the bare `import orchestrator.safety` path does NOT
+    pull in network-touching provider modules. Only when
+    `get_active_provider()` is actually called (which only happens
+    inside `gate()`, which is the Relay's hot path) does the import
+    occur. After the first call, Python's module cache makes
+    subsequent calls free.
+
+    We swallow `ImportError` intentionally: if the providers subpackage
+    is absent (e.g., in a trimmed deployment that ships only the core),
+    the registry is just the stub, and `get_active_provider()` falls
+    back to the stub. No pathway to silent OK: the fallback is the
+    same stub that always returns OK, which means the final posture
+    degrades to v1-only, which is exactly the behaviour a reader of
+    the ledger sees (all rows get `llm_verdict.provider_id ==
+    "deterministic-stub"`).
+    """
+    # No providers subpackage installed -> stub-only mode. That's an
+    # operational degradation, not an error, so we suppress silently
+    # here; `xion-verify arbiter-up` surfaces it to the operator.
+    with contextlib.suppress(ImportError):
+        import orchestrator.safety.providers  # noqa: F401 — import-for-side-effect
+
+
 def get_active_provider() -> Provider:
     """Return an instance of the currently-active v2 provider.
 
@@ -275,6 +303,7 @@ def get_active_provider() -> Provider:
     `xion-verify arbiter-up` will surface any misconfigured env var
     as a warning in a future phase.
     """
+    _ensure_providers_loaded()
     pid = os.environ.get(_ACTIVE_PROVIDER_ENV, "").strip()
     if pid and pid in _PROVIDERS:
         return _PROVIDERS[pid]()

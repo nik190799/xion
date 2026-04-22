@@ -7,6 +7,14 @@
 #     second-pass (§ "Arbiter v2 (LLM second-pass)" in docs/04-ARCHITECTURE.md)
 #     and three new escalation_reason values for v2-originated escalates.
 #     v1 rows remain readable; readers dispatch per-row on schema_version.
+#   Phase 4c extension (2026-04-21) — TWO additional escalation_reason values
+#     (`arbiter_timeout`, `arbiter_unreachable`) for the Relay ↔ Arbiter
+#     integration contract (§ "Relay ↔ Arbiter integration contract" in
+#     docs/04-ARCHITECTURE.md). These originate on the *caller* of gate()
+#     (the Relay), not inside the Arbiter pipeline, and so they permit
+#     `llm_verdict = null`. Both require schema_version >= 2. No schema
+#     version bump is required: the row-field set is unchanged; only the
+#     accepted enum values for an existing field are extended.
 #
 # SAFETY_LEDGER is the local append-only hash-chained record of every Covenant
 # verdict the Arbiter renders. Doctrine source for the row-level field schema
@@ -27,7 +35,7 @@
 schema_version: 2
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   5e7b19e5acec3e640fd4d1386af496f2872fafda4567e91de88d448079b5344e
+source_sha256:   e4b8b5e4837af0f3b9288ca1550db76c7846c0f56085d856a758b8a8d176cb7d
 
 status: canonical
 
@@ -74,9 +82,11 @@ row:
         - classifier_low_confidence
         - ambiguous_nearmiss
         - ruleset_uncaught_exception        # v1-era
-        - llm_arbiter_escalated             # v2-era (schema_version >= 2)
-        - llm_arbiter_uncaught_exception    # v2-era
-        - llm_arbiter_provider_unavailable  # v2-era
+        - llm_arbiter_escalated             # v2-era (schema_version >= 2); Phase 4b; requires non-null llm_verdict with decision='escalate'
+        - llm_arbiter_uncaught_exception    # v2-era; Phase 4b; llm_verdict MAY be null
+        - llm_arbiter_provider_unavailable  # v2-era; Phase 4b; llm_verdict MAY be null
+        - arbiter_timeout                   # v2-era; Phase 4c; caller-side (Relay watchdog fired); llm_verdict MAY be null
+        - arbiter_unreachable               # v2-era; Phase 4c; caller-side (TCP loopback connect failed); llm_verdict MAY be null
     llm_verdict:
       type:     "object | null"
       required: "iff schema_version >= 2"
@@ -155,4 +165,32 @@ pay_down_commitment_history:
       - llm_arbiter_uncaught_exception
       - llm_arbiter_provider_unavailable
     companion_schema: docs/schemas/ledger-safety-anchors.yaml
+    closed_on: 2026-04-21
+  extended_again_in:
+    phase: Phase 4c
+    artifact: docs/04-ARCHITECTURE.md § "Relay ↔ Arbiter integration contract"
+    schema_version_bump: "none — field set unchanged; only escalation_reason enum extended"
+    new_escalation_reasons:
+      - arbiter_timeout        # caller-side (Relay watchdog fired)
+      - arbiter_unreachable    # caller-side (TCP loopback connect failed)
+    note: >-
+      Phase 4c introduces caller-originated failure records. Unlike the LLM_ARBITER_*
+      reasons (which originate inside the Arbiter pipeline), these are written by the
+      Relay via orchestrator.safety.ledger.append when gate() itself did not complete.
+      llm_verdict MAY be null — v2 did not produce a judgement because the integration
+      was the thing that failed. See KW-RELAY-001 for implementation tracking.
+    closed_on: 2026-04-21
+  extended_thrice_in:
+    phase: Phase 4d
+    artifact: docs/04-ARCHITECTURE.md § "OpenAI Moderation provider (first real v2 classifier)"
+    schema_version_bump: "none — field set unchanged; first real v2 provider implementation"
+    no_new_fields: >-
+      This tranche lands the first concrete Provider subclass behind the Arbiter v2 ABC
+      (orchestrator/safety/providers/openai_moderation.py). The ledger row shape is
+      unchanged — every llm_verdict field already existed. What changed is that
+      llm_verdict.provider_id may now be "openai-moderation" (in addition to
+      "deterministic-stub") when the operator has set XION_LLM_ARBITER_PROVIDER and
+      OPENAI_API_KEY. The auditor replay procedure for that provider_id is pinned in
+      the new doctrine section. See KW-ARBITER-001 (narrowed) and KW-ARBITER-005
+      (newly opened for baseline-corpus + refusal-rate + asymmetric-thresholds).
     closed_on: 2026-04-21
