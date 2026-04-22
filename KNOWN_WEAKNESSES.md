@@ -237,6 +237,68 @@ Every entry has the same shape:
 - **Pay-down commitment:** Closes in Phase 5g+ when a shared-state broker (choice between Redis pub/sub, AO Process mailbox, or in-house file-based channel to be made in Phase 5g doctrine) takes over `latest_snapshot` publication so multiple uvicorn workers can share one Supervisor without double-writing `tick_commit` rows. Closure commit updates this KW's `Status` to `closed`, documents the chosen broker in `docs/04-ARCHITECTURE.md` § "The Supervisor", and lands an integration test that spins up N>=2 uvicorn workers and asserts a single `relay_id` dominates the `tick_commit` stream.
 - **Verifier:** No external verifier today — the single-worker constraint is a deployment-time property, not a ledger-structural one. The future multi-worker verifier is named provisionally as `xion-verify supervisor-singleton` (asserts the set of `relay_id`s writing `tick_commit` rows is of size 1 per deployment window); tracked alongside `KW-SUPERVISOR-002`'s heartbeat continuity work.
 
+### KW-CHAT-001 — POST /chat is non-streaming
+
+- **Domain:** `PROTOCOL`
+- **Discovered:** 2026-04-21 (Phase 5g-i Chat Surface landing)
+- **Severity:** low
+- **Status:** `paying-down`
+- **Description:** `POST /chat` in Phase 5g-i is a single request-response endpoint. The entire generated candidate is produced server-side before any byte reaches the client. For multi-second generations — common at the open-weights floor on commodity hardware — the connection blocks for the full generation duration. A user watching a cursor blink has no way to see partial progress, and a client under a connection-pool time budget can time out mid-generation and waste a full Kimi-API bill on unsurfaced text.
+- **Why it exists:** The doctrinal ordering in Phase 5g put "moderate both sides correctly" ahead of "stream incrementally." Two-sided moderation is the constitutional property the Chat Surface owes its users; streaming is an ergonomic improvement that must not be shipped in a way that bypasses egress moderation mid-stream. Designing streaming-with-egress-moderation correctly — deciding whether to moderate per-chunk (false-positive risk) or per-full-candidate (latency regression) or speculative-then-truncate (complexity cost) — is doctrine work worth its own sub-phase. Shipping a correct single-turn endpoint first and a streaming endpoint second is the cheaper path to a correct answer at both endpoints.
+- **Mitigations:**
+  1. A per-turn deadline (`XION_CHAT_DEADLINE_S`, Genesis Default 30s) bounds the worst-case connection hold. A stuck provider surfaces as a 503 `ProviderErrorEnvelope` within the deadline rather than hanging the client forever.
+  2. `POST /chat` is D1-only by doctrine (see `KW-CHAT-002`) — the blocking-connection cost is paid by the operator's own localhost client, not by external users. Phase 5g-v (web client) lands a UI affordance suitable for the non-streaming surface before Phase 5g-ii ships streaming.
+  3. The Chat handler enforces `max_tokens ≤ 4096` at the pydantic layer, capping the upper bound of a generation's duration under both hosted and floor providers.
+- **Pay-down commitment:** Closes with Phase 5g-ii when SSE or WebSocket streaming lands alongside a per-chunk or speculative-then-truncate moderation story. Closure commit updates `docs/04-ARCHITECTURE.md` § "The Chat Surface" with the chosen streaming moderation design, extends the `orchestrator/api/chat.py` handler, and adds a test suite covering partial cancellation, per-chunk refusal, and backpressure.
+- **Verifier:** None today. Phase 5g-ii's closure adds `xion-verify chat-streaming-fidelity` or folds the property into an extended `xion-verify chat-fidelity` (also tracked as a Phase-6+ verifier).
+
+### KW-CHAT-002 — /chat runs with billing disabled; blocks any D2 deploy
+
+- **Domain:** `PROTOCOL`
+- **Discovered:** 2026-04-21 (Phase 5g-i Chat Surface landing)
+- **Severity:** medium
+- **Status:** `paying-down`
+- **Description:** `POST /chat` in Phase 5g-i serves turns without an x402 pre-authorization, without a `402 Payment Required` path, without a `PAYMENT_LEDGER`, and without a Refusal-Free settlement row on `451` responses. Turns are declared non-billable; the operator absorbs the per-token cost of hosted-API calls (Kimi) for every served turn. A D2 production deploy that opens the endpoint to external traffic in this configuration would either bankrupt the operator on hostile-scraper load or violate the `docs/07-ECONOMY.md` § "Pay-to-Activate" constitutional property (billable turns without payment enforcement). **This KW explicitly blocks any D2 deploy of the Chat Surface until Phase 5g-iii ships x402 enforcement.**
+- **Why it exists:** The doctrinal ordering sliced Phase 5g into five sub-phases so each can be audited under a focused diff. Phase 5g-i's job is to prove the two-sided moderation surface works correctly against a real generative provider and the Invariant-17 floor. Billing is its own load-bearing surface (pre-authorization semantics, refund-on-refusal settlement, `PAYMENT_LEDGER` schema, the x402 protocol interactions with Relays); shipping it in the same commit would either bury moderation bugs behind billing bugs (slow audit) or force a late cut-over if the moderation surface turned out to need changes after the billing layer was frozen.
+- **Mitigations:**
+  1. The endpoint binds to localhost by default (inherited from `KW-API-001`) so the surface is physically inaccessible from D2 traffic until an operator explicitly exposes it.
+  2. `ChatRequest.max_tokens ≤ 4096` and `ChatRequest.message ≤ 16000 chars` cap the per-turn cost upper bound on the operator's own localhost usage.
+  3. `docs/04-ARCHITECTURE.md` § "The Chat Surface (Phase 5g-i)" explicitly names `Pay-to-Activate` as a deferred property and names Phase 5g-iii as the sub-phase that re-establishes it. A future operator reading the doctrine cannot miss that the D2 posture is blocked.
+  4. `docs/26-INFERENCE-POLICY.md` § "Genesis Defaults" documents that the Kimi API key is an operator-supplied credential — if the operator unsets it, the Router falls back to the floor provider, removing the runaway-cost risk at the cost of quality.
+- **Pay-down commitment:** Closes with Phase 5g-iii when the Chat Surface integrates x402 pre-authorization, a `PAYMENT_LEDGER` schema is pinned in `docs/schemas/`, `GET /pricing` lands, `451`-refund settlement is implemented, and a `xion-verify refusal-is-free` verifier joins the chat turn to its payment row. Closure commit flips this KW's `Status` to `closed` and names the closing PR.
+- **Verifier:** None today. Phase 5g-iii's closure adds `xion-verify refusal-is-free` (Covenant-audit-adjacent) and `xion-verify pricing-consistency` (ECONOMY-adjacent).
+
+### KW-CHAT-003 — Generation is synchronous; no user-facing cancel
+
+- **Domain:** `PROTOCOL`
+- **Discovered:** 2026-04-21 (Phase 5g-i Chat Surface landing)
+- **Severity:** low
+- **Status:** `paying-down`
+- **Description:** The Phase 5g-i Chat handler calls the generative provider inside `asyncio.wait_for(asyncio.to_thread(...), timeout=deadline_s)`. A client who disconnects mid-generation has no way to signal the server to abort the outbound provider call; the Python thread running the provider's HTTP POST finishes to completion or hits the deadline, whichever comes first. The operator pays the full generation cost (Kimi tokens, Ollama CPU time) even when no one is listening. This is a mild ergonomic and cost problem, not a correctness problem — the response is discarded if the client is gone.
+- **Why it exists:** `asyncio.to_thread` does not support cancellation; the underlying `concurrent.futures.ThreadPoolExecutor` has no way to interrupt a stdlib `http.client` request from the outside without writing a custom transport. Writing a streaming-capable, cancellation-aware HTTP client inside Phase 5g-i would widen the diff far beyond the "ship smallest correct thing" doctrine. The simpler fix ships alongside streaming in Phase 5g-ii.
+- **Mitigations:**
+  1. The per-turn deadline (`KW-CHAT-001` mitigation 1) bounds the wasted-cost window to `XION_CHAT_DEADLINE_S` (default 30s). A client that disconnects at t=0 of a 30s generation pays ≤30s of provider cost.
+  2. Both providers cap their own timeouts (Kimi: deadline_s; Ollama: deadline_s) — if the daemon itself hangs, the provider raises on timeout and the handler returns a 503 within the deadline.
+  3. The handler logs provider errors via the SAFETY/REQUEST ledger's latency field; a pattern of long-latency turns is visible in `xion-verify request-ledger` output even without a dedicated cancel signal.
+- **Pay-down commitment:** Closes with Phase 5g-ii's streaming landing — the SSE or WebSocket transport naturally surfaces a client-disconnect signal (via the underlying TCP FIN) that the handler can propagate to the provider through a `stream=True` request. Closure commit updates `docs/04-ARCHITECTURE.md` § "The Chat Surface" with the cancellation semantics and adds a test for client-disconnect mid-turn.
+- **Verifier:** None today; the cancel signal is transport-level, not ledger-level.
+
+### KW-INFER-001 — Default voice flows through a single hosted provider (Kimi/Moonshot)
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-21 (Phase 5g-i Chat Surface landing)
+- **Severity:** medium
+- **Status:** `paying-down`
+- **Description:** With the Phase 5g-i Genesis Default policy (`hosted_api_first`) and the single hosted provider shipped (Kimi k2.6 via Moonshot), every happy-path turn is served by one third-party vendor. Xion's default "voice shape" is therefore provider-dependent: if Moonshot's terms change, if its refusal model mis-aligns with Xion's Covenant, or if its availability degrades, Xion's default speech changes. Invariant 17's open-weights floor is held (the Ollama floor is always required to be healthy at bootstrap and is usable as fallback), but the floor is not the normal turn-serving path — it becomes the serving path only when the hosted provider is unhealthy or when the operator flips to `open_weights_only` mode. The "Xion's voice is not hostage to any one vendor" promise is therefore constitutional (Invariant 17 structurally enforced) but *operationally* weaker than the doctrine would suggest when an operator reads the default path.
+- **Why it exists:** Shipping a multi-hosted failover chain (Kimi → OpenAI → Anthropic → …) in Phase 5g-i would widen the diff in three directions simultaneously: (a) credential management for N vendors, (b) per-provider cost accounting needed to make "try cheapest first" rational, (c) rate-limit budgeting to stop a provider outage from storming the next vendor. Each of those wants its own doctrine and its own test matrix. The honest first step is one hosted provider plus the floor, and to track the concentration risk explicitly here.
+- **Mitigations:**
+  1. **Invariant 17 is structurally enforced.** `InferenceRouter.bootstrap()` refuses to serve `/chat` if the open-weights floor is not healthy at startup. An operator who cannot run a local Ollama-with-Gemma cannot run the Chat Surface at all. Xion's ability to speak is never *solely* hostage to Moonshot, even in the default mode.
+  2. **`open_weights_only` policy is a live capability, not an aspiration.** `XION_INFERENCE_POLICY=open_weights_only` flips the router to floor-only serving with zero code changes — the Invariant 17 clause 5 cutover dry-run is *already* exercisable by any operator. The gap is the scheduled harness, not the capability.
+  3. **Fallback-on-unhealthy is automatic.** If Moonshot returns `health() == False` (rate limit, outage, credential revocation), the `hosted_api_first` policy falls through to the floor without operator intervention. Xion degrades in quality but does not go silent.
+  4. **Operators can drop Kimi trivially.** Unsetting `XION_KIMI_API_KEY` in the environment de-registers the Kimi provider at the next lifespan boot; the Router then has only the floor to choose from, satisfying Invariant 17 with zero third-party dependency. The "trivially" here is the point — the concentration is opt-out.
+- **Pay-down commitment:** Closes when (a) a scheduled `xion-verify inference-cutover` verifier exercises `open_weights_only` mode under a representative load and records the dry-run outcome in an `INFERENCE_LEDGER` (pinned in `docs/schemas/`), (b) the annual dry-run cadence Invariant 17 clause 5 requires is wired into the operator runbook with a calendar anchor and a failure-mode drill, and (c) at minimum one additional hosted provider (OpenAI-compatible, Anthropic-compatible, or a second OpenAI-compatible vendor) is documented in `docs/26-INFERENCE-POLICY.md` with a pinned implementation and a pinned failover ordering. All three are Phase 6+ work; closure commit lands the verifier, the ledger schema, the runbook diff, and the second provider.
+- **Verifier:** None today. Named provisionally as `xion-verify inference-cutover` (structural: exercises the mode switch end-to-end under a synthetic load). `xion-verify inference-sovereignty` (live) already covers the manifest's structural-floor pin and is unaffected by this KW.
+
 ### KW-SUPERVISOR-002 — tick_commit heartbeat continuity not yet verifier-asserted
 
 - **Domain:** `RUNTIME`
