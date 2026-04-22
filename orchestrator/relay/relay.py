@@ -54,7 +54,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as _FuturesTimeoutError
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from orchestrator.relay import ledger as request_ledger
 from orchestrator.relay.ledger import RequestRecord
@@ -62,6 +62,12 @@ from orchestrator.safety import ledger as safety_ledger
 from orchestrator.safety.api import gate as _gate
 from orchestrator.safety.llm_arbiter import Provider
 from orchestrator.safety.types import Decision, EscalationReason, Verdict
+
+if TYPE_CHECKING:
+    # Type-only import; the Relay does not hard-depend on the Sensorium at
+    # runtime (sister-Core forks pre-dating Phase 5c must still be able to
+    # import this module).
+    from orchestrator.sensorium import SensoriumState
 
 CONTRACT_VERSION = 1
 """Version of the Relay ↔ Arbiter integration contract this Relay drives.
@@ -257,10 +263,23 @@ class Relay:
 
     # ----------------------------------------------------------- evaluate
 
-    def evaluate(self, candidate: str) -> RelayResult:
+    def evaluate(
+        self,
+        candidate: str,
+        *,
+        sensorium_state: "SensoriumState | None" = None,
+    ) -> RelayResult:
         """Evaluate `candidate` end-to-end: derive correlation_id, run
         gate() under the watchdog, write SAFETY_LEDGER + REQUEST_LEDGER,
         return the RelayResult.
+
+        Phase 5c: optional `sensorium_state` is forwarded into gate(). If
+        supplied, the Sensorium's textual DistressSignal OR-combines with
+        the v1 crisis rule (see `orchestrator.safety.api.gate`). The Relay
+        does NOT take a snapshot itself; that is the caller's job, so a
+        single SensoriumState can be shared across parallel sibling
+        evaluations and the Relay stays stateless w.r.t. Sensorium
+        lifecycle.
 
         Never raises in the normal failure modes. Raises only on a
         broken environment (unwritable ledger paths, etc.); those are
@@ -279,6 +298,7 @@ class Relay:
             candidate=candidate,
             correlation_id=correlation_id,
             request_arrived_utc_ns=request_arrived_utc_ns,
+            sensorium_state=sensorium_state,
         )
 
         # The Relay owns the SAFETY_LEDGER write timing — gate() returned
@@ -321,6 +341,7 @@ class Relay:
         candidate: str,
         correlation_id: str,
         request_arrived_utc_ns: int,
+        sensorium_state: "SensoriumState | None" = None,
     ) -> tuple[Verdict, int]:
         """Invoke gate() under the wall-clock watchdog.
 
@@ -344,6 +365,8 @@ class Relay:
             gate_kwargs["llm_provider"] = self._llm_provider
         if self._enable_llm_arbiter is not None:
             gate_kwargs["enable_llm_arbiter"] = self._enable_llm_arbiter
+        if sensorium_state is not None:
+            gate_kwargs["sensorium_state"] = sensorium_state
 
         try:
             future = self._executor.submit(self._gate_fn, candidate, **gate_kwargs)

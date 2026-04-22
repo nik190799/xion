@@ -23,7 +23,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 7. Core Identity Singularity | `xion-verify identity` is `NOT_YET_SEALED` until AO Core deploys. |
 | 8–9. Supply Caps | `xion-verify supply` is `NOT_YET_SEALED` until contracts deploy. |
 | 14. Crypto-Agility Mandate | `xion-verify crypto-currency` is `NOT_YET_SEALED`; `hashing.py` is the single algorithmic cite-point. |
-| 15. Drive Vector Lock | `xion-verify drive-vector` statically audits `docs/08-AUTO-RESEARCH.md`; live graph audit is `Phase 5/6`. |
+| 15. Drive Vector Lock | `xion-verify drive-vector` runs both the static doctrine audit of `docs/08-AUTO-RESEARCH.md` AND a live AST walk of `orchestrator.volition.compute_drive_vector` against `SOURCE_WHITELIST` (Phase 5c). `xion-verify drive` re-reads `docs/18-VOLITION.md` Part III and asserts `GENESIS_WEIGHTS` byte-matches doctrine (Phase 5c live). |
 | 16. Treasury Tier Separation | `xion-verify treasury`, `treasury-flow`, `foundation-reserve` are `NOT_YET_SEALED`. |
 | 17. Inference Sovereignty Floor | `xion-verify inference-sovereignty` is `NOT_YET_SEALED` until the Inference Router and `open_weights_manifest.json` ship in Phase 5. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |

@@ -33,6 +33,7 @@ from xion_verify.commands.constitutional import (
     soul,
     unknowns,
 )
+from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.links import links
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
@@ -41,6 +42,7 @@ from xion_verify.commands.refusal_rate import refusal_rate
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
+from xion_verify.commands.sensorium_ledger import sensorium_ledger
 from xion_verify.commands.state_chain import state_chain
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.exit_codes import name as exit_code_name
@@ -57,12 +59,14 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "links": links,
     "schemas": schemas,
     "cognition": cognition,
+    "drive": drive,
     "drive-vector": drive_vector,
     "state-chain": state_chain,
     "arbiter-up": arbiter_up,
     "refusal-rate": refusal_rate,
     "refund-fidelity": refund_fidelity,
     "inference-sovereignty": inference_sovereignty,
+    "sensorium-ledger": sensorium_ledger,
 }
 
 

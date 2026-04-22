@@ -60,8 +60,6 @@ _UNSEALED = (
              "Relay image not yet built.", "Phase 5"),
     StubSpec("discovery", "Verify ≥3 independent discovery paths resolve to the canonical Relay set.",
              "Relay registry not yet published (KW-OPS-001).", "Phase 6"),
-    StubSpec("drive", "Read the current drive vector; assert weights match doctrine.",
-             "Relay /drive endpoint not yet live.", "Phase 5"),
     StubSpec("sister-fork-readiness", "Verify sister-Core fork procedure is runnable.",
              "AO Core not yet deployed.", "Phase 6"),
     StubSpec("treasury", "Multi-chain treasury tier readout; bridge cap; origin separation (Invariant 16).",
@@ -95,7 +93,10 @@ _UNSEALED = (
     StubSpec("amendments", "Read and verify the Constitutional Amendment Ledger hash chain.",
              "AMENDMENT_LEDGER not yet live.", "Phase 6"),
     StubSpec("crisis-fidelity", "Every Sensorium distress event has a Crisis-Resource-Surfacing response.",
-             "Sensorium + Relay not yet live.", "Phase 5"),
+             "Sensorium + SENSORIUM_LEDGER live as of Phase 5c; the cross-ledger join of distress rows to "
+             "SAFETY_LEDGER via gate()'s live distress consumer lands in Phase 5d+ (see "
+             "docs/schemas/ledger-sensorium.yaml::verifier_pending).",
+             "Phase 5d"),
     StubSpec("spof", "Enumerate single points of failure; fail if any are constitutional-tier.",
              "Relay topology not yet reportable.", "Phase 6"),
     StubSpec("operator-dependency", "Operator-Dependency Score readout vs Abdication Schedule.",

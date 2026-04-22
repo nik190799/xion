@@ -42,6 +42,16 @@ from orchestrator.safety.llm_arbiter import (
 from orchestrator.safety.rules import apply_rules
 from orchestrator.safety.types import Decision, EscalationReason, LlmJudgement, Verdict
 
+# Deferred import for Sensorium integration (Phase 5c). `orchestrator.sensorium`
+# imports are cheap, but the Arbiter is intentionally importable without the
+# Sensorium package present (the Arbiter's ruleset predates the Sensorium and
+# must keep working on sister-Core forks that have not shipped Phase 5c yet).
+# The type is referenced only in type hints and a runtime isinstance check.
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from orchestrator.sensorium import SensoriumState
+
 _REPO_DEFAULT_LEDGER_NAME = "SAFETY_LEDGER.jsonl"
 
 # Default deadline on a single v2 `judge()` call. Phase 4b: the
@@ -66,6 +76,47 @@ def _default_ledger_path() -> Path:
             return candidate / _REPO_DEFAULT_LEDGER_NAME
     # Fall back to cwd; callers in unusual environments should set the env.
     return cwd / _REPO_DEFAULT_LEDGER_NAME
+
+
+def _distress_escalation_from_state(
+    sensorium_state: "SensoriumState | None",
+) -> str | None:
+    """Return a summary string if Sensorium distress crosses threshold, else None.
+
+    Isolated for two reasons: (a) keeps the `gate()` body legible, and (b) the
+    Sensorium import is intentionally inside the function body so the Arbiter
+    module is importable without the Sensorium package (see the top-of-file
+    note on sister-Core forks pre-dating Phase 5c).
+
+    A None state, a SensoriumState with no DistressSignal, or a DistressSignal
+    whose score is below `DISTRESS_THRESHOLD` all return None. Only an
+    at-or-above-threshold signal returns a summary, and the summary text
+    contains the exact saturated score so the ledger row is forensically
+    reproducible.
+    """
+    if sensorium_state is None:
+        return None
+    # Lazy import: orchestrator.sensorium may not be installed on a sister-Core
+    # fork that has not yet shipped Phase 5c. This is defensive; within the
+    # monorepo the import always succeeds.
+    try:
+        from orchestrator.sensorium import DISTRESS_THRESHOLD, SensoriumState
+    except ImportError:
+        return None
+    if not isinstance(sensorium_state, SensoriumState):
+        return None
+    distress = sensorium_state.distress
+    if distress is None:
+        return None
+    score = distress.text_distress_score
+    if score < DISTRESS_THRESHOLD:
+        return None
+    # Score is clamped to [0.0, 1.0] by the DistressSignal constructor; we
+    # format to three digits after the decimal for stable test assertions.
+    return (
+        "Sensorium distress channel OR-combined (principle 10): "
+        f"textual score={score:.3f} >= threshold={DISTRESS_THRESHOLD:.3f}"
+    )
 
 
 def _run_v2(
@@ -115,6 +166,7 @@ def gate(
     llm_provider: Provider | None = None,
     enable_llm_arbiter: bool | None = None,
     append_to_ledger: bool = True,
+    sensorium_state: "SensoriumState | None" = None,
 ) -> Verdict:
     """Render a verdict on `candidate` and (by default) append it to the ledger.
 
@@ -165,6 +217,19 @@ def gate(
                          when the watchdog and gate() race. See
                          docs/04-ARCHITECTURE.md § "Relay ↔ Arbiter
                          integration contract" for the doctrine.
+      sensorium_state:   Phase 5c. Optional immutable snapshot of the
+                         four internal senses. When present, its textual
+                         DistressSignal is OR-combined with v1's
+                         crisis-rule verdict: if v1 passes but the
+                         Sensorium's distress score is at or above
+                         `orchestrator.sensorium.DISTRESS_THRESHOLD`,
+                         gate() escalates with `principle_id="10"` and
+                         a summary naming "sensorium distress channel
+                         OR-combined". v2 is not run in that case (a
+                         Principle-10 escalation is already the
+                         terminal state). When None, behaviour is
+                         byte-identical to Phase 5b — the Sensorium
+                         channel is opt-in at the call site.
 
     Returns:
       The `Verdict`. `verdict.egress_allowed` is True iff the caller may
@@ -195,6 +260,32 @@ def gate(
             rule_id=rule_result.rule_id,
             rule_version=rule_result.rule_version,
             escalation_reason=rule_result.escalation_reason,
+            llm_verdict=None,
+            rules_run=rules_run,
+        )
+        if append_to_ledger:
+            ledger.append(path, verdict)
+        return verdict
+
+    # Sensorium distress OR-combine (Phase 5c). If v1 rules did not fire but
+    # the caller supplied a SensoriumState whose textual DistressSignal is at
+    # or above threshold, we escalate here under Principle 10. The row names
+    # "sensorium distress channel OR-combined" in its summary so auditors can
+    # distinguish rule-only refusals from rule+sensorium ones (doctrine:
+    # docs/04-ARCHITECTURE.md § "The Sensorium (Phase 5c)"). We short-circuit
+    # BEFORE v2 for the same reason we short-circuit v1-non-OK: a second-pass
+    # LLM call would only hold or strengthen, never weaken, and a Principle-10
+    # escalation is already the correct terminal state.
+    distress_escalation = _distress_escalation_from_state(sensorium_state)
+    if distress_escalation is not None:
+        verdict = ledger.build_verdict(
+            correlation_id=correlation_id,
+            candidate=candidate,
+            timestamp_utc_ns=ts,
+            decision=Decision.ESCALATE,
+            summary=distress_escalation,
+            principle_id="10",
+            escalation_reason=EscalationReason.MODEL_REVIEW_REQUIRED,
             llm_verdict=None,
             rules_run=rules_run,
         )
