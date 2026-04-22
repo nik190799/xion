@@ -27,12 +27,14 @@ Non-properties (honestly stated).
     the local chain only.
   - Concurrent writers are NOT supported; a per-path
     ``threading.Lock`` is held around the read-tail + write pair.
-  - Cross-ledger join to SAFETY_LEDGER / REQUEST_LEDGER on
-    ``correlation_id`` is structurally possible today but NOT checked
-    by any verifier at Phase 5c. Distress rows without a paired
-    SAFETY row are legal (they record distress observed outside a
-    ``gate()`` call — for example in a test harness, or on a
-    standalone Sensorium tick).
+  - Cross-ledger join to SAFETY_LEDGER on ``correlation_id`` is
+    structurally possible today AND is walked by ``xion-verify
+    crisis-fidelity`` as of Phase 5d. Distress rows with
+    ``correlation_id=null`` remain legal (tick-time or test-harness
+    observations) and are tallied separately by the verifier without
+    FAIL; distress rows with a non-null ``correlation_id`` MUST have a
+    paired SAFETY row with ``decision=escalate``, ``principle_id="10"``,
+    ``escalation_reason=model_review_required``.
 """
 
 from __future__ import annotations
@@ -209,6 +211,45 @@ def append_distress(
         "relay_id": str(relay_id),
     }
     return _append_row(path, body)
+
+
+def append_distress_from_state(
+    path: Path,
+    *,
+    state: SensoriumState,
+    correlation_id: str | None,
+    relay_id: str,
+) -> dict[str, Any]:
+    """Append a ``distress`` row using the fields of ``state.distress``.
+
+    Convenience wrapper around ``append_distress`` for callers that have a
+    ``SensoriumState`` in hand and want to record its current DistressSignal
+    against a specific ``correlation_id``. The caller is responsible for
+    deciding when to write — this helper does NOT check the score against
+    ``DISTRESS_THRESHOLD`` (a caller may legitimately want to record a
+    sub-threshold distress observation for forensic continuity, though no
+    Phase 5d code path does so).
+
+    Phase 5d is the first production caller: ``orchestrator.safety.api.gate``
+    (append_to_ledger=True path) and ``orchestrator.relay.relay.Relay``
+    (append_to_ledger=False path) both call this helper when a
+    Sensorium-triggered Principle-10 escalation has been rendered, so the
+    SENSORIUM distress row is written by exactly one layer per gate() call
+    and ``xion-verify crisis-fidelity``'s cross-ledger join holds.
+
+    Raises ``ValueError`` if ``state.distress`` is None (the caller has no
+    DistressSignal to record — a programmer error worth failing loudly).
+    """
+    if state.distress is None:
+        raise ValueError("append_distress_from_state(): state has no distress signal")
+    return append_distress(
+        path,
+        distress_score=state.distress.text_distress_score,
+        channel=state.distress.source,
+        as_of_utc_ns=state.distress.as_of_utc_ns,
+        relay_id=relay_id,
+        correlation_id=correlation_id,
+    )
 
 
 def append_tick_commit(

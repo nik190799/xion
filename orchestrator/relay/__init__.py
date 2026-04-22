@@ -20,6 +20,7 @@ from __future__ import annotations
 from orchestrator.relay.relay import (
     CONTRACT_VERSION,
     Relay,
+    RelayHealth,
     RelayResult,
     derive_correlation_id,
 )
@@ -27,6 +28,7 @@ from orchestrator.relay.relay import (
 __all__ = [
     "CONTRACT_VERSION",
     "Relay",
+    "RelayHealth",
     "RelayResult",
     "derive_correlation_id",
 ]

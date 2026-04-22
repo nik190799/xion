@@ -53,6 +53,13 @@ if TYPE_CHECKING:
     from orchestrator.sensorium import SensoriumState
 
 _REPO_DEFAULT_LEDGER_NAME = "SAFETY_LEDGER.jsonl"
+_REPO_DEFAULT_SENSORIUM_LEDGER_NAME = "SENSORIUM_LEDGER.jsonl"
+_DEFAULT_RELAY_ID_FOR_GATE = "gate-direct"
+"""Phase 5d: when ``gate()`` writes a SENSORIUM distress row directly (the
+``append_to_ledger=True`` path used by direct callers and tests), it stamps
+the row with this opaque ``relay_id``. The Relay path
+(``append_to_ledger=False``) passes its own ``relay_id`` because it owns
+both ledger writes in production traffic."""
 
 # Default deadline on a single v2 `judge()` call. Phase 4b: the
 # DeterministicStub returns in microseconds; network providers will need
@@ -76,6 +83,22 @@ def _default_ledger_path() -> Path:
             return candidate / _REPO_DEFAULT_LEDGER_NAME
     # Fall back to cwd; callers in unusual environments should set the env.
     return cwd / _REPO_DEFAULT_LEDGER_NAME
+
+
+def _default_sensorium_ledger_path() -> Path:
+    """Same repo-discovery pattern as ``_default_ledger_path`` but for
+    ``SENSORIUM_LEDGER.jsonl``. Override via ``$XION_SENSORIUM_LEDGER``.
+    Phase 5d production deployments set the env explicitly; this fallback
+    is for dev / test convenience.
+    """
+    env = os.environ.get("XION_SENSORIUM_LEDGER")
+    if env:
+        return Path(env)
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, *cwd.parents):
+        if (candidate / "docs" / "03-COVENANT.md").is_file():
+            return candidate / _REPO_DEFAULT_SENSORIUM_LEDGER_NAME
+    return cwd / _REPO_DEFAULT_SENSORIUM_LEDGER_NAME
 
 
 def _distress_escalation_from_state(
@@ -167,6 +190,8 @@ def gate(
     enable_llm_arbiter: bool | None = None,
     append_to_ledger: bool = True,
     sensorium_state: "SensoriumState | None" = None,
+    sensorium_ledger_path: Path | None = None,
+    relay_id: str | None = None,
 ) -> Verdict:
     """Render a verdict on `candidate` and (by default) append it to the ledger.
 
@@ -230,6 +255,26 @@ def gate(
                          terminal state). When None, behaviour is
                          byte-identical to Phase 5b — the Sensorium
                          channel is opt-in at the call site.
+      sensorium_ledger_path: Phase 5d. Path to the SENSORIUM_LEDGER
+                         file. Used only when gate() takes the Sensorium
+                         distress-escalation path AND `append_to_ledger`
+                         is True — gate() then writes a companion
+                         distress row naming the same `correlation_id`
+                         the SAFETY row carries, so `xion-verify
+                         crisis-fidelity` can join the two. None ->
+                         `_default_sensorium_ledger_path()` (same
+                         repo-root discovery as the SAFETY default).
+                         Ignored on all non-distress paths and on the
+                         append_to_ledger=False path (where the caller
+                         — the Relay in production — owns both writes).
+      relay_id:          Phase 5d. Opaque short identifier stamped onto
+                         the SENSORIUM distress row written on the
+                         append_to_ledger=True distress path. Default:
+                         `"gate-direct"`, signalling a direct-call
+                         write (tests, harnesses, sister tooling). The
+                         Relay passes its own `relay_id` through the
+                         append_to_ledger=False path and does the write
+                         itself; in that path this arg is ignored.
 
     Returns:
       The `Verdict`. `verdict.egress_allowed` is True iff the caller may
@@ -290,7 +335,34 @@ def gate(
             rules_run=rules_run,
         )
         if append_to_ledger:
+            # SAFETY first, then SENSORIUM. Both under their own per-path lock.
+            # If the SENSORIUM append raises (disk full, permission, etc.), the
+            # SAFETY row has already landed — crisis-fidelity will see a
+            # principle-10 SAFETY row with no SENSORIUM partner and FAIL loudly.
+            # That is the correct failure mode: a half-committed cross-ledger
+            # pair must be louder than a silently-dropped distress row.
             ledger.append(path, verdict)
+            # Import locally so the Arbiter module stays importable on sister-
+            # Core forks that predate Phase 5c (same reason as
+            # `_distress_escalation_from_state`).
+            from orchestrator.sensorium.ledger import append_distress_from_state
+            # At this point we are in the distress branch, so sensorium_state is
+            # non-None and carries a DistressSignal at or above threshold (the
+            # check in `_distress_escalation_from_state` is the gatekeeper).
+            assert sensorium_state is not None
+            sensorium_path = (
+                sensorium_ledger_path
+                if sensorium_ledger_path is not None
+                else _default_sensorium_ledger_path()
+            )
+            append_distress_from_state(
+                sensorium_path,
+                state=sensorium_state,
+                correlation_id=correlation_id,
+                relay_id=(
+                    relay_id if relay_id is not None else _DEFAULT_RELAY_ID_FOR_GATE
+                ),
+            )
         return verdict
 
     # v1 OK. Decide whether to run v2.
