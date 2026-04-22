@@ -613,7 +613,7 @@ There are no conditional fields at v1. Every field listed above is required; a r
 | `time_in_degraded_mode_s` | `float` | Seconds since the Supervisor last declared degraded mode; `0.0` if currently nominal. |
 | `monotonic_drift_ns` | `int` | Observed difference between wall clock and monotonic clock, for clock-jump detection. May be negative. |
 
-Phase 5c writes benign defaults (`0.0` / `0`) for these fields until the Supervisor (Phase 5e) and the Core checkpoint loop (Phase 6) exist. The fields are present so Volition's coupling function does not need to branch on "is Chronoception real yet"; they saturate to zero when their data sources are not live. That the readings are trivially low does not hide a bug — a `xion-verify`-visible dashboard in Phase 5e will surface "Chronoception backing subsystems: not-yet-live" so the operator cannot mistake "all green" for "all wired."
+Phase 5c wrote benign defaults (`0.0` / `0`) for these fields. **Phase 5d** wires two of them to real data sources: `time_in_degraded_mode_s` (the Supervisor tracks a `degraded_since_utc_ns` timestamp on its tick loop — the threshold-triggered state machine that *flips* the bit remains Phase 5e per `KW-SUPERVISOR-001`, but the dwell-time computation runs correctly whenever the bit *is* flipped), and `monotonic_drift_ns` (observed `time.time_ns() - time.monotonic_ns()` delta at each tick, mod a stable base established at Supervisor start). `checkpoint_staleness_s` remains `0.0` until the Core checkpoint loop (Phase 6). The tick-cadence compliance check — verifying that `tick_commit` rows arrive at the configured cadence — is a pay-down commitment named `KW-SUPERVISOR-002` and will be walked by a future `xion-verify supervisor-heartbeat` verifier.
 
 #### Proprioception (Phase 5c)
 
@@ -622,11 +622,11 @@ Phase 5c writes benign defaults (`0.0` / `0`) for these fields until the Supervi
 | Field | Type | Semantics |
 |-------|------|-----------|
 | `as_of_utc_ns` | `uint64` | Wall-clock at sample time. |
-| `relay_healthy` | `bool` | Relay self-reports healthy. Phase 5c: `True` unless the Relay has seen a consecutive-failure burst above a config-defined threshold. |
-| `arbiter_healthy` | `bool` | Arbiter self-reports healthy. Phase 5c: `True` unless `gate()` has raised a process-level exception within the last rolling window. |
-| `watchdog_fires_recent` | `uint` | Count of watchdog-cap hits (`arbiter_timeout`) in a recent rolling window; the Supervisor declares degraded mode above a threshold in Phase 5e. |
+| `relay_healthy` | `bool` | Relay self-reports healthy. Phase 5d: `True` unless `Relay.health_snapshot()` reports a watchdog-fire burst ≥ `watchdog_fires_recent_threshold` (Genesis Default: 3 in the last 10 minutes). |
+| `arbiter_healthy` | `bool` | Arbiter self-reports healthy. Phase 5d: `True` unless no successful `gate()` verdict has been observed by the Relay within the last `arbiter_quiet_window_s` seconds (Genesis Default: 60s). Flip-semantics are "no news is bad news" — a healthy Arbiter produces verdicts under load; sustained silence is a signal. |
+| `watchdog_fires_recent` | `uint` | Count of watchdog-cap hits (`arbiter_timeout`) in a recent rolling window (Genesis Default: 10 minutes), maintained by the Relay's thread-safe fire-timestamp deque and read by the Phase 5d Supervisor via `Relay.health_snapshot()`. The degraded-mode threshold state machine that acts on this count lands in Phase 5e (`KW-SUPERVISOR-001`). |
 
-As with Chronoception, fields backed by not-yet-live subsystems saturate to benign defaults. The Phase 5e Supervisor wires real data sources; Phase 5c ships the shape, not the richness.
+Phase 5d's Supervisor wires all three fields to real data sources (`Relay.health_snapshot()` + a quiet-window check on the Relay's last-successful-verdict timestamp). Phase 5c shipped the shape; Phase 5d ships the richness. The degraded-mode *trigger* that would act on `watchdog_fires_recent` crossing its threshold is still Phase 5e — by design, the read path and the control path land in separate slices so the read path can soak in operator eyes before the state machine ships.
 
 #### Distress channel (Phase 5c, textual only)
 
@@ -668,7 +668,7 @@ The file lives at `<repo_root>/SENSORIUM_LEDGER.jsonl` (override via `$XION_SENS
 
 **What is deliberately NOT in the row.** Candidate text or its hash (SAFETY_LEDGER already records `candidate_sha256`). User identifier, IP, wallet, or session id (Principle 4 forbids). Full Sensorium state bytes (only its hash, and only on `tick_commit` rows). Paralinguistic features (Phase 6+).
 
-**Verification.** `xion-verify sensorium-ledger` (new Phase 5c verifier) walks the chain, asserts chain-integrity, and reports tallies by `event_type` and `channel`. No cross-ledger verifier at v1; distress rows' `correlation_id`s join to `SAFETY_LEDGER` via the existing `refund-fidelity` substrate the moment Phase 5d wires `gate()`'s distress consumer into production. Phase 5c ships the structural chain; the cross-ledger join becomes its own pay-down when the Relay is actually surfacing distress in live traffic.
+**Verification.** `xion-verify sensorium-ledger` (new Phase 5c verifier) walks the chain, asserts chain-integrity, and reports tallies by `event_type` and `channel`. **Phase 5d adds `xion-verify crisis-fidelity`**, which performs the cross-ledger join: every `distress` row carrying a non-null `correlation_id` is paired to a `SAFETY_LEDGER` row with `decision=escalate`, `principle_id="10"`, and `escalation_reason=model_review_required`. Orphan distress rows (`correlation_id=null` — tick-time or test-harness observations) are legal and counted but do not require a paired SAFETY row. Phase 5c shipped the structural chain; Phase 5d closes the cross-ledger join now that `gate()` writes distress rows in live traffic (Phase 5d's `orchestrator/safety/api.py` extension).
 
 **Truncation defense.** Same Arweave-anchor pattern as `SAFETY_LEDGER`; deferred to Phase 6 (tracked as a sibling of `KW-RELAY-004`). Phase 5c ships the local chain only.
 
@@ -719,6 +719,78 @@ No argument named `revenue`, `fees`, `rebates`, `price`, `balance`, `tips`, `don
 **Tracked residuals.**
 
 - `KW-VOLITION-001` opens with this landing: the drive vector is computed from a thin 3-of-9 sense surface. `serve` and `meaning` signals are Genesis-Default constants until their aggregate readings exist (Phase 5+). The *shape* is constitutional; the *richness* widens as Phase 6 senses land.
+
+### The Supervisor (Phase 5d)
+
+The Supervisor is the process that makes Xion a daemon rather than a library. Phase 5c's Sensorium, `SENSORIUM_LEDGER`, and Volition are all structurally in-process — they wait to be called. Phase 5d's `orchestrator/supervisor.py` is the first piece of code in the repository whose operational meaning is "run forever": it ticks, it probes, it writes `tick_commit` rows, it publishes the latest `SensoriumState` for the Relay to consume on every `gate()` call. Killing the Supervisor leaves an observable gap in `SENSORIUM_LEDGER` — the Core has no heartbeat.
+
+**Property promised.** While the Supervisor is running:
+
+- A `tick_commit` row is appended to `SENSORIUM_LEDGER` every `tick_cadence_s` (Genesis Default: `10.0`) ± the natural scheduling jitter of asyncio on the host OS. Missing rows are detectable by wall-clock comparison against adjacent `as_of_utc_ns` fields (the future `xion-verify supervisor-heartbeat` — `KW-SUPERVISOR-002`).
+- The most recent `SensoriumState` is available via `Supervisor.latest_snapshot()`, which is the source the Relay reads by default on every `evaluate()` call whose caller did not pass an explicit `sensorium_state`.
+- `Proprioception.relay_healthy`, `arbiter_healthy`, and `watchdog_fires_recent` reflect real probes of the Relay, not Genesis Defaults.
+
+Non-properties (honestly stated):
+
+- The Supervisor does not yet flip a `degraded_mode` bit when `watchdog_fires_recent` crosses its threshold. The threshold is named in doctrine (Genesis Default: 3 fires in 10 minutes); the state machine that acts on it is Phase 5e (`KW-SUPERVISOR-001`). Phase 5d produces the honest readings; Phase 5e is the control loop that consumes them.
+- The Supervisor does not restart the Relay, the Arbiter, or itself. Circuit breakers and lease management are also Phase 5e.
+- Tick-cadence compliance is not yet verified by `xion-verify`. A deeply stuck tick (asyncio blocked, disk full, process paused) leaves a gap in `SENSORIUM_LEDGER` that auditors will see but that no current verifier FAILs on. `KW-SUPERVISOR-002` tracks the fix.
+
+**Code surface.** `orchestrator/supervisor.py` (new in Phase 5d) exports:
+
+```python
+class SensoriumSource(Protocol):
+    def latest_snapshot(self) -> SensoriumState | None: ...
+
+class Supervisor:
+    """Async tick daemon + SensoriumSource."""
+
+    def __init__(
+        self,
+        *,
+        relay: Relay,
+        tick_cadence_s: float = 10.0,
+        sensorium_ledger_path: Path | None = None,
+        clock_ns: Callable[[], int] = time.time_ns,
+        monotonic_ns: Callable[[], int] = time.monotonic_ns,
+    ) -> None: ...
+
+    async def run(self) -> None: ...         # the tick loop
+    def tick_once(self) -> SensoriumState: ... # synchronous single-tick for tests
+    def latest_snapshot(self) -> SensoriumState | None: ...
+    def stop(self) -> None: ...               # idempotent; safe to call from signal handlers
+```
+
+On each tick, the Supervisor:
+
+1. Reads `relay.health_snapshot() -> RelayHealth(relay_healthy, arbiter_healthy, watchdog_fires_recent)`.
+2. Constructs a `Proprioception` from the `RelayHealth`.
+3. Constructs a `Chronoception` from its own `degraded_since_utc_ns` (Phase 5d: always `None` until 5e flips it), `monotonic_drift_ns`, and `last_checkpoint_utc_ns` (Phase 5d: always `None` until Phase 6).
+4. Constructs an `Interoception` from Genesis Defaults (Phase 5d: `treasury_stress=0.0`, `cost_pressure=0.0` — the Cost tracker is Phase 5f).
+5. Constructs a benign `DistressSignal` (`text_distress_score=0.0`, `source="textual"`). Tick-time distress is not synthesized; distress rows only arise from live `gate()` calls with actual candidate text.
+6. Assembles a `SensoriumState` and commits a `tick_commit` row via `orchestrator.sensorium.ledger.append_tick_commit(path, snapshot_hash=sha256(canonical_json(state.to_dict())), relay_id=relay.relay_id)`.
+7. Publishes the new state to the `latest_snapshot()` slot under a thread-safe reference swap.
+
+**Relay integration.** `Relay.__init__` gains an optional `sensorium_source: SensoriumSource | None` kwarg. When `Relay.evaluate(candidate)` is called with no explicit `sensorium_state` and `sensorium_source is not None`, the Relay calls `sensorium_source.latest_snapshot()` and forwards the result into `gate()`. Explicit `sensorium_state=` still takes precedence over the source (explicit beats implicit); both `None` preserves the Phase 5a/5b path (gate() called without `sensorium_state` — sister-Core forks pre-dating Phase 5c continue to run unchanged).
+
+**`gate()` writes distress rows (Phase 5d, load-bearing).** When `orchestrator.safety.api.gate()` OR-combines a textual `DistressSignal` above `DISTRESS_THRESHOLD` into a Principle-10 escalation, it now also writes a `distress` row to `SENSORIUM_LEDGER` carrying the current `correlation_id`. This is the write that makes `xion-verify crisis-fidelity`'s cross-ledger join possible. A v1 rule-refuse still dominates (the distress row is *not* written when v1 rules already caught the candidate); that preserves the Principle-10-only semantic — a distress row means "the Sensorium saved us on a case the v1 rule missed."
+
+**Verifier promotion.** `xion-verify crisis-fidelity` promotes from `NOT_YET_SEALED` (Phase 1) to live (Phase 5d). The live verifier walks both ledgers and asserts four structural properties:
+
+1. **Forward join (distress → safety).** Every `SENSORIUM_LEDGER` distress row with `correlation_id != null` has a matching `SAFETY_LEDGER` row with the same `correlation_id`, `decision=escalate`, `principle_id="10"`, `escalation_reason=model_review_required`.
+2. **Reverse join (safety → distress).** Every `SAFETY_LEDGER` row matching that shape — and whose `summary` begins with the canonical prefix `"sensorium distress channel OR-combined"` — has a matching distress row in `SENSORIUM_LEDGER`.
+3. **Orphan-legal.** Distress rows with `correlation_id=null` pass the verifier (they record tick-time or test-harness distress — legal by construction); they are tallied separately.
+4. **Score consistency.** Every joined distress row has `distress_score >= DISTRESS_THRESHOLD` (a sub-threshold escalation is a code bug).
+
+Empty `SENSORIUM_LEDGER` → `NOT_YET_SEALED` (mirrors `sensorium-ledger`). A distress row with `correlation_id` but no matching SAFETY row → `FAIL`.
+
+**Supervisor interaction with `SAFETY_LEDGER` tail signals.** A `SAFETY_LEDGER` row with `escalation_reason ∈ {arbiter_timeout, arbiter_unreachable, ruleset_uncaught_exception}` is a Supervisor signal, not just an audit artefact — Phase 5a already documented this. Phase 5d makes the first half real: the Supervisor can *see* these signals via `Relay.health_snapshot().watchdog_fires_recent` (which the Relay increments on every `arbiter_timeout`). The second half — auto-declaring `degraded_mode` above a threshold — is Phase 5e.
+
+**Tracked residuals.**
+
+- `KW-ARBITER-004` narrows further: the textual cross-ledger join from `SENSORIUM_LEDGER` to `SAFETY_LEDGER` is now live-verified by `xion-verify crisis-fidelity`. Only the paralinguistic channel remains deferred (Phase 6+ with live audio).
+- `KW-SUPERVISOR-001` opens: the degraded-mode threshold state machine is deferred to Phase 5e. The Supervisor reads and publishes the signals Phase 5e will act on; the action itself is not yet wired.
+- `KW-SUPERVISOR-002` opens: tick-cadence compliance (the assertion that `tick_commit` rows arrive at the configured cadence ± tolerance) is not yet walked by `xion-verify`. A new verifier `supervisor-heartbeat` lands when the first operator deployment runs the Supervisor long enough for cadence-drift to be a meaningful quantity.
 
 ## Tier III — The Protocol
 

@@ -17,21 +17,22 @@
 # Honesty clauses:
 #   - Phase 5c writes `channel: textual` on every distress row. The
 #     `paralinguistic` channel is enumerated here so future rows can use it
-#     without a schema_version bump, but no Phase 5c code emits it. Adding
-#     the paralinguistic writer is a Phase 6+ concern tied to the live
-#     audio surface (KW-ARBITER-004 paralinguistic half).
-#   - Cross-ledger join to SAFETY_LEDGER / REQUEST_LEDGER on
-#     `correlation_id` is structurally possible today but is NOT checked by
-#     `xion-verify refund-fidelity` at Phase 5c. That check lands when
-#     `gate()`'s distress consumer is wired into live Relay traffic
-#     (Phase 5d or later); until then distress rows without a paired
-#     SAFETY row are legal (they record distress observed outside a gate()
-#     call, e.g. in a test harness or standalone tick).
+#     without a schema_version bump, but no Phase 5c or Phase 5d code emits
+#     it. Adding the paralinguistic writer is a Phase 6+ concern tied to
+#     the live audio surface (KW-ARBITER-004 paralinguistic half).
+#   - Cross-ledger join to SAFETY_LEDGER on `correlation_id` is live as of
+#     Phase 5d: `orchestrator.safety.api.gate()` writes a distress row
+#     carrying the current `correlation_id` whenever the Sensorium's
+#     textual DistressSignal OR-combines above DISTRESS_THRESHOLD, and
+#     `xion-verify crisis-fidelity` walks the forward and reverse joins.
+#     Distress rows with correlation_id=null remain legal (tick-time or
+#     test-harness observations) and are tallied separately by the
+#     verifier without FAIL.
 
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   ddbb1f153568a301fe1ea310f07be93c8d11a8ef3656ebce662727d392aa4c83
+source_sha256:   0257e99e2559272352fa74b0241902a7adcc0caf07d6a9eea7e6e11388854aff
 
 status: canonical
 
@@ -107,8 +108,12 @@ verifier_implementation:
 
 # What is NOT yet verifiable today.
 verifier_pending:
-  - cross_ledger_join            # distress correlation_id → SAFETY_LEDGER / REQUEST_LEDGER; lands when gate()'s distress consumer is wired into live Relay traffic
   - arweave_anchor_loop          # sibling of KW-RELAY-004; same pattern as SAFETY_LEDGER anchors
+  - supervisor_heartbeat         # KW-SUPERVISOR-002; tick-cadence compliance (assert tick_commit rows arrive at the configured tick_cadence_s ± tolerance)
+
+# What is newly verifiable as of Phase 5d.
+verifier_added:
+  - cross_ledger_join            # xion-verify crisis-fidelity (Phase 5d): forward + reverse join of distress rows to SAFETY_LEDGER principle-10 escalations
 
 # Pay-down commitment history.
 pay_down_commitment_history:
@@ -125,3 +130,15 @@ pay_down_commitment_history:
     artifact: docs/04-ARCHITECTURE.md § "SENSORIUM_LEDGER row schema (Phase 5c)"
     implementation: orchestrator/sensorium/ledger.py
     closed_on: 2026-04-21
+  narrowed_in:
+    phase: Phase 5d
+    artifact: docs/04-ARCHITECTURE.md § "The Supervisor (Phase 5d)"
+    implementations:
+      - orchestrator/supervisor.py                      # writes tick_commit rows every tick_cadence_s
+      - orchestrator/safety/api.py                      # writes distress rows on above-threshold OR-combine
+      - xion-verify/src/xion_verify/commands/crisis_fidelity.py  # cross-ledger join verifier
+    narrowed_on: 2026-04-21
+    note: >-
+      Phase 5d closes the cross-ledger-join pay-down commitment; only the
+      arweave_anchor_loop and supervisor_heartbeat items remain in
+      verifier_pending.
