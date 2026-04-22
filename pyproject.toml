@@ -83,8 +83,9 @@ anchor = [
 ]
 
 # Phase 5f HTTP read-only surface (docs/04-ARCHITECTURE.md § "The HTTP
-# Surface (Phase 5f)"). Kept isolated from core for the same reasons as
-# [anchor]:
+# Surface (Phase 5f)") and Phase 5g-i Chat Surface (same file, § "The
+# Chat Surface (Phase 5g-i)"). Kept isolated from core for the same
+# reasons as [anchor]:
 #   - The Arbiter hot path, Sensorium, Volition, and Supervisor remain
 #     importable with zero third-party deps; an auditor or sister-Core
 #     fork that does not surface HTTP does not pay the wire cost.
@@ -92,6 +93,11 @@ anchor = [
 #     surface (dozens of transitive pins); moving them behind this
 #     extra preserves the "core runtime deps = 0" posture declared in
 #     `dependencies = []` above.
+#   - Phase 5g-i adds POST /chat plus Kimi + Ollama generative
+#     providers behind this same extra; both providers use stdlib
+#     http.client in asyncio.to_thread, so no additional pins land
+#     here. The operator-facing env surface is pinned in
+#     `docs/26-INFERENCE-POLICY.md` and `.env.example`.
 # Operators running `uvicorn orchestrator.api.app:create_app --factory`
 # opt in explicitly: `pip install -e ".[api]"`.
 api = [

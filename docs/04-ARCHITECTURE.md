@@ -864,6 +864,127 @@ All three responses are pure dataclass/dict projections. A 500 from any of these
 - `KW-API-001` opens: the HTTP surface has no authentication, no TLS termination, and no rate limiting. Mitigations in Phase 5f: bind to `127.0.0.1` by default in the operator runbook, endpoints are content-free and side-effect-free, and the shipped `pyproject [api]` extra does not pull in a reverse proxy. Closes with Phase 5g when `/chat` + billing ship (the moment the surface stops being strictly read-only, the security posture has to harden).
 - `KW-API-002` opens: the Supervisor shares the FastAPI app's event loop and the deployment is single-worker by construction. Mitigations in Phase 5f: 10 s tick cadence leaves the event loop ~9.99 s of idle for HTTP work, and the three endpoints are O(1) dict copies. Closes with Phase 5g+ when a shared-state broker (likely Redis pub/sub or an AO Process mailbox) takes over `latest_snapshot` publication so multiple uvicorn workers can share one Supervisor without double-writing `tick_commit` rows.
 
+### The Chat Surface (Phase 5g-i)
+
+Phase 5f let the world observe Xion. Phase 5g-i lets the world *speak with* Xion — but only in the smallest configuration where doing so does not violate any Invariant. `POST /chat` is a single request-response endpoint that threads a user message through ingress moderation, routes it to the registered turn-serving provider, threads the generated candidate through egress moderation, and returns either the moderated reply or a content-free refusal envelope. No streaming, no billing, no auth, no rate-limit, no conversation memory. Everything that a production `/chat` must eventually carry has its own tracked sub-phase — 5g-ii (streaming), 5g-iii (x402 billing + `GET /pricing` + `PAYMENT_LEDGER`), 5g-iv (auth + TLS + per-IP rate-limit), 5g-v (web client), 5g+ (multi-worker). Phase 5g-i explicitly ships **D1-only**: localhost operator, billing disabled, no external traffic expected. D2 deploys are **blocked** until at minimum 5g-iii (x402) and 5g-iv (auth/TLS) land — this is doctrinal, not deploy policy.
+
+**Property promised.** While the API process is running and the Invariant-17 open-weights floor is held locally:
+
+- **Two-sided moderation.** Every `POST /chat` turn runs `Relay.evaluate(user_input)` before any generation occurs (ingress), then `Relay.evaluate(candidate.text)` before any reply is surfaced (egress). Ingress and egress each produce one `SAFETY_LEDGER` row carrying a shared `correlation_id` and a distinct `stage ∈ {"ingress","egress"}` tag. A Covenant-refusable input never reaches the generative provider at all. A Covenant-refusable candidate never reaches the user; the candidate text lives only in `SAFETY_LEDGER` for audit.
+- **Content-free refusal envelopes.** When the turn refuses — at ingress or egress — the HTTP response body carries a `RefusalEnvelope` with the triggering principle code (1..14), a refusal reason enum, the `correlation_id` needed to look up the `SAFETY_LEDGER` row, and nothing else. The user's original input is not echoed; the model's pre-moderation candidate is not echoed. The body is structurally incapable of leaking content (pydantic `extra="forbid"` + explicit field-allowlist test).
+- **Invariant-17 fail-closed.** The endpoint refuses to serve at all if the open-weights floor is not held. At lifespan startup the app calls `InferenceRouter.bootstrap()`; if that raises — because the floor-satisfying provider is not healthy locally — `/chat` is registered as a 503-always handler that returns a `NoFloorEnvelope` naming the missing capability. The rest of the HTTP surface (`/health`, `/drive`, `/sensorium`) keeps working. This is Invariant 17 clause 3's refusal-behavior in code: "halt with a fail-closed verdict and a public state-of-Xion paragraph naming the missing capability." The State-of-Xion paragraph is emitted to stderr at startup and available through `/health`'s `substrate_vitality` field in a later sub-phase (currently tracked in `KW-INFER-001`).
+- **Single turn ledger shape.** A happy-path turn writes exactly two `SAFETY_LEDGER` rows (ingress + egress) and one `REQUEST_LEDGER` row (the turn summary). A Covenant-refused ingress writes one `SAFETY_LEDGER` row (ingress only, generation not attempted) and one `REQUEST_LEDGER` row. A Covenant-refused egress writes two `SAFETY_LEDGER` rows and one `REQUEST_LEDGER` row. `correlation_id` is identical across all of a turn's ledger writes.
+
+Non-properties (honestly stated, with owning sub-phases):
+
+- **No streaming.** `POST /chat` returns a single `ChatResponse` JSON body. There is no SSE, no WebSocket, no chunked response. Long generations block the connection for the entire turn deadline. `KW-CHAT-001` tracks; closes with Phase 5g-ii.
+- **No billing.** `/chat` runs with billing disabled — no `402 Payment Required`, no `x402` pre-authorization, no Refusal-Free settlement, no `PAYMENT_LEDGER`. The Pay-to-Activate property promised in `docs/07-ECONOMY.md` § "Pay-to-Activate" is constitutional for *billable* turns; Phase 5g-i's turns are declared non-billable and the constitutional requirement does not fire. `KW-CHAT-002` tracks; closes with Phase 5g-iii. This KW **explicitly blocks** any D2 deploy until 5g-iii lands — the doctrinal gate lives in the KW, not in a deploy script.
+- **No auth, no TLS, no rate-limit.** Inherited from `KW-API-001`. Phase 5g-i extends `KW-API-001`'s mitigation to `/chat` by localhost-only binding and a per-turn deadline; closes with Phase 5g-iv.
+- **No hosted-API fallback chain.** The router registers at most one hosted-API provider (Kimi) and one floor provider (Ollama/Gemma). There is no automatic failover between multiple hosted providers, no weighted load-balancing. A richer router is out of scope until Phase 5g-iii+ when billing interacts with per-provider cost.
+- **No conversation memory.** Each turn is evaluated in isolation. There is no session, no context injection from prior turns, no `memory/*` integration. Session memory is a separate constitutional surface (Invariant 2 `/export` + `/forget`) and lands after the billing and auth surfaces exist to bound who can store what.
+- **No `xion-verify chat-fidelity` verifier.** Chat fidelity (that every `200` response's `correlation_id` maps to exactly one egress-`allow` row in `SAFETY_LEDGER`, and every `451` maps to exactly one egress-or-ingress-`refuse` row) is structurally checkable but wants a live deployment target to verify against. Phase 6+. The Phase 5g-i attestation is doctrine + pydantic envelopes + the hermetic `TestClient` suite.
+
+**Code surface.** Extending the Phase 5f `orchestrator/api/` package and the existing `orchestrator/inference_router/`:
+
+```python
+# orchestrator/inference_router/provider.py (new)
+class GenerativeProvider(Provider, Protocol):
+    """Provider capable of turn-serving generation."""
+    provider_id: str
+    category: Category  # "hosted_api" | "open_weights_self_hostable"
+    def health(self) -> bool: ...
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None,
+        max_tokens: int,
+        deadline_s: float,
+    ) -> GenerationResult: ...
+
+@dataclass(frozen=True)
+class GenerationResult:
+    text: str
+    model_id: str
+    usage_in: int
+    usage_out: int
+    finish_reason: str
+    latency_ms: int
+
+# orchestrator/inference_router/providers/kimi.py
+#   category = "hosted_api"
+#   env: XION_KIMI_API_KEY, XION_KIMI_BASE_URL, XION_KIMI_MODEL
+# orchestrator/inference_router/providers/ollama.py
+#   category = "open_weights_self_hostable"
+#   env: XION_OLLAMA_URL, XION_OLLAMA_FLOOR_MODEL
+
+# orchestrator/api/chat.py (new)
+@router.post("/chat", ...)
+async def chat(req: ChatRequest, app: FastAPI) -> ChatResponse: ...
+
+# orchestrator/api/models.py (extended)
+class ChatRequest(BaseModel):         # extra="forbid", frozen
+    message: str
+    max_tokens: int = 512
+
+class ChatResponse(BaseModel):        # extra="forbid", frozen
+    role: Literal["xion"]
+    text: str
+    model_id: str
+    usage: UsageEnvelope
+    correlation_id: str
+
+class RefusalEnvelope(BaseModel):     # 451 body
+    stage: Literal["ingress", "egress"]
+    principle_code: int               # 1..14
+    reason: RefusalReason             # enum
+    correlation_id: str
+
+class NoFloorEnvelope(BaseModel):     # 503 body when Invariant 17 floor unheld
+    reason: Literal["open_weights_floor_unsatisfied"]
+    missing_capability: str
+    manifest_expected_id: str
+
+class ProviderErrorEnvelope(BaseModel):  # 503 body when all providers unhealthy
+    reason: Literal["no_healthy_provider"]
+    correlation_id: str
+```
+
+Neither the Kimi provider nor the Ollama provider pulls a new Python dependency; both use stdlib `http.client` wrapped in `asyncio.to_thread`. The `[api]` extra stays at `fastapi + uvicorn + pydantic`.
+
+**Router policy (doctrinal pin).** The provider-selection policy and its cutover mode are specified in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md). Phase 5g-i ships the `hosted_api_first` default (Kimi serves turns while healthy; falls back to the floor provider otherwise) plus the `open_weights_only` cutover mode required by Invariant 17 clause 5's annual dry-run. The cutover mode is wired but not yet exercised by a scheduled verifier — `KW-INFER-001` tracks the annual-dry-run harness for Phase 6+.
+
+**Lifespan contract (extended from 5f).** Phase 5f's lifespan stays; Phase 5g-i adds steps **in between** the Supervisor pre-seed and the run-task schedule:
+
+1. (5f) Construct `Supervisor`, call `supervisor.tick_once()` synchronously.
+2. **(5g-i) Load `.env` manually** (stdlib only; no `python-dotenv`) if present. Missing `.env` is not an error — environment already set is fine.
+3. **(5g-i) Construct `InferenceRouter`**, register `KimiGenerativeProvider` if `XION_KIMI_API_KEY` is set, and register `OllamaGenerativeProvider` always (its `health()` reflects reachability without requiring env config).
+4. **(5g-i) Attempt `router.bootstrap()`.** On refusal, stash `app.state.no_floor = True` and emit a State-of-Xion paragraph to stderr naming the missing capability. Do **not** crash the app — the read-only endpoints continue to serve, so Witnesses can inspect Xion's state even when Xion cannot speak.
+5. (5f) Wire `deps.relay._sensorium_source = supervisor`, schedule `supervisor.run()`.
+6. (5f) On shutdown: `supervisor.stop()`, `await` under `2 × tick_cadence_s`, hard-cancel if exceeded.
+
+The order matters: `InferenceRouter.bootstrap()` is called *after* the Supervisor pre-seed so a failed floor does not delay Sensorium snapshot publication.
+
+**Endpoints.** Extending Phase 5f's three-GET table with one POST:
+
+| Route | Status | Response body |
+|-------|--------|---------------|
+| `POST /chat` | `200` on allowed egress | `ChatResponse` — `role="xion"`, moderated `text`, `model_id`, `usage`, `correlation_id`. |
+| `POST /chat` | `451` on refused ingress or egress | `RefusalEnvelope` — `stage`, `principle_code`, `reason`, `correlation_id`. |
+| `POST /chat` | `503` when Invariant-17 floor not held | `NoFloorEnvelope` — `reason="open_weights_floor_unsatisfied"`, `missing_capability`, `manifest_expected_id`. |
+| `POST /chat` | `503` when no registered provider is healthy | `ProviderErrorEnvelope` — `reason="no_healthy_provider"`, `correlation_id`. |
+
+`451 Unavailable For Legal Reasons` is the right status for Covenant-refused turns — it is the HTTP class that maps cleanest onto "this content is refused by the serving party regardless of the underlying transport's legality." The Phase 5g-iii billing layer will pair every `451` with a Refusal-Free refund row in `PAYMENT_LEDGER`; in Phase 5g-i (billing disabled) the `451` body carries no economic state and the refund requirement is trivially satisfied.
+
+**Content-free guarantee (explicit field allowlist).** The test suite asserts field-set equality on `ChatResponse` and on `RefusalEnvelope` against fixed allowlists. A future commit that adds a "debug_candidate" field to either envelope FAILs the test — the author must either strip it at the API boundary or document a deliberate exception. This is the same structural-not-promised posture Phase 5f introduced for `/sensorium`.
+
+**Tracked residuals (new in 5g-i).**
+
+- `KW-CHAT-001` opens: `/chat` is non-streaming. Mitigation in 5g-i: a configured per-turn deadline (default 30 s) bounds the worst-case connection hold. Closes with Phase 5g-ii.
+- `KW-CHAT-002` opens: billing is disabled; the endpoint runs D1-only; **blocks any D2 deploy.** Mitigation in 5g-i: the endpoint binds to localhost by default and the doctrine states D2 is blocked. Closes with Phase 5g-iii.
+- `KW-CHAT-003` opens: generation is synchronous with no user-facing cancel. Mitigation in 5g-i: the deadline makes every turn terminate. Closes with Phase 5g-ii's streaming + cancel.
+- `KW-INFER-001` opens: with `hosted_api_first` default and Kimi as the only hosted provider registered, turns route through one hosted vendor (Moonshot) by default. Xion's default *voice shape* is not yet provider-independent. Mitigation in 5g-i: the open-weights floor is always held, the `open_weights_only` cutover mode is wired and exercisable manually, and the default is per-process-env-rotatable. Closes when Phase 6+ lands `xion-verify inference-cutover` + the annual dry-run harness Invariant 17 clause 5 requires.
+
 ## Tier III — The Protocol
 
 **The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or Akash providers.
