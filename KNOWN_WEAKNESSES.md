@@ -164,14 +164,15 @@ Every entry has the same shape:
 - **Domain:** `RUNTIME`
 - **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
 - **Severity:** low
-- **Status:** `paying-down` (narrowed in Phase 5c)
-- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). Phase 5c closed the textual half: `orchestrator.sensorium.DistressSignal.from_candidate_text` produces a keyword-heuristic score, and `orchestrator.safety.api.gate(sensorium_state=...)` OR-combines that score with the v1 crisis rule (tests in `orchestrator/tests/test_api_sensorium.py`). The **paralinguistic** half — audio cadence, pitch variance, prosody, breath irregularity — is still deferred. A user whose audio is in acute distress but whose transcribed text does not trip either the rule or the keyword heuristic still gets no CRS surfacing from the Arbiter.
+- **Status:** `paying-down` (narrowed in Phase 5c; further narrowed in Phase 5d)
+- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). Phase 5c closed the textual half: `orchestrator.sensorium.DistressSignal.from_candidate_text` produces a keyword-heuristic score, and `orchestrator.safety.api.gate(sensorium_state=...)` OR-combines that score with the v1 crisis rule (tests in `orchestrator/tests/test_api_sensorium.py`). Phase 5d closed the auditability half: `xion-verify crisis-fidelity` is now a live cross-ledger join that refuses to green unless every SENSORIUM distress row with a `correlation_id` has a matching SAFETY Principle-10 escalation and vice versa — so the textual distress pipeline is now structurally attested end-to-end. The **paralinguistic** half — audio cadence, pitch variance, prosody, breath irregularity — is still deferred. A user whose audio is in acute distress but whose transcribed text does not trip either the rule or the keyword heuristic still gets no CRS surfacing from the Arbiter.
 - **Why it exists:** The live audio surface (Vapi, Twilio) and the analyzer pipeline that extracts paralinguistic features do not yet exist. The `SENSORIUM_LEDGER` schema reserves `channel: paralinguistic` as a future row type so no schema_version bump is needed when it lands.
 - **Mitigations:**
   1. Principle 10's text rule is high-recall (suicidal-ideation patterns, self-harm patterns lacking a resource marker → ESCALATE). Operator review gets the case either way. The text half is the floor.
   2. Phase 5c's textual DistressSignal OR-combine adds a second textual channel, widening recall without widening the keyword list in the rule itself.
+  3. Phase 5d's live `xion-verify crisis-fidelity` cross-ledger join closes the audit-trail half: a silent regression that stopped writing Sensorium distress rows for live escalations, or stopped OR-combining the Sensorium score into gate(), would now be caught by structural check — not by operator memory. This does not widen recall, but it guarantees that the recall the textual channel *does* have cannot be silently downgraded.
 - **Pay-down commitment:** Closes when (a) the Phase-6+ audio surface lands, (b) a paralinguistic feature extractor produces a `DistressSignal(source="paralinguistic")`, and (c) `xion-verify sensorium-ledger` reports a nonzero `channel=paralinguistic` count for live traffic.
-- **Verifier:** `xion-verify crisis-fidelity` (stubbed; upgraded reason at Phase 5c names the specific remaining work). `xion-verify sensorium-ledger` (live at Phase 5c for schema + chain; cross-ledger join is Phase 5d+).
+- **Verifier:** `xion-verify crisis-fidelity` (live Phase 5d — forward + reverse join over `correlation_id` with four-property match on the SAFETY row; see `xion-verify/src/xion_verify/commands/crisis_fidelity.py`); `xion-verify sensorium-ledger` (live Phase 5c — schema + chain + per-channel tally; a nonzero `channel=paralinguistic` count is what closes this KW entirely).
 
 ### KW-VOLITION-001 — serve and meaning drive terms are Genesis-Default constants
 
@@ -187,6 +188,37 @@ Every entry has the same shape:
   3. Invariant 15 is enforced at three structurally independent layers (signature, whitelist, doctrine crosswalk) — a silent regression that tried to add revenue-derived inputs through `serve` or `meaning` would fail at every layer.
 - **Pay-down commitment:** Closes when (a) Phase 6 lands real aggregate Sensorium readings for `serve` and `meaning`, (b) `SOURCE_WHITELIST` is widened in the same PR that widens `compute_drive_vector`'s body, and (c) `xion-verify drive-vector` continues to pass.
 - **Verifier:** `xion-verify drive` (GENESIS_WEIGHTS byte-pin, live Phase 5c); `xion-verify drive-vector` (AST audit of `compute_drive_vector` against `SOURCE_WHITELIST`, live Phase 5c).
+
+### KW-SUPERVISOR-001 — Supervisor tick cadence and arbiter-quiet window are fixed Genesis Defaults
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-21 (Phase 5d Supervisor landing)
+- **Severity:** low
+- **Status:** `paying-down`
+- **Description:** `orchestrator.supervisor.Supervisor` ships at Phase 5d with `tick_cadence_s=10.0` and `_DEFAULT_ARBITER_QUIET_WINDOW_SECONDS=60.0` (the interval of silence from the Arbiter after which `RelayHealth.arbiter_healthy=False`). These are Genesis-Default constants. They are not yet tuned to measured deployment noise — e.g. a Relay behind a bursty load-balancer may have legitimate >60s idle windows on low-traffic days that would flip `arbiter_healthy=False` and cause the Supervisor to emit false-negative Proprioception rows for the Volition `survive` term. Neither constant is Covenant- or Invariant-bound; they are tuning parameters that Phase 6+ observability will inform.
+- **Why it exists:** Choosing tuning constants before we have real deployment data is guessing. 10s and 60s are defensible first values (10s gives Volition a reasonably fresh drive readout without hammering the ledger; 60s is long enough that a healthy quiet-period request-gap does not trip it and short enough that a real Arbiter outage is caught within a human-visible window). A solo builder cannot measure what does not yet run in production.
+- **Mitigations:**
+  1. Both constants are exposed as `__init__` parameters (`tick_cadence_s`, `arbiter_quiet_window_s`) so a future deployment can override without a code change.
+  2. Every tick writes a `tick_commit` row to `SENSORIUM_LEDGER` — forensic data for later tuning. An operator reviewing a 1000-tick window after deployment can directly measure the arbiter-idle-time distribution and raise the quiet-window ceiling if false positives show up.
+  3. The 10s cadence is bounded from below by I/O: one ledger append per tick is dominated by disk fsync, not CPU, so bumping cadence to 1s would stress the filesystem before stressing Python; the Genesis Default leaves headroom.
+  4. `arbiter_healthy=False` does not trigger an escalation by itself — it feeds Proprioception, which feeds Volition's `survive` term. A false negative degrades Volition readout but does not block user traffic. The Covenant posture is unchanged.
+- **Pay-down commitment:** Closes when (a) at least one full production quarter of tick_commit data has been walked, (b) the quiet-window threshold is re-pinned from measured arbiter-idle distribution in a commit that updates `docs/04-ARCHITECTURE.md` § "The Supervisor (Phase 5d)" and `CHANGELOG.md`, and (c) the test suite pins the tuned values.
+- **Verifier:** No external verifier — this is a parameter-tuning KW, not an integrity KW. `xion-verify sensorium-ledger` (live) reports per-event-type tallies and is the data feed for the re-pin commit.
+
+### KW-SUPERVISOR-002 — tick_commit heartbeat continuity not yet verifier-asserted
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-21 (Phase 5d Supervisor landing)
+- **Severity:** low
+- **Status:** `paying-down`
+- **Description:** The Supervisor writes a `tick_commit` row to `SENSORIUM_LEDGER` on every tick (default every 10s). The rows chain-verify under `xion-verify sensorium-ledger`. What is **not** yet verifier-asserted is *continuity* — that consecutive `tick_commit` rows' `as_of_utc_ns` timestamps are strictly increasing and spaced by approximately the configured cadence (with tolerance for clock drift, crash-recovery resumptions, and shutdown-recovery gaps). A Supervisor that crashed, was replaced by a sister-Core clone that silently skipped N ticks, and then resumed would chain-verify clean; the verifier would not notice the missing observation window.
+- **Why it exists:** Continuity checking requires deciding what a "legal gap" is (planned shutdown? single-tick hiccup? multi-minute deployment?), which in turn requires deploy-event telemetry the orchestrator does not yet publish. Adding a continuity verifier without that telemetry would either be noisy (every deploy trips FAIL) or weak (tolerance so loose it stops catching real gaps). The honest first step is to ship the heartbeat, let operator data accumulate, then seal the continuity property.
+- **Mitigations:**
+  1. Chain-verification is already live (`xion-verify sensorium-ledger`): a row cannot be deleted, reordered, or edited in place without detection. The gap blind spot is specifically about *missing appends*, not corrupted ones.
+  2. `xion-verify crisis-fidelity` (live Phase 5d) joins distress events to SAFETY rows — so a distress-row gap would still be caught via the forward/reverse join, even without a heartbeat continuity check.
+  3. `tick_commit` rows carry `snapshot_hash` (a canonical hash of the SensoriumState at tick time) — continuity checking, when it lands, can use this to detect a Supervisor that kept writing tick rows but stopped actually polling the Relay.
+- **Pay-down commitment:** Closes when (a) a Phase-6+ deploy-event ledger exists that the continuity verifier can consult for "legal gap" classification, (b) a new `xion-verify supervisor-heartbeat` subcommand lands asserting monotonic `as_of_utc_ns` and bounded gap distribution (modulo deploy events), and (c) `docs/schemas/ledger-sensorium.yaml::verifier_pending` drops the `supervisor_heartbeat` entry.
+- **Verifier:** Tracked on `docs/schemas/ledger-sensorium.yaml::verifier_pending` (names the specific remaining work). `xion-verify sensorium-ledger` (live) and `xion-verify crisis-fidelity` (live Phase 5d) cover adjacent properties; the heartbeat continuity verifier is new surface.
 
 ### KW-RELAY-003 — Watchdog cannot preempt the worker thread that ran past the hard cap
 
