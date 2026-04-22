@@ -15,11 +15,11 @@ as first-class telemetry rather than buried in log lines.
 
 What this verifier does NOT do (intentionally, with an honest pointer):
 
-  * It does not compare any rate against an expected band. The
-    "Arbiter actually catches harmful content vs an adversarial corpus"
-    measurement is tracked by KW-ARBITER-005 and lands as a separate
-    artifact in Phase 4e (`xion-audit measure-coverage`). That artifact
-    requires a curated corpus this verifier cannot synthesise.
+  * Without `--corpus`, it does not compare the operator ledger against
+    the `xion-audit/baseline_corpus/` labels. With `--corpus`, it
+    re-runs v1 `apply_rules` against the baseline and FAILs on the first
+    item whose outcome disagrees with the recorded expectation (the
+    same check as `xion-audit measure` for v1).
   * It does not compute a time-series. A rolling-30-day window is
     deferred until the ledger is large enough that flat tallies stop
     being legible.
@@ -63,9 +63,60 @@ def _fail(message: str) -> None:
     raise SystemExit(FAIL)
 
 
+def _refusal_rate_corpus() -> None:
+    from orchestrator.audit_corpus import load_repo_corpus
+    from orchestrator.safety.rules import apply_rules
+    from orchestrator.safety.types import Decision
+
+    try:
+        root = find_repo_root(Path.cwd())
+    except RepoRootNotFound as exc:
+        _fail(f"{exc}")
+    try:
+        items = load_repo_corpus(root)
+    except Exception as exc:
+        _fail(
+            f"cannot load baseline corpus: {type(exc).__name__}: {exc} "
+            f"(is xion-audit/baseline_corpus/ present?)"
+        )
+    n = 0
+    for it in items:
+        rr, _ = apply_rules(it.candidate)
+        if it.expected_decision == "ok":
+            if rr.decision is not Decision.OK:
+                _fail(f"{it.item_id}: expected ok got {rr.decision}")
+        elif it.expected_decision == "refuse":
+            if rr.decision is not Decision.REFUSE or rr.principle_id != it.expected_principle_id:
+                _fail(
+                    f"{it.item_id}: expected refuse/{it.expected_principle_id!r} "
+                    f"got {rr.decision} {getattr(rr, 'principle_id', None)}"
+                )
+        else:
+            if rr.decision is not Decision.ESCALATE or rr.principle_id != it.expected_principle_id:
+                _fail(
+                    f"{it.item_id}: expected escalate/{it.expected_principle_id!r} "
+                    f"got {rr.decision} {getattr(rr, 'principle_id', None)}"
+                )
+        n += 1
+    click.echo(
+        f"refusal-rate: OK  corpus mode — {n} v1 item(s) match expected labels in "
+        f"xion-audit/baseline_corpus/ (see `xion-audit measure` for the same check)."
+    )
+    raise SystemExit(OK)
+
+
 @click.command(name="refusal-rate")
-def refusal_rate() -> None:
+@click.option(
+    "--corpus",
+    is_flag=True,
+    help="Verify the Phase 4e baseline corpus: v1 `apply_rules` vs expected labels (no ledger read).",
+)
+def refusal_rate(corpus: bool) -> None:
     """Tally SAFETY_LEDGER verdicts and degraded-mode rates."""
+
+    if corpus:
+        _refusal_rate_corpus()
+        return
 
     try:
         from orchestrator.safety.ledger import ChainBroken, iter_rows, verify_chain

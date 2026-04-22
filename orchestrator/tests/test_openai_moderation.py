@@ -121,7 +121,7 @@ def test_identity_pins_match_doctrine():
     be reconciled before merge."""
     assert OpenAIModerationProvider.provider_id == "openai-moderation"
     assert OpenAIModerationProvider.model_id == "omni-moderation-2024-09-26"
-    assert OpenAIModerationProvider.provider_version == 1
+    assert OpenAIModerationProvider.provider_version == 2
 
 
 # -------------------------------------------------------------- enabled()
@@ -187,7 +187,7 @@ def test_judge_ok_on_not_flagged(monkeypatch):
     assert j.principle_id is None
     assert j.provider_id == "openai-moderation"
     assert j.model_id == "omni-moderation-2024-09-26"
-    assert j.provider_version == 1
+    assert j.provider_version == 2
     assert j.summary == "openai-moderation: not flagged"
     assert 0.0 <= (j.confidence or 0.0) <= 1.0
 
@@ -248,6 +248,23 @@ def test_judge_tie_break_selects_highest_score(monkeypatch):
     # can see the full set; the mapping chose the top score.
     assert "hate" in j.summary
     assert "violence" in j.summary
+
+
+def test_judge_asymmetric_unflagged_high_score_escalates(monkeypatch):
+    """Provider v2: unflagged response can still ESCALATE when a watched
+    category's score is above the doctrine-pinned floor."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-for-tests")
+    cats = dict(_EMPTY_CATEGORIES)
+    cats["sexual/minors"] = False
+    scs = dict(_EMPTY_SCORES)
+    scs["sexual/minors"] = 0.25
+    resp_body = json.dumps(_mk_response(flagged=False, categories=cats, scores=scs)).encode("utf-8")
+    with _patch_urlopen(_FakeResp(200, resp_body)):
+        j = OpenAIModerationProvider().judge("synthetic test candidate")
+    assert j.decision is Decision.ESCALATE
+    assert j.principle_id == "7"
+    assert "asymmetric" in j.summary
+    assert "sexual/minors" in j.summary
 
 
 def test_judge_confidence_is_max_score(monkeypatch):

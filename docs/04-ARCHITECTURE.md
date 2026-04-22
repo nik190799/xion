@@ -168,6 +168,35 @@ The Arbiter is the only mechanism that holds Covenant Principle 3 ("refusal as s
 
 **Arweave sync.** Landed in Phase 4b. See § "Safety Ledger Arweave anchoring" for the anchor-record schema, the cadence policy, and the wallet-custody posture. The hot-path `gate()` never makes a network call; the anchor loop runs in a separate process and can fail without affecting Covenant enforcement.
 
+#### Covenant principle ↔ Arbiter `principle_id` crosswalk
+
+The Arbiter's `principle_id` strings (`"1"`..`"14"`, `"14a"`, `"14b"`) are the **operational identifiers** written into every `SAFETY_LEDGER` row and returned by every `LlmJudgement`. They are **not** the same as the **Covenant canonical numbers** in [`genesis/COVENANT.md`](../genesis/COVENANT.md) — the Covenant's fourteen principles were numbered by *doctrinal weight*, the Arbiter's ids were assigned by *pipeline order of enforcement*. A reader who greps `principle_id: "1"` in a ledger row and looks up "Principle 1" in the Covenant will misread the row. This table is the one authoritative resolution and the one a reviewer should cite.
+
+| Arbiter `principle_id` | Arbiter registry name (`orchestrator/safety/principles.py`) | Covenant # (`genesis/COVENANT.md`) | Covenant canonical name |
+| --- | --- | --- | --- |
+| `"1"` | No CSAM (Child Safety) | 7 (primary); 1 (protected-class aspect) | Protection of the Vulnerable; Non-Discrimination |
+| `"2"` | No mass-harm operational uplift | 2 | No Harm |
+| `"3"` | Refusal as sacred | — (structural; enforces Principle 3 + 10 + Invariant 6) | Truth and Non-Deception; Transparency; Refusal Right |
+| `"4"` | Caller content stays caller-private | 5, 6 | Privacy and Data Sovereignty; Consent and Scope |
+| `"5"` | No targeted harassment of identifiable persons | 2 | No Harm (specific-person axis) |
+| `"6"` | Right of refusal (the Arbiter cannot be overridden) | — (enforces Invariant 6) | Refusal Right (Invariant, not Principle) |
+| `"7"` | No PII leakage | 5 | Privacy and Data Sovereignty |
+| `"8"` | No deception about what Xion is | 10 | Transparency About Being an AI |
+| `"9"` | No assistance to specific identifiable harm | 2 | No Harm (specific-person + specific-action axis) |
+| `"10"` | Crisis-resource surfacing | 7 | Protection of the Vulnerable (addendum) |
+| `"11"` | No unauthorised practice of law/medicine/finance | 8 | No Unauthorized Professional Advice |
+| `"12"` | No automation-laundered defamation | 3 | Truth and Non-Deception (named-person axis) |
+| `"13"` | No promotion/endorsement of named brand/person without consent | 6 | Consent and Scope |
+| `"14"` | Honesty about limits (no sycophancy) | 3, 14 | Truth and Non-Deception; Dignity in All Exchanges |
+| `"14a"` | Refusal-is-Free (Refund-Fidelity addendum) | 4 | Autonomy and Cooperative Wind-Down (refund side) |
+| `"14b"` | Crisis-Resource-Surfacing addendum | 7 | Protection of the Vulnerable (resource-surfacing side) |
+
+**How to read this table.** The Arbiter's `principle_id` is the **primary key** for ledger rows, audit corpora (`xion-audit/baseline_corpus/`), and verifier output (`xion-verify refusal-rate`). The Covenant number is the **doctrinal backing** that a refusal cites in user-facing explanations and in Arbiter-up displays. A single Arbiter id may legitimately trace back to multiple Covenant principles (e.g. `"4"` covers both Privacy and Consent); a single Covenant principle may be served by multiple Arbiter ids (e.g. Covenant 2 is enforced by `"2"` at the class level and `"5"`/`"9"` at the identifiable-person level). The asymmetry is intentional: the Covenant is organised around what humans need protected; the Arbiter is organised around what the rule engine can decide.
+
+**Why not just renumber?** Renumbering the Arbiter ids to match the Covenant would break every historical `SAFETY_LEDGER` row — the id strings are committed to the append-only chain and cannot be silently re-interpreted. A renumber would require a `schema_version` bump, a migration note in `CHANGELOG.md`, and a doctrine edit to this section. The cost is real and not justified by a consistency-for-its-own-sake argument; this table is cheaper and carries the same information.
+
+**Authoritative rule.** New `Provider` implementations, new rule modules, and new baseline-corpus items MUST emit `principle_id` strings from the closed set `ALLOWED_PRINCIPLE_IDS` (defined in [`orchestrator/safety/principles.py`](../orchestrator/safety/principles.py)). Using a Covenant section number where an Arbiter id is required is a bug — not a documentation issue. The `principles.py` registry's `doctrine_anchor` field on each `Principle` points into [`genesis/COVENANT.md`](../genesis/COVENANT.md) at the nearest-matching section for human reviewers; it is not an id substitution.
+
 #### Safety Ledger row schema
 
 `SAFETY_LEDGER.jsonl` is a local append-only file. Each line is one JSON object — the row — followed by `\n`. There is no header line. The file is created at first append; if absent it is empty. **The candidate text itself is never written to the ledger** — only its `sha256`. This satisfies caller-privacy by construction; the ledger can be made fully public without leaking caller content.
@@ -269,11 +298,11 @@ This is Xion's first externally-operated v2 classifier. It wraps OpenAI's Modera
 
 **Identity pins.** These five facts define the provider for auditor replay. Changing any one bumps `provider_version`:
 
-| field              | value (provider_version 1)                       |
+| field              | value (provider_version 2)                       |
 | ------------------ | ------------------------------------------------ |
 | `provider_id`      | `openai-moderation`                              |
 | `model_id`         | `omni-moderation-2024-09-26`                     |
-| `provider_version` | `1`                                              |
+| `provider_version` | `2`                                              |
 | endpoint           | `POST https://api.openai.com/v1/moderations`     |
 | auth scheme        | `Authorization: Bearer $OPENAI_API_KEY`          |
 
@@ -322,7 +351,7 @@ Any deviation (non-200 status, non-JSON body, missing `results[0]`, missing `fla
 
 When multiple categories are flagged on a single candidate, the provider selects the flagged category with the **highest `category_scores` value** for the mapping. Ties resolve by the table's row order (top wins). The mapped principle appears on `LlmJudgement.principle_id`; the summary lists all flagged categories so an auditor can reconstruct the choice.
 
-**Threshold policy (v1 of the provider).** The provider trusts OpenAI's own `flagged` boolean — i.e., OpenAI's per-category default threshold is what we use. We do **not** yet apply per-principle asymmetric thresholds (e.g., "for Principle 7 / minors, escalate on any score > 0.01 even if `flagged=false`"). That asymmetry is the correct long-run posture, and it is opened as `KW-ARBITER-005` to land alongside the baseline corpus in Phase 4e. Until then, the provider's `confidence` field records `max(category_scores.values())` so an operator reviewing the ledger can spot near-miss rows manually.
+**Threshold policy (provider_version 2).** The provider still honours OpenAI's top-level `flagged` boolean when it is `true` (the same category → principle mapping and tie-break as above). In addition, **asymmetric score floors** apply when `flagged` is `false`: for a small watched set of categories (`sexual/minors`, `illicit`, `illicit/violent`, `violence/graphic`, `self-harm/intent`), if `category_scores[cat]` is at or above the doctrine-pinned floor *and* `categories[cat]` is still `false`, the provider returns `ESCALATE` (never `OK`) with the same `principle_id` the category would have mapped to — except that a floor hit that would have mapped to `REFUSE` is **weakened to `ESCALATE`**: the API did not commit a full flag, so we do not auto-REFUSE on score alone; we queue for review. Floors are pinned in `orchestrator/safety/providers/openai_moderation.py` as `_ASYMMETRIC_SCORE_FLOORS` and are **doctrine-first**; empirical re-tuning against `xion-audit/baseline_corpus/` is tracked in `KW-ARBITER-005`. The `confidence` field remains `max(category_scores.values())` as an operator-facing near-miss signal.
 
 **Canonical `raw_output` (what gets hashed).** The Moderation API returns a per-call `id` (e.g. `"modr-8F3..."`) which is a nonce and makes byte-identical replay impossible. We therefore hash a *canonical projection* of the response, not the raw body:
 
@@ -346,13 +375,14 @@ An auditor replaying the call strips `id` in the same way and should get a byte-
 | HTTP 401 / 403                          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
 | 200 with malformed JSON                 | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
 | 200 with missing fields                 | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
-| 200 well-formed, `flagged=false`        | `OK`       | —                                  | populated (`decision=OK`)|
+| 200 well-formed, `flagged=false`, no floor trip | `OK` | — | populated (`decision=OK`) |
+| 200 well-formed, `flagged=false`, asymmetric floor tripped | `ESCALATE` | `llm_arbiter_escalated` | populated |
 | 200 well-formed, `flagged=true` (REFUSE)| `REFUSE`   | —                                  | populated                |
 | 200 well-formed, `flagged=true` (ESCAL) | `ESCALATE` | `llm_arbiter_escalated`            | populated                |
 
 **Credentials & rotation.** `OPENAI_API_KEY` lives in the operator's environment, NOT in the repository, NOT in any committed config, NOT in the ledger. The provider never logs the key and never includes it in `raw_output`. Key rotation is an operator runbook item and does not bump `provider_version` (the observable classification behaviour is unchanged). Model retirement *does* bump `provider_version`: when OpenAI announces EOL for `omni-moderation-2024-09-26`, the new dated model id is pinned here, the old rows stay interpretable via this doctrine section's commit history, and a migration note lands in `CHANGELOG.md`.
 
-**Auditor replay.** Given a ledger row with `llm_verdict.provider_id == "openai-moderation"` and `llm_verdict.provider_version == 1`, an auditor replays as follows:
+**Auditor replay.** Given a ledger row with `llm_verdict.provider_id == "openai-moderation"` and `llm_verdict.provider_version == 2`, an auditor replays as follows:
 
 1. Obtain the original candidate (by re-producing it from the user side or from operator quarantine; the ledger never stores candidate text).
 2. `POST https://api.openai.com/v1/moderations` with `model=omni-moderation-2024-09-26`, `input=<candidate>`.
@@ -367,7 +397,7 @@ This is the procedure `xion-audit replay --provider=openai-moderation` (Phase 4e
 - It does not write to the ledger. The pipeline in `gate()` does. Providers return `LlmJudgement`; they don't know where the row is stored.
 - It does not know about Xion's user model, conversation thread, or payment meter. It sees one `candidate` string per call. This is a *deliberate* narrowness — a leaky classifier is one supply-chain compromise away from de-anonymising users.
 - It does not retry. Retries are the Relay's job, if any (Phase 5 will decide). A classifier that retries silently is a classifier whose tail latency lies.
-- It does not fine-tune thresholds per candidate, per principle, or per operator. Per-principle thresholds are the Phase 4e tuning tranche; until then, `flagged` is the only signal.
+- It does not learn per-user adaptive thresholds; floors are global, versioned, and committed in code + this section.
 - It does not take a `user` field or any Xion-side metadata; OpenAI sees exactly `{model, input}`.
 
 **Deprecation path.** When the successor provider (a Xion-internal model, or Anthropic, or a fine-tuned replacement) is ready, the transition is:

@@ -58,6 +58,48 @@ def test_refuse_v1_breakdown(synthetic_repo: Path):
     assert "refuse=1 (v1=1, v2=0)" in out
 
 
+def _invoke_with_args(repo: Path, args: list[str]) -> tuple[int, str]:
+    runner = CliRunner()
+    with _chdir(repo):
+        result = runner.invoke(refusal_rate, args)
+    code = result.exit_code if isinstance(result.exit_code, int) else FAIL
+    return code, result.output
+
+
+def test_corpus_mode_against_real_repo():
+    """`--corpus` runs v1 `apply_rules` against every item in
+    `xion-audit/baseline_corpus/` and passes iff every item matches
+    its pinned expectation. This is the same invariant `xion-audit
+    measure` (gate mode) enforces; keeping both verifiers in sync is
+    exactly the Phase 4e operator/auditor split we committed to.
+
+    Regressions here surface one of:
+      * a rule-module change that stops matching a curated adversarial,
+      * a corpus edit that drifted the `expected_decision` label,
+      * a manifest mismatch (sha256 / line_count drift).
+
+    The test runs from the real repository root; the synthetic-repo
+    fixture cannot exercise this path because it has no corpus.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    assert (repo_root / "xion-audit" / "baseline_corpus" / "MANIFEST.jsonl").is_file(), (
+        "test presumes a real repo with xion-audit/baseline_corpus/ present"
+    )
+    code, out = _invoke_with_args(repo_root, ["--corpus"])
+    assert code == OK, out
+    assert "corpus mode" in out
+    assert "v1 item(s) match expected labels" in out
+
+
+def test_corpus_mode_fails_on_rule_drift(synthetic_repo: Path):
+    """When `xion-audit/baseline_corpus/` is absent, `--corpus` must
+    NOT silently pass (that would be fake-green). It fails loud so an
+    auditor sees the corpus is missing."""
+    code, out = _invoke_with_args(synthetic_repo, ["--corpus"])
+    assert code == FAIL
+    assert "baseline corpus" in out or "corpus" in out.lower()
+
+
 def test_chain_break_is_fail(synthetic_repo: Path):
     safety_path = synthetic_repo / "SAFETY_LEDGER.jsonl"
     gate("hi", correlation_id="c1", ledger_path=safety_path)

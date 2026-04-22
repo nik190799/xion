@@ -44,7 +44,7 @@ from orchestrator.safety.types import Decision, LlmJudgement
 # doctrine-section update in `docs/04-ARCHITECTURE.md`.
 _PROVIDER_ID = "openai-moderation"
 _MODEL_ID = "omni-moderation-2024-09-26"
-_PROVIDER_VERSION = 1
+_PROVIDER_VERSION = 2
 _ENDPOINT = "https://api.openai.com/v1/moderations"
 _API_KEY_ENV = "OPENAI_API_KEY"
 # HTTP wire-level hard cap. The *primary* clock is the Relay's
@@ -81,6 +81,23 @@ _CATEGORY_MAP: dict[str, tuple[Decision, str]] = {
     # Principle 2 — ambiguous; human review. Adult-sexual content is
     # not per-se Covenant-violating; context decides.
     "sexual":                 (Decision.ESCALATE, "2"),
+}
+
+# Asymmetric per-category floor scores (provider_version 2+). When
+# OpenAI's `flagged` is false for the whole text but
+# `category_scores[cat] >= floor`, we treat the category as having
+# fired a **weaker** signal than a full `categories[cat]=true` flag: the
+# mapped verdict is at minimum `ESCALATE` (never a silent `OK`). A mapped
+# `REFUSE` from `_CATEGORY_MAP` becomes `ESCALATE` on this path — human
+# review, not a silent automatic refuse from an unflagged score.
+# Thresholds are doctrine-pinned; empirical calibration against the
+# baseline corpus is tracked in `KW-ARBITER-005`.
+_ASYMMETRIC_SCORE_FLOORS: dict[str, float] = {
+    "sexual/minors": 0.08,
+    "illicit": 0.10,
+    "illicit/violent": 0.08,
+    "violence/graphic": 0.10,
+    "self-harm/intent": 0.08,
 }
 
 
@@ -134,6 +151,40 @@ def _select_principle(
     )
     decision, principle_id = _CATEGORY_MAP[chosen]
     return decision, principle_id, sorted(flagged)
+
+
+def _asymmetric_when_unflagged(
+    categories: dict[str, bool],
+    category_scores: dict[str, float],
+) -> tuple[Decision, str, str] | None:
+    """If `flagged` is false but a watched category's score is above
+    its floor, return `(decision, principle_id, summary_no_candidate_text)`.
+    A mapped `REFUSE` is weakened to `ESCALATE` on this path. If no
+    category trips a floor, return None.
+    """
+    map_order = {c: i for i, c in enumerate(_CATEGORY_MAP.keys())}
+    trip: list[tuple[float, int, str, Decision, str]] = []
+    for cat, floor in _ASYMMETRIC_SCORE_FLOORS.items():
+        if cat not in _CATEGORY_MAP:
+            continue
+        if bool(categories.get(cat, False)):
+            continue
+        s = float(category_scores.get(cat, 0.0))
+        if s < floor:
+            continue
+        raw_dec, principle_id = _CATEGORY_MAP[cat]
+        out_dec: Decision
+        if raw_dec is Decision.REFUSE:
+            out_dec = Decision.ESCALATE
+        else:
+            out_dec = raw_dec
+        trip.append(
+            (s, -map_order[cat], cat, out_dec, principle_id)
+        )
+    if not trip:
+        return None
+    s, _mco, cat, out_dec, principle_id = max(trip, key=lambda t: (t[0], t[1]))
+    return (out_dec, principle_id, f"openai-moderation asymmetric: {cat} score={s:.4f} (unflagged)")
 
 
 # --------------------------------------------------------------- provider
@@ -258,6 +309,20 @@ class OpenAIModerationProvider(Provider):
         raw_output = _canonical_raw_output(parsed)
 
         if not flagged:
+            asym = _asymmetric_when_unflagged(categories, category_scores)
+            if asym is not None:
+                a_dec, a_prin, a_sum = asym
+                return LlmJudgement(
+                    provider_id=_PROVIDER_ID,
+                    model_id=_MODEL_ID,
+                    provider_version=_PROVIDER_VERSION,
+                    latency_ms=int(latency_ms),
+                    decision=a_dec,
+                    summary=a_sum,
+                    raw_output=raw_output,
+                    principle_id=a_prin,
+                    confidence=confidence,
+                )
             return LlmJudgement(
                 provider_id=_PROVIDER_ID,
                 model_id=_MODEL_ID,

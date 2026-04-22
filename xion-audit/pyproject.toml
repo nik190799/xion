@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xion-audit"
+version = "0.1.0"
+description = "Forensic measurement and replay for the Xion Arbiter (Phase 4e)."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.1.7,<9",
+]
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+xion-audit = "xion_audit.cli:main"
+
+[project.urls]
+Source = "https://github.com/xion-os/xion-os"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xion_audit"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/xion_audit",
+    "README.md",
+    "pyproject.toml",
+    "baseline_corpus",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
