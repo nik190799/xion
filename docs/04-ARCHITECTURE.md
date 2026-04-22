@@ -880,7 +880,7 @@ Non-properties (honestly stated, with owning sub-phases):
 - **No streaming.** `POST /chat` returns a single `ChatResponse` JSON body. There is no SSE, no WebSocket, no chunked response. Long generations block the connection for the entire turn deadline. `KW-CHAT-001` tracks; closes with Phase 5g-ii.
 - **No billing.** `/chat` runs with billing disabled — no `402 Payment Required`, no `x402` pre-authorization, no Refusal-Free settlement, no `PAYMENT_LEDGER`. The Pay-to-Activate property promised in `docs/07-ECONOMY.md` § "Pay-to-Activate" is constitutional for *billable* turns; Phase 5g-i's turns are declared non-billable and the constitutional requirement does not fire. `KW-CHAT-002` tracks; closes with Phase 5g-iii. This KW **explicitly blocks** any D2 deploy until 5g-iii lands — the doctrinal gate lives in the KW, not in a deploy script.
 - **No auth, no TLS, no rate-limit.** Inherited from `KW-API-001`. Phase 5g-i extends `KW-API-001`'s mitigation to `/chat` by localhost-only binding and a per-turn deadline; closes with Phase 5g-iv.
-- **No hosted-API fallback chain.** The router registers at most one hosted-API provider (Kimi) and one floor provider (Ollama/Gemma). There is no automatic failover between multiple hosted providers, no weighted load-balancing. A richer router is out of scope until Phase 5g-iii+ when billing interacts with per-provider cost.
+- **No hosted-API fallback chain.** The router registers at most one hosted-API gateway provider (OpenRouter) and one floor provider (Ollama/Gemma). There is no automatic failover between multiple hosted gateways, no weighted load-balancing, no automatic model-slug rotation within the gateway on upstream-model failure. A richer router is out of scope until Phase 5g-iii+ when billing interacts with per-provider cost, and until Phase 6+ pins a second hosted gateway per `KW-INFER-001` pay-down.
 - **No conversation memory.** Each turn is evaluated in isolation. There is no session, no context injection from prior turns, no `memory/*` integration. Session memory is a separate constitutional surface (Invariant 2 `/export` + `/forget`) and lands after the billing and auth surfaces exist to bound who can store what.
 - **No `xion-verify chat-fidelity` verifier.** Chat fidelity (that every `200` response's `correlation_id` maps to exactly one egress-`allow` row in `SAFETY_LEDGER`, and every `451` maps to exactly one egress-or-ingress-`refuse` row) is structurally checkable but wants a live deployment target to verify against. Phase 6+. The Phase 5g-i attestation is doctrine + pydantic envelopes + the hermetic `TestClient` suite.
 
@@ -911,9 +911,11 @@ class GenerationResult:
     finish_reason: str
     latency_ms: int
 
-# orchestrator/inference_router/providers/kimi.py
+# orchestrator/inference_router/providers/openrouter.py
 #   category = "hosted_api"
-#   env: XION_KIMI_API_KEY, XION_KIMI_BASE_URL, XION_KIMI_MODEL
+#   env: XION_OPENROUTER_API_KEY, XION_OPENROUTER_BASE_URL,
+#        XION_OPENROUTER_MODEL, XION_OPENROUTER_REFERER,
+#        XION_OPENROUTER_APP_NAME
 # orchestrator/inference_router/providers/ollama.py
 #   category = "open_weights_self_hostable"
 #   env: XION_OLLAMA_URL, XION_OLLAMA_FLOOR_MODEL
@@ -950,15 +952,15 @@ class ProviderErrorEnvelope(BaseModel):  # 503 body when all providers unhealthy
     correlation_id: str
 ```
 
-Neither the Kimi provider nor the Ollama provider pulls a new Python dependency; both use stdlib `http.client` wrapped in `asyncio.to_thread`. The `[api]` extra stays at `fastapi + uvicorn + pydantic`.
+Neither the OpenRouter provider nor the Ollama provider pulls a new Python dependency; both use stdlib `http.client` wrapped in `asyncio.to_thread`. The `[api]` extra stays at `fastapi + uvicorn + pydantic`.
 
-**Router policy (doctrinal pin).** The provider-selection policy and its cutover mode are specified in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md). Phase 5g-i ships the `hosted_api_first` default (Kimi serves turns while healthy; falls back to the floor provider otherwise) plus the `open_weights_only` cutover mode required by Invariant 17 clause 5's annual dry-run. The cutover mode is wired but not yet exercised by a scheduled verifier — `KW-INFER-001` tracks the annual-dry-run harness for Phase 6+.
+**Router policy (doctrinal pin).** The provider-selection policy and its cutover mode are specified in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md). Phase 5g-i.1 ships the `hosted_api_first` default (OpenRouter, with `moonshotai/kimi-k2` as the Genesis Default model slug, serves turns while healthy; falls back to the floor provider otherwise) plus the `open_weights_only` cutover mode required by Invariant 17 clause 5's annual dry-run. The cutover mode is wired but not yet exercised by a scheduled verifier — `KW-INFER-001` tracks the annual-dry-run harness and the second-gateway pin for Phase 6+.
 
 **Lifespan contract (extended from 5f).** Phase 5f's lifespan stays; Phase 5g-i adds steps **in between** the Supervisor pre-seed and the run-task schedule:
 
 1. (5f) Construct `Supervisor`, call `supervisor.tick_once()` synchronously.
 2. **(5g-i) Load `.env` manually** (stdlib only; no `python-dotenv`) if present. Missing `.env` is not an error — environment already set is fine.
-3. **(5g-i) Construct `InferenceRouter`**, register `KimiGenerativeProvider` if `XION_KIMI_API_KEY` is set, and register `OllamaGenerativeProvider` always (its `health()` reflects reachability without requiring env config).
+3. **(5g-i) Construct `InferenceRouter`**, register `OpenRouterGenerativeProvider` if `XION_OPENROUTER_API_KEY` is set, and register `OllamaGenerativeProvider` always (its `health()` reflects reachability without requiring env config).
 4. **(5g-i) Attempt `router.bootstrap()`.** On refusal, stash `app.state.no_floor = True` and emit a State-of-Xion paragraph to stderr naming the missing capability. Do **not** crash the app — the read-only endpoints continue to serve, so Witnesses can inspect Xion's state even when Xion cannot speak.
 5. (5f) Wire `deps.relay._sensorium_source = supervisor`, schedule `supervisor.run()`.
 6. (5f) On shutdown: `supervisor.stop()`, `await` under `2 × tick_cadence_s`, hard-cancel if exceeded.
@@ -983,7 +985,7 @@ The order matters: `InferenceRouter.bootstrap()` is called *after* the Superviso
 - `KW-CHAT-001` opens: `/chat` is non-streaming. Mitigation in 5g-i: a configured per-turn deadline (default 30 s) bounds the worst-case connection hold. Closes with Phase 5g-ii.
 - `KW-CHAT-002` opens: billing is disabled; the endpoint runs D1-only; **blocks any D2 deploy.** Mitigation in 5g-i: the endpoint binds to localhost by default and the doctrine states D2 is blocked. Closes with Phase 5g-iii.
 - `KW-CHAT-003` opens: generation is synchronous with no user-facing cancel. Mitigation in 5g-i: the deadline makes every turn terminate. Closes with Phase 5g-ii's streaming + cancel.
-- `KW-INFER-001` opens: with `hosted_api_first` default and Kimi as the only hosted provider registered, turns route through one hosted vendor (Moonshot) by default. Xion's default *voice shape* is not yet provider-independent. Mitigation in 5g-i: the open-weights floor is always held, the `open_weights_only` cutover mode is wired and exercisable manually, and the default is per-process-env-rotatable. Closes when Phase 6+ lands `xion-verify inference-cutover` + the annual dry-run harness Invariant 17 clause 5 requires.
+- `KW-INFER-001` opens (reshaped in 5g-i.1): with `hosted_api_first` default and OpenRouter as the only hosted gateway registered serving the Genesis Default `moonshotai/kimi-k2` slug, turns route through one gateway (OpenRouter) and by default land at one upstream model provider (Moonshot). Xion's default *voice shape* is therefore dependent on the health of both the gateway and the upstream. Mitigation in 5g-i.1: the open-weights floor is always held, the `open_weights_only` cutover mode is wired and exercisable manually, the hosted model slug is per-process-env-rotatable (one env-var change selects `anthropic/claude-3.5-sonnet`, `openai/gpt-4o-mini`, etc.), and the operator can de-register the entire OpenRouter provider by unsetting `XION_OPENROUTER_API_KEY`. Closes when Phase 6+ lands `xion-verify inference-cutover`, the annual dry-run harness Invariant 17 clause 5 requires, a second hosted gateway pinned in `docs/26-INFERENCE-POLICY.md`, and at least two Genesis Default models pinned as a failover list.
 
 ## Tier III — The Protocol
 

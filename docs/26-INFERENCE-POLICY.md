@@ -41,7 +41,7 @@ Opt-in via env or runtime switch. Behavior:
 
 Rationale. Invariant 17 clause 5 requires an annual cutover dry-run. This mode is how the dry-run runs: for the duration of the exercise, the floor carries 100% of traffic at the current load. A green dry-run means the floor is provisioned for real, not for the manifest. A red dry-run names the gap before the real outage that forces cutover names it for us.
 
-## Genesis Defaults (Phase 5g-i, 2026-04-21)
+## Genesis Defaults (Phase 5g-i.1, 2026-04-21)
 
 Operator-rotatable. Any change to these defaults is a commit to this file; any change that would alter which provider Xion speaks through by default is a Tier-2 operational decision per `docs/14-UPGRADE-PATHS.md`.
 
@@ -50,12 +50,16 @@ Operator-rotatable. Any change to these defaults is a commit to this file; any c
 | Policy mode | `hosted_api_first` | `XION_INFERENCE_POLICY` | process start |
 | Floor provider | Ollama (`http://localhost:11434`) | `XION_OLLAMA_URL` | process start |
 | Floor model | `gemma3:4b` | `XION_OLLAMA_FLOOR_MODEL` | process start |
-| Hosted provider | Kimi (Moonshot) at `https://api.moonshot.ai/v1` | `XION_KIMI_BASE_URL` | process start |
-| Hosted model | `kimi-k2.6` | `XION_KIMI_MODEL` | process start |
-| Hosted credential | *(operator-supplied)* | `XION_KIMI_API_KEY` | process start |
+| Hosted gateway | OpenRouter at `https://openrouter.ai/api/v1` | `XION_OPENROUTER_BASE_URL` | process start |
+| Hosted model | `moonshotai/kimi-k2` | `XION_OPENROUTER_MODEL` | process start |
+| Hosted credential | *(operator-supplied)* | `XION_OPENROUTER_API_KEY` | process start |
+| Hosted referer header | *(operator-supplied repo or deployment URL)* | `XION_OPENROUTER_REFERER` | process start |
+| Hosted app-name header | `xion-os` | `XION_OPENROUTER_APP_NAME` | process start |
 | Per-turn deadline | `30` seconds | `XION_CHAT_DEADLINE_S` | process start |
 
-The Kimi API key is loaded from the process environment, optionally pre-loaded from a gitignored `.env` at the repo root at lifespan startup. The key never enters git, never enters ledger rows, never appears in log lines (the `KimiGenerativeProvider` scrubs `Authorization` headers from error paths).
+The OpenRouter API key is loaded from the process environment, optionally pre-loaded from a gitignored `.env` at the repo root at lifespan startup. The key never enters git, never enters ledger rows, never appears in log lines (the `OpenRouterGenerativeProvider` scrubs `Authorization` headers and bare `sk-or-...` tokens from error paths).
+
+The `HTTP-Referer` and `X-Title` headers are OpenRouter's optional-but-recommended app-identity signals. They do not authenticate the request; they let OpenRouter attribute traffic to the calling application for catalog analytics and developer-portal attribution. Setting them is a courtesy, not a security control; misconfiguring them is not a secret-exposure incident.
 
 ## The floor-model choice (Gemma 3 4B)
 
@@ -67,13 +71,25 @@ Phase 5g-i pins `gemma3:4b` as the Genesis Default floor model. Rationale:
 
 **What this pin does not do.** The `orchestrator/inference_router/open_weights_manifest.json` sentinel stays in place as the `xion-verify inference-sovereignty` check's structural-floor target. Promoting `gemma3:4b` to a full `open_weights[]` entry with `weights_sha256` plus `retrieval_hints` per Invariant 17 clause 2(iii) requires the verifier to support large-file representative-sample sentinels; that is a separate doctrinal unit (deferred to a dedicated sub-phase). Until then, the runtime floor is named here, verified by `health()` at lifespan startup, and tracked for its promotion in `KNOWN_WEAKNESSES.md` § `KW-INFER-001`.
 
-## The hosted-model choice (Kimi k2.6)
+## The hosted-provider choice (OpenRouter gateway + `moonshotai/kimi-k2` default model)
 
-Phase 5g-i pins `kimi-k2.6` as the Genesis Default hosted provider. Rationale:
+Phase 5g-i.1 pins OpenRouter (`https://openrouter.ai/api/v1`) as the Genesis Default hosted gateway and `moonshotai/kimi-k2` as the Genesis Default hosted model served through that gateway. Rationale:
 
-- **OpenAI-compatible API.** Moonshot's `/v1/chat/completions` endpoint uses the OpenAI-compatible request and response shape, which makes the provider implementation a ~150-line stdlib `http.client` wrapper rather than a vendor SDK. No new Python dependency; no supply-chain widening.
-- **Per-token cost at the solo-builder tier.** Acceptable at the D1 traffic Phase 5g-i expects. Billing is not yet surfaced to users; the operator absorbs the cost until Phase 5g-iii lands Pay-to-Activate.
-- **Single-vendor concentration is tracked.** Because Kimi is the only hosted provider registered by default, every turn flows through one third party under `hosted_api_first`. This is named honestly in `KW-INFER-001`. Operators worried about this can deploy with `XION_KIMI_API_KEY` unset — the Kimi provider de-registers, and the Router falls through to the floor. Xion's voice is still held; the quality drops.
+- **OpenAI-compatible API at the gateway.** OpenRouter's `/v1/chat/completions` endpoint matches the OpenAI request/response shape and provides this compatibility across a long catalog of upstream models. The provider implementation is ~200 lines of stdlib `http.client` (no OpenRouter SDK, no OpenAI SDK). No new Python dependency; no supply-chain widening.
+- **Model rotation is a config change, not a code change.** Adding or switching a hosted model (e.g., from `moonshotai/kimi-k2` to `anthropic/claude-3.5-sonnet` or `openai/gpt-4o-mini`) is an env-var flip at deploy time: `XION_OPENROUTER_MODEL=<slug>`. The multi-hosted-provider failover chain that the Phase 5g-i plan would have required three doctrines and three test matrices to ship becomes, in the OpenRouter posture, a failover order pinned in this file plus a retry policy in the provider. A full Phase-6 failover doctrine is still owed (§ `KW-INFER-001` pay-down); the OpenRouter refactor earns the pre-requisite plumbing for free.
+- **Catalog-based pricing is structurally visible.** OpenRouter publishes per-model token prices in its public model catalog (`GET /api/v1/models`), keyed by the same slug the chat request uses. `GET /pricing` (Phase 5g-iii) can read the catalog once at lifespan start, expose a frozen per-turn-cost envelope that matches the model the Router is actually serving, and recompute it when the model slug rotates. Pricing consistency is a property the gateway enables; the same property at the direct-vendor tier required per-vendor scrapers or per-vendor pricing-page SDKs.
+- **Per-token cost at the solo-builder tier.** The default model (`moonshotai/kimi-k2`) is acceptably priced for the D1 traffic Phase 5g-i.1 expects. Billing is not yet surfaced to users; the operator absorbs the cost until Phase 5g-iii lands Pay-to-Activate.
+- **Single-default concentration is still tracked.** The Kimi model is selected through OpenRouter rather than against Moonshot directly, so the *wire path* now runs Xion → OpenRouter → Moonshot. The upstream-model concentration (every default-path turn still reaches Moonshot's weights) is unchanged; the credential surface (the operator's OpenRouter key) is a new single dependency. `KW-INFER-001` is reshaped to name both concentrations honestly rather than closed. Operators worried about either dependency can deploy with `XION_OPENROUTER_API_KEY` unset — the OpenRouter provider de-registers, and the Router falls through to the floor.
+
+## Gateway vs direct (a vendor-of-vendors honest accounting)
+
+OpenRouter is a **vendor-of-vendors**. It does not host model weights; it routes requests to upstream model providers (Moonshot, Anthropic, OpenAI, Google, Meta via hosted partners, Mistral, and others), bills the operator in a unified stable-account, and offers one credential surface for many catalogs. Three things follow:
+
+1. **The trust surface widens.** In the Phase 5g-i direct-vendor posture, a Covenant-relevant turn crossed one third-party boundary (Moonshot) before landing at the upstream model. In the 5g-i.1 posture it crosses two (OpenRouter, then the upstream). OpenRouter's log retention, its terms of service, its own moderation layer (which it calls "content filtering" and provides on request), and its geographic routing all sit inside the path. The honest reading is that OpenRouter now holds the same implicit trust as Moonshot did, *plus* the upstream-model provider still holds the trust it always held.
+2. **The failure modes widen proportionally.** A direct-vendor outage (Moonshot down) now has two shapes: (a) the upstream model is unreachable but OpenRouter is healthy, in which case OpenRouter returns a vendor-side error and the Router's policy can route to a different model slug through the same gateway; (b) OpenRouter itself is unreachable, in which case *all* hosted models via OpenRouter fail together, and the Router falls through to the floor. Xion survives either case, but the second is a new catastrophe class that did not exist under direct-vendor — and the mitigation (floor fallback, then manual failover to a second gateway) is structural, not incremental.
+3. **`KW-INFER-001` is reshaped, not closed.** The Phase 5g-i KW named the Moonshot-single-vendor concentration; the Phase 5g-i.1 reshape names the OpenRouter-gateway concentration plus the `moonshotai/kimi-k2` default-model concentration. The closure bar advances: closure now requires (a) a scheduled `xion-verify inference-cutover` that exercises `open_weights_only` under real load, (b) at least one additional hosted gateway pinned in this document (e.g., `together.ai` or a second OpenRouter-compatible endpoint) with a pinned failover ordering, and (c) at least two hosted models pinned as the Genesis Default failover list (rather than one default + no fallback). All three land Phase 6+; see `KNOWN_WEAKNESSES.md` § `KW-INFER-001`.
+
+The cost-benefit judgment for Phase 5g-i.1: the gateway's widened trust surface is the price of paying into catalog-based pricing (Phase 5g-iii Pay-to-Activate), one-env-var model rotation (Phase 6 failover-chain prep), and unified billing (Phase 6 Treasury routing of R&D spend per `docs/27-RESEARCH-SPEND.md`). The direct-vendor posture would have required three separate Phase-6 investments — a per-vendor pricing endpoint, a custom failover implementation, and three credentials to rotate — to reach the same operational surface. Taking the gateway trust cost now buys those three investments for the price of one supply-chain widening. The tradeoff is named; the verifier `xion-verify inference-cutover` (Phase 6+) is how the gateway posture earns its keep under stress.
 
 ## Boot sequence (doctrinal)
 
@@ -81,8 +97,8 @@ The FastAPI lifespan, extended in Phase 5g-i, runs in this order:
 
 1. **Supervisor pre-seed** (Phase 5f). Synchronous `tick_once()` so `/drive` and `/sensorium` never return `None`.
 2. **`.env` load** (5g-i). Stdlib parser; no `python-dotenv`. Missing file is not an error; already-set environment wins.
-3. **Provider registration** (5g-i).
-   - If `XION_KIMI_API_KEY` is set: register `KimiGenerativeProvider`.
+3. **Provider registration** (5g-i.1).
+   - If `XION_OPENROUTER_API_KEY` is set: register `OpenRouterGenerativeProvider`.
    - Always: register `OllamaGenerativeProvider` (its `health()` reflects reachability; absence of `XION_OLLAMA_URL` means default `http://localhost:11434`).
 4. **`InferenceRouter.bootstrap()`** (5g-i). If the floor is unsatisfied, stash a `no_floor = True` flag on `app.state` and emit a State-of-Xion paragraph to stderr. Do **not** crash. The read-only endpoints remain available so Witnesses can still inspect Xion while its voice is refused.
 5. **Relay ↔ Supervisor wiring** (5f). `deps.relay._sensorium_source = supervisor`.
@@ -111,4 +127,4 @@ This document is operational, not constitutional. Defaults in it rotate at Tier-
 
 ---
 
-*— Inference Policy v1, pinned Phase 5g-i (2026-04-21). Next review at Phase 5g-iii (x402 billing integration) or sooner if a hosted provider's terms change.*
+*— Inference Policy v1, pinned Phase 5g-i (2026-04-21); hosted-provider surface reshaped to OpenRouter gateway at Phase 5g-i.1 (2026-04-21). Next review at Phase 5g-iii (x402 billing integration + catalog-based pricing) or sooner if OpenRouter's terms change or a second hosted gateway is pinned.*
