@@ -792,6 +792,78 @@ Empty `SENSORIUM_LEDGER` → `NOT_YET_SEALED` (mirrors `sensorium-ledger`). A di
 - `KW-SUPERVISOR-001` opens: the degraded-mode threshold state machine is deferred to Phase 5e. The Supervisor reads and publishes the signals Phase 5e will act on; the action itself is not yet wired.
 - `KW-SUPERVISOR-002` opens: tick-cadence compliance (the assertion that `tick_commit` rows arrive at the configured cadence ± tolerance) is not yet walked by `xion-verify`. A new verifier `supervisor-heartbeat` lands when the first operator deployment runs the Supervisor long enough for cadence-drift to be a meaningful quantity.
 
+### The HTTP Surface (Phase 5f)
+
+Phase 5d made the Supervisor structurally real — it ticks, it snapshots, it writes `tick_commit` rows — but nothing outside the process can see any of it. Phase 5f closes that gap with the smallest possible doctrinal unit: three read-only HTTP endpoints that surface state the Supervisor already maintains. No `POST /chat`, no x402 billing, no TLS, no auth, no multi-worker. Those belong to Phase 5g. The HTTP surface is deliberately narrower than Tier III's full Protocol because it is the first time anything external observes Xion at all, and the right first step is observation without side effects.
+
+**Property promised.** While the API process is running:
+
+- Xion's internal state is *read-only-observable*: the three endpoints are pure GETs that touch no ledger, spawn no child process, make no outbound call, and perform no computation beyond a dict/dataclass copy of the Supervisor's live `latest_snapshot()`.
+- The surface is *content-free*: no candidate text, no user message, no prompt, no Arbiter free-text (the refusal-text sidecar lives in the Arbiter, not here) ever crosses these endpoints. A regulator dumping a day of HTTP traffic sees only counters, booleans, and physics state.
+- The surface is *continuity-live*: `/drive` and `/sensorium` read the same `SensoriumState` that the Supervisor last committed to `SENSORIUM_LEDGER` and that any in-process `Relay.evaluate()` call consumes. There is no separate HTTP-path sensorium. One Supervisor, one snapshot, one truth.
+
+Non-properties (honestly stated):
+
+- **No admission-control endpoint.** `POST /chat` does not exist in Phase 5f. Callers that want a Xion reply still must be in-process. `KW-API-001` tracks the wider-surface pay-down (auth, TLS, rate-limit, `/chat`) for Phase 5g.
+- **Single-process only.** The Supervisor lives in the same event loop as the FastAPI app. Running two uvicorn workers against the same SENSORIUM\_LEDGER is a structural error — both would tick and both would write `tick_commit` rows under different `relay_id`s, corrupting cadence. `KW-API-002` tracks the multi-worker posture (shared-state broker) for Phase 5g+.
+- **No `xion-verify http-readouts` verifier.** Verifying a live HTTP surface requires a live deployment target; the right time for that verifier is Phase 5g when the deployment target exists. Until then, the Phase 5f attestation is the doctrine here, the pydantic response models, and the `TestClient`-based test suite.
+
+**Code surface.** `orchestrator/api/` (new in Phase 5f) exports:
+
+```python
+# orchestrator/api/__init__.py
+from .app import AppDeps, create_app
+
+# orchestrator/api/app.py
+@dataclass(frozen=True)
+class AppDeps:
+    relay: Relay
+    tick_cadence_s: float = 10.0
+    methodology_hash: str | None = None
+    sensorium_ledger_path: Path | None = None
+
+def create_app(deps: AppDeps) -> FastAPI: ...
+
+# orchestrator/api/lifespan.py
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]: ...
+
+# orchestrator/api/models.py — pydantic response models mirroring the
+# underlying dict shapes exactly. Tests assert
+# model.model_dump() == <dataclass>.to_dict() so the wire format
+# does not drift from the in-process shape.
+class HealthResponse(BaseModel): ...
+class DriveResponse(BaseModel): ...
+class SensoriumResponse(BaseModel): ...
+```
+
+The FastAPI + uvicorn + pydantic dependencies sit behind a new `[api]` optional extra in `pyproject.toml`. The core Xion runtime remains zero-dep; a deployment that imports `orchestrator.api` must install `pip install "xion[api]"`.
+
+**Lifespan contract (doctrinal).** The app's `@asynccontextmanager lifespan(app)` is load-bearing — it is the only place the Supervisor gets wired into the Relay, and it is what lets `/drive` and `/sensorium` never return a `None`/503-warming-up window:
+
+1. Construct `Supervisor(relay=deps.relay, tick_cadence_s=deps.tick_cadence_s, sensorium_ledger_path=deps.sensorium_ledger_path, ...)`.
+2. Call `supervisor.tick_once()` **synchronously before yielding.** This is the Phase 5f doctrine pin: the app may not accept the first GET until at least one `SensoriumState` has been assembled and published to `latest_snapshot()`. The pre-seed tick writes the first `tick_commit` row; the run loop takes over from there.
+3. Wire `deps.relay._sensorium_source = supervisor` so that in-process `Relay.evaluate()` callers (tests today; `/chat` in Phase 5g) read the same snapshot the HTTP surface publishes.
+4. Schedule `asyncio.create_task(supervisor.run())` and stash it on `app.state`.
+5. On shutdown: `supervisor.stop()`, then `await` the run task under a `2 × tick_cadence_s` timeout; hard-cancel if exceeded. The timeout exists so a stuck tick cannot block process shutdown indefinitely.
+
+**Endpoints.** Three GETs; response schemas pinned here (not in `docs/schemas/` — ledger schemas are constitutional, HTTP readouts are advisory and are re-derivable at any time from the underlying dataclasses):
+
+| Route | Status | Response body |
+|-------|--------|---------------|
+| `GET /health` | `200` always while lifespan is up | `HealthResponse` = the `RelayHealth` shape — `relay_healthy: bool`, `arbiter_healthy: bool`, `watchdog_fires_recent: int`, `as_of_monotonic_ns: int`. |
+| `GET /drive` | `200` always while lifespan is up | `DriveResponse` = `Volition.snapshot(state, methodology_hash=deps.methodology_hash)` — `schema_version: "1.0.0"`, `as_of_utc_ns: int`, `terms: {survive, serve, meaning}: {current_signal, weight, weight_band}`, optional `methodology_hash: str`. |
+| `GET /sensorium` | `200` always while lifespan is up | `SensoriumResponse` = `SensoriumState.to_dict()` — the four senses (`interoception`, `chronoception`, `proprioception`, `distress`) plus a top-level `as_of_utc_ns`. |
+
+All three responses are pure dataclass/dict projections. A 500 from any of these endpoints is a bug, not a feature — the Supervisor is pre-seeded precisely so these handlers cannot observe a `None` snapshot.
+
+**Content-free guarantee (explicit field allowlist).** The test suite asserts field-set equality on `/sensorium` (and transitively `/drive`) against a fixed allowlist — if a future commit adds a candidate-text field to `SensoriumState`, the `/sensorium` test FAILs, forcing the author to either strip it at the API boundary or document a deliberate exception. This is the Phase 5f analogue of the ledger schemas' hashed pinning: the HTTP surface's promise that it leaks no content is structural, not promised.
+
+**Tracked residuals.**
+
+- `KW-API-001` opens: the HTTP surface has no authentication, no TLS termination, and no rate limiting. Mitigations in Phase 5f: bind to `127.0.0.1` by default in the operator runbook, endpoints are content-free and side-effect-free, and the shipped `pyproject [api]` extra does not pull in a reverse proxy. Closes with Phase 5g when `/chat` + billing ship (the moment the surface stops being strictly read-only, the security posture has to harden).
+- `KW-API-002` opens: the Supervisor shares the FastAPI app's event loop and the deployment is single-worker by construction. Mitigations in Phase 5f: 10 s tick cadence leaves the event loop ~9.99 s of idle for HTTP work, and the three endpoints are O(1) dict copies. Closes with Phase 5g+ when a shared-state broker (likely Redis pub/sub or an AO Process mailbox) takes over `latest_snapshot` publication so multiple uvicorn workers can share one Supervisor without double-writing `tick_commit` rows.
+
 ## Tier III — The Protocol
 
 **The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or Akash providers.

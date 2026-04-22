@@ -82,6 +82,34 @@ anchor = [
     "arweave-python-client>=1.0.19,<2",
 ]
 
+# Phase 5f HTTP read-only surface (docs/04-ARCHITECTURE.md § "The HTTP
+# Surface (Phase 5f)"). Kept isolated from core for the same reasons as
+# [anchor]:
+#   - The Arbiter hot path, Sensorium, Volition, and Supervisor remain
+#     importable with zero third-party deps; an auditor or sister-Core
+#     fork that does not surface HTTP does not pay the wire cost.
+#   - FastAPI / uvicorn / pydantic are a non-trivial supply-chain
+#     surface (dozens of transitive pins); moving them behind this
+#     extra preserves the "core runtime deps = 0" posture declared in
+#     `dependencies = []` above.
+# Operators running `uvicorn orchestrator.api.app:create_app --factory`
+# opt in explicitly: `pip install -e ".[api]"`.
+api = [
+    # FastAPI 0.110 is the first release whose lifespan contract matches
+    # the doctrine pin in architecture.md § HTTP Surface (synchronous
+    # `tick_once()` before first request). Kept under <1 until the
+    # FastAPI 1.0 API lands and stabilises.
+    "fastapi>=0.110,<1",
+    # uvicorn[standard] pulls httptools + uvloop on Linux/macOS for
+    # performance; the [standard] extras are themselves pinned by
+    # uvicorn, so we do not re-pin here. <1 because uvicorn pre-1.0
+    # has been stable in practice but a 1.x break is possible.
+    "uvicorn[standard]>=0.27,<1",
+    # pydantic v2 is the shape FastAPI 0.110 expects. <3 leaves headroom
+    # for pydantic 2.x patch/minor updates without re-pinning.
+    "pydantic>=2.5,<3",
+]
+
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
