@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from .app import AppDeps, create_app
 from .models import (
+    ChatRequest,
+    ChatResponse,
     ChronoceptionResponse,
     DistressResponse,
     DriveResponse,
@@ -26,12 +28,18 @@ from .models import (
     DriveTerms,
     HealthResponse,
     InteroceptionResponse,
+    NoFloorEnvelope,
     ProprioceptionResponse,
+    ProviderErrorEnvelope,
+    RefusalEnvelope,
     SensoriumResponse,
+    UsageEnvelope,
 )
 
 __all__ = [
     "AppDeps",
+    "ChatRequest",
+    "ChatResponse",
     "ChronoceptionResponse",
     "DistressResponse",
     "DriveResponse",
@@ -39,7 +47,11 @@ __all__ = [
     "DriveTerms",
     "HealthResponse",
     "InteroceptionResponse",
+    "NoFloorEnvelope",
     "ProprioceptionResponse",
+    "ProviderErrorEnvelope",
+    "RefusalEnvelope",
     "SensoriumResponse",
+    "UsageEnvelope",
     "create_app",
 ]

@@ -41,10 +41,12 @@ from fastapi import FastAPI
 
 from orchestrator.volition import Volition
 
+from .chat import register_chat_route
 from .lifespan import lifespan
 from .models import DriveResponse, HealthResponse, SensoriumResponse
 
 if TYPE_CHECKING:
+    from orchestrator.inference_router.router import InferenceRouter
     from orchestrator.relay import Relay
 
 
@@ -86,6 +88,16 @@ class AppDeps:
     methodology_hash: str | None = None
     sensorium_ledger_path: Path | None = None
 
+    # --- Phase 5g-i additions --------------------------------------
+    # The Inference Router the lifespan will ``bootstrap()``; if None,
+    # the lifespan constructs a default one from
+    # ``orchestrator.inference_router.load_router()``. Tests usually
+    # pass an explicit one so the provider set is hermetic.
+    router: InferenceRouter | None = None
+    # Per-turn generation deadline for POST /chat. Genesis Default 30s;
+    # tests typically pass smaller values to keep runtime low.
+    chat_deadline_s: float = 30.0
+
 
 def create_app(deps: AppDeps) -> FastAPI:
     """Construct a FastAPI app wired against ``deps``.
@@ -97,21 +109,25 @@ def create_app(deps: AppDeps) -> FastAPI:
     Supervisor should write a second factory — not a common case.
     """
     app = FastAPI(
-        title="Xion HTTP read-only surface",
+        title="Xion HTTP surface",
         description=(
             "Phase 5f read-only observation endpoints — /health, /drive, "
-            "/sensorium. No /chat, no billing, no auth. See "
-            "docs/04-ARCHITECTURE.md § 'The HTTP Surface (Phase 5f)'."
+            "/sensorium — plus the Phase 5g-i Chat Surface (POST /chat). "
+            "No billing, no auth in 5g-i (D1-only). See "
+            "docs/04-ARCHITECTURE.md § 'The HTTP Surface (Phase 5f)' and "
+            "§ 'The Chat Surface (Phase 5g-i)', and "
+            "docs/26-INFERENCE-POLICY.md."
         ),
-        version="0.1.0",
+        version="0.2.0",
         lifespan=lifespan,
     )
     # Expose deps + a Volition singleton to the routes and to the
-    # lifespan via ``app.state``. The lifespan attaches ``supervisor``
-    # and ``supervisor_task`` to the same namespace; the routes only
-    # read ``deps`` and ``supervisor``.
+    # lifespan via ``app.state``. The lifespan attaches ``supervisor``,
+    # ``supervisor_task``, ``router``, and the ``no_floor*`` fields to
+    # the same namespace; the routes read these at request time.
     app.state.deps = deps
     app.state.volition = Volition()
+    app.state.chat_deadline_s = deps.chat_deadline_s
 
     @app.get(
         "/health",
@@ -152,6 +168,8 @@ def create_app(deps: AppDeps) -> FastAPI:
     def get_sensorium() -> dict[str, Any]:
         state = _require_snapshot(app)
         return state.to_dict()
+
+    register_chat_route(app)
 
     return app
 

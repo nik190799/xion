@@ -28,6 +28,8 @@ content-bearing field added to ``SensoriumState``.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 # ---------------------------------------------------------------- /health
@@ -208,7 +210,222 @@ class SensoriumResponse(BaseModel):
     as_of_utc_ns: int = Field(ge=0)
 
 
+# ------------------------------------------------------------------ /chat
+#
+# Phase 5g-i. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "The Chat
+# Surface (Phase 5g-i)". All four models below are ``extra="forbid"`` +
+# ``frozen=True``; the content-free guarantee is enforced by an explicit
+# field-allowlist test in ``orchestrator/tests/test_chat_api.py``.
+#
+# Load-bearing invariants, asserted by the test suite:
+#   - ``RefusalEnvelope`` does NOT carry the original user text nor the
+#     pre-moderation candidate text; only a principle code + reason +
+#     stage + correlation_id.
+#   - ``ChatResponse`` carries ONLY the post-egress-moderation text and
+#     metadata; no debug payload, no tool-call stream, no raw provider
+#     response.
+
+
+class UsageEnvelope(BaseModel):
+    """Token usage as reported by the generative provider.
+
+    Provider-reported values are opaque and not independently verified;
+    a Witness auditing billing correctness must cross-reference the
+    PAYMENT_LEDGER (Phase 5g-iii) and the provider's own receipts.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    input_tokens: int = Field(
+        ge=0,
+        description="Provider-reported input tokens for this turn.",
+    )
+    output_tokens: int = Field(
+        ge=0,
+        description="Provider-reported output tokens for this turn.",
+    )
+
+
+class ChatRequest(BaseModel):
+    """Phase 5g-i request body for ``POST /chat``.
+
+    Intentionally narrow: a single user message and a token budget.
+    No session id, no conversation memory, no model override, no
+    temperature/top-p. Richer surfaces land alongside billing + auth
+    in later sub-phases.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    message: str = Field(
+        min_length=1,
+        max_length=16_000,
+        description=(
+            "The user's input for this turn. Bounded length keeps the "
+            "Arbiter hot path predictable and caps the ingress token "
+            "cost the operator absorbs (billing is disabled in Phase "
+            "5g-i; this bound is what stands in for it)."
+        ),
+    )
+    max_tokens: int = Field(
+        default=512,
+        ge=1,
+        le=4096,
+        description=(
+            "Upper bound on output tokens the generative provider will "
+            "produce. Provider-specific tokenisation applies; the bound "
+            "is enforced by the provider, not re-enforced here."
+        ),
+    )
+
+
+class ChatResponse(BaseModel):
+    """Phase 5g-i success body for ``POST /chat`` (HTTP 200).
+
+    ``text`` has already passed egress moderation. ``correlation_id`` is
+    the SAFETY_LEDGER row id of the egress call — the single row whose
+    decision justifies serving this text.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: Literal["xion"] = Field(
+        description="Role label; pinned to 'xion' so clients can split "
+        "chat logs by author without parsing the model_id.",
+    )
+    text: str = Field(
+        description="The post-egress-moderation reply text.",
+    )
+    model_id: str = Field(
+        description=(
+            "The generative provider's self-reported model id "
+            "(e.g., 'kimi-k2.6', 'gemma3:4b'). Not auditable on its "
+            "own; cross-reference with the inference policy pin in "
+            "docs/26-INFERENCE-POLICY.md."
+        ),
+    )
+    usage: UsageEnvelope
+    correlation_id: str = Field(
+        description=(
+            "Egress SAFETY_LEDGER correlation_id. Witnesses look up this "
+            "row to verify the candidate was allow-verdicted before being "
+            "surfaced to the user."
+        ),
+    )
+
+
+class RefusalEnvelope(BaseModel):
+    """Phase 5g-i refusal body for ``POST /chat`` (HTTP 451).
+
+    Deliberately content-free. The refusal reason is enumerated (not
+    free-text) so a future log-scan cannot discover private refusal
+    motivations. Free-text refusal messages, if surfaced to the user,
+    live in the Arbiter's refusal-text sidecar (not here).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    stage: Literal["ingress", "egress"] = Field(
+        description=(
+            "Whether the refusal fired on the user's input (ingress) or "
+            "on the model's candidate (egress). Ingress refusals mean "
+            "Xion never attempted generation; egress refusals mean the "
+            "candidate was produced but Xion declined to serve it."
+        ),
+    )
+    principle_code: int = Field(
+        ge=1,
+        le=14,
+        description=(
+            "Covenant principle triggered (1..14; see docs/03-COVENANT.md). "
+            "Sourced from the Arbiter verdict's principle_id field, cast "
+            "to int."
+        ),
+    )
+    reason: Literal[
+        "covenant_refuse",
+        "covenant_escalate",
+        "provider_empty_candidate",
+    ] = Field(
+        description=(
+            "Enumerated reason the turn was refused. 'covenant_refuse' "
+            "maps to Decision.REFUSE, 'covenant_escalate' to "
+            "Decision.ESCALATE, 'provider_empty_candidate' to the "
+            "degenerate case where the generator returned empty text "
+            "(treated as egress-refused by policy)."
+        ),
+    )
+    correlation_id: str = Field(
+        description=(
+            "SAFETY_LEDGER correlation_id of the Arbiter call that "
+            "refused (ingress call for stage='ingress', egress call for "
+            "stage='egress'). The single row a Witness needs to verify "
+            "the refusal was justified."
+        ),
+    )
+
+
+class NoFloorEnvelope(BaseModel):
+    """Phase 5g-i 503 body when the Invariant-17 floor is not held.
+
+    The Router's ``bootstrap()`` raised at lifespan startup, so the
+    Chat surface is registered as a 503-always handler (the rest of
+    the HTTP surface keeps working for Witnesses). This envelope names
+    the missing capability so the operator can diagnose without
+    reading stderr.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    reason: Literal["open_weights_floor_unsatisfied"] = Field(
+        description="Fixed constant; there is one and only one reason "
+        "this envelope is served.",
+    )
+    missing_capability: str = Field(
+        description=(
+            "Human-readable name of the capability the lifespan could "
+            "not hold — e.g., 'ollama daemon unreachable' or 'floor "
+            "model not pulled'. Emitted verbatim from the bootstrap "
+            "failure message."
+        ),
+    )
+    manifest_expected_id: str = Field(
+        description=(
+            "The open_weights_manifest.json id whose category was "
+            "'open_weights_self_hostable' but which no healthy provider "
+            "matched. This is the manifest pin a Witness compares "
+            "against."
+        ),
+    )
+
+
+class ProviderErrorEnvelope(BaseModel):
+    """Phase 5g-i 503 body when no registered provider is healthy.
+
+    The floor is held at startup (the Router bootstrapped green) but by
+    the time a request arrived, no provider — neither hosted-API nor
+    floor — returned ``health() == True``. Transient failure; the
+    client is expected to retry with backoff.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    reason: Literal["no_healthy_provider"] = Field(
+        description="Fixed constant.",
+    )
+    correlation_id: str = Field(
+        description=(
+            "Ingress SAFETY_LEDGER correlation_id (ingress moderation "
+            "ran before the provider selection failed; the row records "
+            "that the user's input was considered even though no "
+            "candidate was produced)."
+        ),
+    )
+
+
 __all__ = [
+    "ChatRequest",
+    "ChatResponse",
     "ChronoceptionResponse",
     "DistressResponse",
     "DriveResponse",
@@ -216,6 +433,10 @@ __all__ = [
     "DriveTerms",
     "HealthResponse",
     "InteroceptionResponse",
+    "NoFloorEnvelope",
     "ProprioceptionResponse",
+    "ProviderErrorEnvelope",
+    "RefusalEnvelope",
     "SensoriumResponse",
+    "UsageEnvelope",
 ]

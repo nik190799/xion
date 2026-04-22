@@ -34,11 +34,20 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
+from orchestrator.inference_router import (
+    DEFAULT_POLICY_MODE,
+    InferenceRouter,
+    PolicyMode,
+    default_manifest_path,
+)
 from orchestrator.supervisor import Supervisor
 
 
@@ -64,6 +73,45 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # correct behaviour, because a process that cannot write its
     # first tick has no business serving /sensorium or /drive.
     supervisor.tick_once()
+
+    # --- Phase 5g-i: load .env, register providers, bootstrap -------
+    # Runs AFTER the Supervisor pre-seed so a failed floor does not
+    # delay Sensorium snapshot publication (the read-only surface is
+    # observable even when Xion cannot speak). Runs BEFORE the Relay
+    # wire-up and run-task schedule so /chat has a definitive
+    # no_floor / router state by the time any request arrives.
+
+    # An explicitly-supplied router is treated as fully configured;
+    # the env loader + env-driven provider registration is skipped.
+    # Tests rely on this to keep themselves hermetic from the operator
+    # shell's environment (and from any live Ollama / Kimi endpoint).
+    if deps.router is not None:
+        router = deps.router
+    else:
+        _load_dotenv_if_present()
+        router = _build_router_from_env()
+        _register_env_providers(router)
+
+    app.state.router = router
+    app.state.no_floor = False
+    app.state.no_floor_reason = ""
+    app.state.no_floor_manifest_id = ""
+
+    try:
+        router.bootstrap()
+    except Exception as e:
+        app.state.no_floor = True
+        app.state.no_floor_reason = str(e)
+        ids = sorted(router.active_open_weights_ids())
+        app.state.no_floor_manifest_id = ",".join(ids) if ids else "(none pinned)"
+        print(
+            "State-of-Xion: Inference Router bootstrap refused. "
+            f"{e} "
+            "Chat surface is serving 503 open_weights_floor_unsatisfied; "
+            "read-only surface (/health, /drive, /sensorium) remains available.",
+            file=sys.stderr,
+            flush=True,
+        )
 
     # Wire the Supervisor into the Relay AFTER the pre-seed tick, so
     # any in-process code that races the lifespan cannot observe a
@@ -110,6 +158,123 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # possible in test re-runs on the same Relay instance) does
         # not observe a stale Supervisor.
         deps.relay._sensorium_source = None
+
+
+def _load_dotenv_if_present() -> None:
+    """Best-effort loader for a repo-root ``.env`` file.
+
+    Intentionally tiny: stdlib only, no ``python-dotenv``. Already-set
+    environment variables WIN (do not overwrite). Missing file is not
+    an error. Malformed lines are skipped silently; a malformed .env
+    is an operator-surface problem, not a runtime one.
+
+    Lines honoured:
+        KEY=value
+        KEY="value with spaces"
+        KEY='value'
+    Comments start with ``#``. Blank lines are skipped.
+    """
+    # Repo root is the directory containing genesis/; search upward
+    # from cwd. On failure (e.g., operator runs elsewhere), we just
+    # skip — environment may already be set by the process manager.
+    candidate: Path | None = None
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        if (base / ".env").is_file():
+            candidate = base / ".env"
+            break
+    if candidate is None:
+        return
+
+    try:
+        text = candidate.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        os.environ[key] = value
+
+
+def _build_router_from_env() -> InferenceRouter:
+    """Construct an ``InferenceRouter`` with the manifest + policy mode
+    the environment dictates. Providers are registered separately
+    by ``_register_env_providers``.
+    """
+    policy_env = os.environ.get("XION_INFERENCE_POLICY", "").strip().lower()
+    mode: PolicyMode
+    if policy_env == "open_weights_only":
+        mode = "open_weights_only"
+    elif policy_env in ("", "hosted_api_first"):
+        mode = DEFAULT_POLICY_MODE
+    else:
+        print(
+            f"State-of-Xion: unrecognised XION_INFERENCE_POLICY={policy_env!r}; "
+            f"falling back to Genesis Default {DEFAULT_POLICY_MODE!r}.",
+            file=sys.stderr,
+            flush=True,
+        )
+        mode = DEFAULT_POLICY_MODE
+    return InferenceRouter(
+        manifest_path=default_manifest_path(),
+        policy_mode=mode,
+    )
+
+
+def _register_env_providers(router: InferenceRouter) -> None:
+    """Register Kimi (if XION_KIMI_API_KEY set) and Ollama (always).
+
+    Failures in provider construction (e.g., malformed URL) are
+    surfaced to stderr but do NOT crash the lifespan — a missing or
+    broken provider just goes un-registered, and the Router's
+    subsequent ``bootstrap()`` decides whether that still satisfies
+    Invariant 17.
+    """
+    # Import lazily so the Phase 5f read-only surface does not pull
+    # the providers package during module load.
+    from orchestrator.inference_router.providers import (
+        KimiGenerativeProvider,
+        OllamaGenerativeProvider,
+    )
+    from orchestrator.inference_router.providers.kimi import (
+        KimiProviderError,
+    )
+    from orchestrator.inference_router.providers.ollama import (
+        OllamaProviderError,
+    )
+
+    if os.environ.get("XION_KIMI_API_KEY", "").strip():
+        try:
+            kimi = KimiGenerativeProvider()
+        except KimiProviderError as e:
+            print(
+                f"State-of-Xion: Kimi provider not registered: {e}",
+                file=sys.stderr,
+                flush=True,
+            )
+        else:
+            router.register(kimi)
+
+    try:
+        ollama = OllamaGenerativeProvider()
+    except OllamaProviderError as e:
+        print(
+            f"State-of-Xion: Ollama provider not registered: {e}",
+            file=sys.stderr,
+            flush=True,
+        )
+    else:
+        router.register(ollama)
 
 
 __all__ = ["lifespan"]
