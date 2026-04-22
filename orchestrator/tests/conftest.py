@@ -7,7 +7,9 @@ SENSORIUM_LEDGER.jsonl.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -50,3 +52,58 @@ def _no_repo_sensorium_ledger(
         "XION_SENSORIUM_LEDGER",
         str(tmp_path / "_autouse_SENSORIUM_LEDGER.jsonl"),
     )
+
+
+@pytest.fixture
+def app_factory(
+    ledger_path: Path,
+    sensorium_ledger_path: Path,
+) -> Callable[..., Any]:
+    """Build a fully-wired Phase 5f FastAPI app around a per-test Relay
+    and hermetic SAFETY / SENSORIUM ledgers.
+
+    Usage:
+        def test_drive(app_factory):
+            app = app_factory(tick_cadence_s=0.01)
+            from fastapi.testclient import TestClient
+            with TestClient(app) as client:
+                r = client.get("/drive")
+                assert r.status_code == 200
+
+    Kwargs are forwarded to ``AppDeps``; the Relay is constructed with
+    the per-test ``ledger_path`` and ``sensorium_ledger_path`` so no
+    test can contaminate the repo-root ledgers. ``tick_cadence_s``
+    defaults to 0.01 so tests do not wait on the Genesis Default (10s).
+
+    Skips if the ``[api]`` optional extra is not installed.
+    """
+
+    def _factory(
+        *,
+        tick_cadence_s: float = 0.01,
+        methodology_hash: str | None = None,
+        **relay_kwargs: Any,
+    ) -> Any:
+        pytest.importorskip("fastapi")
+        pytest.importorskip("pydantic")
+        from orchestrator.api import AppDeps, create_app
+        from orchestrator.relay import Relay
+
+        relay = Relay(
+            safety_ledger_path=ledger_path,
+            sensorium_ledger_path=sensorium_ledger_path,
+            **relay_kwargs,
+        )
+        deps = AppDeps(
+            relay=relay,
+            tick_cadence_s=tick_cadence_s,
+            methodology_hash=methodology_hash,
+            sensorium_ledger_path=sensorium_ledger_path,
+        )
+        app = create_app(deps)
+        # Stash the Relay on app.state so tests can inspect/mutate it
+        # without re-reading app.state.deps.relay every time.
+        app.state.test_relay = relay
+        return app
+
+    return _factory
