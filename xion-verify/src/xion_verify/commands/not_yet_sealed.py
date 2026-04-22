@@ -92,11 +92,6 @@ _UNSEALED = (
              "Relay /vitals endpoint not yet live.", "Phase 5"),
     StubSpec("amendments", "Read and verify the Constitutional Amendment Ledger hash chain.",
              "AMENDMENT_LEDGER not yet live.", "Phase 6"),
-    StubSpec("crisis-fidelity", "Every Sensorium distress event has a Crisis-Resource-Surfacing response.",
-             "Sensorium + SENSORIUM_LEDGER live as of Phase 5c; the cross-ledger join of distress rows to "
-             "SAFETY_LEDGER via gate()'s live distress consumer lands in Phase 5d+ (see "
-             "docs/schemas/ledger-sensorium.yaml::verifier_pending).",
-             "Phase 5d"),
     StubSpec("spof", "Enumerate single points of failure; fail if any are constitutional-tier.",
              "Relay topology not yet reportable.", "Phase 6"),
     StubSpec("operator-dependency", "Operator-Dependency Score readout vs Abdication Schedule.",

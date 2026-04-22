@@ -23,6 +23,7 @@ from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.cognition import cognition
+from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.constitutional import (
     covenant,
     credentials,
@@ -65,6 +66,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "arbiter-up": arbiter_up,
     "refusal-rate": refusal_rate,
     "refund-fidelity": refund_fidelity,
+    "crisis-fidelity": crisis_fidelity,
     "inference-sovereignty": inference_sovereignty,
     "sensorium-ledger": sensorium_ledger,
 }
