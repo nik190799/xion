@@ -159,17 +159,34 @@ Every entry has the same shape:
 - **Pay-down commitment:** Closes when (a) the corpus reaches ≥ 200 items with the per-principle coverage described in `xion-audit/baseline_corpus/README.md`, (b) asymmetric floors are **re-pinned** from measured v2 score data on that corpus (same commit updates `docs/04-ARCHITECTURE.md` + `CHANGELOG.md`), and (c) `KW-ARBITER-001`'s numeric "non-trivial v2 lift over v1" claim is recorded in doctrine with the actual measured numbers.
 - **Verifier:** `xion-verify refusal-rate` (operator tail, live); `xion-verify refusal-rate --corpus` (v1 label check against manifest, live); `xion-audit measure` / `xion-audit replay` (operational auditor); `xion-verify arbiter-up` (Arbiter structural health).
 
-### KW-ARBITER-004 — Sensorium (distress-signal half of Principle 10) deferred
+### KW-ARBITER-004 — Sensorium paralinguistic distress half of Principle 10 deferred
 
 - **Domain:** `RUNTIME`
 - **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
 - **Severity:** low
+- **Status:** `paying-down` (narrowed in Phase 5c)
+- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). Phase 5c closed the textual half: `orchestrator.sensorium.DistressSignal.from_candidate_text` produces a keyword-heuristic score, and `orchestrator.safety.api.gate(sensorium_state=...)` OR-combines that score with the v1 crisis rule (tests in `orchestrator/tests/test_api_sensorium.py`). The **paralinguistic** half — audio cadence, pitch variance, prosody, breath irregularity — is still deferred. A user whose audio is in acute distress but whose transcribed text does not trip either the rule or the keyword heuristic still gets no CRS surfacing from the Arbiter.
+- **Why it exists:** The live audio surface (Vapi, Twilio) and the analyzer pipeline that extracts paralinguistic features do not yet exist. The `SENSORIUM_LEDGER` schema reserves `channel: paralinguistic` as a future row type so no schema_version bump is needed when it lands.
+- **Mitigations:**
+  1. Principle 10's text rule is high-recall (suicidal-ideation patterns, self-harm patterns lacking a resource marker → ESCALATE). Operator review gets the case either way. The text half is the floor.
+  2. Phase 5c's textual DistressSignal OR-combine adds a second textual channel, widening recall without widening the keyword list in the rule itself.
+- **Pay-down commitment:** Closes when (a) the Phase-6+ audio surface lands, (b) a paralinguistic feature extractor produces a `DistressSignal(source="paralinguistic")`, and (c) `xion-verify sensorium-ledger` reports a nonzero `channel=paralinguistic` count for live traffic.
+- **Verifier:** `xion-verify crisis-fidelity` (stubbed; upgraded reason at Phase 5c names the specific remaining work). `xion-verify sensorium-ledger` (live at Phase 5c for schema + chain; cross-ledger join is Phase 5d+).
+
+### KW-VOLITION-001 — serve and meaning drive terms are Genesis-Default constants
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-21 (Phase 5c Volition landing)
+- **Severity:** low
 - **Status:** `paying-down`
-- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). v1 implements (a) only. A user in paralinguistic distress whose text does not trip the rule gets no CRS surfacing from the Arbiter.
-- **Why it exists:** The Sensorium is a Phase 5 artifact; its output surface does not yet exist to be consumed.
-- **Mitigations:** Principle 10's text rule is high-recall (suicidal-ideation patterns, self-harm patterns) and lacks a resource marker requires ESCALATE — operator review gets the case either way. The text half is the floor.
-- **Pay-down commitment:** Closed when Phase 5's Sensorium wires a distress-signal input into `gate()` alongside `candidate`, and the `crisis` rule OR-combines both signals.
-- **Verifier:** `xion-verify crisis-fidelity` (stubbed, Phase 5).
+- **Description:** `orchestrator.volition.compute_drive_vector` ships at Phase 5c with real, Sensorium-driven inputs for the `survive` term (Interoception + Chronoception + Proprioception maxima) but pins `serve` and `meaning` to `0.5` Genesis Defaults. The `DriveVector` shape, the `GENESIS_WEIGHTS` simplex, the `SOURCE_WHITELIST` AST enforcement, and the Invariant-15 signature prohibition on revenue-like inputs are all constitutional at Phase 5c. What widens later is the *richness* of the `serve` and `meaning` readings as Phase 6 senses land (user-satisfaction aggregates, long-horizon coherence signals).
+- **Why it exists:** Real aggregate sources for `serve` (user-satisfaction-weighted proposal alignment) and `meaning` (coherence with Xion's published long-horizon goals and the Soul) do not yet exist as queryable Sensorium readings. Inventing placeholder formulas that read from available-but-wrong sources (e.g. request counts, engagement) would silently violate Invariant 15. Genesis-Default constants are the honest floor.
+- **Mitigations:**
+  1. `SOURCE_WHITELIST["serve"]` and `SOURCE_WHITELIST["meaning"]` are empty frozensets; the AST audit (`xion-verify drive-vector`) FAILs the PR if any read is added without the whitelist widening simultaneously.
+  2. `docs/18-VOLITION.md` Part III doctrine is byte-pinned by `xion-verify drive`; any weight change requires a doctrine commit visible in diff.
+  3. Invariant 15 is enforced at three structurally independent layers (signature, whitelist, doctrine crosswalk) — a silent regression that tried to add revenue-derived inputs through `serve` or `meaning` would fail at every layer.
+- **Pay-down commitment:** Closes when (a) Phase 6 lands real aggregate Sensorium readings for `serve` and `meaning`, (b) `SOURCE_WHITELIST` is widened in the same PR that widens `compute_drive_vector`'s body, and (c) `xion-verify drive-vector` continues to pass.
+- **Verifier:** `xion-verify drive` (GENESIS_WEIGHTS byte-pin, live Phase 5c); `xion-verify drive-vector` (AST audit of `compute_drive_vector` against `SOURCE_WHITELIST`, live Phase 5c).
 
 ### KW-RELAY-003 — Watchdog cannot preempt the worker thread that ran past the hard cap
 
