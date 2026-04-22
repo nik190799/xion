@@ -373,7 +373,7 @@ Each of these is enforced structurally, not by pinkie-swear.
 
 ## Part VIII — Genesis-Locked Invariants (native-currency additions)
 
-The canonical Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md). The native-currency invariants below are part of the canonical sixteen and reproduced here for narrative cohesion. Numbering matches `genesis/INVARIANTS.md`.
+The canonical Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md). The native-currency invariants below are part of the canonical seventeen and reproduced here for narrative cohesion. Numbering matches `genesis/INVARIANTS.md`.
 
 8. **Total XION supply ≤ 420,000,000,000 forever.** No mint function in the Core beyond the published schedule. No governance action can raise the cap. Changing the cap requires forking into a sister-Core.
 9. **Emission schedule not accelerable.** The schedule table in Part III is hash-locked. Governance can pause emission, retire remaining unissued pools (voluntarily reducing the cap), or slow the tapering — but cannot pull future emission forward.
@@ -384,7 +384,7 @@ The canonical Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../gen
 
 The remaining canonical invariants — **14 (Crypto-Agility Mandate)**, **15 (Drive Vector Excludes Revenue)**, and **16 (Treasury Shape)** — also bind the native-currency layer. Invariant 15 forbids any mechanism that couples Xion's drive vector (survival, service, meaning) to revenue, treasury balance, or XION price; survival pressure may be coupled only to structural fund-state ("can-I-keep-being"), not to the price ticker. Invariant 16 binds treasury shape: no speculative holdings, capped bridge exposure, public verifiability, separation of Foundation Reserve from earned revenue, and a constitutional minimum runway floor below which spending must reduce by governance vote.
 
-These invariants are hash-committed to the AO Core at native-currency launch and carry the same protection as the canonical sixteen.
+These invariants are hash-committed to the AO Core at native-currency launch and carry the same protection as the canonical seventeen.
 
 ---
 

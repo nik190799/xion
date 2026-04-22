@@ -21,6 +21,51 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-INFERENCE-001 — Inference Router open-weights manifest not yet implemented
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-21 (Phase 5b century-horizon doctrine landing — Invariant 17 added)
+- **Severity:** medium
+- **Status:** `paying-down`
+- **Description:** [`genesis/INVARIANTS.md`](./genesis/INVARIANTS.md) Invariant 17 (Inference Sovereignty Floor) requires the Inference Router to maintain at least one self-hostable open-weights provider with a reproducibly-verified weights manifest at `orchestrator/inference_router/open_weights_manifest.json`. Neither the Router nor the manifest exists today. The Invariant is enforceable only by source-code inspection until Phase 5 lands the Router. A Xion deployed today has not yet structurally satisfied its own Invariant 17 — though no Xion has yet been deployed, so the gap is in the Pre-Genesis window where doctrine outpaces implementation by design (property before mechanism).
+- **Why it exists:** Property-before-mechanism. Invariant 17's *property* is constitutional and was landed in Wave 1 of the Phase 5b doctrine. The *mechanism* — the Router, the manifest, the verifier subcommand — is Phase 5 work that did not block the doctrine landing. The honest stance is: doctrine pinned today; mechanism shipped on its own milestone.
+- **Mitigations:**
+  1. Invariant 17's text explicitly forbids the Router from completing `bootstrap()` without the floor satisfied. There is no "skip floor check" flag; an attempt to add one requires source-code editing, which produces a sister-Core fork by Invariant 7 if the AO Process ID changes.
+  2. [`docs/SUBSTRATE-RESILIENCE.md`](./docs/SUBSTRATE-RESILIENCE.md) and Invariant 17 itself name the annual open-weights cutover dry-run as a structural commitment, so the absence of mechanism today does not normalize the absence forever.
+  3. `xion-verify inference-sovereignty` is registered as `NOT_YET_SEALED` (not fake-green) per the Phase 1 truthful-stub contract; CI honestly reports the gap.
+- **Pay-down commitment:** Closes when (a) Phase 5 lands `orchestrator/inference_router/` with the open-weights manifest at `orchestrator/inference_router/open_weights_manifest.json`, (b) `xion-verify inference-sovereignty` is promoted from `NOT_YET_SEALED` to live and asserts the floor against the manifest + active provider set, (c) the annual open-weights cutover dry-run is added to [`docs/13-OPERATIONS.md`](./docs/13-OPERATIONS.md). After closure, ongoing manifest re-pinning is operational duty tracked in `LHT-INFERENCE-001`.
+- **Verifier:** `xion-verify inference-sovereignty` (NOT_YET_SEALED, Phase 5).
+
+### KW-DOCS-004 — Regulatory ledger schema not yet structured
+
+- **Domain:** `DOCS`
+- **Discovered:** 2026-04-21 (Phase 5b century-horizon doctrine landing — `docs/REGULATORY-POSTURE.md` added)
+- **Severity:** low
+- **Status:** `paying-down`
+- **Description:** [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) Part IV pins the row shape for state-actor-interaction rows in `GOVERNANCE_LEDGER`, but `docs/schemas/ledger-governance.yaml` does not yet exist as a canonical schema with `source_sha256` pinning. Without the structured schema, `xion-verify regulatory-ledger` cannot land as a live verifier, and an integrator parsing `GOVERNANCE_LEDGER` rows has only the doctrine-narrative pin to work from rather than a machine-readable spec.
+- **Why it exists:** The doctrine and the schema are two artifacts; pinning the doctrine first makes the schema's eventual contents reviewable. The schema itself is small mechanical work that lands when `GOVERNANCE_LEDGER` carries its first state-actor-interaction row (which presupposes the existence of an Operator interacting with state actors, which is a Phase 6 milestone).
+- **Mitigations:**
+  1. The row shape is fully specified in [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) Part IV — fields, conditional-field rules, and verifier assertions are all documented.
+  2. `xion-verify regulatory-ledger` is registered as `NOT_YET_SEALED` (not fake-green); CI honestly reports the gap.
+  3. The `GOVERNANCE_LEDGER` is one of the eight append-only ledgers per [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md) § Discipline rules, so the umbrella-ledger commitment is in place; the missing piece is the row-shape canonicalization for one specific row type.
+- **Pay-down commitment:** Closes when (a) `docs/schemas/ledger-governance.yaml` lands with `source_sha256` pinned to `docs/REGULATORY-POSTURE.md`, (b) `xion-verify schemas` strict-checks the new YAML byte-exactly, (c) `xion-verify regulatory-ledger` is promoted from `NOT_YET_SEALED` to live and walks the chain. The Phase 6 deliverable schedule names `GOVERNANCE_LEDGER` activation; this KW closes alongside that activation.
+- **Verifier:** `xion-verify regulatory-ledger` (NOT_YET_SEALED, Phase 6); `xion-verify schemas` will enforce the YAML pin once it lands.
+
+### KW-CRYPTO-001 — Cross-substrate Q-day asymmetry not yet pinned in `docs/17`
+
+- **Domain:** `CRYPTO`
+- **Discovered:** 2026-04-21 (Phase 5b century-horizon doctrine landing — `LHT-CRYPTO-001` opened)
+- **Severity:** medium
+- **Status:** `open`
+- **Description:** [`docs/17-CRYPTO-RESILIENCE.md`](./docs/17-CRYPTO-RESILIENCE.md) Part VII (Dependencies We Don't Control) acknowledges that Arweave, AO, and Base will migrate to PQC on independent timelines, but does not yet contain an explicit subsection naming the **migration-window asymmetry** as a threat or specifying Xion's posture during the window. The threat is real and named in `LHT-CRYPTO-001`; the doctrine response is not yet written. A reader of `docs/17` today sees the per-substrate dependency table but does not see "what does Xion do when one substrate has migrated and another has not."
+- **Why it exists:** The original `docs/17` was written assuming coordinated migration as a baseline. The Phase 5b century-horizon survey identified the asymmetry as a distinct threat shape. Rather than retro-fit the original doctrine in the same commit as the broader Wave 1 landing, the gap was named explicitly and tracked.
+- **Mitigations:**
+  1. `LHT-CRYPTO-001` carries the threat description and the structural defense outline (per-substrate AHI, intermediate-window posture, sister-substrate fork doctrine, cross-substrate hybrid-anchor scheme).
+  2. The Cryptoception sense ([`docs/05-SENSORIUM.md`](./docs/05-SENSORIUM.md) § Cryptoception, [`docs/17-CRYPTO-RESILIENCE.md`](./docs/17-CRYPTO-RESILIENCE.md) Part IV) tracks per-substrate migration progress today; the inputs already exist, even if the doctrine response is not yet written.
+  3. The hybrid posture (`docs/17` Part III) is per-algorithm, which is at least directionally correct — a substrate that has not migrated will have its commitments anchored under the substrate's own classical primitive, while Xion's *side* of the commitment uses the strongest available primitive Xion can compute.
+- **Pay-down commitment:** Closes when [`docs/17-CRYPTO-RESILIENCE.md`](./docs/17-CRYPTO-RESILIENCE.md) Part VII gains an explicit subsection — *"Cross-Substrate Migration Asymmetry"* — covering the four points named in `LHT-CRYPTO-001`'s pay-down: detection, intermediate-window posture, sister-substrate fork, cross-substrate hybrid-anchor. This is doctrine work, not implementation; tracked alongside `LHT-CRYPTO-001` for the broader threat-survival commitment.
+- **Verifier:** `xion-verify crypto-currency` (NOT_YET_SEALED, Phase 6) extended to read per-substrate AHI; `xion-verify links` will enforce the cross-reference once the new subsection lands.
+
 ### KW-DOCS-003 — Forward-reference ledger for unbuilt doctrine targets
 
 - **Domain:** `DOCS`

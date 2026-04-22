@@ -64,4 +64,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "crypto-currency",
     "abdication-status",
     "abdication-schedule",
+    "inference-sovereignty",
+    "substrate-portability",
+    "regulatory-ledger",
 )

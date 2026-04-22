@@ -12,7 +12,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 
 ## What Invariants does it touch?
 
-`xion-verify` introduces no new Invariants. It strengthens every one of the sixteen in `genesis/INVARIANTS.md` by making their claims mechanically checkable — and it preserves Invariant 14 (Crypto-Agility) by naming its hash family in exactly one place (`xion_verify/hashing.py`) so a future migration is a local edit rather than a global one.
+`xion-verify` introduces no new Invariants. It strengthens every one of the seventeen in `genesis/INVARIANTS.md` by making their claims mechanically checkable — and it preserves Invariant 14 (Crypto-Agility) by naming its hash family in exactly one place (`xion_verify/hashing.py`) so a future migration is a local edit rather than a global one.
 
 | Invariant | How `xion-verify` strengthens it |
 | --- | --- |
@@ -25,6 +25,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 14. Crypto-Agility Mandate | `xion-verify crypto-currency` is `NOT_YET_SEALED`; `hashing.py` is the single algorithmic cite-point. |
 | 15. Drive Vector Lock | `xion-verify drive-vector` statically audits `docs/08-AUTO-RESEARCH.md`; live graph audit is `Phase 5/6`. |
 | 16. Treasury Tier Separation | `xion-verify treasury`, `treasury-flow`, `foundation-reserve` are `NOT_YET_SEALED`. |
+| 17. Inference Sovereignty Floor | `xion-verify inference-sovereignty` is `NOT_YET_SEALED` until the Inference Router and `open_weights_manifest.json` ship in Phase 5. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
 ## How is it verified?

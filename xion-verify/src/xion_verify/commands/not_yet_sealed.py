@@ -108,6 +108,18 @@ _UNSEALED = (
              "Abdication registry not yet live (see docs/ABDICATION.md).", "Phase 6"),
     StubSpec("abdication-schedule", "Full abdication schedule with per-role retirement deadlines.",
              "Abdication registry not yet live (see docs/ABDICATION.md).", "Phase 6"),
+    StubSpec("inference-sovereignty",
+             "Verify the Inference Router contains at least one self-hostable open-weights provider with manifest match (Invariant 17).",
+             "Inference Router not yet shipped; open_weights_manifest.json absent (KW-INFERENCE-001).",
+             "Phase 5"),
+    StubSpec("substrate-portability",
+             "Verify a warm secondary substrate satisfies the Substrate Portability Property and an annual dry-run cutover succeeded (docs/SUBSTRATE-RESILIENCE.md Part IV).",
+             "Secondary substrate dry-run capability not yet shipped (LHT-SUBSTRATE-001).",
+             "Phase 6"),
+    StubSpec("regulatory-ledger",
+             "Walk the GOVERNANCE_LEDGER state-actor-interaction rows; verify hash chain and row shape (docs/REGULATORY-POSTURE.md Part IV).",
+             "ledger-governance.yaml schema not yet landed and GOVERNANCE_LEDGER carries no state-actor rows yet (KW-DOCS-004).",
+             "Phase 6"),
 )
 
 

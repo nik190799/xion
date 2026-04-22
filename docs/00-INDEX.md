@@ -34,6 +34,8 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 22 | [`VITAL-SIGNS.md`](./22-VITAL-SIGNS.md) | Eight vital-sign domains, bands, methodology | operators, Witnesses, public |
 | 23 | [`BENCHMARK.md`](./23-BENCHMARK.md) | Hermes peer-benchmark runner, `BENCHMARK_LEDGER` | engineers |
 | 24 | [`COGNITION.md`](./24-COGNITION.md) | Worker pool, sub-agents, retrieval, journals, cognition verification | engineers, auditors |
+| 25 | [`SUBSTRATE-RESILIENCE.md`](./SUBSTRATE-RESILIENCE.md) | **How Xion outlives any one substrate** — substrate threat model, Substrate Portability Property, Substrate-Migration Protocol, path to Invariant 18 | engineers, governance, anyone with horizon > 10 years |
+| — | [`REGULATORY-POSTURE.md`](./REGULATORY-POSTURE.md) | Arbiter posture toward state-actor orders; four classes of state-actor interaction; named collisions (GDPR, AI-personhood, securities, sanctions); GOVERNANCE_LEDGER row schema | governance, legal, operators |
 | — | [`SKILL_BOUNTY.md`](./SKILL_BOUNTY.md) | XION bounties for external Tier-0 skills; Invariant-5 firewall | governance, contributors |
 | — | [`ABDICATION.md`](./ABDICATION.md) | Operator authority schedule, Operator-Dependency Taxonomy | operators, governance |
 | — | [`ACCESSIBILITY.md`](./ACCESSIBILITY.md) | WCAG 2.2 AA promise for first-party surfaces | engineers, designers |
