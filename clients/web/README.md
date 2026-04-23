@@ -19,7 +19,16 @@ npm ci                # reproducible install from package-lock.json
 npm run lint          # eslint + jsx-a11y; zero warnings required
 npm test              # Vitest + axe-core; zero violations required
 npm run build         # emits clients/web/dist/
+cd ../..
+xion-verify web-client  # structural audit of the emitted bundle
 ```
+
+The verifier asserts: (1) `index.html` carries a `Content-Security-Policy`
+meta tag pinning `default-src 'self'`; (2) every `https?://` origin in the
+emitted tree matches the explicit non-self allowlist (React production
+error-decoder URLs and W3C XML namespace identifiers — both literal strings
+that are never fetched at runtime). Any stray CDN URL baked into a dependency
+would fail the verifier and is a release blocker.
 
 Then in the orchestrator:
 

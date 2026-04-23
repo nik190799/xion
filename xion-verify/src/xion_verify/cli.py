@@ -48,6 +48,7 @@ from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
 from xion_verify.commands.state_chain import state_chain
+from xion_verify.commands.web_client import web_client
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.exit_codes import name as exit_code_name
 
@@ -75,6 +76,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "inference-sovereignty": inference_sovereignty,
     "sensorium-ledger": sensorium_ledger,
     "api-tokens": api_tokens,
+    "web-client": web_client,
 }
 
 

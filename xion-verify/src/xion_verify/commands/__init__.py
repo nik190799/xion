@@ -70,4 +70,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "substrate-portability",
     "regulatory-ledger",
     "api-tokens",
+    "web-client",
 )
