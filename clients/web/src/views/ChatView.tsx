@@ -1,124 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { buildAuthorizationHeader, useBearer } from "../auth/BearerContext";
+import { useBearer } from "../auth/BearerContext";
+import {
+  ApiErrorException,
+  postChat,
+  type ApiError,
+  type ChatSuccessResponse,
+} from "../lib/api";
 
 // ChatView handles the full server-response envelope matrix for
-// `POST /chat` under the 5g-iv admission-gated surface:
+// `POST /chat` under the 5g-iv admission-gated surface. The matrix and
+// the UX states are pinned in docs/31-WEB-CLIENT.md § "Envelope
+// handling matrix".
 //
-//   200 ChatResponse         -> render text + correlation_id + usage
-//   401 AuthChallenge        -> open sign-in dialog; clear any stored token
-//   402 PaymentChallenge     -> "billing not yet supported in browser" banner
-//                               pointing at docs/29-BILLING-X402.md curl path
-//   429 RateLimitChallenge   -> "Rate limited" with retry_after_s countdown
-//   451 RefusalEnvelope      -> explicit refusal UX (stage + principle + corr)
-//   503 NoFloorEnvelope
-//       / ProviderErrorEnvelope -> "Temporarily unavailable" + correlation_id
-//   other                    -> generic error with status
-//   timeout (>30s)           -> "Request timed out" with retry affordance
-//
-// Each non-200 state is deliberately a visible UX state, never a toast
-// or a silent error. Doctrine: docs/31-WEB-CLIENT.md § "Envelope handling
-// matrix".
-//
-// Commit 3 of Phase 5g-v will lift the fetch wrapper out of this file
-// into `src/lib/api.ts` and promote the DRY-ing of header injection +
-// discriminated-union ApiError. For Commit 2 the minimal inline handler
-// keeps the surface readable in one file.
-
-type ChatSuccess = {
-  role: "xion";
-  text: string;
-  model_id: string;
-  usage: { input_tokens: number; output_tokens: number };
-  correlation_id: string;
-};
-
-type AuthChallenge = {
-  error: "unauthorized";
-  accepted_schemes: string[];
-};
-
-type RateLimitChallenge = {
-  error: "rate_limited";
-  retry_after_s: number;
-  bucket: "principal" | "ip";
-};
-
-type PaymentChallenge = {
-  error: "payment_required";
-  pricing_url: string;
-  accepted_postures: string[];
-  posted_price_micro_XION: number;
-  reason_code: string;
-};
-
-type RefusalEnvelope = {
-  stage: "ingress" | "egress";
-  principle_code: number;
-  reason: "covenant_refuse" | "covenant_escalate" | "provider_empty_candidate";
-  correlation_id: string;
-};
-
-type NoFloorEnvelope = {
-  reason: "open_weights_floor_unsatisfied";
-  missing_capability: string;
-  manifest_expected_id: string;
-};
-
-type ProviderErrorEnvelope = {
-  reason: "no_healthy_provider";
-  correlation_id: string;
-};
-
-type ServiceUnavailable = NoFloorEnvelope | ProviderErrorEnvelope;
+// Commit 3 of Phase 5g-v lifted the fetch wrapper into `src/lib/api.ts`
+// as a typed ApiError discriminated union. ChatView now switches on
+// `err.kind` instead of raw status codes.
 
 type ChatState =
   | { kind: "idle" }
-  | { kind: "pending"; startedAt: number; deadlineMs: number }
-  | { kind: "success"; response: ChatSuccess }
-  | { kind: "auth-required"; body: AuthChallenge }
-  | { kind: "payment-required"; body: PaymentChallenge }
-  | { kind: "rate-limited"; body: RateLimitChallenge }
-  | { kind: "refused"; body: RefusalEnvelope }
-  | { kind: "service-unavailable"; body: ServiceUnavailable }
-  | { kind: "error"; status: number; detail: string }
-  | { kind: "timeout" };
+  | { kind: "pending"; startedAt: number }
+  | { kind: "success"; response: ChatSuccessResponse }
+  | { kind: "error"; err: ApiError };
 
-// Match the server's 30s per-turn deadline in
-// orchestrator/api/chat.py. Slightly over it so the server's own
-// timeout fires first and we render its envelope rather than a client-
-// side abort.
-const CLIENT_DEADLINE_MS = 32_000;
 const SERVER_DEADLINE_MS = 30_000;
-
-async function postChat(
-  message: string,
-  authHeader: Record<string, string>,
-  signal: AbortSignal,
-): Promise<{ status: number; body: unknown }> {
-  const response = await fetch("/chat", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeader,
-    },
-    body: JSON.stringify({ message, max_tokens: 512 }),
-    signal,
-  });
-  let body: unknown = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-  return { status: response.status, body };
-}
+const CLIENT_DEADLINE_MS = 32_000;
 
 function copyToClipboard(text: string): void {
   if (typeof navigator !== "undefined" && navigator.clipboard) {
     void navigator.clipboard.writeText(text).catch(() => {
-      // Clipboard API can fail (permissions, non-secure context). We
-      // intentionally swallow; the correlation_id is visible on-screen.
+      // Clipboard API can fail (permissions, non-secure context); the
+      // correlation_id remains visible on-screen.
     });
   }
 }
@@ -126,8 +38,7 @@ function copyToClipboard(text: string): void {
 function CorrelationId({ id }: { id: string }): JSX.Element {
   return (
     <span className="xion-corr">
-      correlation_id:{" "}
-      <code className="xion-corr__value">{id}</code>{" "}
+      correlation_id: <code className="xion-corr__value">{id}</code>{" "}
       <button
         type="button"
         className="xion-button xion-button--inline"
@@ -177,16 +88,12 @@ export function ChatView(): JSX.Element {
   const [signInError, setSignInError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Tick the clock while a request is pending so the deadline progress
-  // indicator updates smoothly. 200 ms cadence is plenty for human
-  // perception and cheap enough that we don't need RAF.
   useEffect(() => {
     if (state.kind !== "pending") return;
     const handle = window.setInterval(() => setNowMs(Date.now()), 200);
     return () => window.clearInterval(handle);
   }, [state.kind]);
 
-  // Cancel any in-flight request on unmount.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -199,61 +106,26 @@ export function ChatView(): JSX.Element {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const timeoutHandle = window.setTimeout(
-      () => controller.abort(),
-      CLIENT_DEADLINE_MS,
-    );
     const startedAt = Date.now();
-    setState({ kind: "pending", startedAt, deadlineMs: SERVER_DEADLINE_MS });
+    setState({ kind: "pending", startedAt });
     setNowMs(startedAt);
     try {
-      const authHeader = buildAuthorizationHeader(credential);
-      const { status, body } = await postChat(trimmed, authHeader, controller.signal);
-      window.clearTimeout(timeoutHandle);
-      if (status === 200 && body && typeof body === "object" && "text" in body) {
-        setState({ kind: "success", response: body as ChatSuccess });
-        setMessage("");
-        return;
-      }
-      if (status === 401) {
-        setState({ kind: "auth-required", body: body as AuthChallenge });
-        return;
-      }
-      if (status === 402) {
-        setState({ kind: "payment-required", body: body as PaymentChallenge });
-        return;
-      }
-      if (status === 429) {
-        setState({ kind: "rate-limited", body: body as RateLimitChallenge });
-        return;
-      }
-      if (status === 451) {
-        setState({ kind: "refused", body: body as RefusalEnvelope });
-        return;
-      }
-      if (status === 503) {
-        setState({ kind: "service-unavailable", body: body as ServiceUnavailable });
-        return;
-      }
-      setState({
-        kind: "error",
-        status,
-        detail:
-          body && typeof body === "object"
-            ? JSON.stringify(body)
-            : `Unexpected HTTP ${status}`,
-      });
+      const response = await postChat(credential, trimmed, 512, controller.signal);
+      setState({ kind: "success", response });
+      setMessage("");
     } catch (err) {
-      window.clearTimeout(timeoutHandle);
-      if (controller.signal.aborted) {
-        setState({ kind: "timeout" });
-        return;
+      if (err instanceof ApiErrorException) {
+        setState({ kind: "error", err: err.api });
+      } else {
+        setState({
+          kind: "error",
+          err: {
+            kind: "network",
+            status: 0,
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
       }
-      setState({
-        kind: "error",
-        status: 0,
-        detail: err instanceof Error ? err.message : String(err),
-      });
     }
   }, [message, credential]);
 
@@ -308,6 +180,7 @@ export function ChatView(): JSX.Element {
         />
         <p id="xion-chat-hint" className="xion-hint">
           Plain text. No markdown. 16&nbsp;000 character bound matches the server.
+          Client deadline: {Math.floor(CLIENT_DEADLINE_MS / 1000)}s.
         </p>
         <div className="xion-chat__actions">
           <button
@@ -351,7 +224,7 @@ export function ChatView(): JSX.Element {
           </article>
         )}
 
-        {state.kind === "auth-required" && (
+        {state.kind === "error" && state.err.kind === "unauthorized" && (
           <div className="xion-panel xion-panel--auth" role="alert">
             <h3 className="xion-h3">Sign in required</h3>
             <p>
@@ -389,99 +262,112 @@ export function ChatView(): JSX.Element {
             </div>
             <p className="xion-hint">
               Accepted schemes:{" "}
-              <code>{state.body.accepted_schemes.join(", ")}</code>
+              <code>{state.err.body.accepted_schemes.join(", ")}</code>
             </p>
           </div>
         )}
 
-        {state.kind === "payment-required" && (
+        {state.kind === "error" && state.err.kind === "payment_required" && (
           <div className="xion-panel xion-panel--billing" role="alert">
             <h3 className="xion-h3">Billing not yet supported in this client</h3>
             <p>
               The server is configured with <code>XION_BILLING_REQUIRED=true</code>{" "}
-              and requires an <code>X-Payment-Commitment</code> header. The
-              Phase 5g-v web client does not yet sign payment commitments in the
-              browser; see <code>docs/31-WEB-CLIENT.md</code> and{" "}
-              <code>docs/29-BILLING-X402.md</code> for the{" "}
-              <code>curl</code> path. This gap is tracked as{" "}
-              <code>KW-CLIENT-001</code> and closes in Phase 6+ alongside{" "}
-              <code>KW-BILLING-001</code>.
+              and requires an <code>X-Payment-Commitment</code> header. The Phase
+              5g-v web client does not yet sign payment commitments in the browser;
+              see <code>docs/31-WEB-CLIENT.md</code> and{" "}
+              <code>docs/29-BILLING-X402.md</code> for the <code>curl</code> path.
+              This gap is tracked as <code>KW-CLIENT-001</code> and closes in
+              Phase 6+ alongside <code>KW-BILLING-001</code>.
             </p>
             <dl className="xion-dl">
               <dt>Posted price</dt>
-              <dd>{state.body.posted_price_micro_XION} μXION</dd>
+              <dd>{state.err.body.posted_price_micro_XION} μXION</dd>
               <dt>Accepted postures</dt>
               <dd>
-                <code>{state.body.accepted_postures.join(", ")}</code>
+                <code>{state.err.body.accepted_postures.join(", ")}</code>
               </dd>
               <dt>Reason</dt>
               <dd>
-                <code>{state.body.reason_code}</code>
+                <code>{state.err.body.reason_code}</code>
               </dd>
             </dl>
           </div>
         )}
 
-        {state.kind === "rate-limited" && (
+        {state.kind === "error" && state.err.kind === "rate_limited" && (
           <div className="xion-panel xion-panel--rate" role="alert">
             <h3 className="xion-h3">Rate limited</h3>
             <p>
-              The <code>{state.body.bucket}</code> bucket is exhausted. Retry in{" "}
-              <strong>{state.body.retry_after_s}s</strong>.
+              The <code>{state.err.body.bucket}</code> bucket is exhausted. Retry
+              in <strong>{state.err.body.retry_after_s}s</strong>.
             </p>
           </div>
         )}
 
-        {state.kind === "refused" && (
+        {state.kind === "error" && state.err.kind === "refused" && (
           <div className="xion-panel xion-panel--refused" role="alert">
             <h3 className="xion-h3">Xion declined to respond</h3>
             <p>
-              Stage: <code>{state.body.stage}</code> · Covenant principle{" "}
-              <code>{state.body.principle_code}</code> · reason{" "}
-              <code>{state.body.reason}</code>.
+              Stage: <code>{state.err.body.stage}</code> · Covenant principle{" "}
+              <code>{state.err.body.principle_code}</code> · reason{" "}
+              <code>{state.err.body.reason}</code>.
             </p>
             <p className="xion-hint">
               Refusals are structural, not aspirational. The server's Arbiter
               verdict is final; this client does not re-moderate.
             </p>
-            <CorrelationId id={state.body.correlation_id} />
+            <CorrelationId id={state.err.body.correlation_id} />
           </div>
         )}
 
-        {state.kind === "service-unavailable" && (
+        {state.kind === "error" && state.err.kind === "service_unavailable" && (
           <div className="xion-panel xion-panel--unavailable" role="alert">
             <h3 className="xion-h3">Temporarily unavailable</h3>
-            {state.body.reason === "open_weights_floor_unsatisfied" ? (
+            {state.err.body.reason === "open_weights_floor_unsatisfied" ? (
               <p>
                 The orchestrator's open-weights floor is not held:{" "}
-                <code>{state.body.missing_capability}</code>. Manifest id{" "}
-                <code>{state.body.manifest_expected_id}</code>.
+                <code>{state.err.body.missing_capability}</code>. Manifest id{" "}
+                <code>{state.err.body.manifest_expected_id}</code>.
               </p>
             ) : (
               <>
                 <p>No healthy generation provider.</p>
-                <CorrelationId id={state.body.correlation_id} />
+                <CorrelationId id={state.err.body.correlation_id} />
               </>
             )}
           </div>
         )}
 
-        {state.kind === "timeout" && (
+        {state.kind === "error" && state.err.kind === "aborted" && (
           <div className="xion-panel xion-panel--timeout" role="alert">
-            <h3 className="xion-h3">Request timed out (30s)</h3>
+            <h3 className="xion-h3">
+              {state.err.reason === "timeout"
+                ? "Request timed out (30s)"
+                : "Request cancelled"}
+            </h3>
             <p>
-              The server did not respond within the per-turn deadline. This is
-              typically a Relay-side issue; retry, or check{" "}
-              <code>GET /health</code>.
+              {state.err.reason === "timeout"
+                ? "The server did not respond within the per-turn deadline. This is typically a Relay-side issue; retry, or check GET /health."
+                : "You cancelled the request."}
             </p>
           </div>
         )}
 
-        {state.kind === "error" && (
+        {state.kind === "error" && state.err.kind === "network" && (
+          <div className="xion-panel xion-panel--error" role="alert">
+            <h3 className="xion-h3">Network error</h3>
+            <p>{state.err.message}</p>
+          </div>
+        )}
+
+        {state.kind === "error" && state.err.kind === "other" && (
           <div className="xion-panel xion-panel--error" role="alert">
             <h3 className="xion-h3">Unexpected error</h3>
             <p>
-              HTTP <code>{state.status}</code>. {state.detail}
+              HTTP <code>{state.err.status}</code>
+              {state.err.body && typeof state.err.body === "object"
+                ? ` — ${JSON.stringify(state.err.body)}`
+                : ""}
             </p>
           </div>
         )}

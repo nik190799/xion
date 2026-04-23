@@ -1,24 +1,29 @@
-import { ChatView } from "./views/ChatView";
+import { useState } from "react";
 
-// Minimal App for Commit 2 of Phase 5g-v: the ChatView is reachable and
-// rendered. Header, DriveView, and SensoriumView land in Commit 3; the
-// view switcher becomes non-trivial at that point. For now there is one
-// view and one heading.
+import { Header, type ViewId } from "./components/Header";
+import { ChatView } from "./views/ChatView";
+import { DriveView } from "./views/DriveView";
+import { SensoriumView } from "./views/SensoriumView";
+
+// App shell: Header + main view region + footer. Three views total
+// (Chat / Drive / Sensorium); the Header component owns the switcher
+// and the Relay health dot. No client-side routing library — a single
+// state variable is sufficient for three views.
 
 export function App(): JSX.Element {
+  const [view, setView] = useState<ViewId>("chat");
   return (
     <div className="xion-shell">
-      <header className="xion-header" role="banner">
-        <h1 className="xion-h1">Xion</h1>
-        <p className="xion-header__tagline">Phase 5g-v operator dashboard</p>
-      </header>
+      <Header current={view} onNavigate={setView} />
       <main className="xion-main" role="main" id="main-content">
-        <ChatView />
+        {view === "chat" && <ChatView />}
+        {view === "drive" && <DriveView />}
+        {view === "sensorium" && <SensoriumView />}
       </main>
       <footer className="xion-footer" role="contentinfo">
         <p className="xion-hint">
           The server's Arbiter verdict is final. This client does not
-          re-moderate. See <code>docs/31-WEB-CLIENT.md</code>.
+          re-moderate. Doctrine: <code>docs/31-WEB-CLIENT.md</code>.
         </p>
       </footer>
     </div>
