@@ -400,18 +400,46 @@ class NoFloorEnvelope(BaseModel):
 
 
 class ProviderErrorEnvelope(BaseModel):
-    """Phase 5g-i 503 body when no registered provider is healthy.
+    """Phase 5g-i 503 body when no provider served the turn.
 
-    The floor is held at startup (the Router bootstrapped green) but by
-    the time a request arrived, no provider — neither hosted-API nor
-    floor — returned ``health() == True``. Transient failure; the
-    client is expected to retry with backoff.
+    Phase 5g-i emitted only the pre-selection value ``no_healthy_provider``.
+    Phase 5g-vii (doctrine anchor: `docs/26-INFERENCE-POLICY.md` § "Provider
+    fallback semantics" P4) expands ``reason`` to include the six typed
+    failure classes. A ``reason`` value is one of:
+
+      - ``no_healthy_provider``      : pre-selection — ``select_ordered()``
+                                       returned an empty list, so no
+                                       provider was even attempted.
+      - ``insufficient_credits``     : upstream refused for billing.
+      - ``rate_limited_upstream``    : upstream rate-limit exceeded.
+      - ``provider_unreachable``     : network / gateway failure.
+      - ``timeout``                  : per-attempt deadline exceeded.
+      - ``moderation_refusal``       : upstream content filter refused.
+      - ``unknown_provider_error``   : residual bucket (P5).
+
+    On a multi-attempt turn, the value echoes the ``failure_reason_class``
+    of the LAST attempted provider (per P4: single-cause envelope; full
+    per-attempt ladder lives in the REQUEST_LEDGER v2 rows sharing the
+    turn's ``chat_turn_id``). The client is expected to retry with
+    backoff for every class except ``moderation_refusal`` (where retry
+    is futile).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    reason: Literal["no_healthy_provider"] = Field(
-        description="Fixed constant.",
+    reason: Literal[
+        "no_healthy_provider",
+        "insufficient_credits",
+        "rate_limited_upstream",
+        "provider_unreachable",
+        "timeout",
+        "moderation_refusal",
+        "unknown_provider_error",
+    ] = Field(
+        description=(
+            "Pre-selection failure (``no_healthy_provider``) OR the "
+            "last attempt's typed ``failure_reason_class``."
+        ),
     )
     correlation_id: str = Field(
         description=(

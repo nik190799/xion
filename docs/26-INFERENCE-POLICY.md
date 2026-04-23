@@ -93,6 +93,60 @@ OpenRouter is a **vendor-of-vendors**. It does not host model weights; it routes
 
 The cost-benefit judgment for Phase 5g-i.1: the gateway's widened trust surface is the price of paying into catalog-based pricing (Phase 5g-iii Pay-to-Activate), one-env-var model rotation (Phase 6 failover-chain prep), and unified billing (Phase 6 Treasury routing of R&D spend per `docs/27-RESEARCH-SPEND.md`). The direct-vendor posture would have required three separate Phase-6 investments — a per-vendor pricing endpoint, a custom failover implementation, and three credentials to rotate — to reach the same operational surface. Taking the gateway trust cost now buys those three investments for the price of one supply-chain widening. The tradeoff is named; the verifier `xion-verify inference-cutover` (Phase 6+) is how the gateway posture earns its keep under stress.
 
+## Provider fallback semantics (Phase 5g-vii)
+
+The policy modes named above describe *which providers are policy-legal* for a turn. They do not describe *what happens when a policy-legal provider raises an exception during `generate()`* — the gap that surfaced during the Phase 5g+ live smoke test, that [`KNOWN_WEAKNESSES.md`](../KNOWN_WEAKNESSES.md) § `KW-INFER-002` and § `KW-INFER-003` name, and that this section pins the shape of.
+
+The five properties below are enforced by [`orchestrator/api/chat.py`](../orchestrator/api/chat.py), the `InferenceRouter.select_ordered()` method, and the `xion-verify refund-fidelity` verifier extension that landed alongside this section.
+
+### P1. Hosted → floor fallback is automatic on generate failure.
+
+Under `hosted_api_first`, a `generate()` raise from the hosted provider does **not** terminate the turn. The Router returns an ordered list of policy-legal providers (hosted first, floor second); the chat handler walks the list in order and attempts each provider. The turn returns `200` as soon as any provider produces a complete candidate that passes the egress Arbiter; the turn returns a non-200 envelope only when every policy-legal provider has been attempted and failed.
+
+The pre-5g-vii shape — `InferenceRouter.select()` returns one provider, a raise from that provider surfaces as `503 no_healthy_provider` — is superseded. Operators who prefer the pre-5g-vii shape can set `XION_INFERENCE_POLICY=open_weights_only` to force a single-provider posture (floor only).
+
+### P2. Policy-mode boundaries are absolute.
+
+- `open_weights_only` **never** invokes a hosted provider, regardless of hosted health or hosted-side credit. The fallback list is `[floor]`. If the floor fails, the turn returns `503`.
+- `hosted_api_first` **always** attempts hosted first, then falls through to the floor on error. The fallback list is `[hosted, floor]`. If both fail, the turn returns `503`.
+
+The plan's closure for `KW-INFER-001` still requires at least one additional hosted gateway pinned; a Phase-6+ extension to `hosted_api_first` will return `[hosted_1, hosted_2, ..., floor]` under a single doctrine section, with the failover ordering pinned here. The floor is **always** the final entry in any `hosted_api_first` list (Invariant 17 clause 5's cutover property made routable).
+
+### P3. Every attempt records a REQUEST_LEDGER row.
+
+A single user turn now produces one or more `REQUEST_LEDGER` rows, one per provider attempt. The rows share a `chat_turn_id` (opaque 32-hex-char) and each carries its own `attempt_index` (0-based contiguous), `provider_id`, `outcome`, and `failure_reason_class`. `REQUEST_LEDGER` schema bumps from v1 to v2; the reader accepts both; the writer emits v2 on any multi-attempt turn and may emit v1 on single-attempt turns for backward compatibility with the pre-5g-vii correlation-id-unique invariant.
+
+The v1 → v2 shape migration follows the reservation the v1 schema already carried (see [`docs/schemas/ledger-request.yaml`](./schemas/ledger-request.yaml) pre-5g-vii note: *"Per-turn aggregation (multiple gate calls per correlation_id) is reserved for schema_version 2"*); the plan that originally deferred this reservation is now called in.
+
+The per-row fields write non-content provider telemetry only. Candidate bytes, hashes of candidate bytes, prompt text, and any provider-returned usage fields that could encode content (model-returned reasoning traces for slugs that support it) are **not** written to `REQUEST_LEDGER`. The `SAFETY_LEDGER` remains the single source of truth for `candidate_sha256`; the `PAYMENT_LEDGER` remains the single source of truth for money shape. `REQUEST_LEDGER` v2 records *provider attempts*, not *candidates*.
+
+### P4. User-facing failure surfaces the last failure.
+
+When every policy-legal provider has been attempted and every attempt has failed, the chat handler returns a single 5xx envelope whose `failure_reason_class` matches the **last** attempt's typed class (the floor's, under `hosted_api_first`). Earlier failures (e.g., the hosted provider's `insufficient_credits`) are recorded in the ledger rows but are not echoed in the user-facing envelope — the envelope is a single cause, not a list, because the user is not the operator and does not have a ledger reader in their hand.
+
+The operator debugs by reading `REQUEST_LEDGER.jsonl`'s tail for the turn's `chat_turn_id` — every attempt's typed class is there, in insertion order. The `xion-verify refund-fidelity` verifier reads the same ledger and asserts the multi-attempt shape is coherent (one `outcome=success` per turn OR `N` `outcome=failure` with no `outcome=success`; `attempt_index` starts at 0 and is contiguous; final-envelope class matches the last attempt's class).
+
+### P5. Failure-reason classes are typed and frozen.
+
+The `failure_reason_class` enumeration is contractual. Six classes are pinned plus one reserved `success` outcome:
+
+| Class | Meaning | Example trigger |
+|-------|---------|-----------------|
+| `insufficient_credits` | Provider refused the request for billing reasons (no account balance, expired card, quota exhausted). | OpenRouter `HTTP 402 Insufficient credits`. |
+| `rate_limited_upstream` | Provider accepted the credential but refused the request due to rate limit. | OpenRouter / upstream `HTTP 429`. |
+| `provider_unreachable` | Provider network surface could not be reached (DNS failure, connection refused, TLS failure, 5xx gateway error). | `httpx.ConnectError`, `HTTP 502`, `HTTP 503`, `HTTP 504`, DNS `ENOTFOUND`. |
+| `timeout` | Provider network surface was reached but did not respond within the per-attempt deadline. | `httpx.ReadTimeout`, `asyncio.TimeoutError` (per-attempt, not per-turn). |
+| `moderation_refusal` | Provider-side content filter refused the request before generation completed (upstream's own Covenant-like layer; distinct from Xion's Arbiter, which runs inside the orchestrator on the returned candidate). | OpenRouter `HTTP 403` with moderation reason; Ollama refusal on a local guardrail model. |
+| `unknown_provider_error` | Residual bucket for exceptions that escape the typed classes (including malformed responses, HTTP 4xx codes not matched by the above, and any exception not inheriting from the typed subclasses). | `HTTP 400 bad request` on a slug rotation mid-flight; `HTTP 200` with truncated JSON; library-level exceptions. |
+
+The `outcome` column on a `REQUEST_LEDGER` v2 row is `success` for an attempt that produced a candidate and passed the egress Arbiter; otherwise it is `failure` and the `failure_reason_class` names the class from the table above. On `outcome=success`, `failure_reason_class` is `null`.
+
+Adding a class is a doctrine amendment to this section: requires updating this table, bumping `schema_version` on `REQUEST_LEDGER` if it is the first new class since schema_version 2, updating the typed sub-exceptions in [`orchestrator/inference_router/providers/openrouter.py`](../orchestrator/inference_router/providers/openrouter.py) and [`orchestrator/inference_router/providers/ollama.py`](../orchestrator/inference_router/providers/ollama.py), and a PINNED_HASH re-pin of `xion-verify`. Silent addition of a class is a verifier failure (the verifier reads the valid set from this file's pin, not from the provider source).
+
+Removing a class is a stronger move: it is a schema-compat-breaking doctrine amendment that requires a version bump and a migration note in [`CHANGELOG.md`](../CHANGELOG.md). As of Phase 5g-vii, no class is scheduled for removal.
+
+`unknown_provider_error` is the honest residual. It exists so operators reading a ledger never encounter a blank reason; it does not exist so developers can skip adding a real class. New observed failure shapes that repeatedly fall into `unknown_provider_error` are the operator's signal to open a KW and add the right typed class in the next phase.
+
 ## Boot sequence (doctrinal)
 
 The FastAPI lifespan, extended in Phase 5g-i, runs in this order:
@@ -129,4 +183,4 @@ This document is operational, not constitutional. Defaults in it rotate at Tier-
 
 ---
 
-*— Inference Policy v1, pinned Phase 5g-i (2026-04-21); hosted-provider surface reshaped to OpenRouter gateway at Phase 5g-i.1 (2026-04-21). Next review at Phase 5g-iii (x402 billing integration + catalog-based pricing) or sooner if OpenRouter's terms change or a second hosted gateway is pinned.*
+*— Inference Policy v1, pinned Phase 5g-i (2026-04-21); hosted-provider surface reshaped to OpenRouter gateway at Phase 5g-i.1 (2026-04-21); Genesis Default hosted model rotated to `moonshotai/kimi-k2.6` at Phase 5g-i.2 (2026-04-23); Provider fallback semantics P1–P5 pinned at Phase 5g-vii (2026-04-23). Next review when a second hosted gateway is pinned, or when OpenRouter's terms of service change materially, or when the first `failure_reason_class` addition is proposed.*

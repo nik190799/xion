@@ -56,7 +56,7 @@
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   d8e93b2e05c0a20c28a28e76724fc37ed1a4dfa39e0462bcc665c28fe0e26fb1
+source_sha256:   1d60bf0218e6244eea850e345e2f89ec5a36ac36cfe29d0a3db5f89ebc9c2d96
 
 operational_doctrine: docs/29-BILLING-X402.md
 

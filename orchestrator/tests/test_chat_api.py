@@ -361,7 +361,10 @@ def test_provider_raising_returns_503_provider_error(
         r = client.post("/chat", json={"message": "hello"})
     assert r.status_code == 503, r.text
     body = r.json()
-    assert body["reason"] == "no_healthy_provider"
+    # Phase 5g-vii: a non-ProviderError exception surfaces as the P5
+    # residual bucket. Pre-5g-vii this was collapsed to
+    # "no_healthy_provider"; the new contract is the typed class.
+    assert body["reason"] == "unknown_provider_error"
     # Content-free: no upstream error string in the body.
     assert "upstream flaked" not in r.text
 
@@ -376,7 +379,8 @@ def test_provider_exceeding_deadline_returns_503(
         r = client.post("/chat", json={"message": "hello"})
     assert r.status_code == 503, r.text
     body = r.json()
-    assert body["reason"] == "no_healthy_provider"
+    # Phase 5g-vii: a per-attempt timeout surfaces as "timeout" (P5).
+    assert body["reason"] == "timeout"
 
 
 # -------- Policy modes --------------------------------------------------------

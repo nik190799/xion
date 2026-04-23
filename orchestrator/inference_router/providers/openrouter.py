@@ -71,18 +71,42 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar
 from urllib.parse import urlparse
 
-from orchestrator.inference_router.provider import GenerationResult
+from orchestrator.inference_router.provider import (
+    GenerationResult,
+    InsufficientCreditsError,
+    ModerationRefusalError,
+    ProviderError,
+    ProviderTimeoutError,
+    ProviderUnreachableError,
+    RateLimitedUpstreamError,
+    UnknownProviderError,
+)
 from orchestrator.inference_router.router import Category
 
 
-class OpenRouterProviderError(RuntimeError):
-    """Raised on non-200 responses or transport errors.
+class OpenRouterProviderError(ProviderError):
+    """Raised on construction-time validation failures.
+
+    Phase 5g-vii note. Pre-5g-vii this class was the single exception
+    type raised from every provider failure path. Phase 5g-vii split
+    generate-site failures into the typed ``ProviderError`` subclasses
+    (``InsufficientCreditsError``, ``RateLimitedUpstreamError``,
+    ``ProviderUnreachableError``, ``ProviderTimeoutError``,
+    ``ModerationRefusalError``, ``UnknownProviderError``) per doctrine
+    property P5 in ``docs/26-INFERENCE-POLICY.md``. This class is
+    retained for construction-time validation errors (``__post_init__``
+    catching an unset API key or a malformed base-URL) and for
+    backward compatibility: it now extends ``ProviderError``, so
+    ``except ProviderError:`` catches both this class and the typed
+    subclasses above.
 
     The message is scrubbed of API-key value, Authorization-header
     value, and any bare ``sk-or-...`` token before construction; callers
     may surface the message to end users via ``ProviderErrorEnvelope``
     without leaking credentials.
     """
+
+    failure_reason_class = "unknown_provider_error"
 
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
@@ -104,6 +128,37 @@ _RE_BEARER = re.compile(r"Bearer\s+[A-Za-z0-9_\-\.]+", re.IGNORECASE)
 # a key that is not the exact instance this provider holds, it still gets
 # redacted before it rides out to a user in an envelope.
 _RE_OPENROUTER_KEY = re.compile(r"sk-or-[A-Za-z0-9_\-\.]+")
+
+
+_PROVIDER_ID = "openrouter"
+
+
+def _error_for_status(status: int, message: str) -> ProviderError:
+    """Map an OpenRouter HTTP status to a typed ``ProviderError``.
+
+    Phase 5g-vii property P5: the typed class directly informs the
+    ``failure_reason_class`` written to REQUEST_LEDGER v2 rows. The
+    mapping is OpenRouter-specific but the emitted classes are
+    provider-agnostic — the chat handler's fallback loop catches
+    ``ProviderError`` and reads ``failure_reason_class`` without
+    knowing which provider raised.
+
+    Dispatch:
+      * 402  -> InsufficientCreditsError  (operator billing exhausted)
+      * 403  -> ModerationRefusalError    (OpenRouter's content filter)
+      * 429  -> RateLimitedUpstreamError  (upstream quota exceeded)
+      * 5xx  -> ProviderUnreachableError  (gateway-class failure)
+      * else -> UnknownProviderError      (honest residual)
+    """
+    if status == 402:
+        return InsufficientCreditsError(message, provider_id=_PROVIDER_ID)
+    if status == 403:
+        return ModerationRefusalError(message, provider_id=_PROVIDER_ID)
+    if status == 429:
+        return RateLimitedUpstreamError(message, provider_id=_PROVIDER_ID)
+    if 500 <= status < 600:
+        return ProviderUnreachableError(message, provider_id=_PROVIDER_ID)
+    return UnknownProviderError(message, provider_id=_PROVIDER_ID)
 
 
 def _scrub(msg: str, api_key: str) -> str:
@@ -257,25 +312,33 @@ class OpenRouterGenerativeProvider:
                 status = resp.status
             finally:
                 conn.close()
-        except (TimeoutError, OSError, http.client.HTTPException) as e:
-            raise OpenRouterProviderError(
-                f"openrouter transport error: {_scrub(str(e), self._api_key)}"
+        except TimeoutError as e:
+            raise ProviderTimeoutError(
+                f"openrouter transport timeout: {_scrub(str(e), self._api_key)}",
+                provider_id=_PROVIDER_ID,
+            ) from None
+        except (OSError, http.client.HTTPException) as e:
+            raise ProviderUnreachableError(
+                f"openrouter transport error: {_scrub(str(e), self._api_key)}",
+                provider_id=_PROVIDER_ID,
             ) from None
 
         latency_ms = max(0, int((time.monotonic() - started) * 1000))
 
         if not (200 <= status < 300):
             snippet = raw[:512].decode("utf-8", errors="replace")
-            raise OpenRouterProviderError(
-                f"openrouter HTTP {status}: {_scrub(snippet, self._api_key)}"
+            raise _error_for_status(
+                status,
+                f"openrouter HTTP {status}: {_scrub(snippet, self._api_key)}",
             )
 
         try:
             payload: dict[str, Any] = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            raise OpenRouterProviderError(
+            raise UnknownProviderError(
                 f"openrouter response not valid JSON: "
-                f"{_scrub(str(e), self._api_key)}"
+                f"{_scrub(str(e), self._api_key)}",
+                provider_id=_PROVIDER_ID,
             ) from None
 
         return _parse_openai_completion(payload, model=self.model, latency_ms=latency_ms)
@@ -351,9 +414,10 @@ class OpenRouterGenerativeProvider:
                     if not (200 <= resp.status_code < 300):
                         raw_bytes = await resp.aread()
                         snippet = raw_bytes[:512].decode("utf-8", errors="replace")
-                        raise OpenRouterProviderError(
+                        raise _error_for_status(
+                            resp.status_code,
                             f"openrouter HTTP {resp.status_code}: "
-                            f"{_scrub(snippet, self._api_key)}"
+                            f"{_scrub(snippet, self._api_key)}",
                         )
                     async for line in resp.aiter_lines():
                         if not line or not line.startswith("data:"):
@@ -387,9 +451,23 @@ class OpenRouterGenerativeProvider:
                         returned_model = event.get("model")
                         if isinstance(returned_model, str) and returned_model:
                             model_id = returned_model
-        except (TimeoutError, httpx.HTTPError) as e:
-            raise OpenRouterProviderError(
-                f"openrouter stream transport error: {_scrub(str(e), self._api_key)}"
+        except TimeoutError as e:
+            raise ProviderTimeoutError(
+                f"openrouter stream transport timeout: "
+                f"{_scrub(str(e), self._api_key)}",
+                provider_id=_PROVIDER_ID,
+            ) from None
+        except httpx.TimeoutException as e:
+            raise ProviderTimeoutError(
+                f"openrouter stream transport timeout: "
+                f"{_scrub(str(e), self._api_key)}",
+                provider_id=_PROVIDER_ID,
+            ) from None
+        except httpx.HTTPError as e:
+            raise ProviderUnreachableError(
+                f"openrouter stream transport error: "
+                f"{_scrub(str(e), self._api_key)}",
+                provider_id=_PROVIDER_ID,
             ) from None
 
         latency_ms = max(0, int((time.monotonic() - started) * 1000))

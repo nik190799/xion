@@ -94,45 +94,66 @@ class InferenceRouter:
             )
         self._bootstrapped = True
 
-    def select(self, *, policy: PolicyMode | None = None) -> Provider | None:
-        """Select a turn-serving provider under the given policy.
+    def select_ordered(
+        self, *, policy: PolicyMode | None = None
+    ) -> list[Provider]:
+        """Return the full policy-legal, health-aware attempt order.
 
-        ``policy`` defaults to ``self.policy_mode``. Returns the first
-        healthy provider that:
-          - has a callable ``generate`` method (i.e. is a
-            ``GenerativeProvider``; floor stubs that do not generate
-            are skipped),
-          - matches the category filter for the current policy.
+        Phase 5g-vii addition. Replaces single-provider ``select()`` as
+        the primary selector. Returns every provider the caller is
+        permitted to attempt, in the exact order an ``hosted_api_first``
+        chat turn should try them: hosted-API providers (healthy,
+        generate-capable) first, then the floor providers (healthy,
+        manifest-listed, generate-capable). Under ``open_weights_only``
+        the hosted category is filtered out entirely — this is the
+        policy-boundary in ``docs/26-INFERENCE-POLICY.md`` § "Provider
+        fallback semantics" P2.
 
-        Returns ``None`` when no eligible provider is healthy. The
-        caller (the Chat handler) maps ``None`` to a 503
-        ``ProviderErrorEnvelope``.
+        The list may be empty when no policy-legal provider is healthy;
+        the chat handler maps an empty list to a 503 envelope with the
+        typed failure-reason class of the last attempt (or, before any
+        attempt was possible, to ``no_healthy_provider`` as a
+        pre-selection failure class).
 
-        Call order matters: ``hosted_api_first`` tries hosted-API
-        providers *before* falling through to the floor; the floor is
-        the fallback, never the preference, in this mode.
+        ``select_ordered()`` is the shape C4 (``orchestrator/api/chat.py``)
+        iterates to satisfy fallback property P1. ``select()`` remains as
+        a back-compat façade for the Sensorium heartbeat-probe callers
+        that only ever used the first element.
         """
         if not self._bootstrapped:
-            return None
+            return []
 
         mode: PolicyMode = policy if policy is not None else self.policy_mode
 
         def _usable(p: Provider) -> bool:
             return callable(getattr(p, "generate", None)) and bool(p.health())
 
-        if mode == "open_weights_only":
-            for p in self._providers:
-                if p.category == "open_weights_self_hostable" and _usable(p):
-                    return p
-            return None
+        ordered: list[Provider] = []
+        if mode == "hosted_api_first":
+            ordered.extend(
+                p
+                for p in self._providers
+                if p.category == "hosted_api" and _usable(p)
+            )
+        ordered.extend(
+            p
+            for p in self._providers
+            if p.category == "open_weights_self_hostable" and _usable(p)
+        )
+        return ordered
 
-        for p in self._providers:
-            if p.category == "hosted_api" and _usable(p):
-                return p
-        for p in self._providers:
-            if p.category == "open_weights_self_hostable" and _usable(p):
-                return p
-        return None
+    def select(self, *, policy: PolicyMode | None = None) -> Provider | None:
+        """Back-compat single-selection façade.
+
+        Returns the first element of ``select_ordered()`` or ``None``.
+        Kept for callers that only need a single provider handle — the
+        Sensorium heartbeat probe, tests written before 5g-vii, and
+        legacy operator scripts. The chat handler migrated to
+        ``select_ordered()`` in 5g-vii so that fallback property P1 can
+        be honored.
+        """
+        ordered = self.select_ordered(policy=policy)
+        return ordered[0] if ordered else None
 
 
 @dataclass
