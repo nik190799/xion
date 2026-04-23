@@ -46,7 +46,8 @@ Coverage (21 tests):
       - ``open_weights_only`` with a healthy hosted NEVER picks hosted
 
     Secret hygiene
-      - Kimi provider scrubs the API key from transport-error messages
+      - OpenRouter provider scrubs the API key, Bearer tokens, and
+        bare sk-or-... token fragments from transport-error messages
 """
 
 from __future__ import annotations
@@ -444,24 +445,36 @@ def test_open_weights_only_never_selects_hosted(
 # -------- Secret hygiene ------------------------------------------------------
 
 
-def test_kimi_provider_scrubs_api_key_from_error_messages(
+def test_openrouter_provider_scrubs_api_key_from_error_messages(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from orchestrator.inference_router.providers.kimi import (
-        KimiGenerativeProvider,
-        KimiProviderError,
+    from orchestrator.inference_router.providers.openrouter import (
+        OpenRouterGenerativeProvider,
+        OpenRouterProviderError,
         _scrub,
     )
 
-    # Direct scrubber exercise:
-    msg = "http error body: {'auth':'Bearer sk-abcd.EFG-HIJ_klm'}; key=test-secret-xyz"
+    # Direct scrubber exercise — three independent defences must all fire:
+    #   (a) the exact instance-held key is replaced;
+    #   (b) any 'Bearer <tok>' pattern is replaced;
+    #   (c) any bare 'sk-or-...' token (e.g. leaked from an upstream log) is
+    #       replaced even if it is not the exact key this provider holds.
+    msg = (
+        "http error body: {'auth':'Bearer sk-or-v1-abcd.EFG-HIJ_klm', "
+        "'seen_key':'sk-or-v1-DIFFERENT-fragment-99'}; key=test-secret-xyz"
+    )
     scrubbed = _scrub(msg, "test-secret-xyz")
     assert "test-secret-xyz" not in scrubbed
-    assert "sk-abcd.EFG-HIJ_klm" not in scrubbed
+    assert "sk-or-v1-abcd.EFG-HIJ_klm" not in scrubbed
+    assert "sk-or-v1-DIFFERENT-fragment-99" not in scrubbed, (
+        "bare sk-or-... tokens must be scrubbed even when not equal to the "
+        "exact instance-held API key — defence in depth against upstream "
+        "log leakage"
+    )
     assert "<api_key_redacted>" in scrubbed
     assert "Bearer <redacted>" in scrubbed
 
     # Construction refuses when no key is set:
-    monkeypatch.delenv("XION_KIMI_API_KEY", raising=False)
-    with pytest.raises(KimiProviderError):
-        KimiGenerativeProvider()
+    monkeypatch.delenv("XION_OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(OpenRouterProviderError):
+        OpenRouterGenerativeProvider()

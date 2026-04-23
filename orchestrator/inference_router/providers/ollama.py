@@ -82,9 +82,10 @@ class OllamaGenerativeProvider:
     def health(self) -> bool:
         """Probe ``GET /api/tags`` and check the floor model is present.
 
-        Cached 30s. The cache is shorter than Kimi's because Ollama is
-        loopback and the check is cheap; operators who start/stop the
-        daemon during dev expect the next ``/chat`` to notice promptly.
+        Cached 30s. The cache is shorter than OpenRouter's because
+        Ollama is loopback and the check is cheap; operators who start
+        or stop the daemon during dev expect the next ``/chat`` to
+        notice promptly.
         """
         now = time.monotonic()
         if now - self._cached_health_at < _HEALTH_CACHE_TTL_S:

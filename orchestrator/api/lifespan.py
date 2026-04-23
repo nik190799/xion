@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # An explicitly-supplied router is treated as fully configured;
     # the env loader + env-driven provider registration is skipped.
     # Tests rely on this to keep themselves hermetic from the operator
-    # shell's environment (and from any live Ollama / Kimi endpoint).
+    # shell's environment (and from any live Ollama / OpenRouter endpoint).
     if deps.router is not None:
         router = deps.router
     else:
@@ -232,7 +232,8 @@ def _build_router_from_env() -> InferenceRouter:
 
 
 def _register_env_providers(router: InferenceRouter) -> None:
-    """Register Kimi (if XION_KIMI_API_KEY set) and Ollama (always).
+    """Register OpenRouter (if XION_OPENROUTER_API_KEY set) and Ollama
+    (always).
 
     Failures in provider construction (e.g., malformed URL) are
     surfaced to stderr but do NOT crash the lifespan — a missing or
@@ -243,27 +244,27 @@ def _register_env_providers(router: InferenceRouter) -> None:
     # Import lazily so the Phase 5f read-only surface does not pull
     # the providers package during module load.
     from orchestrator.inference_router.providers import (
-        KimiGenerativeProvider,
         OllamaGenerativeProvider,
-    )
-    from orchestrator.inference_router.providers.kimi import (
-        KimiProviderError,
+        OpenRouterGenerativeProvider,
     )
     from orchestrator.inference_router.providers.ollama import (
         OllamaProviderError,
     )
+    from orchestrator.inference_router.providers.openrouter import (
+        OpenRouterProviderError,
+    )
 
-    if os.environ.get("XION_KIMI_API_KEY", "").strip():
+    if os.environ.get("XION_OPENROUTER_API_KEY", "").strip():
         try:
-            kimi = KimiGenerativeProvider()
-        except KimiProviderError as e:
+            openrouter = OpenRouterGenerativeProvider()
+        except OpenRouterProviderError as e:
             print(
-                f"State-of-Xion: Kimi provider not registered: {e}",
+                f"State-of-Xion: OpenRouter provider not registered: {e}",
                 file=sys.stderr,
                 flush=True,
             )
         else:
-            router.register(kimi)
+            router.register(openrouter)
 
     try:
         ollama = OllamaGenerativeProvider()

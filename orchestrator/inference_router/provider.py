@@ -16,9 +16,9 @@ vision, function calling — is deliberately out of scope; the Protocol
 is kept narrow so a new provider takes ~150 lines of stdlib HTTP to
 implement.
 
-This module pulls no third-party dependency. The concrete Kimi and
-Ollama providers that live alongside it use stdlib ``http.client`` in
-``asyncio.to_thread``.
+This module pulls no third-party dependency. The concrete OpenRouter
+and Ollama providers that live alongside it use stdlib ``http.client``
+in ``asyncio.to_thread``.
 """
 
 from __future__ import annotations

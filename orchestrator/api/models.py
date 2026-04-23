@@ -299,9 +299,9 @@ class ChatResponse(BaseModel):
     model_id: str = Field(
         description=(
             "The generative provider's self-reported model id "
-            "(e.g., 'kimi-k2.6', 'gemma3:4b'). Not auditable on its "
-            "own; cross-reference with the inference policy pin in "
-            "docs/26-INFERENCE-POLICY.md."
+            "(e.g., 'moonshotai/kimi-k2', 'gemma3:4b'). Not auditable "
+            "on its own; cross-reference with the inference policy pin "
+            "in docs/26-INFERENCE-POLICY.md."
         ),
     )
     usage: UsageEnvelope
