@@ -39,11 +39,25 @@ def sensorium_path(tmp_path: Path) -> Path:
 
 
 def _benign_state(as_of: int = 123_456_789) -> SensoriumState:
+    """Deterministic benign SensoriumState for hash-stability assertions.
+
+    Every sub-sense constructor's ``as_of_utc_ns`` defaults to
+    ``time.time_ns()`` via ``field(default_factory=...)`` — correct for
+    production paths, wrong for tests that assert
+    ``canonical_state_hash(a) == canonical_state_hash(b)`` across two
+    constructions. We thread a single ``as_of`` nanosecond stamp through
+    every sub-sense so the whole state is a pure function of ``as_of``.
+    """
     return SensoriumState(
-        interoception=Interoception.from_placeholders(treasury_stress=0.0, cost_pressure=0.0),
-        chronoception=Chronoception(),
-        proprioception=Proprioception(),
-        distress=DistressSignal(text_distress_score=0.0),
+        interoception=Interoception(
+            survival_pressure=0.0,
+            treasury_stress=0.0,
+            cost_pressure=0.0,
+            as_of_utc_ns=as_of,
+        ),
+        chronoception=Chronoception(as_of_utc_ns=as_of),
+        proprioception=Proprioception(as_of_utc_ns=as_of),
+        distress=DistressSignal(text_distress_score=0.0, as_of_utc_ns=as_of),
         as_of_utc_ns=as_of,
     )
 
