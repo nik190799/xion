@@ -1,0 +1,108 @@
+XION DEPLOYMENT — FIRST REAL OPEN-WEIGHTS FLOOR PROVENANCE RECORD
+==================================================================
+
+Document type: provenance-record (not a content-addressed model blob)
+Invariant anchor: Invariant 17 — Inference Sovereignty Floor
+Manifest anchor: orchestrator/inference_router/open_weights_manifest.json
+Strengthening path: KNOWN_WEAKNESSES.md § KW-FLOOR-001
+
+---
+
+What this file is
+
+This file is the content-addressed declaration that the operator of
+this Xion checkout has named the local Ollama daemon as their
+Invariant-17 open-weights floor provider. A Witness who re-runs
+`xion-verify inference-sovereignty` on a fresh clone recomputes the
+sha256 of this file and matches it against the manifest pin. That
+check proves the operator made the declaration and that the
+declaration has not been silently rewritten on disk since.
+
+What this file is NOT
+
+This file does NOT content-address the model weights themselves. It
+does not claim that the operator has pulled a specific byte-identical
+GGUF blob. That stronger pin — the one Invariant 17 clause 2(iii)
+envisions via representative-sample sentinels for large-file
+open-weights artifacts — is tracked in `KNOWN_WEAKNESSES.md` under
+`KW-FLOOR-001` and queued as a dedicated phase of work that also
+upgrades `xion-verify inference-sovereignty` to support large-file
+representative-sample verification.
+
+Why ship a provenance-record pin today
+
+Invariant 17 requires a healthy `open_weights_self_hostable` floor
+provider to be registered and listed in the manifest before the
+Inference Router will bootstrap. Until the first real pin lands,
+every live deployment's Router refuses to bootstrap off the pinned
+sentinel alone (`sentinel-llm-v0` is a synthetic placeholder). The
+provenance-record format is the smallest honest mechanism that:
+
+  1. Adds a real, grep-able, content-addressed artifact to the
+     manifest — not a silent edit, not an env-var back door, not a
+     bypass flag.
+  2. Preserves the verifier's structural guarantee: every floor entry
+     has an on-disk file whose sha256 matches the pin.
+  3. Names its own weakness in the machine-readable `format` field
+     (`provenance-record`) so that future verifier extensions can
+     distinguish provenance-records from real content-addressed
+     model pins without reading prose.
+  4. Leaves the path to the stronger pin explicit in
+     `KNOWN_WEAKNESSES.md` § `KW-FLOOR-001` rather than declaring
+     victory prematurely.
+
+Runtime configuration this declaration covers
+
+At lifespan startup, the orchestrator registers
+`OllamaGenerativeProvider` with `provider_id = "ollama"`. The Router's
+`bootstrap()` check accepts a provider whose `provider_id` appears in
+the manifest's `open_weights[]` list, whose `category` is
+`open_weights_self_hostable`, and whose `health()` returns True. The
+health check requires:
+
+  - The Ollama daemon responds to `GET /api/tags` at
+    `XION_OLLAMA_URL` (default `http://localhost:11434`).
+  - The configured floor model (`XION_OLLAMA_FLOOR_MODEL`) is listed
+    in that response — i.e. the operator has pulled it locally.
+
+The configured floor model is operator-chosen, open-weights, and
+locally health-checkable. Genesis Default is `gemma3:4b` per
+`docs/26-INFERENCE-POLICY.md` § "The floor-model choice (Gemma 3 4B)".
+
+Trust surface this declaration makes explicit
+
+A Witness reading the manifest sees two entries today:
+
+  - `sentinel-llm-v0` — the pre-genesis structural anchor. Proves the
+    Router + verifier wiring works end-to-end. Kept in place.
+  - `ollama` (this record) — the first real floor-provider pin. Held
+    by a runtime health check against a local daemon. The manifest
+    pin commits to the declaration, not to the model blob.
+
+A malicious operator can swap the local Ollama daemon's served
+weights without this file changing on disk. That failure mode is
+named and tracked in `KW-FLOOR-001`. Production deployments should
+treat this record as the first step in the strengthening ladder, not
+the final pin.
+
+---
+
+Operator identity statement
+
+The operator running this checkout declares, by committing this file
+to the repository and pinning its sha256 in
+`open_weights_manifest.json`, that:
+
+  - The Invariant-17 floor is held, at runtime, by the local Ollama
+    daemon registered as `provider_id = "ollama"`.
+  - The configured floor model is an open-weights model whose license
+    permits local self-hosting.
+  - The operator accepts responsibility for the integrity of the
+    locally-pulled model bytes until `KW-FLOOR-001` ships the
+    stronger content-addressed pin.
+
+This declaration is public, append-only (subsequent rotations commit
+a new provenance record with its own sha256 pin, not a silent
+rewrite), and falsifiable by any Witness who re-hashes the file.
+
+End of provenance record.

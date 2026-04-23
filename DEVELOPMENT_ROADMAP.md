@@ -735,6 +735,30 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 ---
 
+## First real open-weights floor-provider pin — `ollama` via content-addressed provenance record (landed 2026-04-23)
+
+**Status:** Small doctrine-bearing commit on `main`. Not a full phase. Ships the second-smallest honest step past the pre-genesis sentinel: an `open_weights[]` entry with `id="ollama"` backed by a content-addressed provenance record (`orchestrator/inference_router/floor_ollama_provenance.txt`) rather than a content-addressed model blob. `xion-verify inference-sovereignty` now reports 2 entries / 2 floor-satisfying pins, both hash-verified.
+
+**Why this earned a landing rather than a full phase.** Running `python -m orchestrator.api` against the pre-genesis manifest produced `State-of-Xion: Inference Router bootstrap refused`: `provider_id="ollama"` did not appear in the sole pinned id (`sentinel-llm-v0`), so the Router refused per Invariant 17. Three alternatives were rejected on doctrinal grounds: (a) silent manifest edit hides the constitutional act; (b) an `XION_INFERENCE_DEV_ALLOW_ANY_FLOOR` bypass flag is a back-door that survives forever once shipped; (c) runtime override of `OllamaGenerativeProvider.provider_id` fakes the pin. The correct act is a named, content-addressed, Witness-recomputable file that *declares* "this deployment holds its floor via the local Ollama daemon" and ships with its weakness legible in the machine-readable `format: "provenance-record"` field.
+
+**What this pin commits to, and what it does NOT commit to.** The sha256 in `open_weights_manifest.json` content-addresses the operator's *declaration*: a 4.8 KB plaintext statement that names the provider id, the required environment configuration, and the trust surface. It does NOT content-address the model weights themselves — a malicious operator can swap the locally-pulled GGUF blob without this file changing. That stronger pin (GGUF sha256 or Invariant 17 clause 2(iii) large-file representative-sample sentinel) is the remaining pay-down for `KW-INFERENCE-001` and is queued as the next dedicated sub-phase of Invariant-17 strengthening work.
+
+**What this landing shipped:**
+
+- `orchestrator/inference_router/floor_ollama_provenance.txt` (new; 4,833 bytes, LF, sha256 `c2c78dcd…88cc9`). The provenance record body explicitly names: what the file is, what it is NOT, why the provenance-record format exists, the runtime configuration it covers, the trust surface, and the operator identity statement.
+- `orchestrator/inference_router/open_weights_manifest.json` gains a second `open_weights[]` entry — `id: "ollama"`, `category: "open_weights_self_hostable"`, `format: "provenance-record"`, pointing at the new file with its sha256. The sentinel-llm-v0 entry stays in place as the pre-genesis structural anchor.
+- `KW-INFERENCE-001` scope narrowed a second time. Pay-down commitment rewritten to require three artifacts to close: annual cutover dry-run runbook, content-addressed model-blob pin, and verifier extension to recognize the new `format` values.
+- `.env.example` unchanged (`XION_OLLAMA_FLOOR_MODEL` already documented).
+- No new KWs opened. No back-door flags introduced.
+
+**What this landing deliberately did NOT do:**
+
+- Did not compute or pin a GGUF sha256 for `qwen3.5:4b-16k` or any other Ollama-served model. That is the next Invariant-17 sub-phase.
+- Did not extend `xion-verify inference-sovereignty` to walk the `format` field differently per type. Today it accepts `provenance-record` entries because they carry `sentinel_path` + `sha256` like everything else; semantic differentiation arrives alongside the content-addressed-blob work.
+- Did not add an annual cutover dry-run to `docs/13-OPERATIONS.md`. That runbook is also a `KW-INFERENCE-001` closure item and lands alongside the D2 operator runbook work.
+
+---
+
 ## Phase 5 — Minimum Viable Xion (4-8 weeks)
 
 **Goal:** one user has one conversation with Xion, end-to-end, Arbiter-watched. Nothing more.
