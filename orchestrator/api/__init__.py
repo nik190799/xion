@@ -43,6 +43,11 @@ from .pricing import (
     PricingConfigError,
     load_pricing_config_from_env,
 )
+from .web_client import (
+    WebClientConfig,
+    WebClientConfigError,
+    load_web_client_config_from_env,
+)
 
 __all__ = [
     "AppDeps",
@@ -66,6 +71,9 @@ __all__ = [
     "RefusalEnvelope",
     "SensoriumResponse",
     "UsageEnvelope",
+    "WebClientConfig",
+    "WebClientConfigError",
     "create_app",
     "load_pricing_config_from_env",
+    "load_web_client_config_from_env",
 ]

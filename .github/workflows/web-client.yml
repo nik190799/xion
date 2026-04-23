@@ -1,0 +1,88 @@
+name: xion-web-client
+
+# CI for the Phase 5g-v web client.
+#
+# Scope: everything that can be verified without spinning up a real
+# orchestrator — type-check (tsc), accessibility (axe-core via
+# Vitest), and production build (vite build). The build verifies that
+# the emitted bundle has no non-self fetch origins (via a structural
+# grep below). The server-side test_api_web_client.py tests live in
+# the main verify.yml workflow's pytest step.
+#
+# Triggered on changes under clients/web/, the web-client mount in
+# orchestrator/api/, or this workflow file. A change to unrelated
+# orchestrator code does not re-run this workflow — keeps CI cheap.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "clients/web/**"
+      - "orchestrator/api/web_client.py"
+      - "orchestrator/tests/test_api_web_client.py"
+      - ".github/workflows/web-client.yml"
+  push:
+    branches: [main]
+    paths:
+      - "clients/web/**"
+      - "orchestrator/api/web_client.py"
+      - "orchestrator/tests/test_api_web_client.py"
+      - ".github/workflows/web-client.yml"
+  workflow_dispatch:
+
+jobs:
+  web-client:
+    name: Web client (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    defaults:
+      run:
+        shell: bash
+        working-directory: clients/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: clients/web/package-lock.json
+
+      - name: Install (reproducible; npm ci)
+        run: npm ci
+
+      - name: Type-check (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Unit + accessibility tests (Vitest + axe-core)
+        run: npm test
+
+      - name: Production build (vite build)
+        run: npm run build
+
+      - name: Structural check — no non-self origins in bundle
+        # The only non-self origin the emitted bundle is allowed to
+        # reference is the React error-decoder URL, which is a literal
+        # string never fetched at runtime. Any other https:// origin
+        # reaching the emitted JS/HTML is a supply-chain regression
+        # and fails the build.
+        #
+        # The Commit 5 `xion-verify web-client` subcommand will subsume
+        # this check with a structured allowlist; this step stays in
+        # the workflow until then as a forward-compatible backstop.
+        run: |
+          set -eo pipefail
+          if grep -REho 'https?://[^"'\''[:space:]`)]+' dist/ \
+              | sort -u \
+              | grep -Ev '^https?://reactjs\.org/docs/error-decoder\.html' \
+              > /tmp/unexpected-origins.txt; then
+            echo "Unexpected non-self origins found in the emitted bundle:"
+            cat /tmp/unexpected-origins.txt
+            exit 1
+          fi
+          echo "OK: only allowlisted non-self origin(s) in the bundle."
