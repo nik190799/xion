@@ -91,6 +91,24 @@ def _no_repo_ledger_leaks(
         "XION_PAYMENT_LEDGER",
         str(tmp_path / "_autouse_PAYMENT_LEDGER.jsonl"),
     )
+    # Phase 5g-iv: default to the 5g-i backward-compat mode
+    # (require_bearer=false) for tests that don't opt in. Tests that
+    # exercise the admission gate construct an explicit AdmissionConfig
+    # and pass ``admission_config=`` to ``app_factory``, which wins over
+    # this default. Mirrors the XION_BILLING_REQUIRED=false precedent.
+    monkeypatch.setenv("XION_API_REQUIRE_BEARER", "false")
+    for _name in (
+        "XION_API_BEARER_TOKENS",
+        "XION_API_RATE_BUDGET",
+        "XION_API_RATE_WINDOW_S",
+        "XION_API_HEALTH_RATE_BUDGET",
+        "XION_API_HOST",
+        "XION_API_PORT",
+        "XION_TLS_CERT_PATH",
+        "XION_TLS_KEY_PATH",
+        "XION_API_TRUST_FORWARDED_FOR",
+    ):
+        monkeypatch.delenv(_name, raising=False)
 
 
 @pytest.fixture

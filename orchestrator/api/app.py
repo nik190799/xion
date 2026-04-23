@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from orchestrator.inference_router.router import InferenceRouter
     from orchestrator.relay import Relay
 
+    from .admission import AdmissionConfig
     from .pricing import PricingConfig
 
 
@@ -120,6 +121,19 @@ class AppDeps:
     # constructs it from env vars via
     # ``orchestrator.billing.load_billing_config_from_env()``.
     billing_config: BillingConfig | None = None
+
+    # --- Phase 5g-iv additions -------------------------------------
+    # Admission-control config the lifespan stashes on
+    # ``app.state.admission_config``. Controls bearer-token gating on
+    # /drive, /sensorium, /chat; the per-principal sliding-window
+    # rate-limit; the per-IP /health bucket; and the bind-host /
+    # TLS knobs the launcher reads. If None, the lifespan constructs
+    # it from env vars via
+    # ``orchestrator.api.admission.load_admission_config_from_env()``.
+    # The autouse conftest fixture sets XION_API_REQUIRE_BEARER=false
+    # so existing test suites do not regress; tests that exercise the
+    # gate pass an explicit AdmissionConfig here.
+    admission_config: AdmissionConfig | None = None
 
 
 def create_app(deps: AppDeps) -> FastAPI:

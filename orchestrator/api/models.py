@@ -611,7 +611,87 @@ class PaymentChallenge(BaseModel):
     )
 
 
+# ----------------------------------------------------------- /admission
+#
+# Phase 5g-iv. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "The
+# Admission-Control Surface (Phase 5g-iv)" + ``docs/30-API-ADMISSION.md``.
+#
+# These two envelopes are the content-free 401 / 429 bodies the
+# ``admission_dependency`` (orchestrator/api/admission.py) emits. They
+# carry no echo of the offered header, no hint about which token failed,
+# no cardinality leak about the token registry — only the structural
+# minimum a well-behaved client needs to retry correctly.
+#
+# Shape parallels with the 5g-iii billing envelopes: ``error`` is a
+# Literal-pinned enum (so a client switching on it cannot break on a
+# typo), ``extra="forbid"`` + ``frozen=True`` matches every other
+# envelope on this surface.
+
+
+class AuthChallenge(BaseModel):
+    """Phase 5g-iv body for HTTP 401 Unauthorized.
+
+    Emitted when ``Authorization`` is missing, not a Bearer token, or
+    does not match any entry in the lifespan-loaded token registry.
+    The body is intentionally cardinality-free: it does NOT reveal
+    how many tokens the registry holds, does not echo the offered
+    token, does not name the rejected principal_id (because no
+    principal_id has been authenticated). A scraper learns only
+    that the Bearer scheme is accepted; everything else is private.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    error: Literal["unauthorized"] = Field(
+        description="Fixed constant. Distinguishes from other 4xx bodies.",
+    )
+    accepted_schemes: list[Literal["Bearer"]] = Field(
+        description=(
+            "Authentication schemes the Relay accepts. Pinned to "
+            "['Bearer'] in 5g-iv; Phase 6+ that adds Sign-In-With-"
+            "Wallet / DID / on-chain pubkey extends this additively."
+        ),
+    )
+
+
+class RateLimitChallenge(BaseModel):
+    """Phase 5g-iv body for HTTP 429 Too Many Requests.
+
+    Emitted when the per-principal sliding-window bucket overflows
+    (``bucket="principal"``) or the per-IP /health bucket overflows
+    (``bucket="ip"``). ``retry_after_s`` is the integer-rounded-up
+    seconds until the oldest in-window timestamp evicts and a budget
+    slot frees; always >= 1 so a polite client does not spin.
+
+    The HTTP response also carries a standard ``Retry-After`` header
+    with the same value; the body restates it so non-HTTP-aware
+    clients (e.g., a JSON-RPC wrapper) get it without parsing
+    headers.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    error: Literal["rate_limited"] = Field(
+        description="Fixed constant.",
+    )
+    retry_after_s: int = Field(
+        ge=1,
+        description=(
+            "Seconds until a budget slot frees in the offending "
+            "bucket. Mirrors the ``Retry-After`` HTTP header."
+        ),
+    )
+    bucket: Literal["principal", "ip"] = Field(
+        description=(
+            "Which bucket overflowed: 'principal' for the per-token "
+            "rate-limit on /drive /sensorium /chat; 'ip' for the per-"
+            "client-IP /health bucket."
+        ),
+    )
+
+
 __all__ = [
+    "AuthChallenge",
     "ChatRequest",
     "ChatResponse",
     "ChronoceptionResponse",
@@ -627,6 +707,7 @@ __all__ = [
     "PricingResponse",
     "ProprioceptionResponse",
     "ProviderErrorEnvelope",
+    "RateLimitChallenge",
     "RefusalEnvelope",
     "SensoriumResponse",
     "UsageEnvelope",
