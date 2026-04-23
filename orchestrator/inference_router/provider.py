@@ -49,6 +49,150 @@ from typing import Protocol, runtime_checkable
 from orchestrator.inference_router.router import Category
 
 
+# --------------------------------------------------------------------------
+# Typed provider exceptions (Phase 5g-vii).
+#
+# Doctrine anchor: ``docs/26-INFERENCE-POLICY.md`` § "Provider fallback
+# semantics (Phase 5g-vii)" property P5 (failure-reason classes are typed
+# and frozen).
+#
+# Design:
+#   * ``ProviderError`` is the shared base for every provider-side
+#     generate()/generate_stream() failure. It extends ``RuntimeError`` so
+#     existing catchers written against ``RuntimeError`` or ``Exception``
+#     continue to work. A ``provider_id`` attribute identifies the origin
+#     (``"openrouter"``, ``"ollama"``, etc.) so the chat handler can log
+#     + ledger without importing each provider's scoped class.
+#   * Six typed subclasses pin the six failure classes enumerated in
+#     docs/26. Each carries a ``failure_reason_class`` class attribute
+#     whose string value is the exact token the ``REQUEST_LEDGER`` v2
+#     row writes. Adding a subclass requires a doctrine amendment — the
+#     full enumerated set is frozen and any drift between this module
+#     and docs/26's P5 table is a verifier failure (closure bar on
+#     KW-INFER-003).
+#   * Existing provider-scoped classes (``OpenRouterProviderError``,
+#     ``OllamaProviderError``) are retrofitted to subclass
+#     ``ProviderError`` in their own modules. Existing ``except
+#     OpenRouterProviderError:`` catchers — all at construction-time in
+#     lifespan.py — keep working because construction-time raises still
+#     use those classes directly. Generate-site raises use the typed
+#     subclasses below.
+# --------------------------------------------------------------------------
+
+
+class ProviderError(RuntimeError):
+    """Base class for generative-provider failures (Phase 5g-vii).
+
+    Carries a ``provider_id`` so a catcher that does not know which
+    provider it imports can still log the origin. The
+    ``failure_reason_class`` class attribute names the value that
+    ``REQUEST_LEDGER`` v2 rows record for attempts raising this class
+    (or a subclass thereof).
+
+    The default ``failure_reason_class`` is ``"unknown_provider_error"``
+    — the P5-enumerated residual bucket. Typed subclasses override it.
+    """
+
+    failure_reason_class: str = "unknown_provider_error"
+
+    def __init__(self, message: str, *, provider_id: str | None = None) -> None:
+        super().__init__(message)
+        self.provider_id = provider_id
+
+
+class InsufficientCreditsError(ProviderError):
+    """Upstream refused the request for billing reasons.
+
+    Typical triggers: OpenRouter ``HTTP 402 Insufficient credits`` when
+    the operator's balance is exhausted; upstream-vendor-specific 402s
+    forwarded through the gateway. Never triggered by the floor
+    provider (Ollama does not bill).
+    """
+
+    failure_reason_class = "insufficient_credits"
+
+
+class RateLimitedUpstreamError(ProviderError):
+    """Upstream accepted the credential but refused on rate limit.
+
+    Distinct from the orchestrator's own per-principal rate-limit
+    (``429`` from ``admission_dependency``) — that's handled at the
+    FastAPI layer and never reaches a provider. This class is raised
+    only when the **provider-side** quota is exceeded.
+    """
+
+    failure_reason_class = "rate_limited_upstream"
+
+
+class ProviderUnreachableError(ProviderError):
+    """Network surface could not be reached.
+
+    Triggers: DNS failures, connection refused, TLS handshake failure,
+    HTTP 502/503/504 gateway-class errors. For bounded-timeout failures
+    (the socket read did not return in time) prefer
+    ``ProviderTimeoutError`` which is more specific.
+    """
+
+    failure_reason_class = "provider_unreachable"
+
+
+class ProviderTimeoutError(ProviderError):
+    """Provider did not respond within the per-attempt deadline.
+
+    Per-attempt, not per-turn — the chat handler's fallback loop may
+    give the floor a fresh deadline after a hosted-provider timeout.
+    """
+
+    failure_reason_class = "timeout"
+
+
+class ModerationRefusalError(ProviderError):
+    """Upstream's own content filter refused the request.
+
+    Distinct from Xion's Arbiter, which evaluates a returned candidate
+    inside the orchestrator. This class is raised when the *upstream*
+    (OpenRouter's gateway, a hosted partner's guardrail, Ollama's
+    local safety layer) refuses to generate before any candidate
+    exists. Typical trigger: HTTP 403 with a moderation reason code.
+    """
+
+    failure_reason_class = "moderation_refusal"
+
+
+class UnknownProviderError(ProviderError):
+    """Residual bucket for failures outside the typed classes.
+
+    Examples: HTTP 400 on a slug rotation mid-flight, HTTP 200 with a
+    body that cannot be parsed, library-level exceptions that escape
+    the provider module's own error-wrapping.
+
+    Operators discovering recurring failures that land here are
+    signalled to open a KW and extend the typed enumeration (doctrine
+    amendment to docs/26 § "Provider fallback semantics" P5).
+    """
+
+    failure_reason_class = "unknown_provider_error"
+
+
+# --------------------------------------------------------------------------
+# Structural invariant: doctrine ↔ code coupling.
+#
+# The set of ``failure_reason_class`` values below MUST equal the P5
+# enumeration in docs/26-INFERENCE-POLICY.md. The ``xion-verify
+# refund-fidelity`` extension (C5) reads this tuple at import time and
+# asserts equality with its own parse of docs/26. Drift is a verifier
+# failure — silent addition/removal of a class is blocked.
+# --------------------------------------------------------------------------
+FAILURE_REASON_CLASSES: tuple[str, ...] = (
+    "insufficient_credits",
+    "rate_limited_upstream",
+    "provider_unreachable",
+    "timeout",
+    "moderation_refusal",
+    "unknown_provider_error",
+)
+
+
 @dataclass(frozen=True)
 class GenerationResult:
     """The return value of ``GenerativeProvider.generate(...)``.
@@ -194,7 +338,15 @@ async def stream_generate(
 
 
 __all__ = [
+    "FAILURE_REASON_CLASSES",
     "GenerationResult",
     "GenerativeProvider",
+    "InsufficientCreditsError",
+    "ModerationRefusalError",
+    "ProviderError",
+    "ProviderTimeoutError",
+    "ProviderUnreachableError",
+    "RateLimitedUpstreamError",
+    "UnknownProviderError",
     "stream_generate",
 ]

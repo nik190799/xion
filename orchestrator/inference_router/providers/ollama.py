@@ -34,14 +34,42 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar
 from urllib.parse import urlparse
 
-from orchestrator.inference_router.provider import GenerationResult
+from orchestrator.inference_router.provider import (
+    GenerationResult,
+    ModerationRefusalError,
+    ProviderError,
+    ProviderTimeoutError,
+    ProviderUnreachableError,
+    UnknownProviderError,
+)
 from orchestrator.inference_router.router import Category
 
 
-class OllamaProviderError(RuntimeError):
-    """Raised on non-200 responses or transport errors from Ollama."""
+class OllamaProviderError(ProviderError):
+    """Raised on construction-time validation failures.
+
+    Phase 5g-vii note. Pre-5g-vii this class was the single exception
+    type raised from every Ollama-side failure path. Phase 5g-vii
+    split generate-site failures into the typed ``ProviderError``
+    subclasses per doctrine property P5 in
+    ``docs/26-INFERENCE-POLICY.md``. This class is retained for
+    construction-time validation (a malformed ``XION_OLLAMA_URL``)
+    and for backward compatibility: it now extends ``ProviderError``,
+    so ``except ProviderError:`` catches both this class and the
+    typed generate-site subclasses.
+
+    Ollama is a loopback daemon with no billing, no upstream quota,
+    and no cross-region routing — so ``InsufficientCreditsError`` and
+    ``RateLimitedUpstreamError`` never apply. The Ollama paths emit
+    ``ProviderTimeoutError``, ``ProviderUnreachableError``,
+    ``ModerationRefusalError`` (for local guardrail models that
+    refuse), and ``UnknownProviderError`` (residual).
+    """
+
+    failure_reason_class = "unknown_provider_error"
 
 
+_PROVIDER_ID = "ollama"
 _DEFAULT_URL = "http://localhost:11434"
 _DEFAULT_MODEL = "gemma3:4b"
 _HEALTH_CACHE_TTL_S = 30.0
@@ -168,19 +196,43 @@ class OllamaGenerativeProvider:
                 status = resp.status
             finally:
                 conn.close()
-        except (TimeoutError, OSError, http.client.HTTPException) as e:
-            raise OllamaProviderError(f"ollama transport error: {e}") from None
+        except TimeoutError as e:
+            raise ProviderTimeoutError(
+                f"ollama transport timeout: {e}",
+                provider_id=_PROVIDER_ID,
+            ) from None
+        except (OSError, http.client.HTTPException) as e:
+            raise ProviderUnreachableError(
+                f"ollama transport error: {e}",
+                provider_id=_PROVIDER_ID,
+            ) from None
 
         latency_ms = max(0, int((time.monotonic() - started) * 1000))
 
         if not (200 <= status < 300):
             snippet = raw[:512].decode("utf-8", errors="replace")
-            raise OllamaProviderError(f"ollama HTTP {status}: {snippet}")
+            if status == 403:
+                raise ModerationRefusalError(
+                    f"ollama HTTP {status}: {snippet}",
+                    provider_id=_PROVIDER_ID,
+                )
+            if 500 <= status < 600:
+                raise ProviderUnreachableError(
+                    f"ollama HTTP {status}: {snippet}",
+                    provider_id=_PROVIDER_ID,
+                )
+            raise UnknownProviderError(
+                f"ollama HTTP {status}: {snippet}",
+                provider_id=_PROVIDER_ID,
+            )
 
         try:
             payload: dict[str, Any] = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            raise OllamaProviderError(f"ollama response not valid JSON: {e}") from None
+            raise UnknownProviderError(
+                f"ollama response not valid JSON: {e}",
+                provider_id=_PROVIDER_ID,
+            ) from None
 
         text = str(payload.get("response") or "")
         finish = "stop" if bool(payload.get("done", True)) else "length"
@@ -255,8 +307,20 @@ class OllamaGenerativeProvider:
                     if not (200 <= resp.status_code < 300):
                         raw_bytes = await resp.aread()
                         snippet = raw_bytes[:512].decode("utf-8", errors="replace")
-                        raise OllamaProviderError(
-                            f"ollama HTTP {resp.status_code}: {snippet}"
+                        status = resp.status_code
+                        if status == 403:
+                            raise ModerationRefusalError(
+                                f"ollama HTTP {status}: {snippet}",
+                                provider_id=_PROVIDER_ID,
+                            )
+                        if 500 <= status < 600:
+                            raise ProviderUnreachableError(
+                                f"ollama HTTP {status}: {snippet}",
+                                provider_id=_PROVIDER_ID,
+                            )
+                        raise UnknownProviderError(
+                            f"ollama HTTP {status}: {snippet}",
+                            provider_id=_PROVIDER_ID,
                         )
                     async for line in resp.aiter_lines():
                         if not line.strip():
@@ -276,9 +340,20 @@ class OllamaGenerativeProvider:
                                 model_id = returned
                             finish = "length" if event.get("done_reason") == "length" else "stop"
                             break
-        except (TimeoutError, httpx.HTTPError) as e:
-            raise OllamaProviderError(
-                f"ollama stream transport error: {e}"
+        except TimeoutError as e:
+            raise ProviderTimeoutError(
+                f"ollama stream transport timeout: {e}",
+                provider_id=_PROVIDER_ID,
+            ) from None
+        except httpx.TimeoutException as e:
+            raise ProviderTimeoutError(
+                f"ollama stream transport timeout: {e}",
+                provider_id=_PROVIDER_ID,
+            ) from None
+        except httpx.HTTPError as e:
+            raise ProviderUnreachableError(
+                f"ollama stream transport error: {e}",
+                provider_id=_PROVIDER_ID,
             ) from None
 
         latency_ms = max(0, int((time.monotonic() - started) * 1000))
