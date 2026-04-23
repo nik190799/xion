@@ -123,6 +123,23 @@ Every non-2xx server envelope has an explicit UX state in `ChatView.tsx`. The cl
 
 The `ChatView` progress indicator + 30 s deadline countdown (`KW-CLIENT-002` mitigation) fires the moment the request is issued and resolves on any of the above envelopes. A timeout before any envelope arrives surfaces as "Request timed out (30 s)" with a retry affordance.
 
+## Streaming chat (Phase 5g-ii)
+
+Phase 5g-ii closes `KW-CLIENT-002` by wiring a streaming render-path against the new `POST /chat/stream` SSE endpoint. Full doctrine: [`docs/32-CHAT-STREAMING.md`](./32-CHAT-STREAMING.md) and the architecture section `Streaming the Chat Surface (Phase 5g-ii)`.
+
+What the client does differently in the streaming path:
+
+- **Default transport.** `ChatView` calls `streamChat(...)` (SSE) by default. The non-streaming `POST /chat` stays reachable as a fallback for debugging via the `?stream=0` query-param on the dashboard URL — useful when an operator wants to see the raw envelope-matrix answer without chunk buffering.
+- **Pending-review visual state.** Incoming `chunk` events append to a client-side buffer rendered in a dimmed, dashed-border bubble with the label "pending egress review" and a blinking cursor. The `aria-busy="true"` attribute and the ARIA-live `xion-chat__output` region together make the provisional status audible to screen readers; the WCAG 2.2 AA contrast floor is preserved (the dimmed text uses `--xion-text-muted`, which is audited for ≥ 4.5:1 against the background).
+- **`done:approve` commits the buffer.** The pending bubble is replaced by the standard Xion-reply bubble using the server's `ChatResponse.text` — which, by the speculative-with-retroactive-refusal doctrine, equals the concatenated chunks the client already saw. The correlation_id and usage pairs mirror the non-streaming case.
+- **`done:refuse` retroactively replaces the buffer.** The pending tokens are dropped from the DOM; the content-free `RefusalEnvelope` panel renders in their place — same panel shape the non-streaming 451 path uses. This is the whole point of the speculative-with-retroactive-refusal posture: the user sees provisional text but never sees text that the server retroactively refused.
+- **`done:no_floor` / `done:provider_error`.** Same 503 panel as the non-streaming path, chosen on the `verdict` discriminator.
+- **Cancellation.** The "Cancel" button aborts the `AbortController` wired into `streamChat`; the fetch closes, and the server's Commit-3 disconnect detector writes an `outcome=cancelled` PAYMENT row with full refund (see [`docs/32-CHAT-STREAMING.md`](./32-CHAT-STREAMING.md) § "Cancellation semantics"). The UI shows the standard "Request cancelled" panel.
+- **`error:deadline_exceeded` / `error:internal`.** Rendered via the existing timeout / network panels; the server never escalates to an HTTP status change at this stage because the SSE headers are already committed.
+- **Pre-stream 401 / 402 / 429.** Admission refusals fire HTTP-level before the stream opens; `streamChat` surfaces them as `ApiErrorException` and the UI reuses the sign-in / billing / rate-limit panels unchanged.
+
+The envelope-handling matrix above (`POST /chat`) is not rewritten — it stays the canonical description of the non-streaming surface the `?stream=0` fallback hits. The streaming surface's envelope matrix lives in [`docs/32-CHAT-STREAMING.md`](./32-CHAT-STREAMING.md).
+
 ## Accessibility commitment
 
 CI gates the following:
@@ -148,7 +165,6 @@ This is structural defense-in-depth on top of the `xion-verify web-client` check
 ## Deliberate non-properties (operator reading)
 
 - **No in-browser x402 signing.** See above; `KW-CLIENT-001`.
-- **No streaming UX.** See above; `KW-CLIENT-002`.
 - **No conversation memory / history.** Each turn is stateless. Multi-turn memory is deferred to its own doctrinal phase.
 - **No markdown / syntax-highlighting / tool-use rendering.** Plain text. Adding any transform re-opens the content-faithful property.
 - **No component library, no CSS framework, no state library, no router library.** Native HTML + ARIA + `useState`/`useReducer`/`Context`. Plain CSS with custom properties.
@@ -164,8 +180,8 @@ This is structural defense-in-depth on top of the `xion-verify web-client` check
 | Phase 5g-i (closed) | `POST /chat` lands |
 | Phase 5g-iii (closed) | `GET /pricing` + billing gate |
 | Phase 5g-iv (closed) | Admission: bearer + TLS + rate-limit |
-| Phase 5g-v (this commit) | Web client lands; `KW-CLIENT-001` / `KW-CLIENT-002` open |
-| Phase 5g-ii | Streaming + per-chunk moderation; client gains streaming UX (closes `KW-CLIENT-002`) |
+| Phase 5g-v (landed) | Web client lands; `KW-CLIENT-001` / `KW-CLIENT-002` open |
+| Phase 5g-ii (this commit) | Streaming SSE transport + speculative-with-retroactive-refusal client render path; closes `KW-CLIENT-002` |
 | Phase 6+ | In-browser x402 (closes `KW-CLIENT-001` alongside `KW-BILLING-001`); public-user identity; HTTP-header CSP; bundle reproducibility verifier |
 
 ## Verification posture (at 5g-v)

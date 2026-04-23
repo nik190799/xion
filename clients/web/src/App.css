@@ -366,6 +366,55 @@ code {
   font-size: 0.8rem;
 }
 
+/* --- Streaming pending bubble (Phase 5g-ii Commit 4) ---
+ *
+ * Visual contract pinned in docs/32-CHAT-STREAMING.md § "Client
+ * rendering". Pending chunks render with a dimmed body and a dashed
+ * accent border so the operator can never mistake them for a
+ * committed, egress-moderated message. The contrast ratio of the
+ * dimmed body text against the background still meets WCAG 2.2 AA
+ * (the --xion-text-muted token is audited for 4.5:1). */
+
+.xion-bubble--pending {
+  border-style: dashed;
+  border-color: var(--xion-accent);
+  background: color-mix(in srgb, var(--xion-bg-raised) 92%, transparent);
+}
+
+.xion-bubble__text--pending {
+  color: var(--xion-text-muted);
+}
+
+.xion-meta--pending {
+  color: var(--xion-accent);
+  font-style: italic;
+}
+
+.xion-hint--pending {
+  color: var(--xion-text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.xion-bubble__cursor {
+  display: inline-block;
+  margin-left: 0.1em;
+  animation: xion-cursor-blink 1s steps(2, start) infinite;
+  color: var(--xion-accent);
+}
+
+@keyframes xion-cursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xion-bubble__cursor {
+    animation: none;
+  }
+}
+
 .xion-corr {
   display: inline-flex;
   gap: 0.3rem;

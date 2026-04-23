@@ -4,6 +4,7 @@ import { useBearer } from "../auth/BearerContext";
 import {
   ApiErrorException,
   postChat,
+  streamChat,
   type ApiError,
   type ChatSuccessResponse,
 } from "../lib/api";
@@ -16,12 +17,41 @@ import {
 // Commit 3 of Phase 5g-v lifted the fetch wrapper into `src/lib/api.ts`
 // as a typed ApiError discriminated union. ChatView now switches on
 // `err.kind` instead of raw status codes.
+//
+// Phase 5g-ii Commit 4 adds a streaming render-path. By default the
+// view calls `POST /chat/stream` and renders incoming chunks in a
+// "pending review" visual state (dimmed + spinner) until the server
+// emits `done:approve` (at which point the pending buffer is committed
+// as the Xion reply) or `done:refuse` (at which point the buffer is
+// retroactively replaced by the content-free RefusalEnvelope UX). The
+// operator can force the non-streaming endpoint by appending
+// `?stream=0` to the dashboard URL — useful for debugging the
+// envelope-matrix directly against `POST /chat`.
 
 type ChatState =
   | { kind: "idle" }
   | { kind: "pending"; startedAt: number }
+  | {
+      kind: "streaming";
+      startedAt: number;
+      pendingText: string;
+      chunkCount: number;
+    }
   | { kind: "success"; response: ChatSuccessResponse }
   | { kind: "error"; err: ApiError };
+
+function streamingEnabled(): boolean {
+  // `?stream=0` query-param override. Any other value (including
+  // absent) defaults to streaming. Doctrine anchor:
+  // docs/31-WEB-CLIENT.md § "Streaming chat (Phase 5g-ii)".
+  if (typeof window === "undefined") return true;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("stream") !== "0";
+  } catch {
+    return true;
+  }
+}
 
 const SERVER_DEADLINE_MS = 30_000;
 const CLIENT_DEADLINE_MS = 32_000;
@@ -89,7 +119,7 @@ export function ChatView(): JSX.Element {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (state.kind !== "pending") return;
+    if (state.kind !== "pending" && state.kind !== "streaming") return;
     const handle = window.setInterval(() => setNowMs(Date.now()), 200);
     return () => window.clearInterval(handle);
   }, [state.kind]);
@@ -107,12 +137,163 @@ export function ChatView(): JSX.Element {
     const controller = new AbortController();
     abortRef.current = controller;
     const startedAt = Date.now();
-    setState({ kind: "pending", startedAt });
     setNowMs(startedAt);
+
+    const useStreaming = streamingEnabled();
+
+    if (!useStreaming) {
+      setState({ kind: "pending", startedAt });
+      try {
+        const response = await postChat(credential, trimmed, 512, controller.signal);
+        setState({ kind: "success", response });
+        setMessage("");
+      } catch (err) {
+        if (err instanceof ApiErrorException) {
+          setState({ kind: "error", err: err.api });
+        } else {
+          setState({
+            kind: "error",
+            err: {
+              kind: "network",
+              status: 0,
+              message: err instanceof Error ? err.message : String(err),
+            },
+          });
+        }
+      }
+      return;
+    }
+
+    // Streaming path (Phase 5g-ii Commit 4).
+    //
+    // Invariants this loop preserves:
+    //   - Chunks render into a `streaming` state with a `pendingText`
+    //     buffer. The UI marks this buffer as provisional (dim text,
+    //     aria-live "pending review") until a terminal event arrives.
+    //   - `done:approve` replaces `streaming` with `success`; the
+    //     pending chunks are retroactively treated as the committed
+    //     message (via `response.text`, which is what the server
+    //     actually moderated).
+    //   - `done:refuse` replaces `streaming` with `error: refused`;
+    //     the pending chunks are discarded and the content-free
+    //     RefusalEnvelope UX replaces them (retroactive refusal).
+    //   - `done:no_floor` / `done:provider_error` mirror the 503
+    //     envelope UX from the non-streaming path.
+    //   - `error:deadline_exceeded` / `error:internal` mirror the
+    //     aborted/network UX.
+    //   - An ApiErrorException thrown before the stream opens
+    //     (401/402/429) is surfaced the same way as `postChat`.
+    setState({
+      kind: "streaming",
+      startedAt,
+      pendingText: "",
+      chunkCount: 0,
+    });
     try {
-      const response = await postChat(credential, trimmed, 512, controller.signal);
-      setState({ kind: "success", response });
-      setMessage("");
+      let buffered = "";
+      let chunkCount = 0;
+      let terminalSeen = false;
+      for await (const event of streamChat({
+        credential,
+        message: trimmed,
+        maxTokens: 512,
+        signal: controller.signal,
+      })) {
+        if (event.kind === "chunk") {
+          buffered += event.text;
+          chunkCount += 1;
+          const nextText = buffered;
+          const nextCount = chunkCount;
+          setState({
+            kind: "streaming",
+            startedAt,
+            pendingText: nextText,
+            chunkCount: nextCount,
+          });
+          continue;
+        }
+        if (event.kind === "done") {
+          terminalSeen = true;
+          if (event.verdict === "approve" && event.response) {
+            setState({ kind: "success", response: event.response });
+            setMessage("");
+          } else if (event.verdict === "refuse" && event.refusal) {
+            setState({
+              kind: "error",
+              err: { kind: "refused", status: 451, body: event.refusal },
+            });
+          } else if (event.verdict === "no_floor" && event.no_floor) {
+            setState({
+              kind: "error",
+              err: {
+                kind: "service_unavailable",
+                status: 503,
+                body: event.no_floor,
+              },
+            });
+          } else if (
+            event.verdict === "provider_error" &&
+            event.provider_error
+          ) {
+            setState({
+              kind: "error",
+              err: {
+                kind: "service_unavailable",
+                status: 503,
+                body: event.provider_error,
+              },
+            });
+          } else if (event.verdict === "cancelled") {
+            setState({
+              kind: "error",
+              err: { kind: "aborted", status: 0, reason: "user_cancel" },
+            });
+          } else {
+            // Defensive: unknown verdict. Surface as a network-shape
+            // error so the operator sees "something went wrong" with
+            // enough context to file a bug.
+            setState({
+              kind: "error",
+              err: {
+                kind: "network",
+                status: 0,
+                message: `unknown done verdict: ${event.verdict}`,
+              },
+            });
+          }
+          break;
+        }
+        // event.kind === "error"
+        terminalSeen = true;
+        if (event.error === "deadline_exceeded") {
+          setState({
+            kind: "error",
+            err: { kind: "aborted", status: 0, reason: "timeout" },
+          });
+        } else {
+          setState({
+            kind: "error",
+            err: {
+              kind: "network",
+              status: 0,
+              message: `server internal error (correlation_id: ${event.correlation_id})`,
+            },
+          });
+        }
+        break;
+      }
+      if (!terminalSeen) {
+        // Stream closed without a terminal event — treat as network
+        // error rather than a silent success.
+        setState({
+          kind: "error",
+          err: {
+            kind: "network",
+            status: 0,
+            message: "stream closed without terminal event",
+          },
+        });
+      }
     } catch (err) {
       if (err instanceof ApiErrorException) {
         setState({ kind: "error", err: err.api });
@@ -175,7 +356,7 @@ export function ChatView(): JSX.Element {
           rows={4}
           maxLength={16_000}
           placeholder="Write what you want to ask. Ctrl+Enter to send."
-          disabled={state.kind === "pending"}
+          disabled={state.kind === "pending" || state.kind === "streaming"}
           aria-describedby="xion-chat-hint"
         />
         <p id="xion-chat-hint" className="xion-hint">
@@ -186,11 +367,17 @@ export function ChatView(): JSX.Element {
           <button
             type="submit"
             className="xion-button xion-button--primary"
-            disabled={state.kind === "pending" || !message.trim()}
+            disabled={
+              state.kind === "pending" ||
+              state.kind === "streaming" ||
+              !message.trim()
+            }
           >
-            {state.kind === "pending" ? "Sending…" : "Send"}
+            {state.kind === "pending" || state.kind === "streaming"
+              ? "Sending…"
+              : "Send"}
           </button>
-          {state.kind === "pending" && (
+          {(state.kind === "pending" || state.kind === "streaming") && (
             <button
               type="button"
               className="xion-button xion-button--ghost"
@@ -205,6 +392,43 @@ export function ChatView(): JSX.Element {
       <div className="xion-chat__output" aria-live="polite" aria-atomic="false">
         {state.kind === "pending" && (
           <DeadlineProgress startedAt={state.startedAt} nowMs={nowMs} />
+        )}
+
+        {state.kind === "streaming" && (
+          <>
+            <DeadlineProgress startedAt={state.startedAt} nowMs={nowMs} />
+            <article
+              className="xion-bubble xion-bubble--pending"
+              aria-label="Xion is drafting a reply (pending egress review)"
+              aria-busy="true"
+              data-pending="true"
+            >
+              <header className="xion-bubble__header">
+                <span className="xion-role">Xion</span>
+                <span className="xion-meta xion-meta--pending">
+                  pending egress review · {state.chunkCount} chunk
+                  {state.chunkCount === 1 ? "" : "s"} buffered
+                </span>
+              </header>
+              <pre className="xion-bubble__text xion-bubble__text--pending">
+                {state.pendingText}
+                <span
+                  className="xion-bubble__cursor"
+                  aria-hidden="true"
+                >
+                  ▍
+                </span>
+              </pre>
+              <footer className="xion-bubble__footer">
+                <p className="xion-hint xion-hint--pending">
+                  These chunks are provisional. They become the committed
+                  reply only after the server's full-candidate egress
+                  moderation approves. A refusal replaces them with a
+                  content-free envelope.
+                </p>
+              </footer>
+            </article>
+          </>
         )}
 
         {state.kind === "success" && (
