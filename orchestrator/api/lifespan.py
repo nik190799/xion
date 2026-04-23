@@ -50,6 +50,8 @@ from orchestrator.inference_router import (
 )
 from orchestrator.supervisor import Supervisor
 
+from .pricing import load_pricing_config_from_env
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -112,6 +114,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             file=sys.stderr,
             flush=True,
         )
+
+    # --- Phase 5g-iii: load posted-pricing config ------------------
+    # Runs BEFORE the Relay wire-up so a misconfigured pricing split
+    # fails-closed at startup (the app refuses to serve ANY endpoint,
+    # not just /pricing — a doctrine-violating price is a constitutional
+    # violation, not a soft warning). An explicitly-supplied config on
+    # ``deps.pricing_config`` wins over the env loader; tests use this
+    # to keep their pricing config hermetic.
+    if getattr(deps, "pricing_config", None) is not None:
+        app.state.pricing_config = deps.pricing_config
+    else:
+        app.state.pricing_config = load_pricing_config_from_env()
 
     # Wire the Supervisor into the Relay AFTER the pre-seed tick, so
     # any in-process code that races the lifespan cannot observe a

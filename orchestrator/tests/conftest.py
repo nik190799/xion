@@ -61,6 +61,22 @@ def _no_repo_ledger_leaks(
         "XION_REQUEST_LEDGER",
         str(tmp_path / "_autouse_REQUEST_LEDGER.jsonl"),
     )
+    # Phase 5g-iii: clear pricing-config env vars so tests default to
+    # the Genesis Defaults inside ``load_pricing_config_from_env()``
+    # rather than whatever the operator shell has posted. Tests that
+    # want a specific config pass ``pricing_config=`` to ``app_factory``
+    # explicitly.
+    for _name in (
+        "XION_POSTED_PRICE_MICRO_XION",
+        "XION_PRICE_SLICE_VARIABLE_COST",
+        "XION_PRICE_SLICE_OVERHEAD",
+        "XION_PRICE_SLICE_IMPROVEMENT",
+        "XION_PRICE_SLICE_RESERVE",
+        "XION_PRICE_SLICE_SMALL_BUFFER",
+        "XION_PRICING_LAST_REVIEWED_UTC_NS",
+        "XION_PRICING_REVISION_ID",
+    ):
+        monkeypatch.delenv(_name, raising=False)
 
 
 @pytest.fixture
@@ -96,6 +112,7 @@ def app_factory(
         no_floor: bool = False,
         policy_mode: str = "hosted_api_first",
         chat_deadline_s: float = 5.0,
+        pricing_config: Any = None,
         **relay_kwargs: Any,
     ) -> Any:
         """Build a hermetic FastAPI app for tests.
@@ -154,6 +171,7 @@ def app_factory(
             sensorium_ledger_path=sensorium_ledger_path,
             router=router,
             chat_deadline_s=chat_deadline_s,
+            pricing_config=pricing_config,
         )
         app = create_app(deps)
         app.state.test_relay = relay

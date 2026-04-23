@@ -44,10 +44,13 @@ from orchestrator.volition import Volition
 from .chat import register_chat_route
 from .lifespan import lifespan
 from .models import DriveResponse, HealthResponse, SensoriumResponse
+from .pricing import register_pricing_route
 
 if TYPE_CHECKING:
     from orchestrator.inference_router.router import InferenceRouter
     from orchestrator.relay import Relay
+
+    from .pricing import PricingConfig
 
 
 @dataclass(frozen=True)
@@ -98,6 +101,16 @@ class AppDeps:
     # tests typically pass smaller values to keep runtime low.
     chat_deadline_s: float = 30.0
 
+    # --- Phase 5g-iii additions ------------------------------------
+    # Posted-pricing snapshot the lifespan stashes on
+    # ``app.state.pricing_config``. If None, the lifespan constructs it
+    # from the ``XION_*`` env vars via
+    # ``orchestrator.api.pricing.load_pricing_config_from_env()``. Tests
+    # usually pass an explicit one so the posted price is hermetic
+    # (the autouse conftest does NOT zero the pricing env vars; tests
+    # that want a fixed config pass ``pricing_config=`` explicitly).
+    pricing_config: PricingConfig | None = None
+
 
 def create_app(deps: AppDeps) -> FastAPI:
     """Construct a FastAPI app wired against ``deps``.
@@ -112,13 +125,16 @@ def create_app(deps: AppDeps) -> FastAPI:
         title="Xion HTTP surface",
         description=(
             "Phase 5f read-only observation endpoints — /health, /drive, "
-            "/sensorium — plus the Phase 5g-i Chat Surface (POST /chat). "
-            "No billing, no auth in 5g-i (D1-only). See "
-            "docs/04-ARCHITECTURE.md § 'The HTTP Surface (Phase 5f)' and "
-            "§ 'The Chat Surface (Phase 5g-i)', and "
-            "docs/26-INFERENCE-POLICY.md."
+            "/sensorium — the Phase 5g-i Chat Surface (POST /chat), and "
+            "the Phase 5g-iii pricing transparency endpoint (GET /pricing). "
+            "Chat billing is pre-authorization-gated under commit 3 of "
+            "Phase 5g-iii; until that lands, /pricing is live but /chat "
+            "remains the 5g-i no-billing flow. See "
+            "docs/04-ARCHITECTURE.md § 'The HTTP Surface (Phase 5f)', "
+            "§ 'The Chat Surface (Phase 5g-i)', § 'The Chat Billing Surface "
+            "(Phase 5g-iii)', and docs/26-INFERENCE-POLICY.md."
         ),
-        version="0.2.0",
+        version="0.3.0",
         lifespan=lifespan,
     )
     # Expose deps + a Volition singleton to the routes and to the
@@ -169,6 +185,7 @@ def create_app(deps: AppDeps) -> FastAPI:
         state = _require_snapshot(app)
         return state.to_dict()
 
+    register_pricing_route(app)
     register_chat_route(app)
 
     return app

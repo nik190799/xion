@@ -423,6 +423,194 @@ class ProviderErrorEnvelope(BaseModel):
     )
 
 
+# -------------------------------------------------------------- /pricing
+#
+# Phase 5g-iii. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "The Chat
+# Billing Surface (Phase 5g-iii)" and ``docs/07-ECONOMY.md`` § "Five-slice
+# posted price". Constitutional property: the Relay exposes governance-
+# posted pricing with the full five-slice breakdown so a Witness can
+# verify the posted price matches the governance record.
+#
+# The five slices are fractions in [0.0, 1.0] summing to exactly 1.0
+# (within ±0.0001 float tolerance). The lifespan validates the sum at
+# startup; a misconfigured split refuses to start the app (fail-closed,
+# analogous to a broken ledger chain).
+
+
+class FiveSliceBreakdown(BaseModel):
+    """The five-slice decomposition of the posted per-message price.
+
+    Doctrine source: ``docs/07-ECONOMY.md`` § "Five-slice posted price
+    (Genesis Defaults)". Each slice is a non-negative fraction; the sum
+    of all five equals 1.0. ``xion-verify pricing`` enforces both the
+    sum-to-one invariant and the Genesis-Default band for each slice.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    variable_cost: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Trailing-30-day marginal per-message cost (LLM tokens, storage, "
+            "bandwidth, incremental Akash). Rolling-average; recomputed weekly."
+        ),
+    )
+    overhead_slice: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Arbiter + Sensorium + Arweave checkpoints + operator salary + "
+            "bounties + failover + governance ops, amortized across expected "
+            "message volume. Quarterly review."
+        ),
+    )
+    improvement_slice: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Funds the Improvement Fund (Auto-Research Loop executions). "
+            "Genesis Default: 0.08 (8%). Non-zero existence is protected "
+            "structurally — see docs/21-SUSTAINABILITY.md."
+        ),
+    )
+    reserve_slice: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Funds the Rainy-Day Reserve until 6–12 months runway target; "
+            "then redirects per governance. Genesis Default: 0.05 (5%)."
+        ),
+    )
+    small_buffer: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Forecast-error padding. Genesis Default: 0.03–0.05 band; "
+            "0.03 at lifespan default."
+        ),
+    )
+
+
+class PricingResponse(BaseModel):
+    """Phase 5g-iii body for ``GET /pricing`` (HTTP 200).
+
+    Constitutional property: this body is the Relay's verifiable claim
+    that the posted per-message price is what governance ratified. A
+    Witness dumping this JSON and comparing it to the governance record
+    can assert ``xion-verify pricing`` equivalence offline.
+
+    All fields are ``extra="forbid"`` + ``frozen=True``; the content-free
+    guarantee is the same structural posture as ``/chat`` envelopes.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    per_message_price_micro_XION: int = Field(
+        ge=0,
+        description=(
+            "Posted per-message price in micro-XION (1 XION = 10^6 "
+            "micro-XION). Zero is legal (operator may run promotional "
+            "or free-tier pricing); negative is a schema violation."
+        ),
+    )
+    currency_units: Literal["micro_XION"] = Field(
+        description=(
+            "Unit pin. Genesis Default and 5g-iii-only: micro_XION. "
+            "Phase 6+ may add optional USDC-equivalent fields; they "
+            "will be additive, never replacing this pin."
+        ),
+    )
+    five_slice: FiveSliceBreakdown = Field(
+        description="The decomposition of per_message_price into the five doctrinal slices.",
+    )
+    last_reviewed_utc_ns: int = Field(
+        ge=0,
+        description=(
+            "UTC ns since epoch of the last governance review of this "
+            "pricing. Genesis Default at 5g-iii: the lifespan-startup "
+            "timestamp. A stale value (exceeding the governance cadence "
+            "window, Genesis Default 90 days) is flagged by "
+            "xion-verify pricing."
+        ),
+    )
+    governance_revision_id: str = Field(
+        min_length=1,
+        max_length=128,
+        description=(
+            "Identifier of the governance vote that ratified this "
+            "pricing. Genesis Default at 5g-iii: 'genesis-default-v1'. "
+            "Phase 6+ governance rotations bump this to a vote-tx hash."
+        ),
+    )
+
+
+# ---------------------------------------------------------- /chat billing
+#
+# Phase 5g-iii. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "The Chat
+# Billing Surface (Phase 5g-iii)" and ``docs/29-BILLING-X402.md``.
+#
+# These models are landed in commit 2 of 5 (alongside PricingResponse)
+# so the full billing-surface pydantic layer is coherent before any
+# route code reads them. The ``PaymentChallenge`` body is the 402
+# machine-readable challenge returned when ``X-Payment-Commitment`` is
+# missing, malformed, or (for postures that verify signatures)
+# signature-invalid.
+
+
+class PaymentChallenge(BaseModel):
+    """Phase 5g-iii body for ``POST /chat`` HTTP 402 Payment Required.
+
+    Emitted when the request is missing a valid ``X-Payment-Commitment``
+    header in a mode that requires one. The body is machine-readable and
+    points the client at ``/pricing`` so it can discover the posted
+    price and commit.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    error: Literal["payment_required"] = Field(
+        description="Fixed constant. Distinguishes from other 4xx bodies.",
+    )
+    pricing_url: Literal["/pricing"] = Field(
+        description=(
+            "Relative URL of the endpoint the client reads to discover "
+            "the posted price. Pinned to '/pricing' in 5g-iii; a future "
+            "phase that introduces per-skill pricing may extend this."
+        ),
+    )
+    accepted_postures: list[Literal["operator-attest:v1", "x402:v1"]] = Field(
+        description=(
+            "Commitment-header prefixes the Relay accepts. A client that "
+            "cannot produce any of these cannot complete the handshake. "
+            "The operator may restrict this list via "
+            "XION_BILLING_ALLOW_X402=false (which drops 'x402:v1')."
+        ),
+    )
+    posted_price_micro_XION: int = Field(
+        ge=0,
+        description=(
+            "Governance-posted price at the moment this challenge was "
+            "emitted. Mirrors GET /pricing for one-shot clients that "
+            "do not want a second round-trip."
+        ),
+    )
+    reason_code: Literal[
+        "missing_commitment",
+        "malformed_commitment",
+        "posture_not_accepted",
+        "attestation_signature_invalid",
+        "attestation_timestamp_expired",
+        "attestation_nonce_replayed",
+    ] = Field(
+        description=(
+            "Enumerated reason the challenge was issued. Non-sensitive "
+            "by design (does not echo the malformed header content, "
+            "does not reveal operator pubkey state)."
+        ),
+    )
+
+
 __all__ = [
     "ChatRequest",
     "ChatResponse",
@@ -431,9 +619,12 @@ __all__ = [
     "DriveResponse",
     "DriveTerm",
     "DriveTerms",
+    "FiveSliceBreakdown",
     "HealthResponse",
     "InteroceptionResponse",
     "NoFloorEnvelope",
+    "PaymentChallenge",
+    "PricingResponse",
     "ProprioceptionResponse",
     "ProviderErrorEnvelope",
     "RefusalEnvelope",
