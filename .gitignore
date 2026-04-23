@@ -132,3 +132,26 @@ _site/
 # ----- distributables that are reproducible from source -----
 .dist/
 release/
+
+# ----- runtime ledger artifacts (orchestrator writes these at repo root by default) -----
+# These are append-only hash-chained logs emitted by a running orchestrator
+# (Supervisor ticks, Arbiter verdicts, Relay request records, payment commits).
+# They are deployment-specific runtime state, not committable doctrine. An
+# operator who genuinely wants to snapshot a specific run for audit uses
+# `git add -f` explicitly. Default posture is: never pollute the checkout.
+SENSORIUM_LEDGER.jsonl
+SAFETY_LEDGER.jsonl
+SAFETY_LEDGER_ANCHORS.jsonl
+REQUEST_LEDGER.jsonl
+PAYMENT_LEDGER.jsonl
+RESEARCH_SPEND_LEDGER.jsonl
+
+# Broker state files written by the Phase 5g+ SqliteBroker when an operator
+# sets XION_BROKER_DB_PATH. SQLite-WAL posture means two sidecar files exist
+# alongside the main DB while the broker is live. Never committable.
+broker.sqlite3
+broker.sqlite3-wal
+broker.sqlite3-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
