@@ -55,17 +55,19 @@ the constant."""
 
 _KNOWN_SCHEMA_VERSIONS: frozenset[int] = frozenset({1})
 
-# Enum vocabularies. These are the WRITER-side set at 5g-iii; the
-# ledger schema file reserves additional values (B3, refunded_partial,
-# stranded, billing_rejected) for forward-compatibility — a 5g-iii
-# writer that emits them is a bug.
+# Enum vocabularies. These are the WRITER-side set at 5g-iii + 5g-ii;
+# the ledger schema file reserves additional values (B3,
+# refunded_partial, stranded, billing_rejected) for forward-
+# compatibility — a 5g-iii writer that emits them is a bug. Phase
+# 5g-ii Commit 3 adds ``cancelled`` to _WRITER_OUTCOMES for the
+# client-disconnect path on the streaming Chat Surface.
 
 _WRITER_POSTURES: frozenset[str] = frozenset({"B1", "B2", "disabled"})
 _READER_POSTURES: frozenset[str] = frozenset({"B1", "B2", "B3", "disabled"})
 
-_WRITER_OUTCOMES: frozenset[str] = frozenset({"settled", "refunded"})
+_WRITER_OUTCOMES: frozenset[str] = frozenset({"settled", "refunded", "cancelled"})
 _READER_OUTCOMES: frozenset[str] = frozenset(
-    {"settled", "refunded", "refunded_partial", "stranded"}
+    {"settled", "refunded", "cancelled", "refunded_partial", "stranded"}
 )
 
 _WRITER_REFUSAL_STAGES: frozenset[str] = frozenset({
@@ -166,7 +168,7 @@ def chain_tip(path: Path) -> tuple[int, str]:
 
 
 PostureLit = Literal["B1", "B2", "disabled"]
-OutcomeLit = Literal["settled", "refunded"]
+OutcomeLit = Literal["settled", "refunded", "cancelled"]
 RefusalStageLit = Literal[
     "ingress",
     "egress",
@@ -242,6 +244,26 @@ def build_payment_row(
         if settled_XION != committed_XION:
             raise ValueError(
                 "outcome=settled requires settled_XION == committed_XION"
+            )
+    elif outcome == "cancelled":
+        # Phase 5g-ii Commit 3: client-disconnect cancellation. Money
+        # shape mirrors refunded (no value delivered, full refund), but
+        # refusal_stage MUST be None because a cancel is an operational
+        # outcome, not a Covenant refusal — the Arbiter never ran on
+        # the candidate (the candidate may not even exist). Callers
+        # that write a cancelled row MUST NOT pair it with a SAFETY
+        # egress refuse row; xion-verify chat-streaming-fidelity
+        # (Phase 5g-ii Commit 5) enforces the no-paired-egress shape.
+        if settled_XION != 0:
+            raise ValueError("outcome=cancelled requires settled_XION=0")
+        if refund_XION != committed_XION:
+            raise ValueError(
+                "outcome=cancelled requires refund_XION == committed_XION"
+            )
+        if refusal_stage is not None:
+            raise ValueError(
+                "outcome=cancelled requires refusal_stage=None (cancel "
+                "is operational, not a Covenant refusal)"
             )
     else:  # refunded
         if settled_XION != 0:
@@ -463,6 +485,24 @@ def verify_chain(path: Path) -> tuple[int, str]:
                     f"seq={seq}: outcome=settled requires "
                     f"settled_XION == committed_XION"
                 )
+        elif outcome == "cancelled":
+            # Phase 5g-ii Commit 3: cancelled rows have the refunded
+            # money shape (no value delivered, full refund) but
+            # refusal_stage is NULL (cancel is operational, not a
+            # Covenant refusal). Mirrors the writer's branch.
+            if sXION != 0:
+                raise ChainBroken(
+                    f"seq={seq}: outcome=cancelled requires settled_XION=0"
+                )
+            if rXION != cXION:
+                raise ChainBroken(
+                    f"seq={seq}: outcome=cancelled requires "
+                    f"refund_XION == committed_XION"
+                )
+            if rs is not None:
+                raise ChainBroken(
+                    f"seq={seq}: outcome=cancelled requires refusal_stage=null"
+                )
         elif outcome == "refunded":
             if sXION != 0 or rs is None:
                 raise ChainBroken(
@@ -475,9 +515,10 @@ def verify_chain(path: Path) -> tuple[int, str]:
                     f"refund_XION == committed_XION"
                 )
         # refunded_partial / stranded are reader-allowed values
-        # (forward-compatibility) but NOT 5g-iii writer-emittable.
-        # xion-verify refusal-is-free flags them as unexpected at
-        # 5g-iii phase; this chain-integrity verifier does not.
+        # (forward-compatibility) but NOT 5g-ii / 5g-iii writer-
+        # emittable. xion-verify refusal-is-free flags them as
+        # unexpected at 5g-iii phase; this chain-integrity verifier
+        # does not.
 
         if posture == "disabled":
             if cXION != 0 or sXION != 0 or rXION != 0:

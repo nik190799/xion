@@ -21,10 +21,17 @@ Constitutional properties (seven, pinned in architecture.md):
   P6. Client disconnect propagates to provider as real cancel (Commit 3).
   P7. Ledger rows are written after moderation, never speculatively.
 
-Phase 5g-ii Commit 2 lands P1–P5 and P7. Commit 3 lands P6 (cancel
-propagation + outcome=cancelled ledger row); this module's structure
-leaves the hook point in ``_stream_body()``'s main loop where the
-``request.is_disconnected()`` poll will slot in.
+    Phase 5g-ii Commit 2 lands P1–P5 and P7. Commit 3 adds P6:
+    ``request.is_disconnected()`` is polled between chunks; when the
+    client disconnects, the provider's async generator is closed
+    (which propagates ``asyncio.CancelledError`` into its ``httpx``
+    request and terminates upstream billing), and a single PAYMENT
+    row with ``outcome=cancelled``, ``refund_XION==committed_XION``,
+    ``refusal_stage=None`` is written. No ``done`` event is emitted
+    on the wire — by doctrine the client is gone; the ``cancelled``
+    enum value in ``StreamDoneEvent`` exists only for operator-side
+    replay tooling (and is asserted never to reach the wire by the
+    Commit 5 fidelity verifier).
 
 Admission and x402 failures are HTTP-level (401/402/429): the client
 never sees an SSE stream open in those cases, matching the non-
@@ -45,7 +52,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from orchestrator.billing import (
@@ -87,7 +94,7 @@ class _StreamOutcome:
     stream body has completed.
     """
 
-    outcome: str  # "settled" | "refunded" (Commit 3 adds "cancelled")
+    outcome: str  # "settled" | "refunded" | "cancelled"
     refusal_stage: str | None
     correlation_id: str
     provider_id: str | None
@@ -118,6 +125,7 @@ def register_chat_stream_route(app: FastAPI) -> None:
     )
     async def post_chat_stream(
         req: ChatRequest,
+        request: Request,
         x_payment_commitment: str | None = Header(None, alias="X-Payment-Commitment"),
     ) -> Any:
         deps = app.state.deps
@@ -156,6 +164,7 @@ def register_chat_stream_route(app: FastAPI) -> None:
             app=app,
             relay=deps.relay,
             req=req,
+            request=request,
             commitment=commitment,
             billing_config=billing_config,
             pricing_config=pricing_config,
@@ -183,6 +192,7 @@ async def _stream_body(
     app: FastAPI,
     relay: Any,
     req: ChatRequest,
+    request: Request,
     commitment: Commitment,
     billing_config: "BillingConfig",
     pricing_config: "PricingConfig",
@@ -326,14 +336,14 @@ async def _stream_body(
     seq = 0
     terminal: GenerationResult | None = None
     turn_deadline_monotonic = time.monotonic() + deadline_s
+    gen = stream_generate(
+        provider,
+        req.message,
+        system=None,
+        max_tokens=req.max_tokens,
+        deadline_s=deadline_s,
+    )
     try:
-        gen = stream_generate(
-            provider,
-            req.message,
-            system=None,
-            max_tokens=req.max_tokens,
-            deadline_s=deadline_s,
-        )
         # Per-chunk wall-clock deadline check. The individual
         # provider call is ALSO deadline-bounded (``deadline_s``
         # passes through to the httpx client timeout in the
@@ -342,6 +352,33 @@ async def _stream_body(
         # protects against a provider that yields chunks slowly
         # enough to accumulate past the per-turn budget.
         while True:
+            # P6: client-disconnect check (Phase 5g-ii Commit 3).
+            # Starlette's ``Request.is_disconnected()`` polls the
+            # underlying ASGI receive channel for an
+            # ``http.disconnect`` message. When True, we close
+            # ``gen`` (which propagates ``asyncio.CancelledError``
+            # into the provider's ``httpx.AsyncClient.stream(...)``
+            # context, terminating the upstream socket and its
+            # billing), write a PAYMENT row with
+            # ``outcome=cancelled``, and return — NO done event
+            # goes on the wire because the client is already gone.
+            if await request.is_disconnected():
+                await gen.aclose()
+                _finalize_stream_ledger(
+                    app,
+                    commitment,
+                    pricing_config,
+                    billing_config,
+                    _StreamOutcome(
+                        outcome="cancelled",
+                        refusal_stage=None,
+                        correlation_id=ingress.correlation_id,
+                        provider_id=provider_id,
+                        model_id=None,
+                    ),
+                )
+                return
+
             remaining = turn_deadline_monotonic - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("turn deadline exceeded")
@@ -360,8 +397,31 @@ async def _stream_body(
                 text=event,
             ))
             seq += 1
-            # P6 hook point (Commit 3): insert
-            # ``await request.is_disconnected()`` check here.
+    except asyncio.CancelledError:
+        # The server itself cancelled the task (e.g., the ASGI
+        # server tore down the connection before we polled
+        # ``is_disconnected()``). Treat this as a cancel: close
+        # the provider generator, write a cancelled row, re-
+        # raise so ASGI knows we respected the cancel. No ``done``
+        # event goes on the wire.
+        try:
+            await gen.aclose()
+        except Exception:
+            pass
+        _finalize_stream_ledger(
+            app,
+            commitment,
+            pricing_config,
+            billing_config,
+            _StreamOutcome(
+                outcome="cancelled",
+                refusal_stage=None,
+                correlation_id=ingress.correlation_id,
+                provider_id=provider_id,
+                model_id=None,
+            ),
+        )
+        raise
     except (asyncio.TimeoutError, TimeoutError):
         yield _sse(StreamErrorEvent(
             kind="error",

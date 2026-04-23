@@ -52,6 +52,14 @@ Envelope-matrix coverage (Commit 2):
         emits kind=error error=deadline_exceeded; ledger row
         refusal_stage=provider_timeout
 
+    Client disconnect (Phase 5g-ii Commit 3)
+      - A client that disconnects mid-stream terminates the
+        provider generator, writes a PAYMENT row with
+        outcome=cancelled and refund_XION==committed_XION,
+        refusal_stage=None, and emits NO done event on the wire.
+      - No paired SAFETY egress refuse row is produced (egress
+        moderation never ran — the candidate was never completed).
+
     Exactly-one-row invariant
       - Every test above asserts len(iter_rows(ledger)) == 1 after
         the stream closes.
@@ -617,6 +625,159 @@ def test_stream_deadline_exceeded_emits_error_event(
 
 
 # ---------- exactly-one-row invariant (aggregate) -------------------------
+
+
+# ---------- client-disconnect / cancellation (Commit 3) -------------------
+
+
+def test_stream_cancelled_mid_stream_writes_cancelled_row(
+    app_factory: Callable[..., Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A client that disconnects mid-stream triggers:
+
+      - The provider async generator is closed (``aclose`` called).
+      - NO ``done`` event is emitted on the wire (the client is gone).
+      - One PAYMENT_LEDGER row with ``outcome=cancelled``,
+        ``refund_XION==committed_XION``, ``refusal_stage=None``.
+    """
+    from starlette.requests import Request as _Req
+
+    # First is_disconnected() call returns False (allows initial
+    # entry into the loop); subsequent calls return True, triggering
+    # cancel before yielding any chunk.
+    state: dict[str, int] = {"count": 0}
+
+    async def _fake_is_disconnected(self: _Req) -> bool:
+        state["count"] += 1
+        return state["count"] > 1
+
+    monkeypatch.setattr(_Req, "is_disconnected", _fake_is_disconnected)
+
+    ledger = tmp_path / "PAYMENT_LEDGER.jsonl"
+    prompt = "hello"
+    header = _build_b1_header(body_text=prompt)
+    provider = _FakeStreamProvider(
+        chunks=("Hel", "lo", ", world."),
+        chunk_delay_s=0.01,  # small delay to keep the loop lively
+    )
+    app = app_factory(
+        generative_provider=provider,
+        pricing_config=_pricing(),
+        billing_config=_billing_enabled(ledger),
+    )
+    with TestClient(app) as client:
+        status, body, _headers = _post_stream(client, message=prompt, commit=header)
+    assert status == 200
+    events = _parse_sse(body)
+    # No done event. Possibly zero chunk events (the poll fires
+    # before the first chunk is yielded).
+    terminals = [e for e in events if e["kind"] in ("done", "error")]
+    assert terminals == [], f"expected no terminal events, got {terminals}"
+    # Ledger: exactly one cancelled row.
+    rows = list(iter_rows(ledger))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["outcome"] == "cancelled"
+    assert row["refund_XION"] == _POSTED_PRICE
+    assert row["committed_XION"] == _POSTED_PRICE
+    assert row["settled_XION"] == 0
+    assert row["refusal_stage"] is None
+    assert row["provider_id"] == provider.provider_id
+
+
+def test_stream_cancelled_after_some_chunks_writes_cancelled_row(
+    app_factory: Callable[..., Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A client that disconnects AFTER receiving a few chunks still
+    produces a cancelled PAYMENT row, not a settled / refunded one.
+    The chunks already emitted are not retracted (the client has
+    them in its partial buffer); the cancel is retroactive only at
+    the ledger level."""
+    from starlette.requests import Request as _Req
+
+    # Allow 2 chunks through before signalling disconnect.
+    state: dict[str, int] = {"count": 0}
+
+    async def _fake_is_disconnected(self: _Req) -> bool:
+        state["count"] += 1
+        return state["count"] > 2
+
+    monkeypatch.setattr(_Req, "is_disconnected", _fake_is_disconnected)
+
+    ledger = tmp_path / "PAYMENT_LEDGER.jsonl"
+    prompt = "hello"
+    header = _build_b1_header(body_text=prompt)
+    provider = _FakeStreamProvider(
+        chunks=("Hel", "lo", ", world.", " More text."),
+    )
+    app = app_factory(
+        generative_provider=provider,
+        pricing_config=_pricing(),
+        billing_config=_billing_enabled(ledger),
+    )
+    with TestClient(app) as client:
+        status, body, _headers = _post_stream(client, message=prompt, commit=header)
+    assert status == 200
+    events = _parse_sse(body)
+    # Some chunks emitted; no done event.
+    chunk_count = sum(1 for e in events if e["kind"] == "chunk")
+    assert chunk_count >= 1
+    assert not any(e["kind"] in ("done", "error") for e in events)
+    rows = list(iter_rows(ledger))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["outcome"] == "cancelled"
+    assert row["refund_XION"] == row["committed_XION"]
+    assert row["refusal_stage"] is None
+
+
+def test_stream_cancelled_ledger_chain_verifies(
+    app_factory: Callable[..., Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cancelled row must not break the PAYMENT_LEDGER hash chain.
+    verify_chain() must accept the cancelled-outcome row under the
+    extended writer contract."""
+    from starlette.requests import Request as _Req
+
+    from orchestrator.billing import verify_chain
+
+    state: dict[str, int] = {"count": 0}
+
+    async def _fake_is_disconnected(self: _Req) -> bool:
+        state["count"] += 1
+        return state["count"] > 1
+
+    monkeypatch.setattr(_Req, "is_disconnected", _fake_is_disconnected)
+
+    ledger = tmp_path / "PAYMENT_LEDGER.jsonl"
+    prompt = "hello"
+    header = _build_b1_header(body_text=prompt)
+    provider = _FakeStreamProvider(chunks=("A", "B"), chunk_delay_s=0.01)
+    app = app_factory(
+        generative_provider=provider,
+        pricing_config=_pricing(),
+        billing_config=_billing_enabled(ledger),
+    )
+    with TestClient(app) as client:
+        _post_stream(client, message=prompt, commit=header)
+        # Now reset the disconnect flag and drive a normal turn to
+        # make sure the chain survives a mix of cancelled + settled.
+        state["count"] = -1_000_000  # never > 1; never disconnected
+        prompt2 = "tell me about gardens"
+        h2 = _build_b1_header(body_text=prompt2)
+        _post_stream(client, message=prompt2, commit=h2)
+    # Chain integrity.
+    count, tip = verify_chain(ledger)
+    assert count == 2
+    assert tip != "0" * 64
+    rows = list(iter_rows(ledger))
+    assert [r["outcome"] for r in rows] == ["cancelled", "settled"]
 
 
 def test_stream_every_outcome_writes_exactly_one_payment_row(

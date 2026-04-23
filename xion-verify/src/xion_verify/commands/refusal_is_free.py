@@ -16,11 +16,16 @@ PAYMENT_LEDGER came live):
      writer + chain verifier but re-asserted here as a top-level
      Covenant property so operators/auditors see the specific row):
 
-       * ``outcome=settled``  → ``settled_XION == committed_XION``
+       * ``outcome=settled``   → ``settled_XION == committed_XION``
          and ``refund_XION == 0``.
-       * ``outcome=refunded`` → ``refund_XION == committed_XION``
+       * ``outcome=refunded``  → ``refund_XION == committed_XION``
          and ``settled_XION == 0``.
-       * ``posture=disabled`` → ``committed == settled == refund == 0``.
+       * ``outcome=cancelled`` → ``refund_XION == committed_XION``
+         and ``settled_XION == 0`` and ``refusal_stage IS NULL``
+         (Phase 5g-ii Commit 3: client-disconnect on the streaming
+         Chat Surface; cancel is operationally equivalent to a full
+         refund but is NOT a Covenant refusal).
+       * ``posture=disabled``  → ``committed == settled == refund == 0``.
 
   C. Ingress / egress mirror — every PAYMENT row with
      ``refusal_stage`` in ``{"ingress", "egress"}`` has at least one
@@ -28,10 +33,13 @@ PAYMENT_LEDGER came live):
      ``verdict=refuse``. Symmetrically, every SAFETY row with
      ``verdict=refuse`` that has ANY PAYMENT row for its
      ``correlation_id`` must map to at least one PAYMENT row with
-     ``outcome=refunded``. The qualifier "that has any PAYMENT row"
-     is deliberate: SAFETY rows predating the PAYMENT_LEDGER's
-     first row are out of scope (no commitment ever existed for
-     them; Refusal-is-Free is vacuously satisfied).
+     ``outcome IN {refunded, cancelled}``. The qualifier "that has
+     any PAYMENT row" is deliberate: SAFETY rows predating the
+     PAYMENT_LEDGER's first row are out of scope (no commitment
+     ever existed for them; Refusal-is-Free is vacuously satisfied).
+     Note: ``outcome=cancelled`` rows do NOT require a paired
+     SAFETY verdict=refuse row — the Arbiter never evaluated the
+     candidate on a cancelled stream.
 
   D. Settled implies allowed — every PAYMENT row with
      ``outcome=settled`` has NO matching SAFETY row with
@@ -44,6 +52,13 @@ Operational refusal stages (``no_floor``, ``provider_error``,
 reasons the Arbiter never saw — the SAFETY_LEDGER carries only the
 ingress ``verdict=ok`` row for these turns. Property (B) still applies:
 the refund equals the commitment.
+
+``outcome=cancelled`` (Phase 5g-ii Commit 3: client-disconnect on the
+streaming Chat Surface) is similarly operational and NOT a Covenant
+refusal: the Arbiter never ran egress moderation because the client
+gave up before generation completed. Property (B) asserts the
+full-refund money shape; property (C) does not require a paired
+SAFETY verdict=refuse row (and, in practice, there is none).
 
 What this verifier does NOT do (with honest pointers):
 
@@ -167,6 +182,7 @@ def refusal_is_free() -> None:
 
     refunded_total = 0
     settled_total = 0
+    cancelled_total = 0
     disabled_total = 0
     refunded_ingress_egress = 0
     refunded_operational = 0
@@ -228,6 +244,27 @@ def refusal_is_free() -> None:
                 refunded_ingress_egress += 1
             else:
                 refunded_operational += 1
+        elif outcome == "cancelled":
+            # Phase 5g-ii Commit 3: client-disconnect on the streaming
+            # Chat Surface. Money-shape is a full refund (no value
+            # delivered); refusal_stage MUST be NULL (cancel is
+            # operational, not Covenant). No paired SAFETY egress
+            # refuse row is required — the Arbiter never evaluated
+            # the candidate on a cancelled stream.
+            if r_xion != c_xion or s_xion != 0:
+                _fail(
+                    f"cid={cid!r} seq={p_row['seq']}: outcome=cancelled "
+                    f"requires refund==committed and settled==0; got "
+                    f"settled={s_xion}, refund={r_xion}, "
+                    f"committed={c_xion}. Property B."
+                )
+            if refusal_stage is not None:
+                _fail(
+                    f"cid={cid!r} seq={p_row['seq']}: outcome=cancelled "
+                    f"requires refusal_stage IS NULL; got "
+                    f"{refusal_stage!r}. Property B."
+                )
+            cancelled_total += 1
         else:
             # refunded_partial / stranded are schema-reserved but
             # 5g-iii writer must not emit them. See schema doc.
@@ -305,12 +342,13 @@ def refusal_is_free() -> None:
             safety_refuse_unpaired += len(refuse_rows)
             continue
         p_row = payment_by_cid[cid][0]
-        if str(p_row["outcome"]) != "refunded":
+        if str(p_row["outcome"]) not in {"refunded", "cancelled"}:
             s_seqs = ",".join(str(r["seq"]) for r in refuse_rows)
             _fail(
                 f"cid={cid!r}: SAFETY verdict=refuse row(s) seq="
                 f"{{{s_seqs}}} paired to PAYMENT seq={p_row['seq']} "
-                f"outcome={p_row['outcome']!r}, expected 'refunded'. "
+                f"outcome={p_row['outcome']!r}, expected "
+                f"refunded or cancelled. "
                 f"Property C (ingress/egress mirror, reverse)."
             )
 
@@ -323,6 +361,7 @@ def refusal_is_free() -> None:
         f"refunded={refunded_total} "
         f"(ingress/egress={refunded_ingress_egress}, "
         f"operational={refunded_operational}), "
+        f"cancelled={cancelled_total}, "
         f"disabled-posture rows={disabled_total}."
     )
     if refunded_by_stage:

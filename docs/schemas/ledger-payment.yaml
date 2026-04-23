@@ -113,18 +113,21 @@ row:
       allowed:
         - settled             # turn completed successfully
         - refunded            # turn refused (any refusal_stage); Refusal-is-Free honored
-        - refunded_partial    # RESERVED for Phase 7+ multi-turn skills; 5g-iii writers NEVER emit
-        - stranded            # RESERVED for Phase 7+ operator reconciliation; 5g-iii writers NEVER emit
+        - cancelled           # client disconnected mid-stream (Phase 5g-ii Commit 3); full refund; no SAFETY egress refuse pair
+        - refunded_partial    # RESERVED for Phase 7+ multi-turn skills; 5g-iii / 5g-ii writers NEVER emit
+        - stranded            # RESERVED for Phase 7+ operator reconciliation; 5g-iii / 5g-ii writers NEVER emit
       note: >-
         refunded_partial and stranded are reserved in the enum for
-        forward-compatibility. 5g-iii writers emit only settled or
-        refunded. A 5g-iii row emitting refunded_partial or stranded
-        is a bug; the verifier FAILs.
+        forward-compatibility. 5g-iii writers emit settled or
+        refunded; Phase 5g-ii Commit 3 adds cancelled for the
+        streaming Chat Surface's client-disconnect path. A row
+        emitting refunded_partial or stranded is a bug; the verifier
+        FAILs.
 
     refusal_stage:
       type:     "string | null"
       required: "iff outcome in {refunded, refunded_partial}"
-      null_when: "outcome=settled"
+      null_when: "outcome in {settled, cancelled}"
       allowed:
         - ingress              # Arbiter refused user input
         - egress               # Arbiter refused generated candidate
@@ -151,17 +154,17 @@ row:
       required: "always"
       invariant: >-
         settled_XION > 0 iff outcome=settled. settled_XION=0 iff outcome
-        in {refunded, refunded_partial}. In disabled posture, both
-        settled_XION and committed_XION are 0.
+        in {refunded, cancelled, refunded_partial}. In disabled posture,
+        both settled_XION and committed_XION are 0.
 
     refund_XION:
       type:     "uint"
       required: "always"
       invariant: >-
-        refund_XION > 0 iff outcome in {refunded, refunded_partial}.
-        refund_XION = committed_XION iff outcome=refunded (5g-iii
-        full-refund semantics). refund_XION < committed_XION iff
-        outcome=refunded_partial (Phase 7+; 5g-iii writers never emit).
+        refund_XION > 0 iff outcome in {refunded, cancelled, refunded_partial}.
+        refund_XION = committed_XION iff outcome in {refunded, cancelled}
+        (5g-iii / 5g-ii full-refund semantics). refund_XION < committed_XION
+        iff outcome=refunded_partial (Phase 7+; writers never emit).
 
     posted_price_XION:
       type:     "uint"
@@ -182,7 +185,11 @@ row:
         was selected (ingress refusal, no-floor, billing-rejected).
         For egress / empty_candidate / provider_error / provider_timeout
         refusals, provider_id is set (a provider was selected and
-        invoked).
+        invoked). For outcome=cancelled (Phase 5g-ii Commit 3),
+        provider_id is set when the cancel fired after provider
+        selection (the common case — streams cancel mid-generation);
+        it is null if the cancel fired before selection (rare in
+        practice; client gave up during the admission gates).
 
     model_id:
       type:     "string | null"
@@ -232,9 +239,11 @@ structural_invariants:
   - "committed_XION == settled_XION + refund_XION"
   - "outcome=settled => refund_XION == 0 AND refusal_stage IS NULL"
   - "outcome=refunded => settled_XION == 0 AND refund_XION == committed_XION AND refusal_stage IS NOT NULL"
+  - "outcome=cancelled => settled_XION == 0 AND refund_XION == committed_XION AND refusal_stage IS NULL"
   - "posture=disabled => committed_XION == 0 AND settled_XION == 0 AND refund_XION == 0"
   - "posture=B3 => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
   - "outcome IN {refunded_partial, stranded} => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
+  - "outcome=cancelled => NO paired SAFETY_LEDGER egress verdict=refuse row (the Arbiter never evaluated the candidate; cancel is operational, not Covenant)"
   - "correlation_id MUST match at least one SAFETY_LEDGER row's correlation_id (enforced by cross-ledger verifier, not by this ledger's chain-check alone)"
 
 # What runs against this ledger today.
