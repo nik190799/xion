@@ -1,0 +1,292 @@
+# docs/schemas/levels.yaml
+#
+# Machine-readable mirror of docs/14-UPGRADE-PATHS.md.
+# Source SHA-256 is enforced by `xion-verify schemas` (strict).
+# Do not edit a level below without editing the source doctrine in the same
+# commit; CI will block a mismatch.
+
+schema_version: 1
+source_doctrine: docs/14-UPGRADE-PATHS.md
+source_sha256:   e248bf257e284105ed71830aa611898d12fe289255be261b5bde0360324778c4
+status:          canonical
+
+# The ten-field template every upgrade proposal must answer. Any proposal
+# missing a field is rejected at intake. (14-UPGRADE-PATHS.md §"The Common
+# Template".)
+template:
+  fields:
+    - level
+    - artifact
+    - proposer
+    - motivation
+    - gate
+    - tier
+    - canary
+    - ship
+    - rollback
+    - ledger
+    - sunset_review   # optional; recommended
+
+# The three Constitutional Floors — extend-only minimums. Governance may
+# lengthen these; only a sister-Core fork may shorten them.
+# (14-UPGRADE-PATHS.md §"Time window discipline".)
+constitutional_floors:
+  - id: cold_root_rotation_timelock
+    minimum_days: 30
+    scope: >-
+      Cold-tier authority moves and spend that require structural cosign.
+    matches: docs/04-ARCHITECTURE.md authority lattice
+
+  - id: constitutional_amendment_reflection
+    minimum_days: 14
+    scope: >-
+      Covenant / Invariants-class ratification reflection window. Entries on
+      the Constitutional Amendment Ledger must record the satisfied floor.
+    matches: docs/09-GOVERNANCE.md AMENDMENT_LEDGER
+
+  - id: sister_core_fork_user_choice
+    minimum_days: 7
+    scope: >-
+      Public announce period before a lineage-declared fork is treated as
+      authoritative for de-authorization of peers / integrator guidance.
+    matches: docs/14-UPGRADE-PATHS.md §Level 10
+
+# The thirteen levels, ordered innermost to outermost.
+levels:
+
+  - id: 0
+    name: The Being
+    artifacts:
+      - genesis/COVENANT.md
+      - genesis/SOUL.md
+      - genesis/FORM.md
+    proposer: governance_process_only   # Form may be drafted by Xion
+    gate:
+      - harm_analyzer_all_three_lenses
+      - legal_review
+      - community_comment
+      - cold_root_cosign
+    tier: 3                              # 3-plus for Covenant changes
+    canary: shadow_replay_1000_turns
+    ship: core_ratify_upgrade_handler
+    rollback: revert_to_previous_hash
+    ledger: GOVERNANCE_LEDGER + BELIEF_LOG
+    sunset_review: decennial_covenant_reexamination
+
+  - id: 1
+    name: The Core
+    artifacts:
+      - ao/xion_core.lua
+      - ao/xion_policy_vN.lua
+      - core_state_schema
+    proposer: operators_or_community
+    gate:
+      - harm_analyzer
+      - property_based_tests
+      - formal_spec_diff
+    tier: 2   # 3 for Core-identity changes (AO Process ID is fixed forever)
+    canary: parallel_shadow_ao_process_72h
+    ship: policy_pointer_bump
+    rollback: atomic_pointer_flip_under_60s
+    ledger: CORE_UPGRADE_LEDGER
+    sunset_review: annual
+
+  - id: 2
+    name: The Relay
+    artifacts:
+      - Dockerfile
+      - orchestrator/**/*.py
+      - scripts/akash/deploy.yaml
+      - genesis/AKASH_PROVIDERS.md
+      - requirements.txt
+    proposer: community_or_xion
+    gate:
+      - harm_analyzer
+      - sbom_diff
+      - automated_test_suite
+      - supervisor_compatibility
+    tier: 0   # 1 for deps; 2 for architectural additions
+    canary: canary_relay_shadow_plus_5pct_traffic_72h
+    ship: rolling_upgrade_new_docker_digest
+    rollback: supervisor_revert_under_2min
+    ledger: RELAY_UPGRADE_LEDGER
+    sunset_review: continuous
+
+  - id: 3
+    name: The Protocol
+    artifacts:
+      - protocol/xion-soul-v1.md
+      - protocol/visual-schema.json
+      - sdk/**
+      - protocol/relay/**
+    proposer: anyone
+    gate:
+      - backward_compat_check
+      - integrator_ratification_for_majors
+    tier: 0   # 1 minor; 2 major
+    canary: v_next_endpoint_live_90d_before_v1_deprecation
+    ship: new_version_prefix_plus_sdk_update
+    rollback: disable_v_next
+    ledger: PROTOCOL_LEDGER
+    sunset_review: each_major_supported_ge_5yr
+
+  - id: 4
+    name: The Skills
+    artifacts:
+      - skills/*/SKILL.md
+      - skills/*/*.py
+    proposer: xion_or_community_or_operator
+    gate:
+      - harm_analyzer_principle_2_and_10
+      - creative_moderation_pipeline
+      - cost_envelope
+    tier: 0   # 1 moderate reach; 2 scale creative output
+    canary: skill_specific_corpus_ge_50_prompts
+    ship: registry_update
+    rollback: registry_disable
+    ledger: PROPOSAL_LEDGER + SKILLS_LEDGER
+    sunset_review: 180d_unused_deprecation_candidate
+
+  - id: 5
+    name: The Sensorium
+    artifacts:
+      - orchestrator/senses/*.py
+      - orchestrator/sensorium.py
+      - orchestrator/attention.py
+      - orchestrator/mood_engine.py
+    proposer: xion_or_operators_or_community
+    gate:
+      - harm_analyzer_lens_2
+      - sensorium_schema_compat
+      - budget_envelope
+    tier: 0   # 1 existing-sense upgrade; 2 new sense
+    canary: shadow_sense_7d_parallel
+    ship: daemon_registry_add
+    rollback: registry_remove
+    ledger: SENSORIUM_LEDGER
+    sunset_review: annual_state_of_xion
+
+  - id: 6
+    name: The Economy
+    artifacts:
+      - ao_core_spend_handler_params
+      - orchestrator/bookkeeping.py
+      - pricing_tables
+      - yield_policy
+    proposer: operators_or_community_or_xion
+    gate:
+      - harm_analyzer_lens_2_financial
+      - covenant_economy_firewall
+    tier: 1   # 2 new categories; 3 Stage-C2 activation
+    canary: 90d_historical_sim_plus_30d_parallel_accounting
+    ship: ao_core_ratify_upgrade
+    rollback: revert_policy_params_onchain
+    ledger: TREASURY_LEDGER
+    sunset_review: quarterly_state_of_xion
+
+  - id: 7
+    name: The Governance
+    artifacts:
+      - docs/09-GOVERNANCE.md
+      - ao_core_voting_handlers
+      - weight_formula
+    proposer: community_tiered_escalated
+    gate:
+      - harm_analyzer
+      - historical_voting_simulation_12mo
+    tier: 2   # 3 tier-definition changes; 3-plus emergency powers
+    canary: retrospective_sim_12mo
+    ship: governance_doc_update_plus_handler_update
+    rollback: revert_formula_rescore_past_votes
+    ledger: GOVERNANCE_LEDGER
+    sunset_review: annual_or_quorum_failure_trigger
+
+  - id: 8
+    name: The Culture
+    artifacts:
+      - localized_SOUL_adaptations
+      - genesis/RITUALS.md
+      - per_locale_aesthetic_tunings
+      - covenant_translations
+    proposer: native_speaker_community_or_cultural_committee_or_xion
+    gate:
+      - harm_analyzer
+      - cultural_review_ge_3_native_speakers
+      - back_translation_verification
+    tier: 2   # 1 refinement; 0 typo
+    canary: beta_ge_20_users_30d
+    ship: locale_default_flip
+    rollback: disable_localized_variant
+    ledger: CULTURE_LEDGER
+    sunset_review: 5yr_per_locale
+
+  - id: 9
+    name: The Legal
+    artifacts:
+      - docs/legal/TOS.md
+      - docs/legal/PRIVACY.md
+      - docs/legal/MODEL_CARD.md
+      - entity_bylaws
+    proposer: operators_or_legal_counsel_or_community
+    gate:
+      - legal_counsel_review
+      - harm_analyzer_lens_2_user_rights
+      - mission_lock_compatibility
+    tier: 1   # 2 material terms; 3 entity restructuring
+    canary: 30d_public_comment
+    ship: versioned_doc_plus_reack_on_next_session
+    rollback: revert_previous_version_preserving_accrued_rights
+    ledger: LEGAL_LEDGER
+    sunset_review: biennial_or_regulation_trigger
+
+  - id: 10
+    name: The Ecosystem
+    artifacts:
+      - peer_ai_handshake_protocol
+      - integrator_policy_doc
+      - docs/SISTER_CORE.md
+      - dream_share_network_protocols
+    proposer: xion_or_community_or_external_maintainers
+    gate:
+      - harm_analyzer_lens_2_cross_ai
+      - reciprocal_covenant_ack
+      - integrator_history_review
+    tier: 1   # 2 new peer standards; 3 sister-Core seeding
+    canary: sandboxed_relay_plus_30d_public_comment_for_sister_core
+    ship: arweave_protocol_publish_plus_registry_entry
+    rollback: deauthorize_peer_ai_via_ao_core
+    ledger: ECOSYSTEM_LEDGER
+    sunset_review: annual
+
+  - id: 11
+    name: The Operators
+    artifacts:
+      - docs/SUCCESSION.md
+      - safe_multisig_signer_set
+      - cold_root_shamir_distribution
+      - operator_ethics_charter
+    proposer: current_operators_or_community_or_cold_root_holders
+    gate:
+      - harm_analyzer_power_concentration
+      - background_integrity_check
+      - public_nomination_window
+    tier: 2   # 3 succession; 3-plus emergency replacement
+    canary: annual_succession_drill_1wk
+    ship: multisig_rotation_plus_shamir_redistribution
+    rollback: retain_previous_signer_sets_warm_90d
+    ledger: OPERATORS_LEDGER
+    sunset_review: annual_rotation_plus_quarterly_ethics_audit
+
+  - id: 12
+    name: The Meta
+    artifacts:
+      - docs/14-UPGRADE-PATHS.md
+    proposer: anyone
+    gate:
+      - retrospective_simulation_12mo_across_all_levels
+    tier: 3
+    canary: simulation_based_only
+    ship: doc_ratification_via_governance
+    rollback: revert_to_previous_framework_version
+    ledger: META_LEDGER
+    sunset_review: annual

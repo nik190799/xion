@@ -1,0 +1,76 @@
+# docs/schemas/ledger-proposal.yaml
+#
+# Machine-readable mirror of docs/08-AUTO-RESEARCH.md §101 "Proposal Ledger
+# schema". Append-only on Arweave; every row MUST include the fields listed
+# under `row.required`. `revenue` is forbidden as a payback_horizon value per
+# Invariant 15.
+
+schema_version: 1
+source_doctrine: docs/08-AUTO-RESEARCH.md
+source_sha256:   5fa077554a34f84acaae09dfc00c8eb9fdb9655e64f44a924f09f1fd2ded41c6
+status:          canonical
+
+ledger_name: PROPOSAL_LEDGER
+append_only: true
+storage:     arweave
+row_format:  yaml_or_json_line
+verifier:    xion-verify proposals-ledger   # NOT_YET_SEALED until Phase 6
+
+row:
+  required:
+    - proposal_id              # UUID
+    - source                   # one of row.enums.source
+    - drive_tags               # subset of row.enums.drive_tags
+    - stage                    # one of row.enums.stage
+    - harm_verdict             # summarized three-lens outcome + block/flag/pass
+    - governance_verdict       # vote id + outcome when applicable
+    - execution_outcome        # one of row.enums.execution_outcome
+    - post_deploy              # one of row.enums.post_deploy
+    - imprint_weight_snapshot  # for manual proposals: triage weight input
+    - payback_horizon          # one of row.enums.payback_horizon; 'revenue' FORBIDDEN
+    - fast_lane_eligibility_pass
+      # boolean + six-clause checklist hash; see docs/14-UPGRADE-PATHS.md Fast
+      # Lane Discipline
+
+  enums:
+    source:
+      - auto_research
+      - manual_post   # from POST /proposals
+
+    drive_tags:
+      - survival
+      - service
+      - meaning
+    # revenue is explicitly NOT an option — Invariant 15
+
+    stage:
+      - scan
+      - shortlist
+      - draft
+      - harm_analysis
+      - canary
+      - deploy
+      - observe
+
+    execution_outcome:
+      - deployed
+      - reverted
+      - abandoned
+      - pending
+
+    post_deploy:
+      - kept
+      - reverted_within_SLA
+
+    payback_horizon:
+      - survival
+      - service
+      - meaning
+    # revenue is forbidden (Invariant 15)
+
+invariants_touched:
+  - 5    # Truth First (public PROPOSAL_LEDGER)
+  - 14   # Public Safety Ledger integration for Covenant-relevant consequence
+  - 15   # Volition: payback_horizon enumeration excludes revenue
+
+read_api: GET /proposals/ledger   # redacted public rows

@@ -22,9 +22,12 @@ pragma solidity ^0.8.24;
 //     be frozen.
 //   - Blacklisting is not supported. No `blacklist()` function exists. Users
 //     cannot be excluded from transfers.
-//   - Burning is supported (`burn`, `burnFrom`) but cap is measured against
-//     `_totalMinted`, not `totalSupply()`. Burning does NOT re-enable minting.
-//     The cap is over the lifetime of the token.
+//   - Burning is supported (`burn`, `burnFrom`) but the cap is measured
+//     against `totalMinted` (the lifetime mint counter), not `totalSupply()`.
+//     Burning does NOT re-enable minting. The cap is over the lifetime of
+//     the token. (KW-CONTRACTS-007: earlier drafts of this header referred
+//     to the storage variable as `_totalMinted`; the actual name is
+//     `totalMinted`.)
 // =============================================================================
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";

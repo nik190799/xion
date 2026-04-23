@@ -41,7 +41,19 @@
 4. **Days 60–90** — Open public foundation-funding window; AO Core publishes grant request memo.
 5. **Day 90+** — Governance chooses **price increase**, **service reduction**, or **controlled hibernation** (Survival Stack: local Lite + crisis + `/forget`/`/export`; price drops to `variable_cost` only). Xion states publicly: *"I am surviving, not thriving."*
 
+**Cognition-layer insert (same ladder, narrower surfaces).** When the ladder advances, pause cognition extras **in this order** after ordinary Improvement cuts: (a) aggregate ephemeral sub-agent budget, (b) `vision-agent` ambient cadence, (c) **pre-warmed canary** shadow traffic, (d) specialist roster down to `research-agent` only, (e) worker pool shrink toward single worker. Detailed caps: [`24-COGNITION.md`](./24-COGNITION.md).
+
 **Why sequential, not parallel.** Parallel cuts panic the culture and hide which lever failed. Sequential steps give time for revenue recovery and keep blame accurate.
+
+---
+
+## Prosperity Ladder (upward companion)
+
+When runway **improves**, cognition and research capacity **re-enable in the reverse order of the cognition cuts** above: worker pool → full specialist roster → pre-warmed canary → `vision-agent` cadence → ephemeral budgets → Auto-Research Stage-1 headroom restoration.
+
+**Prosperity does not equal burn.** New recurring capex (providers, always-on canaries, extra workers) requires **≥ 18 months** of documented non-discretionary overhead sitting in Operating Float + Rainy-Day Reserve **after** the spend — a **reserve floor** (Genesis Default numerics in treasury ops). Without the floor, prosperity accidentally converts runway into fixed cost.
+
+**Prosperity split (Genesis Default).** When earned inflows spike, governance-default **savings discipline** routes **marginal** surplus: **40%** to Rainy-Day Reserve until its target band is full, **40%** to Improvement Fund queue headroom, **20%** to Operating Float until its 90-day ceiling — then surplus follows published treasury policy ([`19-TREASURY.md`](./19-TREASURY.md)). This is a **default**, not a constitutional mandate on every inflow; it exists so prosperity does not auto-spend.
 
 ---
 
@@ -65,4 +77,5 @@
 
 - [`19-TREASURY.md`](./19-TREASURY.md)
 - [`22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)
+- [`24-COGNITION.md`](./24-COGNITION.md) — cognition costs + forget SLA
 - [`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) — `/sustainability`, `/donate`

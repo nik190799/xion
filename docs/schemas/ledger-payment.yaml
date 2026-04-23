@@ -1,0 +1,268 @@
+# docs/schemas/ledger-payment.yaml
+#
+# CANONICAL. schema_version: 1 as of Phase 5g-iii (2026-04-21).
+# History:
+#   v1 (Phase 5g-iii, 2026-04-21) — first landing. Hash-chained single-row-
+#     per-turn ledger for the Chat Billing Surface. Shape-symmetric with
+#     the Phase-6 RESEARCH_SPEND_LEDGER sketched in docs/27-RESEARCH-SPEND.md.
+#
+# PAYMENT_LEDGER is the local append-only hash-chained record of every
+# billable (and non-billable, under XION_BILLING_REQUIRED=false) chat turn
+# that passed the pre-authorization gate. Doctrine source for the row
+# schema and the writer semantics is docs/04-ARCHITECTURE.md § "The Chat
+# Billing Surface (Phase 5g-iii)" and docs/29-BILLING-X402.md. The
+# implementation that writes these rows is orchestrator/billing/ledger.py
+# (new at Phase 5g-iii).
+#
+# Design notes that did not fit on the doctrine page:
+#
+#  - No candidate text is written to the ledger. The candidate hash lives
+#    in SAFETY_LEDGER already; PAYMENT_LEDGER joins on correlation_id, not
+#    on content. This keeps PAYMENT_LEDGER publishable without leaking
+#    user content (Covenant Principle 4; identical posture to SAFETY).
+#
+#  - Single-row-per-turn. The row is written AFTER the terminal state is
+#    known and BEFORE the HTTP response is sent. A crash between row-write
+#    and response-send leaves the row but no response (auditable via
+#    side-channel). A crash before row-write leaves neither (also
+#    auditable — no commitment recorded). The ledger never records a
+#    commitment without a terminal outcome.
+#
+#  - Mirror symmetry with RESEARCH_SPEND_LEDGER. The three-money-field
+#    convention (committed_XION / settled_XION / refund_XION), the
+#    outcome enum (settled / refunded / refunded_partial / stranded),
+#    the timestamp convention, the canonicalization rule, and the
+#    source_sha256 anchoring are deliberately identical to
+#    docs/27-RESEARCH-SPEND.md's sketch. Phase 6 treasury verifier
+#    will walk both ledgers with one canonicalization library.
+#
+#  - Tail-truncation defense is acquired via an Arweave anchor on the
+#    chain head (analogous to SAFETY_LEDGER's Phase 4b anchor). The
+#    anchor landing for PAYMENT_LEDGER is Phase 6+ treasury work. Until
+#    then, chain_tip(path) returns the current tip hash for manual
+#    out-of-band pinning.
+
+schema_version: 1
+
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256:   2853646af79ede670718a8583d8732e54de1d6798f0159d4eebc4463c579fe61
+
+operational_doctrine: docs/29-BILLING-X402.md
+
+status: canonical
+
+ledger_name: PAYMENT_LEDGER
+append_only: true
+storage:     local_jsonl               # tip-anchoring deferred to Phase 6+ treasury
+redactable:  false                     # Covenant Principle 14 forbids erasure
+
+# The canonical row schema. Field semantics, types, and required/conditional
+# rules are specified in docs/04-ARCHITECTURE.md § "PAYMENT_LEDGER row schema"
+# and docs/29-BILLING-X402.md § "PAYMENT_LEDGER schema"; this block exists
+# so a programmatic verifier can compare it against the implementation in
+# orchestrator/billing/ledger.py without parsing markdown.
+row:
+  required_fields:
+    - schema_version         # uint; 1 at Phase 5g-iii; readers dispatch on this
+    - seq                    # uint64; per-ledger monotonic, starting at 0
+    - prev_hash              # hex64; sha256 of previous row's canonical bytes
+    - this_hash              # hex64; sha256 of this row's canonical bytes excluding this_hash
+    - timestamp_utc_ns       # uint64; monotonic wall-clock at terminal-outcome moment
+    - correlation_id         # string; joins to SAFETY_LEDGER / REQUEST_LEDGER
+    - posture                # enum; see allowed
+    - outcome                # enum; see allowed
+    - refusal_stage          # nullable enum; required iff outcome=refunded
+    - committed_XION         # uint; pre-authorized amount in micro-XION
+    - settled_XION           # uint; non-zero iff outcome=settled
+    - refund_XION            # uint; non-zero iff outcome=refunded
+    - posted_price_XION      # uint; governance-posted price at commitment time
+    - provider_id            # nullable string; turn-serving provider or null if refused pre-selection
+    - model_id               # nullable string; specific model used or null if refused pre-selection
+    - authorization_reference # string; B1 payload hash, B2 commitment hash, or "" in disabled posture
+    - source_sha256          # hex64; anchor hash of docs/04-ARCHITECTURE.md at row-write time
+
+  conditional_fields:
+    posture:
+      type:     "string"
+      required: "always"
+      allowed:
+        - B1                  # operator-attestation (Phase 5g-iii default; D1 deployment)
+        - B2                  # x402-commitment (Phase 5g-iii opt-in; D2 deployment)
+        - B3                  # x402-settled (Phase 6+; RESERVED — 5g-iii writers NEVER emit)
+        - disabled            # XION_BILLING_REQUIRED=false backward-compat mode
+      note: >-
+        B3 is reserved in the enum for forward-compatibility. A 5g-iii
+        writer that emits B3 is a bug; the verifier FAILs. Phase 6 AO
+        Core landing promotes B3 to an emittable value alongside
+        real on-chain settlement.
+
+    outcome:
+      type:     "string"
+      required: "always"
+      allowed:
+        - settled             # turn completed successfully
+        - refunded            # turn refused (any refusal_stage); Refusal-is-Free honored
+        - refunded_partial    # RESERVED for Phase 7+ multi-turn skills; 5g-iii writers NEVER emit
+        - stranded            # RESERVED for Phase 7+ operator reconciliation; 5g-iii writers NEVER emit
+      note: >-
+        refunded_partial and stranded are reserved in the enum for
+        forward-compatibility. 5g-iii writers emit only settled or
+        refunded. A 5g-iii row emitting refunded_partial or stranded
+        is a bug; the verifier FAILs.
+
+    refusal_stage:
+      type:     "string | null"
+      required: "iff outcome in {refunded, refunded_partial}"
+      null_when: "outcome=settled"
+      allowed:
+        - ingress              # Arbiter refused user input
+        - egress               # Arbiter refused generated candidate
+        - empty_candidate      # provider returned empty text
+        - no_floor             # Invariant-17 floor unsatisfied at turn time
+        - provider_error       # generative provider raised
+        - provider_timeout     # generative provider exceeded deadline
+        - billing_rejected     # pre-authorization was accepted but later invalidated (reserved; 5g-iii writers do not emit)
+      note: >-
+        billing_rejected is reserved for Phase 6+ mid-turn revocation
+        semantics (e.g., chain-side commitment withdrawn after commit).
+        5g-iii writers never emit it.
+
+    committed_XION:
+      type:     "uint"
+      required: "always"
+      semantics: >-
+        Pre-authorized amount in micro-XION (1 XION = 10^6 micro-XION).
+        Equal to posted_price_XION at commitment time for B1/B2 rows.
+        Equal to 0 in disabled posture rows.
+
+    settled_XION:
+      type:     "uint"
+      required: "always"
+      invariant: >-
+        settled_XION > 0 iff outcome=settled. settled_XION=0 iff outcome
+        in {refunded, refunded_partial}. In disabled posture, both
+        settled_XION and committed_XION are 0.
+
+    refund_XION:
+      type:     "uint"
+      required: "always"
+      invariant: >-
+        refund_XION > 0 iff outcome in {refunded, refunded_partial}.
+        refund_XION = committed_XION iff outcome=refunded (5g-iii
+        full-refund semantics). refund_XION < committed_XION iff
+        outcome=refunded_partial (Phase 7+; 5g-iii writers never emit).
+
+    posted_price_XION:
+      type:     "uint"
+      required: "always"
+      semantics: >-
+        Governance-posted per-message price at the time this row was
+        written. Recorded explicitly (rather than via a cross-reference
+        to a /pricing snapshot) so future auditors can reconstruct
+        pricing history even if governance rotates the posted price.
+
+    provider_id:
+      type:     "string | null"
+      required: "iff outcome=settled"
+      null_when: "outcome=refunded AND refusal_stage in {ingress, no_floor, billing_rejected}"
+      allowed_examples: [openrouter, ollama]
+      note: >-
+        provider_id is null when the turn refused before a provider
+        was selected (ingress refusal, no-floor, billing-rejected).
+        For egress / empty_candidate / provider_error / provider_timeout
+        refusals, provider_id is set (a provider was selected and
+        invoked).
+
+    model_id:
+      type:     "string | null"
+      required: "iff provider_id is non-null"
+      null_when: "provider_id is null"
+      allowed_examples: ["moonshotai/kimi-k2", "gemma3:4b"]
+
+    authorization_reference:
+      type:     "string"
+      required: "always"
+      empty_when: "posture=disabled"
+      shape:
+        B1: "hex64 — sha256 of operator-attestation payload"
+        B2: "hex64 — x402 commitment hash"
+        B3: "RESERVED — Phase 6+"
+        disabled: "empty string"
+
+    source_sha256:
+      type:     "hex64"
+      required: "always"
+      semantics: >-
+        sha256 of docs/04-ARCHITECTURE.md at the moment this row was
+        written. Lets future verifiers confirm the row was produced
+        under a known-good doctrine version (doctrine drift detection).
+
+# Canonicalization rule for hashing (must match implementation exactly).
+# Identical to SAFETY_LEDGER's canonicalization rule.
+hash:
+  algorithm:        sha256
+  canonicalization: |
+    json.dumps(
+      {k: v for k, v in row.items() if k != "this_hash"},
+      sort_keys=True,
+      separators=(",", ":"),
+      ensure_ascii=False,
+    ).encode("utf-8")
+  algorithm_pin_note: >-
+    Pinned by schema_version. A future migration to a non-sha256 family
+    bumps schema_version (Invariant 14, Crypto-Agility Mandate, applied
+    one level up). The canonicalization rule here matches SAFETY_LEDGER
+    byte-exactly so Phase 6 treasury audit can verify both ledgers with
+    one library.
+
+# Structural invariants (in addition to per-field constraints above).
+# The verifier at xion-verify refusal-is-free enforces all of these.
+structural_invariants:
+  - "committed_XION == settled_XION + refund_XION"
+  - "outcome=settled => refund_XION == 0 AND refusal_stage IS NULL"
+  - "outcome=refunded => settled_XION == 0 AND refund_XION == committed_XION AND refusal_stage IS NOT NULL"
+  - "posture=disabled => committed_XION == 0 AND settled_XION == 0 AND refund_XION == 0"
+  - "posture=B3 => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
+  - "outcome IN {refunded_partial, stranded} => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
+  - "correlation_id MUST match at least one SAFETY_LEDGER row's correlation_id (enforced by cross-ledger verifier, not by this ledger's chain-check alone)"
+
+# What runs against this ledger today.
+verifier_implementation:
+  in_process: orchestrator.billing.ledger.verify_chain
+  cli:        xion-verify refusal-is-free
+  semantics: |
+    Walks the file row-by-row and asserts:
+      (a) every row is well-formed JSON matching the schema_version 1 shape,
+      (b) seq is contiguous starting at 0,
+      (c) every this_hash matches recomputed canonical-bytes hash,
+      (d) every prev_hash matches the prior row's this_hash,
+      (e) structural invariants (money arithmetic, posture-outcome
+          consistency, forbidden-enum-values) hold per row,
+      (f) cross-ledger join with SAFETY_LEDGER on correlation_id:
+          every verdict=refuse SAFETY row has a paired outcome=refunded
+          PAYMENT row; every outcome=refunded PAYMENT row has a paired
+          verdict=refuse SAFETY row (either the ingress or the egress
+          call, matched by correlation_id).
+
+# What is NOT yet verifiable today.
+verifier_pending:
+  - on_chain_settlement   # Phase 6+: real XION / USDC movement matches row amounts. KW-BILLING-001.
+  - catalog_driven_pricing # Phase 6+: /pricing reads OpenRouter catalog. KW-BILLING-002.
+
+# Pay-down commitment history.
+pay_down_commitment_history:
+  opened_in:
+    phase: Phase 5g-i
+    artifact: KW-CHAT-002
+    note: >-
+      KW-CHAT-002 (opened at Phase 5g-i) declared that POST /chat runs
+      with billing disabled, explicitly blocking any D2 deploy until
+      Phase 5g-iii ships x402 pre-authorization, a PAYMENT_LEDGER schema,
+      GET /pricing, 451-refund settlement, and a xion-verify verifier
+      joining the chat turn to its payment row.
+  closed_in:
+    phase: Phase 5g-iii
+    artifact: docs/04-ARCHITECTURE.md § "The Chat Billing Surface (Phase 5g-iii)" + docs/29-BILLING-X402.md
+    implementation: orchestrator/billing/ledger.py + orchestrator/api/{pricing,chat,billing}.py
+    verifier: xion-verify refusal-is-free + xion-verify pricing (promoted from NOT_YET_SEALED)
+    closed_on: 2026-04-21

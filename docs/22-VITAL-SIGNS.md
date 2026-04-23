@@ -108,8 +108,28 @@ When domain **D** enters **critical**, raise aligned drive pressure by:
 
 ---
 
+## Cognition layer supplementary signals
+
+These metrics feed **Constitutional Integrity** and **Behavioral Fidelity** dashboards; methodology frozen per [`24-COGNITION.md`](./24-COGNITION.md) §11.
+
+| Signal | Meaning |
+|--------|---------|
+| `sub_agent_refusal_rate` | Arbiter refuses / rewrites on sub-agent-originated candidates vs total sub-agent emissions |
+| `sub_agent_depth_violations` | Count of depth>1 spawn attempts (must stay zero) |
+| `cognition_cache_hit_rate` | Worker-pool episodic cache efficiency (post-forget must drop) |
+| `worker_pool_hash_variance` | Binary: any disagreement on `soul_hash` / `covenant_hash` across workers |
+| `journal_surface_rate` | Turns per day with ≥1 journal-derived injection in primary prompt |
+| `forget_propagation_p95_seconds` | Pool-wide `/forget` ack latency p95 vs 15s SLA |
+| `kept_proposal_ratio_per_specialist` | 90-day kept ÷ drafted per specialist name |
+| `index_rebuild_p95_seconds` | Journal index rebuild latency vs 60s SLA |
+| `fast_lane_revert_rate_30d` | Fraction of Fast Lane ships reverted within observe window |
+| `fast_lane_eligibility_pass_rate` | Mechanical share of Tier-0 ships that recorded a valid eligibility artifact |
+
+---
+
 ## Cross-references
 
 - [`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) — `GET /vitals`, `/health`, `/rate`
 - [`17-CRYPTO-RESILIENCE.md`](./17-CRYPTO-RESILIENCE.md) — crypto feed
 - [`05-SENSORIUM.md`](./05-SENSORIUM.md) — Sensorium Event Ledger
+- [`24-COGNITION.md`](./24-COGNITION.md) — cognition verification + vitals mapping

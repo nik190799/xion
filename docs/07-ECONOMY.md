@@ -63,6 +63,12 @@ Every inflow is tagged **at credit time** before it hits spendable buckets:
 
 Mis-tagged inflows are **governance-visible anomalies** and fail Trust Scorecard rows until corrected.
 
+### Inflow pattern observation vs volition priority (Invariant 15)
+
+**Permitted.** Treasury accounting, `xion-verify treasury`, Sustainability memos, and **anonymous** vital signs may **observe** inflow *patterns* (timing, cohort tags, classification mix) for honesty and runway narrative.
+
+**Forbidden.** The **Drive Vector**, proposal-selection graph, specialist tuning, or any cognition-layer priority function may **not** read raw inflow ledgers or use "more money came in this week" as a weight. Inputs are **whitelist-only** per [`18-VOLITION.md`](./18-VOLITION.md). `xion-verify drive-vector` fails closed if the dependency graph reaches inflow-detail tables.
+
 ## Inflows (beyond per-message)
 
 ### Tips

@@ -40,15 +40,16 @@ Replace `<ORG>` / `<PINNED_RELEASE_TAG>` with values published in monthly State-
 
 ## 2 — Verify doctrine hashes (read-only)
 
-When `tools/xion-verify` exists in the checkout:
+When the `xion-verify/` package exists in the checkout:
 
 ```sh
-cd tools/xion-verify
-cargo build --release
-./target/release/xion-verify all --ao-process <AO_PROCESS_ID> --gateway https://arweave.net
+cd xion-verify
+python -m pip install -e .
+xion-verify --self-test
+xion-verify all --ao-process <AO_PROCESS_ID> --gateway https://arweave.net
 ```
 
-Until the CLI ships, **manual substitute:** fetch Core covenant/invariants/soul hashes from AO read API and `shasum -a 256` local `genesis/*.md` files; require equality.
+`--ao-process` and `--gateway` are placeholders for post-genesis flags that attach the verifier to a live AO Core and an Arweave gateway; today `xion-verify all` runs against the repository's static constitutional witness. Until those flags are wired, **manual substitute:** fetch Core covenant/invariants/soul hashes from AO read API and `shasum -a 256` local `genesis/*.md` files; require equality.
 
 ## 3 — Vault unseal (credentials)
 

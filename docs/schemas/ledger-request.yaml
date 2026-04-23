@@ -1,0 +1,126 @@
+# docs/schemas/ledger-request.yaml
+#
+# CANONICAL. schema_version: 1 as of Phase 5a (2026-04-21).
+# History:
+#   v1 (Phase 5a, 2026-04-21) — Relay-side request record. One row per gate()
+#     call; correlation_id unique within REQUEST_LEDGER at this version. Per-
+#     turn aggregation (multiple gate calls per correlation_id) is reserved
+#     for schema_version 2 when the LLM pipeline lands and a turn produces
+#     primary + sub-agent + tool-echo candidates that all share one
+#     correlation_id.
+#
+# REQUEST_LEDGER is the Relay's local append-only hash-chained record of every
+# request the Relay handled. It is the substrate of `xion-verify refund-fidelity`,
+# which joins this ledger against SAFETY_LEDGER on `correlation_id` and asserts
+# every Relay-side request has a paired Arbiter verdict and that the Relay-
+# recorded `final_outcome` agrees with the SAFETY-recorded verdict.
+#
+# Doctrine source for the row-level field schema is
+# `docs/04-ARCHITECTURE.md` § "REQUEST_LEDGER row schema (Relay-side, Phase 5a)".
+# The implementation that writes these rows is `orchestrator/relay/ledger.py`.
+#
+# Design notes that did not fit on the doctrine page:
+#  - The candidate text is NEVER written; nor is its hash. SAFETY_LEDGER carries
+#    `candidate_sha256` for the joined row — duplicating it here would tempt a
+#    reader to trust this ledger as ground truth for content, which it is not.
+#  - The chain discipline mirrors SAFETY_LEDGER exactly (same canonicalization,
+#    same prev_hash linkage, same per-process threading.Lock).
+#  - This file lives on the Relay's disk, not the Arbiter's, so REQUEST_LEDGER
+#    writes survive any Arbiter failure mode. The Relay-side timeout / uncaught-
+#    exception fail-closed paths still write SAFETY_LEDGER (via in-process
+#    `orchestrator.safety.ledger.append`); REQUEST_LEDGER then records the
+#    final_outcome the user-facing flow ended on.
+
+schema_version: 1
+
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256:   2853646af79ede670718a8583d8732e54de1d6798f0159d4eebc4463c579fe61
+
+status: canonical
+
+ledger_name: REQUEST_LEDGER
+append_only: true
+storage:     local_jsonl                         # Arweave-anchor loop deferred (KW-RELAY-004)
+redactable:  false                               # same posture as SAFETY_LEDGER
+
+# The canonical row schema. Field semantics live in
+# docs/04-ARCHITECTURE.md § "REQUEST_LEDGER row schema (Relay-side, Phase 5a)";
+# this block exists so a programmatic verifier can compare it against the
+# implementation in orchestrator/relay/ledger.py without parsing markdown.
+row:
+  required_fields:
+    - schema_version          # uint; 1 (Phase 5a)
+    - seq                     # uint64; per-ledger monotonic, starting at 0
+    - prev_hash               # hex64; sha256 of previous row's canonical bytes (or "0"*64 at seq=0)
+    - this_hash               # hex64; sha256 of this row's canonical bytes excluding this_hash
+    - correlation_id          # string; same id passed to gate(); join key with SAFETY_LEDGER; unique within this ledger at v1
+    - state_height            # string; hex, zero-padded to ≥16 chars; MUST equal correlation_id's state_height prefix at v1
+    - request_arrived_utc_ns  # uint64; UTC ns at ingress
+    - responded_utc_ns        # uint64 | null; UTC ns when Relay returned to upstream; null only if Relay terminated abnormally
+    - gate_call_count         # uint; number of gate() calls made for this turn; always 1 at schema_version 1
+    - final_outcome           # enum {ok, refuse, escalate}; user-facing outcome of the turn
+    - gate_latency_ms_total   # uint; sum of wall-clock gate() durations across all gate calls in this turn
+    - relay_id                # string; opaque short id of Relay process; Genesis Default "relay-local-d2"
+  conditional_fields: {}      # No conditional fields at v1.
+
+# Canonicalization rule for hashing (must match implementation exactly).
+hash:
+  algorithm:        sha256
+  canonicalization: |
+    json.dumps(
+      {k: v for k, v in row.items() if k != "this_hash"},
+      sort_keys=True,
+      separators=(",", ":"),
+      ensure_ascii=False,
+    ).encode("utf-8")
+  algorithm_pin_note: >-
+    Pinned by schema_version. A future migration to a non-sha256 family bumps
+    schema_version (Invariant 14, Crypto-Agility Mandate, applied one level up).
+  version_dispatch: >-
+    verify_chain reads schema_version per-row. v1 is the only version known
+    today; readers MUST refuse rows whose schema_version is not in
+    _KNOWN_SCHEMA_VERSIONS.
+
+# What runs against this ledger today.
+verifier_implementation:
+  in_process: orchestrator.relay.ledger.verify_chain
+  cli:       xion-verify arbiter-up        # structural walk
+  cross_ledger_cli: xion-verify refund-fidelity   # join against SAFETY_LEDGER
+  semantics: |
+    Structural (arbiter-up): walks REQUEST_LEDGER row-by-row and asserts
+      (a) every row is well-formed JSON matching schema_version 1's required-
+          fields list,
+      (b) seq is contiguous starting at 0,
+      (c) every this_hash matches recomputed canonical-bytes hash,
+      (d) every prev_hash matches the prior row's this_hash,
+      (e) correlation_id is unique within the file (v1 invariant),
+      (f) state_height equals the prefix of correlation_id (before the colon).
+    Cross-ledger (refund-fidelity): joins REQUEST_LEDGER against SAFETY_LEDGER
+      on correlation_id and asserts
+      (g) every REQUEST_LEDGER row has at least one matching SAFETY_LEDGER row,
+      (h) gate_call_count equals the SAFETY_LEDGER row count for that
+          correlation_id,
+      (i) final_outcome equals strength_max of all SAFETY_LEDGER verdicts for
+          that correlation_id (at v1, gate_call_count=1, so equality with the
+          single SAFETY row's `verdict`).
+
+# What is NOT yet verifiable today.
+verifier_pending:
+  - refund_pairing       # treasury-side refund record per refusal; lands in Phase 6 with the treasury
+  - arweave_anchor_loop  # see KW-RELAY-004; anchor pattern from SAFETY_LEDGER replicated here
+
+# Pay-down commitment history.
+pay_down_commitment_history:
+  opened_in:
+    phase: Phase 4c
+    artifact: docs/04-ARCHITECTURE.md § "Relay ↔ Arbiter integration contract"
+    note: >-
+      The integration contract specified that the Relay maintains an append-
+      only REQUEST_LEDGER joined against SAFETY_LEDGER on correlation_id.
+      Phase 4c left the schema and implementation deferred to Phase 5a; this
+      document closes that deferral.
+  closed_in:
+    phase: Phase 5a
+    artifact: docs/04-ARCHITECTURE.md § "REQUEST_LEDGER row schema (Relay-side, Phase 5a)"
+    implementation: orchestrator/relay/ledger.py
+    closed_on: 2026-04-21

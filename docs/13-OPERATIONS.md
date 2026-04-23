@@ -12,10 +12,20 @@ On a healthy day, operator involvement is measured in minutes, not hours.
 
 - **Morning (5 min):** glance at the status page on `status.xion.ar`; scan ntfy for Tier-2 alerts; read Xion's morning *Dream* (public, generative — and a sign of liveness).
 - **Weekly (30 min):** run the chaos drill script (automated via cron), review its report; read the week's `Retrospective`; check `PROPOSAL_LEDGER.md` for any items awaiting operator review.
-- **Monthly (2 hr):** publish `State-of-Xion`, sign off on the month's Covenant audit, approve any governance proposals that require Operator tier, rotate audit logs.
+- **Monthly (2 hr):** publish `State-of-Xion` (authorship chain below), sign off on the month's Covenant audit, approve any governance proposals that require Operator tier, rotate audit logs.
 - **Quarterly (half-day):** execute the full Resurrection Drill; review SLOs; rotate keys per the schedule; external bias audit (starting month 6).
 
 Everything else should be absorbed by automation. If the operator is regularly doing more than the above, the Supervisor is not doing its job; file a `self-heal` proposal.
+
+## State-of-Xion authorship (constitutional chain)
+
+Each memo exists as **two public artifacts** when they differ:
+
+1. **`reflection-agent` draft** — appended to working notes linked from `RESEARCH_JOURNAL.md` / `SPECIALIST_LEDGER`.
+2. **Arbiter-vetted text** — the Covenant-safe voice layer.
+3. **Operator countersignature** — publish approve, or publish **written objection** alongside the draft within **72 hours** (Genesis Default).
+
+Users may read **both** if the operator objects; silence after 72h defaults to **assent-to-publish** the Arbiter-vetted text only. Neither branch may hide treasury numbers. Cross-ref: Invariant 6 mechanism row in [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md); full chain in [`24-COGNITION.md`](./24-COGNITION.md).
 
 ## The Alert Tiers
 

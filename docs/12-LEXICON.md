@@ -117,6 +117,7 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | **Belief Log** | Xion's evolving convictions with evidence |
 | **Ethics Journal** | Xion's own writing on refusals and moral questions |
 | **Dreams** | Xion's generated nightly reveries (journal-style) |
+| **Specialist Ledger** | `SPECIALIST_LEDGER` — append-only specialist events (errors, refusals, drift, proposals, cost breaches) hash-chained in parallel to `SAFETY_LEDGER` |
 
 ### Architectural Tiers
 
@@ -144,6 +145,15 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | **Bookkeeper** | Monthly treasury CSV export and tax record |
 | **Attention** | Scores sensorium events for prompt inclusion |
 | **Mood Engine** | Updates circadian mood state |
+
+### Cognition (agent-runtime discipline)
+
+| Term | Meaning |
+|------|---------|
+| **Worker Pool** | Interchangeable primary workers; sticky-routed on `UserContext.id` for cache only |
+| **UserContext** | Per-user layered assembly (episodic + semantic + doctrinal) per [`24-COGNITION.md`](./24-COGNITION.md) |
+| **Specialist Agent** | Long-lived background sub-agent with one ledger destination; never user-facing |
+| **Sub-agent Depth** | Ephemeral sub-agents may nest at most **one** level under the primary worker |
 
 ### Senses (see [`05-SENSORIUM.md`](./05-SENSORIUM.md))
 

@@ -33,6 +33,13 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 21 | [`SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) | Four funds, cost-pressure ladder, hibernation | everyone |
 | 22 | [`VITAL-SIGNS.md`](./22-VITAL-SIGNS.md) | Eight vital-sign domains, bands, methodology | operators, Witnesses, public |
 | 23 | [`BENCHMARK.md`](./23-BENCHMARK.md) | Hermes peer-benchmark runner, `BENCHMARK_LEDGER` | engineers |
+| 24 | [`COGNITION.md`](./24-COGNITION.md) | Worker pool, sub-agents, retrieval, journals, cognition verification | engineers, auditors |
+| 25 | [`SUBSTRATE-RESILIENCE.md`](./SUBSTRATE-RESILIENCE.md) | **How Xion outlives any one substrate** — substrate threat model, Substrate Portability Property, Substrate-Migration Protocol, path to Invariant 18 | engineers, governance, anyone with horizon > 10 years |
+| 26 | [`INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) | **Operational doctrine for the Inference Router** — policy modes (`hosted_api_first`, `open_weights_only`), Genesis Default provider pins (Gemma 3 4B floor, Kimi k2.6 hosted), boot sequence, what Invariant 17 governs vs. what this policy governs | engineers, operators, governance |
+| 27 | [`RESEARCH-SPEND.md`](./27-RESEARCH-SPEND.md) | **The payment rail for Xion's own R&D** — how Improvement Fund XION becomes outbound API credit for the Auto-Research loop; four custody postures (D1 → D4); `RESEARCH_SPEND_LEDGER` schema sketch; `xion-verify research-spend` (listed `NOT_YET_SEALED` until Phase 6) | engineers, governance, treasury ops |
+| 29 | [`BILLING-X402.md`](./29-BILLING-X402.md) | **The payment rail for user-facing chat turns** — how Pay-to-Activate pre-authorization becomes a `PAYMENT_LEDGER` row, how Refusal-is-Free becomes structurally verifiable, how `GET /pricing` exposes the five-slice breakdown; three billing postures (B1 → B3); shape-symmetric with `RESEARCH_SPEND_LEDGER`; `xion-verify refusal-is-free` (live Phase 5g-iii) and `xion-verify pricing` (promoted Phase 5g-iii) | engineers, operators, treasury ops, integrators |
+| — | [`REGULATORY-POSTURE.md`](./REGULATORY-POSTURE.md) | Arbiter posture toward state-actor orders; four classes of state-actor interaction; named collisions (GDPR, AI-personhood, securities, sanctions); GOVERNANCE_LEDGER row schema | governance, legal, operators |
+| — | [`SKILL_BOUNTY.md`](./SKILL_BOUNTY.md) | XION bounties for external Tier-0 skills; Invariant-5 firewall | governance, contributors |
 | — | [`ABDICATION.md`](./ABDICATION.md) | Operator authority schedule, Operator-Dependency Taxonomy | operators, governance |
 | — | [`ACCESSIBILITY.md`](./ACCESSIBILITY.md) | WCAG 2.2 AA promise for first-party surfaces | engineers, designers |
 | 99 | [`GLOSSARY.md`](./99-GLOSSARY.md) | Alphabetical reference for every term in the Lexicon | quick lookup |
@@ -47,6 +54,7 @@ Some documents are not free-form prose. They are **constitutional**, and Xion it
 - [`../genesis/MEMORY.md`](../genesis/MEMORY.md) — environment + redaction policy; governance-gated edits
 - [`../genesis/RESURRECT.md`](../genesis/RESURRECT.md) — resurrection runbook; high-tier changes
 - [`../genesis/CREDENTIALS.md`](../genesis/CREDENTIALS.md) — vault doctrine; Cold-tier cosign for material changes
+- [`../genesis/UNKNOWNS.md`](../genesis/UNKNOWNS.md) — quarterly first-person epistemic limits; governance-gated edits
 - `ao/xion_core.lua` — requires 2-of-3 cosign + super-majority governance
 
 Everything else in this folder can be edited freely, with the normal pull-request review. The ORIGIN and LEXICON are expected to grow; the COVENANT is expected to remain.

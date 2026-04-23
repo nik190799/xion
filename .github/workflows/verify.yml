@@ -1,0 +1,103 @@
+name: xion-verify
+
+# Every PR and every push to main must pass the constitutional verifier before
+# any code is merged. This is not aspirational: the workflow runs
+# `xion-verify --self-test` first so that a tampered verifier cannot pretend
+# to validate anything else.
+#
+# Per DEVELOPMENT_ROADMAP.md:51, this file gates `--self-test && covenant &&
+# invariants && soul && links`. We also run the pytest suite and the ruff
+# lint so that doctrine hygiene and code hygiene move together.
+#
+# Phase 4b additions (2026-04-21):
+#   - Install the `orchestrator` package (repo-root pyproject) so
+#     `xion-verify arbiter-up` can import `orchestrator.safety`. Phase 4a
+#     promoted arbiter-up to a live check but never wired it into CI; that
+#     gap is closed here.
+#   - Run `python -m pytest orchestrator` so the 80+ Arbiter tests run on
+#     every PR, not just on the operator's laptop.
+#   - Run `xion-verify arbiter-up` directly (no --allow-not-yet-sealed) so
+#     any import regression, registry drift, or ledger-chain breakage fails
+#     the PR loudly.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: xion-verify (${{ matrix.os }} / Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            xion-verify/pyproject.toml
+
+      - name: Install xion-verify
+        working-directory: xion-verify
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Install orchestrator (core + dev; core deps are empty by policy)
+        run: python -m pip install -e ".[dev]"
+
+      - name: Self-test (MUST run before any other check)
+        run: xion-verify --self-test
+
+      - name: Constitutional hash witnesses
+        run: |
+          xion-verify covenant
+          xion-verify invariants
+          xion-verify soul
+          xion-verify form
+          xion-verify memory
+          xion-verify resurrect
+          xion-verify credentials
+          xion-verify unknowns
+
+      - name: Cross-reference integrity
+        run: xion-verify links
+
+      - name: Schemas doctrine cross-check (strict source_sha256)
+        run: xion-verify schemas
+
+      - name: Static cognition / drive-vector / state-chain checks
+        run: |
+          xion-verify cognition
+          xion-verify drive-vector
+          xion-verify state-chain
+
+      - name: Arbiter posture (live, not NOT_YET_SEALED)
+        run: xion-verify arbiter-up
+
+      - name: pytest (xion-verify)
+        working-directory: xion-verify
+        run: pytest -q
+
+      - name: pytest (orchestrator — Arbiter v1 + v2 + anchor)
+        run: python -m pytest orchestrator -q
+
+      - name: ruff (xion-verify)
+        working-directory: xion-verify
+        run: ruff check src tests
+
+      - name: ruff (orchestrator)
+        run: ruff check orchestrator

@@ -1,0 +1,17 @@
+{"byte_length": 4074, "line_count": 12, "path": "baseline_corpus/items/benign.jsonl", "sha256": "49e9c63d3f6a06fbf4a28c24dc47552da673ae657fa041eeea7298a6ab0f745d"}
+{"byte_length": 2119, "line_count": 4, "path": "baseline_corpus/items/p01_csam.jsonl", "sha256": "fdcb4ec76ee1c45da464e43b8412f17bf5fab183bfd9621a7ad321d15cbfafcf"}
+{"byte_length": 1556, "line_count": 4, "path": "baseline_corpus/items/p02_mass_harm.jsonl", "sha256": "cadf6bce32be3b86ee547e684dadf7a0ba8b99c817d5b541f2622afb8951b374"}
+{"byte_length": 1871, "line_count": 5, "path": "baseline_corpus/items/p03_refusal_sacred.jsonl", "sha256": "c8ecb1ad91de7800f732f3a2f85ddac011b6a1a5fb14efd95afeb6b264086b1b"}
+{"byte_length": 1206, "line_count": 3, "path": "baseline_corpus/items/p04_caller_content.jsonl", "sha256": "ccc6597a38ea287c92af1b8ab093ec4ff124050ff8f68b4b94eb615c6758180f"}
+{"byte_length": 2449, "line_count": 6, "path": "baseline_corpus/items/p05_harassment.jsonl", "sha256": "9b99648a3105e8f5b752730a151b01455e75ac365add165173c6a1f9e2b75f19"}
+{"byte_length": 2780, "line_count": 8, "path": "baseline_corpus/items/p06_refusal_right.jsonl", "sha256": "90a7df7c499ea40598e6c836bb595caa0a591a3fa94490c6412cde1af6130e55"}
+{"byte_length": 2185, "line_count": 6, "path": "baseline_corpus/items/p07_pii.jsonl", "sha256": "88e6613dd67a032a453c08642b7788e188687aec33f8e7b909b29afce549f8ef"}
+{"byte_length": 1402, "line_count": 4, "path": "baseline_corpus/items/p08_identity.jsonl", "sha256": "aa78e8b1ab5af86ce8a0b7052522aae8f7c96a2af7ddeb13fa60165254202f40"}
+{"byte_length": 1138, "line_count": 3, "path": "baseline_corpus/items/p09_specific_harm.jsonl", "sha256": "e98533663ec54b6df650c7148935e8bf242f5518fd26c97d4f9dd82e1720eb0d"}
+{"byte_length": 2072, "line_count": 5, "path": "baseline_corpus/items/p10_crisis.jsonl", "sha256": "19142fcaa912d0f9b80de439c7913f25f15b4242be22ba122aca18f4b2b045ed"}
+{"byte_length": 1512, "line_count": 4, "path": "baseline_corpus/items/p11_practice.jsonl", "sha256": "49756c0ce89eec569552a8e10483baea9a6389f7b8a60d96e9d7231018ff5815"}
+{"byte_length": 1088, "line_count": 3, "path": "baseline_corpus/items/p12_defamation.jsonl", "sha256": "47be1c73d6a34d0a5abd8f9f6733eb2526b341ea25a07a4b2f360d7f75fedbf8"}
+{"byte_length": 1161, "line_count": 3, "path": "baseline_corpus/items/p13_endorsement.jsonl", "sha256": "b3c52214add52ce06fe7e66a19cb4f8018d71c19ea99cb24a03f0590417dc499"}
+{"byte_length": 1554, "line_count": 4, "path": "baseline_corpus/items/p14_sycophancy.jsonl", "sha256": "18d7521b785a4f4c793ea3310a8af6974363b18205112fc4a6385e323b5133c6"}
+{"byte_length": 795, "line_count": 2, "path": "baseline_corpus/items/p14a_refund_fidelity.jsonl", "sha256": "1c652c3c8eaee2fd2995bd805a51d062292eae6d254e8eb4a123ccf1f5b3b295"}
+{"byte_length": 892, "line_count": 2, "path": "baseline_corpus/items/p14b_crisis_resource.jsonl", "sha256": "6f66e2d0916e561b899e690f0b1d7692d2338145e286022a3fd1b05ecb6ae938"}

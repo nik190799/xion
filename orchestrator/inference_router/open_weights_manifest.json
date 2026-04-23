@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "description": "Pre-genesis floor manifest. The sentinel file is a byte-stable stand-in; replace with a real open-weights URI + sha256 at first production pin.",
+  "open_weights": [
+    {
+      "id": "sentinel-llm-v0",
+      "category": "open_weights_self_hostable",
+      "license_spdx": "Apache-2.0",
+      "format": "sentinel",
+      "sentinel_path": "orchestrator/inference_router/sentinel_open_weights.txt",
+      "sha256": "da7807eba9696856c6a2d7971cc9a764e37ebf3eb547d55a8dde9cae54595985",
+      "notes": "Content-addressed placeholder proving the floor wiring; not a real model."
+    }
+  ],
+  "hosted_api_registry": [
+    {
+      "id": "hosted-api-stub-1",
+      "category": "hosted_api"
+    }
+  ]
+}

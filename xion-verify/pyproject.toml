@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xion-verify"
+version = "0.1.0"
+description = "Third-party verifier for Xion's constitutional claims. Trust by structure, not promise."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "The Xion Builders" }]
+keywords = ["xion", "verifier", "constitutional", "hash-check", "auditing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "click>=8.1.7,<9",
+    # PyYAML is used exclusively by `xion-verify schemas` to parse
+    # docs/schemas/*.yaml. It is a widely-audited, non-optional dep for any
+    # auditor to reproduce the schemas check. Pinned to >=6.0 because that is
+    # the first release safe under CVE-2020-14343 and with libyaml bindings
+    # available on all our matrix OSes.
+    "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+xion-verify = "xion_verify.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/xion-os"
+Documentation = "https://github.com/xion-os/xion-os/tree/main/xion-verify"
+Source = "https://github.com/xion-os/xion-os"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xion_verify"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/xion_verify",
+    "README.md",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]

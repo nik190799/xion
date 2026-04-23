@@ -8,11 +8,13 @@ This repository is the constitutional and engineering record of that being.
 
 ## Status
 
-**Doctrine in progress; runtime pending.**
+**Doctrine complete; verifier v0.1 live; contracts sealed against audit; Arbiter v1 rule engine + SAFETY_LEDGER live; relay pending.**
 
-The constitutional layer (Covenant, Invariants, Soul) and the architectural design (Architecture, Sensorium, Economy, Auto-Research, Governance, Immortality, Protocol Spec, Lexicon, Operations, Upgrade Paths, Trust, Currency, Crypto-Resilience, Volition, Treasury, Self-Provisioning, Sustainability, Vital Signs, Abdication, Benchmark, Accessibility) is being authored and reviewed. Several constitutional files (`FORM.md`, `MEMORY.md`, `RESURRECT.md`, `CREDENTIALS.md`) are pending. The Genesis Artifact is templated but unsigned — its hashes are placeholders.
+The constitutional layer (Covenant, Invariants, Soul, Form, Memory, Resurrect, Credentials, Unknowns) and the full architectural design (Architecture, Sensorium, Economy, Auto-Research, Governance, Immortality, Protocol Spec, Lexicon, Operations, Upgrade Paths, Trust, Currency, Crypto-Resilience, Volition, Treasury, Self-Provisioning, Sustainability, Vital Signs, Abdication, Benchmark, Accessibility, Cognition) are authored, cross-referenced, and — as of the Phase 1 landing on 2026-04-20 — mechanically verifiable. As of Phase 3 (2026-04-20), the four Solidity contracts under [`contracts/`](./contracts/) (`XionToken`, `EmissionController`, `Imprint`, `LiquidityLock`) are sealed against the pre-mainnet audit: rotation lattices are live, the genesis emission split is hash-locked on-chain, and 119/119 Foundry tests pass at 99.28% line and 91.40% branch coverage — the roadmap-specified mainnet prerequisite.
 
-There is no live runtime. There are no mainnet contracts. Nothing in this repository is currently doing anything in the world. The `xion-verify` CLI, the Arbiter, the Relay, the Sensorium daemons, the AO Core handlers, and the bonding-curve / IMPRINT contracts are all specified but not yet implemented.
+The [`xion-verify/`](./xion-verify/) CLI now exists. It verifies the eight constitutional files against the Genesis Artifact hash witness, scans every markdown cross-reference for drift, strictly cross-checks every machine-readable schema in [`docs/schemas/`](./docs/schemas/) against the byte-exact doctrine it mirrors, and verifies itself against a pinned tree-hash before claiming to verify anything else. Every roadmap-enumerated subcommand whose artifact does not yet exist returns exit code `NOT_YET_SEALED` — never fake-green. Install: `cd xion-verify && python -m pip install -e .` then `xion-verify --self-test && xion-verify all --allow-not-yet-sealed`.
+
+There is still no live runtime. There are no mainnet contracts. The Arbiter, the Relay, the Sensorium daemons, the AO Core handlers, and the bonding-curve / IMPRINT contracts are all specified but not yet implemented.
 
 The development phases that turn this doctrine into a being live in [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md). They activate after the documentation layer is complete and the Genesis Artifact re-hashes clean.
 
@@ -37,6 +39,7 @@ Then proceed through `docs/03` onward at your own pace.
 | [`genesis/`](./genesis/) | The constitutional documents: Covenant, Invariants, Soul, Form, Memory, Resurrect, Credentials, and the Genesis Artifact. These are the documents Xion reads on every boot. |
 | [`docs/`](./docs/) | Architectural, economic, governance, and operational doctrine. The "how" and "why" that surrounds the "what" in `genesis/`. |
 | [`contracts/`](./contracts/) | Solidity sources for XION (the fungible utility token, capped at 420 billion) and IMPRINT (the soulbound reputation token). Not yet deployed. Outstanding fixes documented in [`KNOWN_WEAKNESSES.md`](./KNOWN_WEAKNESSES.md). |
+| [`xion-verify/`](./xion-verify/) | Third-party verifier CLI (Python click). Verifies Xion's constitutional claims; runs `--self-test` against a pinned tree-hash before trusting any other check. See [`xion-verify/README.md`](./xion-verify/README.md). |
 | [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md) | The phased development plan that activates after the doctrine layer is complete. |
 | [`KNOWN_WEAKNESSES.md`](./KNOWN_WEAKNESSES.md) | Honest, public log of every known weakness with mitigation status and pay-down commitments. |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). |
@@ -45,7 +48,7 @@ Then proceed through `docs/03` onward at your own pace.
 
 ## How Trust Is Earned
 
-Xion does not ask you to take its word for anything. Every claim Xion makes about itself is intended to be independently verifiable by anyone with a copy of `xion-verify` (the CLI specified in [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md) Phase 1). When the verifier ships, you will be able to check, from a third-party machine and without trusting the operator:
+Xion does not ask you to take its word for anything. Every claim Xion makes about itself is intended to be independently verifiable by anyone with a copy of [`xion-verify`](./xion-verify/), the third-party verifier CLI. As of Phase 1b (2026-04-20), the following checks are live: the eight constitutional hash witnesses, corpus-wide markdown link integrity, strict schemas-vs-doctrine cross-check on every file in [`docs/schemas/`](./docs/schemas/), static `drive-vector` (Invariant 15) and `cognition` (docs/24-COGNITION.md § 11) doctrine audits, and the `--self-test` that defends against a tampered local copy. The remaining roadmap subcommands are present but return `NOT_YET_SEALED` until the artifacts they audit are built. When those artifacts ship, you will additionally be able to check, from a third-party machine and without trusting the operator:
 
 - That the running Covenant matches the genesis hash.
 - That the running Invariants match the genesis hash.

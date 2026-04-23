@@ -1,0 +1,144 @@
+# docs/schemas/ledger-sensorium.yaml
+#
+# CANONICAL. schema_version: 1 as of Phase 5c (2026-04-21).
+#
+# SENSORIUM_LEDGER is a Relay-local append-only hash-chained JSONL recording
+# anonymized Sensorium events — primarily distress triggers (above-threshold
+# DistressSignal readings joined to a gate() call) and periodic tick_commit
+# rows that pin a hash of the current SensoriumState for forensic continuity.
+# No candidate text, no user identifier, no full SensoriumState bytes are
+# written; only a snapshot hash on tick_commit rows and a saturated
+# distress_score on distress rows.
+#
+# Doctrine source for the row-level field schema is
+# `docs/04-ARCHITECTURE.md` § "SENSORIUM_LEDGER row schema (Phase 5c)". The
+# implementation that writes these rows is `orchestrator/sensorium/ledger.py`.
+#
+# Honesty clauses:
+#   - Phase 5c writes `channel: textual` on every distress row. The
+#     `paralinguistic` channel is enumerated here so future rows can use it
+#     without a schema_version bump, but no Phase 5c or Phase 5d code emits
+#     it. Adding the paralinguistic writer is a Phase 6+ concern tied to
+#     the live audio surface (KW-ARBITER-004 paralinguistic half).
+#   - Cross-ledger join to SAFETY_LEDGER on `correlation_id` is live as of
+#     Phase 5d: `orchestrator.safety.api.gate()` writes a distress row
+#     carrying the current `correlation_id` whenever the Sensorium's
+#     textual DistressSignal OR-combines above DISTRESS_THRESHOLD, and
+#     `xion-verify crisis-fidelity` walks the forward and reverse joins.
+#     Distress rows with correlation_id=null remain legal (tick-time or
+#     test-harness observations) and are tallied separately by the
+#     verifier without FAIL.
+
+schema_version: 1
+
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256:   2853646af79ede670718a8583d8732e54de1d6798f0159d4eebc4463c579fe61
+
+status: canonical
+
+ledger_name: SENSORIUM_LEDGER
+append_only: true
+storage:     local_jsonl                         # Arweave-anchor loop deferred (sibling of KW-RELAY-004)
+redactable:  false                               # same posture as SAFETY_LEDGER and REQUEST_LEDGER
+
+# The canonical row schema. Field semantics live in
+# docs/04-ARCHITECTURE.md § "SENSORIUM_LEDGER row schema (Phase 5c)";
+# this block exists so a programmatic verifier can compare it against the
+# implementation in orchestrator/sensorium/ledger.py without parsing markdown.
+row:
+  required_fields:
+    - schema_version        # uint; 1 (Phase 5c)
+    - seq                   # uint64; per-ledger monotonic, starting at 0
+    - prev_hash             # hex64; sha256 of previous row's canonical bytes (or "0"*64 at seq=0)
+    - this_hash             # hex64; sha256 of this row's canonical bytes excluding this_hash
+    - as_of_utc_ns          # uint64; UTC ns at event time
+    - event_type            # enum {distress, tick_commit}
+    - channel               # enum {textual, paralinguistic}; Phase 5c always writes textual
+    - relay_id              # string; opaque short id matching REQUEST_LEDGER.relay_id
+  conditional_fields:
+    correlation_id:
+      type:     "string | null"
+      required: "iff event_type == distress and the distress was joined to a gate() call; null otherwise"
+      shape:    "same grammar as REQUEST_LEDGER.correlation_id: {state_height_hex}:{nonce_hex}"
+    distress_score:
+      type:     "float | null"
+      required: "iff event_type == distress"
+      shape:    "saturated to [0.0, 1.0]"
+    snapshot_hash:
+      type:     "hex64 | null"
+      required: "iff event_type == tick_commit"
+      shape:    "sha256 of the canonical-JSON SensoriumState bytes at this tick"
+
+# Canonicalization rule for hashing (must match implementation exactly).
+hash:
+  algorithm:        sha256
+  canonicalization: |
+    json.dumps(
+      {k: v for k, v in row.items() if k != "this_hash"},
+      sort_keys=True,
+      separators=(",", ":"),
+      ensure_ascii=False,
+    ).encode("utf-8")
+  algorithm_pin_note: >-
+    Pinned by schema_version. Invariant 14 (Crypto-Agility Mandate) applied
+    one level up: a future migration to a non-sha256 family bumps
+    schema_version.
+  version_dispatch: >-
+    verify_chain reads schema_version per-row. v1 is the only version known
+    today; readers MUST refuse rows whose schema_version is not in
+    _KNOWN_SCHEMA_VERSIONS.
+
+# What runs against this ledger today.
+verifier_implementation:
+  in_process: orchestrator.sensorium.ledger.verify_chain
+  cli:        xion-verify sensorium-ledger
+  semantics: |
+    Walks SENSORIUM_LEDGER row-by-row and asserts
+      (a) every row is well-formed JSON matching schema_version 1's required
+          and conditional field rules,
+      (b) seq is contiguous starting at 0,
+      (c) every this_hash matches recomputed canonical-bytes hash,
+      (d) every prev_hash matches the prior row's this_hash,
+      (e) distress rows carry distress_score; tick_commit rows carry
+          snapshot_hash; neither carries the other,
+      (f) event_type and channel are members of their respective enums.
+    Reports tallies by event_type and channel so operators can see at a
+    glance whether distress is being observed at all and whether the
+    paralinguistic channel has started emitting (Phase 6+).
+
+# What is NOT yet verifiable today.
+verifier_pending:
+  - arweave_anchor_loop          # sibling of KW-RELAY-004; same pattern as SAFETY_LEDGER anchors
+  - supervisor_heartbeat         # KW-SUPERVISOR-002; tick-cadence compliance (assert tick_commit rows arrive at the configured tick_cadence_s ± tolerance)
+
+# What is newly verifiable as of Phase 5d.
+verifier_added:
+  - cross_ledger_join            # xion-verify crisis-fidelity (Phase 5d): forward + reverse join of distress rows to SAFETY_LEDGER principle-10 escalations
+
+# Pay-down commitment history.
+pay_down_commitment_history:
+  opened_in:
+    phase: Phase 4e
+    artifact: orchestrator/sensorium/sensorium.py (Interoception-only skeleton)
+    note: >-
+      Phase 4e shipped the Sensorium skeleton with only Interoception emitting
+      a real scalar (survival_pressure). Phase 5c closes the skeleton by
+      landing Chronoception, Proprioception, the textual DistressSignal, and
+      this ledger.
+  closed_in:
+    phase: Phase 5c
+    artifact: docs/04-ARCHITECTURE.md § "SENSORIUM_LEDGER row schema (Phase 5c)"
+    implementation: orchestrator/sensorium/ledger.py
+    closed_on: 2026-04-21
+  narrowed_in:
+    phase: Phase 5d
+    artifact: docs/04-ARCHITECTURE.md § "The Supervisor (Phase 5d)"
+    implementations:
+      - orchestrator/supervisor.py                      # writes tick_commit rows every tick_cadence_s
+      - orchestrator/safety/api.py                      # writes distress rows on above-threshold OR-combine
+      - xion-verify/src/xion_verify/commands/crisis_fidelity.py  # cross-ledger join verifier
+    narrowed_on: 2026-04-21
+    note: >-
+      Phase 5d closes the cross-ledger-join pay-down commitment; only the
+      arweave_anchor_loop and supervisor_heartbeat items remain in
+      verifier_pending.

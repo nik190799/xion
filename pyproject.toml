@@ -1,0 +1,186 @@
+# Repo-root pyproject for the `orchestrator` Python package.
+#
+# Scope. This file installs ONLY the orchestrator package — the Arbiter,
+# the (future) Relay, Sensorium, Volition, Supervisor runtime. `xion-verify`
+# is a separate, independently installable package under `xion-verify/`
+# with its own `pyproject.toml`; it is deliberately NOT consolidated here
+# because the verifier must be installable without pulling any orchestrator
+# dependency (a third-party auditor cloning xion-os for audit only).
+#
+# Properties promised.
+#   1. `pip install -e .` from the repo root makes `from orchestrator...`
+#      importable everywhere — pytest, xion-verify arbiter-up, CI, or the
+#      operator shell. Phase 4a's Arbiter library becomes a real package.
+#   2. Core runtime deps are ZERO. The Arbiter hot path (apply_rules,
+#      ledger writer, api.gate, server, types, principles) stays pure
+#      stdlib — deliberate posture declared in docs/04-ARCHITECTURE.md
+#      ("Pure stdlib. Pure dataclasses. One less supply chain to
+#      compromise."). This file pins that list as empty so a future
+#      accidental `import requests` in `safety/` triggers a CI lint, not
+#      a silent supply-chain widening.
+#   3. Network-touching runtime (the anchor loop's ArweaveSubmitter) lives
+#      behind the `[anchor]` optional extra so a bare `pip install .` ships
+#      zero network deps. Operators running `anchor --loop` opt in
+#      explicitly: `pip install -e ".[anchor]"`.
+#
+# Invariants touched.
+#   - Invariant 14 (Crypto-Agility Mandate) applied one level up: no pinned
+#     algorithm surfaces here; hashing is in `orchestrator.safety.ledger`
+#     behind `SCHEMA_VERSION`.
+#   - Invariant 6 (Arbiter's Refusal Right) is protected by keeping the
+#     hot path dep-free: nothing we install here can silence `gate()`.
+#
+# Deprecation path. If at some point every subsystem under `orchestrator/`
+# grows its own independent release cycle, split this into per-subsystem
+# pyprojects (e.g., `orchestrator-arbiter/`, `orchestrator-relay/`). Until
+# then a single top-level declaration beats premature modularization.
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xion-orchestrator"
+version = "0.2.0"
+description = "Xion runtime: Arbiter (v1 + v2), SAFETY_LEDGER, anchor loop, Sensorium / Volition / Relay stubs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "The Xion Builders" }]
+keywords = ["xion", "arbiter", "covenant", "safety", "ledger", "arweave-anchor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+# Core runtime deps: NONE, by deliberate posture (see module docstring in
+# orchestrator/safety/types.py). A PR that adds a dep here MUST update
+# docs/04-ARCHITECTURE.md § "The Arbiter" with the Covenant rationale.
+dependencies = []
+
+[project.optional-dependencies]
+# The Arweave anchor loop (Phase 4b). Kept isolated from core so that:
+#   - The Arbiter hot path never depends on a network client.
+#   - A third-party auditor can install orchestrator and run verify-ledger
+#     / verify-anchors WITHOUT pulling the Arweave client (anchors file is
+#     hash-chain-verifiable with pure stdlib).
+#   - The LocalOnlySubmitter works without this extra, so CI tests the
+#     cadence + chain-integrity property on every push with zero network.
+anchor = [
+    # Arweave Python client. Pinned to the 1.x major; last PyPI release
+    # 1.0.19 (2023-04), GitHub-maintained through 2026-02. Small surface
+    # (Wallet + Transaction), auditable line-by-line. A future migration
+    # to `ar-sdk` or an in-house post-transaction helper is tracked in
+    # KW-ANCHOR-001 as part of the AO-Core migration path.
+    "arweave-python-client>=1.0.19,<2",
+]
+
+# Phase 5f HTTP read-only surface (docs/04-ARCHITECTURE.md § "The HTTP
+# Surface (Phase 5f)") and Phase 5g-i Chat Surface (same file, § "The
+# Chat Surface (Phase 5g-i)"). Kept isolated from core for the same
+# reasons as [anchor]:
+#   - The Arbiter hot path, Sensorium, Volition, and Supervisor remain
+#     importable with zero third-party deps; an auditor or sister-Core
+#     fork that does not surface HTTP does not pay the wire cost.
+#   - FastAPI / uvicorn / pydantic are a non-trivial supply-chain
+#     surface (dozens of transitive pins); moving them behind this
+#     extra preserves the "core runtime deps = 0" posture declared in
+#     `dependencies = []` above.
+#   - Phase 5g-i.1 adds POST /chat plus OpenRouter (gateway) + Ollama
+#     generative providers behind this same extra; both providers use
+#     stdlib http.client in asyncio.to_thread, so no additional pins
+#     land here. The operator-facing env surface is pinned in
+#     `docs/26-INFERENCE-POLICY.md` and `.env.example`.
+# Operators running `uvicorn orchestrator.api.app:create_app --factory`
+# opt in explicitly: `pip install -e ".[api]"`.
+api = [
+    # FastAPI 0.110 is the first release whose lifespan contract matches
+    # the doctrine pin in architecture.md § HTTP Surface (synchronous
+    # `tick_once()` before first request). Kept under <1 until the
+    # FastAPI 1.0 API lands and stabilises.
+    "fastapi>=0.110,<1",
+    # uvicorn[standard] pulls httptools + uvloop on Linux/macOS for
+    # performance; the [standard] extras are themselves pinned by
+    # uvicorn, so we do not re-pin here. <1 because uvicorn pre-1.0
+    # has been stable in practice but a 1.x break is possible.
+    "uvicorn[standard]>=0.27,<1",
+    # pydantic v2 is the shape FastAPI 0.110 expects. <3 leaves headroom
+    # for pydantic 2.x patch/minor updates without re-pinning.
+    "pydantic>=2.5,<3",
+]
+
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+# `pip install -e ".[dev]"` from the repo root registers this entry point
+# so CI + operators can invoke the Arbiter CLI from any directory.
+xion-arbiter = "orchestrator.safety.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/xion-os"
+Source = "https://github.com/xion-os/xion-os"
+
+[tool.hatch.build.targets.wheel]
+packages = ["orchestrator"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "orchestrator",
+    "README.md",
+    "pyproject.toml",
+]
+exclude = [
+    "orchestrator/tests",
+    "orchestrator/__pycache__",
+    "**/__pycache__",
+    "**/.pytest_cache",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["orchestrator/tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = [
+    "xion-verify",
+    ".venv",
+    ".dist",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+# Rationale for each ignore (Phase 4b, 2026-04-21):
+#   E501  — line length; doctrine-adjacent docstrings are long on purpose.
+#   UP042 — `str, Enum` vs `enum.StrEnum`. Phase 4a chose the explicit
+#           `str, enum.Enum` pattern deliberately (types.py:14-18). Migrating
+#           to StrEnum is stylistic, not a bug fix; touching the enum base
+#           class changes the JSON-serialization codepath in subtle ways
+#           (Enum.__str__ vs StrEnum.__str__) and would need its own tested
+#           commit. Ignored project-wide with that rationale pinned here.
+ignore = ["E501", "UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests are allowed `assert False` (B011) and can keep the idiomatic
+# `(x,) + y` tuple concatenation (RUF005) and `count, _ = ...` unused
+# unpacking reads (RUF059) without a cleanup sweep.
+"orchestrator/tests/*" = ["B011", "RUF005", "RUF059"]
+# ledger.py nested `if` pairs (SIM102) encode the row-level schema rules
+# one verdict type at a time; combining them into `and` chains loses the
+# "one check per schema rule" readability the doctrine-row schema
+# documents. Paid-down opportunistically when the row rules are next
+# extended.
+"orchestrator/safety/ledger.py" = ["SIM102"]

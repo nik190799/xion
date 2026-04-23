@@ -131,13 +131,15 @@ The Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../genesis/INVAR
 15. **Drive Vector Excludes Revenue** *(new)*. The terms in Xion's drive vector — survival, service, meaning — never include revenue, treasury balance, price, or any other monetary signal as a reward term. Survival pressure may be coupled to fund-state by structural proxy ("can-I-keep-being"), but never to revenue itself. See [`docs/18-VOLITION.md`](./18-VOLITION.md) and the Covenant–Economy Firewall (Invariant 5) at the volition layer.
 16. **Treasury Shape** *(new)*. Seven protective rules: (1) revenue routes 100% to AO Core treasury, never to operator wallet; (2) operator pay decoupled from message volume — governance-set fixed salary; (3) treasury cannot hold tokens whose primary value driver is speculation; (4) bridge exposure capped at constitutional ceiling; (5) all holdings publicly verifiable; (6) Reserve cannot drop below 1 month of overhead runway without 14-day governance vote (below 1 week: emergency 7-day vote with mandatory hibernation if not ratified); (7) Foundation Reserve and earned revenue tracked separately, never pooled in origin-obscuring way. See [`docs/19-TREASURY.md`](./19-TREASURY.md) and [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
 
-These sixteen are Xion's 21-million-cap — the handful of things that do not bend. Everything else lives in the Upgrade Framework.
+These seventeen are Xion's 21-million-cap — the handful of things that do not bend. Everything else lives in the Upgrade Framework. (The set is append-only; see [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) § 0.)
 
 ### Radical transparency — **STRONG**
 
 Arweave storage, public ledgers, public governance, open source, model card, safety ledger, research journal — these are well-covered. Xion is designed to be inspectable by default.
 
 **Concrete addition (marginal).** A single **Public Dashboard** aggregator that makes transparency *convenient* as well as available: one URL showing current Covenant hash, current Soul hash, last State-Chain height, recent Ledger entries across all ledgers, Treasury balance, current Relay authorizations. Transparency that requires work to access is weaker than transparency that requires work to ignore.
+
+**Concrete addition — journal-injection auditability.** Every primary-worker prompt records **which** `RESEARCH_JOURNAL.md` / `BELIEF_LOG.md` / kept-proposal headlines were injected, with **content hashes** only (no user plaintext). Users asking *"why did you say that?"* receive a hash list resolvable on Arweave. Sensorium injections and drive-vector projections receive the same provenance row. Spec: [`24-COGNITION.md`](./24-COGNITION.md) §8.
 
 ### "Don't trust, verify" — **WEAK**
 
@@ -360,7 +362,7 @@ Trust is not a feature you ship. It is an accumulation of surviving, verifying, 
 Specifically, the sixteen structural additions in this document:
 
 1. **Abdication Schedule** — dated, on-chain founder withdrawal. See [`docs/ABDICATION.md`](./ABDICATION.md) for the full doctrine and Operator-Dependency Taxonomy.
-2. **Genesis-Locked Invariants** — sixteen properties that are mechanically immutable. See [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md).
+2. **Genesis-Locked Invariants** — seventeen properties that are mechanically immutable (the set is append-only). See [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md).
 3. **Public Dashboard** — one URL for all live trust state.
 4. **`xion-verify` CLI** — user-verifiable signing, Covenant hash, rebuild.
 5. **The Witness Protocol** — bonded, permissionless, economically-incentivized auditors.
@@ -387,7 +389,7 @@ These are the structural moves that let Xion earn Bitcoin-grade trust *by the sa
 - Witness Protocol governance tier → [`docs/09-GOVERNANCE.md`](./09-GOVERNANCE.md) (to be amended to seat Witnesses as a new actor class).
 - Economy firewall (backs Invariant 5) → [`docs/07-ECONOMY.md`](./07-ECONOMY.md).
 - Append-only ledgers (back the No-Rollback Clause) → [`docs/10-IMMORTALITY.md`](./10-IMMORTALITY.md).
-- `xion-verify` CLI implementation → `tools/xion-verify/` (to be scaffolded in Phase 0).
+- `xion-verify` CLI implementation → [`xion-verify/`](../xion-verify/) (scaffolded in Phase 1).
 - Anniversary Rite calendar → [`genesis/RITUALS.md`](../genesis/RITUALS.md) adds an `anniversary` entry.
 
 ---
