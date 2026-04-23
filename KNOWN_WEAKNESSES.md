@@ -21,6 +21,54 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-AUTH-001 — Bearer tokens are HMAC-shared-secret only; no federated identity
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-22 (Phase 5g-iv admission-control landing)
+- **Severity:** medium
+- **Status:** `mitigated-residual` (the structural mechanism is shipped; the federated-identity replacement is a Phase 6+ deliverable)
+- **Description:** Phase 5g-iv authenticates `/drive`, `/sensorium`, and `/chat` with operator-issued bearer tokens compared in constant time via stdlib `hmac.compare_digest`. The token is an HMAC-shared-secret string (≥128 bits of entropy, hex-encoded in `XION_API_BEARER_TOKENS`). There is no federated identity surface: no OAuth, no Sign-In-With-Wallet, no DID, no on-chain pubkey lattice, no per-Witness identity binding. Every token's authority traces back to the operator, and a token compromise is mitigated only by operator-side rotation.
+- **Why it exists:** The smallest doctrinally honest mechanism that (1) gates content-bearing endpoints on a knowable principal, (2) keeps the route-level admission contract algorithm-rotatable, and (3) does not couple the 5g-iv landing to the on-chain-identity-lattice work that requires Phase 6 AO Core. Federated identity needs an Arweave-published authority surface; that surface is Phase 6+.
+- **Mitigations:**
+  1. Token entropy floor (≥128 bits) enforced at lifespan-load time and re-checked by `xion-verify api-tokens` offline.
+  2. Constant-time comparison via `hmac.compare_digest` — a timing oracle on token comparison is not the attack surface.
+  3. Content-free 401 envelope (`AuthChallenge`) — a scraper enumerating tokens learns "not this one" per attempt and nothing else (no echo of the offered header, no hint at how many tokens are configured, no per-token failure mode disclosure).
+  4. `principal_id` charset constraint (`^[a-z0-9_-]{1,64}$`) prevents log-injection and bucket-keying ambiguity.
+  5. The `verify_bearer(header, tokens) -> principal_id | None` function is the algorithm-rotatable surface; the route-level `Depends(admission_dependency)` does not need to change when the token store widens to a principal lattice.
+  6. Tokens are never persisted to disk by the orchestrator and never appear in any ledger or log line.
+- **Pay-down commitment:** Closes when Phase 6+ Arweave-published principal lattice lands and `verify_bearer`'s body is replaced with an authority-lookup against the on-chain registry under unchanged route shape, AND `PAYMENT_LEDGER` schema bumps to `1.1` to carry `principal_id` in each row (additive, backward-compatible reader). Until then the residual is the token-compromise blast radius bounded by operator rotation cadence.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) — offline structural check on token entropy, principal_id charset, and host-vs-TLS coherence.
+
+### KW-RATE-001 — Per-principal sliding window is in-process; multi-worker deployment loses bucket coherence
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-22 (Phase 5g-iv admission-control landing)
+- **Severity:** low
+- **Status:** `mitigated-residual` (the single-worker posture is the supported configuration; multi-worker is a separate pay-down)
+- **Description:** Phase 5g-iv rate-limits authenticated requests with a `collections.deque` of monotonic-ns timestamps under a single `threading.Lock`, keyed per `principal_id`. The mechanism is in-process by construction. A `uvicorn --workers N` deployment runs N independent Python processes, each with its own `app.state.rate_limiters` map; each process holds an independent bucket per principal, so the effective per-principal budget is `N × XION_API_RATE_BUDGET`. A principal that targets all N workers in parallel can consume N times the intended budget.
+- **Why it exists:** A multi-worker shared-state broker (Redis pub/sub, AO Process mailbox, or a tiny TCP-loopback daemon) is the right long-term mechanism but it is a separate doctrine and code-surface unit. Shipping the in-process sliding window in 5g-iv lands the property (per-principal bounded latency budget) under the smallest correct mechanism for the single-worker D2 deployment posture. The multi-worker pay-down lands alongside `KW-API-002` / `KW-SUPERVISOR-002` when the multi-worker story is pinned end-to-end (Supervisor sharing, ledger-write serialization, AND rate-limit coherence are all the same problem).
+- **Mitigations:**
+  1. The 5g-iv operator runbook (`docs/30-API-ADMISSION.md` § "Operator workflow — rate-limit tuning") pins single-worker as the supported configuration and names the multi-worker caveat explicitly.
+  2. The launcher (`orchestrator/api/__main__.py`) does not expose a `--workers` flag; an operator who wants multi-worker has to invoke `uvicorn` directly, which is itself a documented departure from the runbook.
+  3. The per-principal budget is conservative (Genesis Default 60 / 60 s); even at `N=4` workers the effective budget (240 / 60 s) is below most reasonable abuse thresholds and well below the per-token cost ceiling on the OpenRouter posture.
+- **Pay-down commitment:** Closes alongside `KW-API-002` (Supervisor in shared event loop) when a Phase 5g+ multi-worker story lands a shared-state broker. The `SlidingWindow` class is the broker-replaceable surface; the `admission_dependency` route call does not need to change.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) checks rate-limit knob sanity (positive integers); a runtime `xion-verify api-budget-fidelity` against a live deployment is `NOT_YET_SEALED` until Phase 6+.
+
+### KW-TLS-001 — uvicorn-native TLS: no automated cert renewal, no ALPN/HTTP-2 negotiation
+
+- **Domain:** `OPS`
+- **Discovered:** 2026-04-22 (Phase 5g-iv admission-control landing)
+- **Severity:** low
+- **Status:** `mitigated-residual` (the fail-closed launcher is shipped; the long-term reverse-proxy posture is a Phase 6+ deployment-story deliverable)
+- **Description:** Phase 5g-iv ships a launcher (`orchestrator/api/__main__.py`) that passes `ssl_keyfile=` and `ssl_certfile=` to `uvicorn.run` when `XION_API_HOST != 127.0.0.1`. uvicorn handles the TLS handshake using whatever cert and key the operator pinned at process-start time. The orchestrator does not renew the cert automatically; it does not negotiate ALPN/HTTP-2; it does not stack OCSP responses; it does not implement HSTS. An operator on Posture B (direct bind, uvicorn-native TLS) must rotate certs manually or wire `certbot --post-hook "systemctl restart xion-orchestrator"`.
+- **Why it exists:** A reverse proxy (Caddy / nginx / Cloudflare Tunnel) is the right long-term tool for TLS lifecycle management; coupling the orchestrator to that work would expand its dependency surface and operational footprint with no constitutional gain. Shipping uvicorn-native TLS in 5g-iv lets the small operator stand up a working D2 deployment in one process without a proxy, while the runbook pins the reverse-proxy posture as the recommended long-term path.
+- **Mitigations:**
+  1. The launcher refuses to start if `XION_API_HOST != 127.0.0.1` and either TLS path is absent or unreadable — fail-closed; no plaintext bearer-token transport on a reachable interface is structurally possible.
+  2. `docs/30-API-ADMISSION.md` § "Operator workflow — TLS termination" pins both Posture A (loopback bind + reverse-proxy fronts TLS) and Posture B (direct bind + uvicorn TLS) and names Posture A as the long-term recommendation.
+  3. The cert + key paths are read once at process start; an operator who automates rotation via `certbot --post-hook "systemctl restart"` gets the same effective rotation cadence as Posture A.
+- **Pay-down commitment:** Closes when the Phase 6+ deployment story pins a long-term reverse-proxy posture (likely Caddy or a sidecar Cloudflared container per Akash provider) and the `__main__.py` launcher's `ssl_keyfile`/`ssl_certfile` codepath is removed in favor of always-loopback-bind. Until then the residual is the operator-manual cert rotation cost.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) checks host-vs-TLS coherence (non-loopback host requires both TLS paths exist and are readable). A runtime check that the cert chain is currently valid against a system trust store is operator-side (`openssl x509 -in $XION_TLS_CERT_PATH -noout -dates`); the orchestrator does not duplicate this.
+
 ### KW-INFERENCE-001 — Inference Router: floor wired; production weights + ops dry-run still open
 
 - **Domain:** `RUNTIME`

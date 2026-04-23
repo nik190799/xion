@@ -41,11 +41,22 @@
 #    anchor landing for PAYMENT_LEDGER is Phase 6+ treasury work. Until
 #    then, chain_tip(path) returns the current tip hash for manual
 #    out-of-band pinning.
+#
+#  - principal_id is NOT a field at schema_version=1 (Phase 5g-iv landing).
+#    The bearer-token admission surface (docs/30-API-ADMISSION.md) logs
+#    the matched principal_id to operator-side stderr only; it does not
+#    promote into PAYMENT_LEDGER. principal_id is RESERVED for Phase 6
+#    when on-chain federated identity exists to verify the principal
+#    against; at that point the schema bumps to 1.1 (additive,
+#    backward-compatible reader). KW-AUTH-001 carries the closure
+#    obligation. Doing this at 5g-iv would couple admission-control to
+#    settlement and make the unit harder to deprecate when the
+#    federated-identity story changes.
 
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   2853646af79ede670718a8583d8732e54de1d6798f0159d4eebc4463c579fe61
+source_sha256:   de60029ebe98deb660692dc844a80569fd75adb98bac6c949aeafe8ae40e615a
 
 operational_doctrine: docs/29-BILLING-X402.md
 

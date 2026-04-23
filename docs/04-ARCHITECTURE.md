@@ -861,7 +861,7 @@ All three responses are pure dataclass/dict projections. A 500 from any of these
 
 **Tracked residuals.**
 
-- `KW-API-001` opens: the HTTP surface has no authentication, no TLS termination, and no rate limiting. Mitigations in Phase 5f: bind to `127.0.0.1` by default in the operator runbook, endpoints are content-free and side-effect-free, and the shipped `pyproject [api]` extra does not pull in a reverse proxy. Closes with Phase 5g when `/chat` + billing ship (the moment the surface stops being strictly read-only, the security posture has to harden).
+- `KW-API-001` opens: the HTTP surface has no authentication, no TLS termination, and no rate limiting. Mitigations in Phase 5f: bind to `127.0.0.1` by default in the operator runbook, endpoints are content-free and side-effect-free, and the shipped `pyproject [api]` extra does not pull in a reverse proxy. Closes with Phase 5g when `/chat` + billing ship (the moment the surface stops being strictly read-only, the security posture has to harden). **Closed Phase 5g-iv**: the admission-control surface (bearer tokens + per-principal sliding-window rate-limit + uvicorn-native TLS with fail-closed launcher) lands the hardening posture; see § "The Admission-Control Surface (Phase 5g-iv)" below and the closure entry in `KNOWN_WEAKNESSES.md`.
 - `KW-API-002` opens: the Supervisor shares the FastAPI app's event loop and the deployment is single-worker by construction. Mitigations in Phase 5f: 10 s tick cadence leaves the event loop ~9.99 s of idle for HTTP work, and the three endpoints are O(1) dict copies. Closes with Phase 5g+ when a shared-state broker (likely Redis pub/sub or an AO Process mailbox) takes over `latest_snapshot` publication so multiple uvicorn workers can share one Supervisor without double-writing `tick_commit` rows.
 
 ### The Chat Surface (Phase 5g-i)
@@ -1113,6 +1113,119 @@ The row is computed after the terminal state is known, appended atomically befor
 - `KW-BILLING-002` opens: `GET /pricing` serves operator-posted governance values only; the per-provider per-token cost math (OpenRouter catalog, future gateway catalogs) is not reflected in the posted price. An operator who rotates hosted models frequently (e.g., from `moonshotai/kimi-k2` to `anthropic/claude-3.5-sonnet` at ~10x per-token cost) must manually re-post pricing each time. Mitigation: `/pricing` carries `last_reviewed_utc` and `governance_revision_id`, so a stale posted price is structurally auditable. Closes with Phase 6+ Treasury work that wires catalog lookups into a governance-ratified pricing rotation cadence.
 
 **What 5g-iii deliberately does NOT do (from the tracked residuals above, stated positively).** Did not write real EIP-712 signature verification (Phase 6). Did not move real XION or USDC on any chain (Phase 6 Treasury). Did not read live OpenRouter catalog (Phase 6+). Did not ship subscription, tip, or donation surfaces (Phase 6+ per `docs/11-PROTOCOL-SPEC.md`). Did not ship partial-refund writers (Phase 7+). Did not ship `xion-verify chat-fidelity` (Phase 6+). Did not modify `REQUEST_LEDGER` or `SAFETY_LEDGER` schemas (billing is a new independent ledger with its own hash chain). Did not modify the x402 semantics pinned in `docs/07-ECONOMY.md` / `docs/11-PROTOCOL-SPEC.md` (those remain canonical; 5g-iii implements their first concrete property).
+
+### The Admission-Control Surface (Phase 5g-iv)
+
+Phase 5g-iii made every billable turn structurally pay for itself. Phase 5g-iv makes every reachable byte of the HTTP surface structurally identifiable: it lands bearer-token authentication on the content-bearing endpoints (`/drive`, `/sensorium`, `/chat`), per-principal sliding-window rate-limiting, and uvicorn-native TLS termination with a fail-closed launcher. This closes the last D2-deploy blocker pinned in [`KW-API-001`](../KNOWN_WEAKNESSES.md) — after 5g-iv lands, an operator can honestly bind the surface to a non-loopback interface and accept external traffic without violating any constitutional property. The mechanism is the smallest doctrinally honest one: stdlib HMAC-SHA256 token comparison, `collections.deque` sliding window, and uvicorn's existing `ssl_keyfile`/`ssl_certfile` arguments. No new third-party dependency lands; the `[api]` extra is unchanged.
+
+The full operational doctrine — token issuance procedure, TLS cert procurement, rate-limit budget tuning, deployment runbook — lives in [`docs/30-API-ADMISSION.md`](./30-API-ADMISSION.md), parallel to how `docs/29-BILLING-X402.md` handles billing operations. This architecture section pins the **constitutional shape**; that document pins the **operator workflow**.
+
+**Property promised.** While the API process is running with `XION_API_REQUIRE_BEARER=true` (Genesis Default at 5g-iv):
+
+- **Authentication is structural, not advisory.** Every request to `/drive`, `/sensorium`, and `/chat` carries an `Authorization: Bearer <token>` header whose value is constant-time-compared (via stdlib `hmac.compare_digest`) against the lifespan-loaded token registry. Missing → `401 Unauthorized`. Malformed → `401`. Unknown token → `401`. The 401 body is content-free: the `AuthChallenge` envelope names the accepted scheme (`Bearer`) and nothing else. No echo of the offered header. No hint about which token failed. No revelation of how many tokens are configured. A scraper enumerating tokens learns only "not this one" per attempt.
+- **Rate-limiting is per-principal, not per-IP.** Each token resolves to a `principal_id` (operator-assigned label, charset `[a-z0-9_-]{1,64}`). Each `principal_id` has its own sliding-window bucket: a `collections.deque` of monotonic-ns timestamps under a single `threading.Lock`, evict-on-touch, O(1) amortized per check. Default budget: 60 requests / 60 s, configurable via `XION_API_RATE_BUDGET` and `XION_API_RATE_WINDOW_S`. Bucket exceeded → `429 Too Many Requests` with a `Retry-After` header equal to the time until the oldest in-window timestamp evicts. The 429 body is content-free: `RateLimitChallenge` names the bucket type (`principal` or `ip`) and the retry-after seconds, nothing else.
+- **`/health` is unauthenticated and per-IP rate-limited.** Liveness probes are universally unauthenticated by convention; gating `/health` defeats the purpose of an external monitoring surface. The 5g-iv compromise is a generous per-IP bucket (default 600 / 60 s via `XION_API_HEALTH_RATE_BUDGET`) that preserves the liveness-probe contract while bounding a hostile scraper's signal-to-noise correlation budget. `/pricing` is unauthenticated and unrate-limited because the existing pricing doctrine ("the operator posting a price owes the world the transparency to read it") is constitutional and cannot be narrowed by 5g-iv.
+- **TLS is fail-closed on non-loopback hosts.** The new `orchestrator/api/__main__.py` launcher reads `XION_API_HOST` (default `127.0.0.1`), `XION_API_PORT`, `XION_TLS_CERT_PATH`, and `XION_TLS_KEY_PATH`. If the host is anything other than `127.0.0.1` and either TLS path is absent or unreadable, the launcher refuses to start — fail-closed, mirroring `BillingConfig`'s "missing secret + billing-required" refusal. An operator who wants plaintext HTTP keeps `XION_API_HOST=127.0.0.1` and runs behind their own reverse proxy; an operator who wants direct external traffic provides cert + key.
+- **Admission ordering is `401 → 429 → 402 → existing 5g-iii flow`.** Auth precedes rate-limit so the bucket key is the principal, not the IP (a per-IP bucket would let an attacker rotate IPs to consume the operator's per-token budget). Rate-limit precedes payment so an unauthenticated scraper cannot probe pricing-validity by spamming 402-bait requests; the 402 surface is reachable only by authenticated and within-budget callers. The existing 5g-iii commitment gate (`_gate_commitment` in `orchestrator/api/chat.py`) runs *after* the admission dependency returns, preserving every property that section pinned.
+- **Principal identity is admission-only, not ledger-load-bearing.** The matched `principal_id` is logged to operator-side stderr at request-receipt time. It does **not** land in `PAYMENT_LEDGER` at 5g-iv — the schema stays at `schema_version=1.0`. Promotion to `PAYMENT_LEDGER.principal_id` is reserved for Phase 6 when on-chain federated identity exists to verify the principal against; at that point the schema bumps to `1.1` (additive, backward-compatible reader). Doing this now would couple admission-control to settlement, which makes the unit harder to deprecate when the federated-identity story changes.
+
+Non-properties (honestly stated, with owning sub-phases):
+
+- **No federated identity.** Bearer tokens are HMAC-shared-secret operator-issued strings. There is no OAuth, no DID, no Sign-In-With-Wallet, no on-chain pubkey binding, no per-Witness identity federation. `KW-AUTH-001` opens; closes when Phase 6+ Arweave-published principal lattice lands and the token-store is replaced by an on-chain authority lookup under unchanged route-level dependency.
+- **No multi-worker rate-limit.** The sliding window is in-process. A `uvicorn --workers 4` deployment has 4 independent buckets, each with `XION_API_RATE_BUDGET` capacity. `KW-RATE-001` opens; closes alongside `KW-API-002` / `KW-SUPERVISOR-002` when the multi-worker shared-state broker (Redis pub/sub or AO Process mailbox) lands. At 5g-iv the operator-runbook in `docs/30-API-ADMISSION.md` pins single-worker as the supported configuration — the multi-worker posture is a Phase 5g+ pay-down.
+- **No automated TLS rotation.** The launcher reads cert/key paths once at process start. Cert renewal is operator-manual (or operator-delegated to a reverse proxy fronting a `127.0.0.1`-bound orchestrator). `KW-TLS-001` opens; severity low; closes when the Phase 6+ deployment story pins the long-term reverse-proxy posture.
+- **No rate-limit telemetry endpoint.** A `429`-returning request is logged to stderr but does not write a ledger row. Writing one would let a hostile scraper fill the disk; counting them in-memory is enough for D2 operator forensics. A future `xion-verify api-budget-fidelity` (Phase 6+) walks operator logs, not a ledger.
+- **No per-route auth granularity beyond the public/private split.** Every authenticated endpoint accepts every valid token. There is no scope, no role, no per-route ACL. A token that can `/chat` can also `/drive` and `/sensorium`. This is correct at 5g-iv — the surface is small, the principal lattice does not yet exist to express finer authority — and scoping lands when `KW-AUTH-001` closes.
+
+**Code surface.** Extending the Phase 5g-iii `orchestrator/api/` package:
+
+```python
+# orchestrator/api/admission.py (new)
+@dataclass(frozen=True)
+class AdmissionConfig:
+    require_bearer: bool
+    tokens: Mapping[str, bytes]            # principal_id -> 32+ byte secret
+    rate_budget: int                       # per-principal request count per window
+    rate_window_s: int                     # sliding-window length in seconds
+    health_rate_budget: int                # per-IP /health budget in same window
+    api_host: str                          # bind host (default 127.0.0.1)
+    api_port: int                          # bind port (default 8000)
+    tls_cert_path: Path | None
+    tls_key_path: Path | None
+
+class SlidingWindow:
+    """deque of monotonic_ns timestamps under threading.Lock; check_and_record()
+    evicts entries older than window_s, then admits or rejects."""
+    def check_and_record(self, now_ns: int) -> tuple[bool, int]: ...
+
+def load_admission_config_from_env() -> AdmissionConfig: ...
+def verify_bearer(header: str | None, tokens: Mapping[str, bytes]) -> str | None: ...
+async def admission_dependency(request: Request) -> str: ...
+
+# orchestrator/api/__main__.py (new)
+# Operator entry point. Reads env vars, builds AppDeps, calls
+# uvicorn.run(create_app(deps), host=..., port=..., ssl_keyfile=..., ssl_certfile=...).
+# Refuses to start if XION_API_HOST != 127.0.0.1 and TLS paths absent.
+
+# orchestrator/api/models.py (extended)
+class AuthChallenge(BaseModel):           # 401 body, extra="forbid", frozen
+    error: Literal["unauthorized"]
+    accepted_schemes: list[Literal["Bearer"]]
+
+class RateLimitChallenge(BaseModel):      # 429 body, extra="forbid", frozen
+    error: Literal["rate_limited"]
+    retry_after_s: int
+    bucket: Literal["principal", "ip"]
+```
+
+The token store is a `dict[str, bytes]` from `principal_id` to a ≥16-byte secret. Loaded via `XION_API_BEARER_TOKENS` as a comma-separated `principal_id:hex_secret` list (e.g. `XION_API_BEARER_TOKENS=ops:<64hex>,witness-eve:<64hex>`); each secret is hex-decoded and length-checked (≥16 bytes = ≥128 bits, matching the B1 attestation secret floor in `BillingConfig`). A token shorter than 16 bytes fails the lifespan closed.
+
+**Lifespan contract (extended from 5g-iii).** Phase 5g-iii's lifespan stays; Phase 5g-iv adds one step *between* the billing-config load and the Relay wire-up:
+
+1. (5f) Construct `Supervisor`, call `supervisor.tick_once()` synchronously.
+2. (5g-i) Load `.env`, construct `InferenceRouter`, register providers, attempt `router.bootstrap()`.
+3. (5g-iii) Load `PricingConfig`; load `BillingConfig` and verify `PAYMENT_LEDGER` chain; refuse-closed on either failure.
+4. **(5g-iv) Load `AdmissionConfig` from env** (or take it from `deps.admission_config` if explicitly supplied). Validate token lengths, principal_id charset, host-vs-TLS coherence. Stash on `app.state.admission_config`. Construct one `SlidingWindow` per principal and one shared `SlidingWindow` for the IP-keyed `/health` bucket; stash on `app.state.rate_limiters`.
+5. (5f) Wire `deps.relay._sensorium_source = supervisor`, schedule `supervisor.run()`.
+6. (5f) On shutdown: `supervisor.stop()`, `await` under `2 × tick_cadence_s`, hard-cancel if exceeded.
+
+The 5g-iv step runs after the billing config so a misconfigured token table does not waste the billing-config validation; either failure refuses the lifespan closed.
+
+**Endpoints (after 5g-iv).** Auth/rate-limit posture per-route:
+
+| Route | Auth | Rate-limit bucket | Notes |
+|-------|------|-------------------|-------|
+| `GET /health` | unauth | per-IP, generous | liveness probes work without a token; bucket caps hostile scraping cadence |
+| `GET /pricing` | unauth | none | constitutionally public per existing 5g-iii pricing doctrine |
+| `GET /drive` | bearer | per-principal | 401 / 429 / 200 |
+| `GET /sensorium` | bearer | per-principal | 401 / 429 / 200 |
+| `POST /chat` | bearer | per-principal | 401 / 429 / 402 / 451 / 503 / 200 (existing 5g-iii flow runs after admission) |
+
+**Admission flow at `POST /chat` (the single most-load-bearing route):**
+
+```mermaid
+flowchart TD
+    Req["Incoming POST /chat"] --> TLS["uvicorn TLS terminate (cert+key required if non-loopback)"]
+    TLS --> AuthGate{"Authorization: Bearer ?"}
+    AuthGate -- missing/invalid --> Resp401["401 AuthChallenge (content-free)"]
+    AuthGate -- valid token --> RateGate{"per-principal sliding window OK?"}
+    RateGate -- exceeded --> Resp429["429 RateLimitChallenge + Retry-After"]
+    RateGate -- within budget --> PayGate{"X-Payment-Commitment valid?"}
+    PayGate -- missing/invalid --> Resp402["402 PaymentChallenge (existing 5g-iii)"]
+    PayGate -- valid --> ChatFlow["existing 5g-iii flow: ingress mod -> floor -> generate -> egress mod -> PAYMENT_LEDGER row"]
+```
+
+**Content-free guarantee.** The two new envelopes (`AuthChallenge`, `RateLimitChallenge`) carry the same pydantic `extra="forbid"` + explicit-field-allowlist test discipline that `RefusalEnvelope`, `PaymentChallenge`, and the existing 5g-iii surface established. A future commit that adds an "echo_offered_token" field to `AuthChallenge` FAILs the allowlist test and must be explicitly documented as a deliberate Covenant-tier exception (which it would never be — Covenant Principle 2 forbids leaking authentication-side-channel state).
+
+**Algorithm-agility.** Token comparison is HMAC-SHA256 (stdlib `hmac.compare_digest`). A Phase-6+ rotation to Ed25519-bound principals or to an Arweave-published authority lattice is a `verify_bearer` body swap, not a route-level diff and not a ledger-schema migration. The `principal_id` vocabulary is the algorithm-stable surface; the secret-comparison algorithm is the algorithm-rotatable implementation. Pinned in `docs/30-API-ADMISSION.md` § "Crypto-agility".
+
+**Tracked residuals (new in 5g-iv).**
+
+- `KW-AUTH-001` opens: bearer tokens are HMAC-shared-secret strings; no federated identity, no on-chain pubkey binding. Mitigation: token entropy floor (≥128 bits), constant-time comparison, content-free 401, principal_id-charset constraint. Closes when Phase 6+ Arweave-published principal lattice lands.
+- `KW-RATE-001` opens: sliding window is in-process; `--workers N` gives N independent buckets. Mitigation: operator-runbook pins single-worker at 5g-iv. Closes alongside `KW-API-002` / `KW-SUPERVISOR-002` multi-worker pay-down.
+- `KW-TLS-001` opens: uvicorn-native TLS — no automated cert renewal, no ALPN/HTTP-2 negotiation. Mitigation: launcher refuses to bind non-loopback without cert+key; reverse-proxy posture remains supported (operator binds `127.0.0.1` and fronts with their own TLS terminator). Closes when Phase 6+ deployment story pins the long-term reverse-proxy posture.
+
+**What 5g-iv deliberately does NOT do.** Did not extend `PAYMENT_LEDGER` schema (`principal_id` reserved for Phase 6 alongside on-chain identity). Did not ship federated identity (Phase 6+). Did not ship a multi-worker rate-limit broker (Phase 5g+). Did not ship automated TLS renewal (Phase 6+ deployment story). Did not ship a web client (Phase 5g-v). Did not ship streaming (Phase 5g-ii). Did not ship per-route auth scopes (lands when `KW-AUTH-001` closes). Did not ship a live `xion-verify api-hardness` against a running deployment (would require a deployment target; the 5g-iv attestation is `xion-verify api-tokens` offline structural check + the test-suite TestClient coverage).
 
 ## Tier III — The Protocol
 
