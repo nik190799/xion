@@ -218,7 +218,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     else:
         admission_config = load_admission_config_from_env()
     app.state.admission_config = admission_config
-    app.state.rate_limiters = build_rate_limiters(admission_config)
+    # Phase 5g+ rate-limit broker wiring. When the broker is configured
+    # (XION_BROKER_DB_PATH set), ``build_rate_limiters`` returns a
+    # BrokerBackedSlidingWindowStore so all N workers see one global
+    # per-principal bucket. When unset, it returns the Phase 5g-iv
+    # in-process sliding-window store (backward-compat; KW-RATE-001 is
+    # the in-process residual when no broker is configured).
+    app.state.rate_limiters = build_rate_limiters(
+        admission_config, broker=broker
+    )
     # The /health per-IP bucket map is built lazily on first request;
     # initialise the slot so admission_dependency does not have to
     # check for its existence on every call.

@@ -55,6 +55,7 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Protocol
 
 from fastapi import HTTPException, Request
 
@@ -311,6 +312,148 @@ def _ns_to_ceil_seconds(ns: int) -> int:
     return (ns + 999_999_999) // 1_000_000_000
 
 
+# --- RateLimitStore Protocol (Phase 5g+) ---------------------------------
+
+
+class RateLimitStore(Protocol):
+    """The admission dependency's view onto its rate-limit substrate.
+
+    Two production implementations:
+
+    - :class:`InProcessSlidingWindowStore` — the Phase 5g-iv in-process
+      map of per-principal :class:`SlidingWindow` buckets. Used when
+      no broker is configured (single-worker posture). Backward-
+      compatible in every observable respect.
+    - :class:`BrokerBackedSlidingWindowStore` — Phase 5g+ broker-backed
+      rate-limit store that serves globally-coherent per-principal
+      buckets across N uvicorn workers via
+      :meth:`Broker.check_and_record_rate`.
+
+    Properties the Protocol promises:
+
+    - Return type is ``tuple[bool, int]``: ``(admitted, retry_after_s)``.
+      ``retry_after_s`` is 0 on admit and ``>= 1`` on reject; mirrors the
+      shape :class:`SlidingWindow` already returns so the admission
+      dependency code path is untouched when we swap stores.
+    - ``principal_id`` is the matched bearer principal; the store is
+      responsible for bucketing state per-principal. Callers that want
+      a different key (e.g., per-IP for /health) build a second store.
+    - ``now_ns`` is a test seam. Production callers leave it ``None`` and
+      get the store's chosen clock (monotonic in-process; wall-clock
+      broker-backed, because monotonic clocks are not comparable across
+      processes on the same host).
+    """
+
+    def check_and_record(
+        self,
+        principal_id: str,
+        now_ns: int | None = None,
+    ) -> tuple[bool, int]:
+        ...
+
+
+class InProcessSlidingWindowStore:
+    """Phase 5g-iv in-process per-principal sliding-window store.
+
+    Holds a ``dict[principal_id -> SlidingWindow]`` under a thin
+    ``threading.Lock`` that guards the dict's ``setdefault`` only.
+    Per-bucket ``check_and_record`` contention is handled by the
+    bucket's own lock (see :class:`SlidingWindow`).
+
+    Lazy allocation: buckets are constructed on first sight of a
+    principal_id. The 5g-iv ``build_rate_limiters(config)`` path pre-
+    populated the map from ``config.tokens`` at lifespan startup;
+    this store instead defers construction to the first admit. A
+    principal that never connects consumes zero bucket memory.
+    """
+
+    def __init__(self, *, budget: int, window_ns: int) -> None:
+        if budget < 1:
+            raise ValueError(f"budget must be >= 1; got {budget}")
+        if window_ns < 1:
+            raise ValueError(f"window_ns must be >= 1; got {window_ns}")
+        self._budget = budget
+        self._window_ns = window_ns
+        self._lock = threading.Lock()
+        self._per_principal: dict[str, SlidingWindow] = {}
+
+    def _bucket_for(self, principal_id: str) -> SlidingWindow:
+        with self._lock:
+            limiter = self._per_principal.get(principal_id)
+            if limiter is None:
+                limiter = SlidingWindow(
+                    budget=self._budget, window_ns=self._window_ns
+                )
+                self._per_principal[principal_id] = limiter
+        return limiter
+
+    def check_and_record(
+        self,
+        principal_id: str,
+        now_ns: int | None = None,
+    ) -> tuple[bool, int]:
+        return self._bucket_for(principal_id).check_and_record(now_ns)
+
+    def known_principals(self) -> list[str]:
+        """For test / operator introspection only."""
+        with self._lock:
+            return list(self._per_principal.keys())
+
+
+class BrokerBackedSlidingWindowStore:
+    """Phase 5g+ broker-backed per-principal sliding-window store.
+
+    Delegates to :meth:`Broker.check_and_record_rate` which runs inside
+    a single ``BEGIN IMMEDIATE`` transaction on the shared SQLite file.
+    All N uvicorn workers sharing the broker DB see a single global
+    bucket per principal — the pay-down path for ``KW-RATE-001``.
+
+    Clock policy: this store uses ``time.time_ns()`` (wall clock), not
+    ``time.monotonic_ns()``. The broker's event timestamps are
+    stored in one DB file that N worker processes compare timestamps
+    against each other; only wall clock is process-comparable on the
+    same host. The in-process store keeps monotonic for backward
+    compatibility and to resist operator clock jumps within one worker.
+    """
+
+    def __init__(
+        self,
+        *,
+        broker,  # orchestrator.runtime.broker.Broker; Protocol-typed
+        budget: int,
+        window_ns: int,
+    ) -> None:
+        if budget < 1:
+            raise ValueError(f"budget must be >= 1; got {budget}")
+        if window_ns < 1:
+            raise ValueError(f"window_ns must be >= 1; got {window_ns}")
+        self._broker = broker
+        self._budget = budget
+        self._window_ns = window_ns
+
+    def check_and_record(
+        self,
+        principal_id: str,
+        now_ns: int | None = None,
+    ) -> tuple[bool, int]:
+        if now_ns is None:
+            now_ns = time.time_ns()
+        result = self._broker.check_and_record_rate(
+            principal_id=principal_id,
+            window_ns=self._window_ns,
+            budget=self._budget,
+            now_ns=now_ns,
+        )
+        if result.allowed:
+            return True, 0
+        # Rejected: the broker returns retry_after_s; coerce to >=1
+        # to match the in-process SlidingWindow's "do not spin" floor.
+        retry_after_s = (
+            result.retry_after_s if result.retry_after_s is not None else 1
+        )
+        return False, max(1, retry_after_s)
+
+
 # --- Bearer verification -------------------------------------------------
 
 
@@ -511,25 +654,43 @@ def load_admission_config_from_env() -> AdmissionConfig:
 
 def build_rate_limiters(
     config: AdmissionConfig,
-) -> dict[str, SlidingWindow]:
-    """Construct one ``SlidingWindow`` per known principal_id.
+    *,
+    broker=None,  # orchestrator.runtime.broker.Broker | None; Protocol-typed
+) -> RateLimitStore:
+    """Construct the per-principal :class:`RateLimitStore` the admission
+    dependency uses.
 
-    Lifespan stashes the result on ``app.state.rate_limiters``. The map
-    is closed at lifespan time — a token added to the env after process
-    start is not picked up until restart (mirrors the no-soft-rotation
-    posture pinned in docs/30-API-ADMISSION.md).
+    Phase 5g-iv behavior (backward-compat): when ``broker`` is ``None``,
+    returns an :class:`InProcessSlidingWindowStore`. The store lazily
+    allocates a :class:`SlidingWindow` per principal on first admit;
+    no state is pre-allocated (a token in the registry that never
+    connects consumes zero bucket memory, which the
+    constant-time-scan of ``verify_bearer`` already handles
+    independently).
+
+    Phase 5g+ broker-backed behavior: when ``broker`` is a
+    :class:`Broker`, returns a :class:`BrokerBackedSlidingWindowStore`
+    that delegates to ``broker.check_and_record_rate``. All N uvicorn
+    workers sharing the broker DB see one global bucket per principal
+    — the pay-down path for ``KW-RATE-001``.
 
     The IP-keyed ``/health`` bucket is constructed separately on demand
     by ``admission_dependency`` (see ``_health_limiter_for``); building
     one per IP at startup would let an attacker pre-allocate memory
     by spraying the surface, which is exactly the kind of degenerate
-    case the per-IP cap is supposed to bound.
+    case the per-IP cap is supposed to bound. ``/health`` remains
+    in-process even when the broker is configured — per-IP buckets do
+    not leak across workers because probers target the worker in
+    front of them, not a round-robin.
     """
     window_ns = config.rate_window_s * 1_000_000_000
-    return {
-        principal_id: SlidingWindow(budget=config.rate_budget, window_ns=window_ns)
-        for principal_id in config.tokens
-    }
+    if broker is None:
+        return InProcessSlidingWindowStore(
+            budget=config.rate_budget, window_ns=window_ns
+        )
+    return BrokerBackedSlidingWindowStore(
+        broker=broker, budget=config.rate_budget, window_ns=window_ns
+    )
 
 
 # --- Routes that bypass admission ---------------------------------------
@@ -636,23 +797,18 @@ def admission_dependency(request: Request) -> str:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    rate_limiters: Mapping[str, SlidingWindow] = getattr(
-        app.state, "rate_limiters", {}
-    )
-    limiter = rate_limiters.get(principal_id)
-    if limiter is None:
-        # Defensive: a verified principal_id without a bucket means
-        # the lifespan and the admission dependency disagree on the
-        # token table. That is a lifespan-construction bug, not a
-        # request-time failure mode. Refuse closed.
+    store: RateLimitStore | None = getattr(app.state, "rate_limiters", None)
+    if store is None:
+        # Defensive: a missing rate-limit store is a lifespan-construction
+        # bug, not a request-time failure mode. Refuse closed.
         raise HTTPException(
             status_code=500,
             detail=(
-                f"rate-limiter not built for principal {principal_id!r} "
-                "(lifespan / admission_dependency disagreement?)"
+                "rate-limit store not built (lifespan did not construct "
+                "app.state.rate_limiters?)"
             ),
         )
-    admitted, retry_after_s = limiter.check_and_record()
+    admitted, retry_after_s = store.check_and_record(principal_id)
     if not admitted:
         challenge = RateLimitChallenge(
             error="rate_limited",
@@ -756,6 +912,9 @@ def _health_limiter_for(
 __all__ = [
     "AdmissionConfig",
     "AdmissionConfigError",
+    "BrokerBackedSlidingWindowStore",
+    "InProcessSlidingWindowStore",
+    "RateLimitStore",
     "SlidingWindow",
     "admission_dependency",
     "build_rate_limiters",
