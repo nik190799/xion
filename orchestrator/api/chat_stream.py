@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import secrets
 import sys
 import time
 from collections.abc import AsyncIterator
@@ -99,6 +100,7 @@ class _StreamOutcome:
     correlation_id: str
     provider_id: str | None
     model_id: str | None
+    stream_id: str  # 32-hex; identifies the streaming turn end-to-end
 
 
 def register_chat_stream_route(app: FastAPI) -> None:
@@ -160,6 +162,16 @@ def register_chat_stream_route(app: FastAPI) -> None:
         # failure modes (ingress refuse, egress refuse, no_floor,
         # provider_error, deadline) are reported as a single ``done``
         # event inside the stream.
+        #
+        # Phase 5g-ii Commit 5: allocate a fresh ``stream_id`` (128
+        # bits of entropy, lowercase hex) BEFORE the generator runs
+        # so it is available to every terminal path. The id stamps
+        # the PAYMENT row so the Commit-5 ``xion-verify
+        # chat-streaming-fidelity`` verifier can group rows by stream
+        # and enforce the stream-level invariants (one row per stream,
+        # no cross-talk between streams, cancel-without-paired-SAFETY,
+        # retroactive-refuse-with-paired-SAFETY).
+        stream_id = secrets.token_hex(16)
         generator = _stream_body(
             app=app,
             relay=deps.relay,
@@ -169,6 +181,7 @@ def register_chat_stream_route(app: FastAPI) -> None:
             billing_config=billing_config,
             pricing_config=pricing_config,
             deadline_s=deadline_s,
+            stream_id=stream_id,
         )
         return StreamingResponse(
             generator,
@@ -197,6 +210,7 @@ async def _stream_body(
     billing_config: "BillingConfig",
     pricing_config: "PricingConfig",
     deadline_s: float,
+    stream_id: str,
 ) -> AsyncIterator[bytes]:
     """The SSE byte stream.
 
@@ -243,6 +257,7 @@ async def _stream_body(
                 correlation_id="",
                 provider_id=None,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         return
@@ -266,6 +281,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=None,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         return
@@ -297,6 +313,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=None,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         return
@@ -325,6 +342,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=None,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         return
@@ -375,6 +393,7 @@ async def _stream_body(
                         correlation_id=ingress.correlation_id,
                         provider_id=provider_id,
                         model_id=None,
+                        stream_id=stream_id,
                     ),
                 )
                 return
@@ -419,6 +438,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=provider_id,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         raise
@@ -439,6 +459,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=provider_id,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         return
@@ -464,6 +485,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=provider_id,
                 model_id=None,
+                stream_id=stream_id,
             ),
         )
         return
@@ -498,6 +520,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=provider_id,
                 model_id=model_id,
+                stream_id=stream_id,
             ),
         )
         return
@@ -527,6 +550,7 @@ async def _stream_body(
                 correlation_id=ingress.correlation_id,
                 provider_id=provider_id,
                 model_id=model_id,
+                stream_id=stream_id,
             ),
         )
         return
@@ -549,6 +573,7 @@ async def _stream_body(
                 correlation_id=egress.correlation_id,
                 provider_id=provider_id,
                 model_id=model_id,
+                stream_id=stream_id,
             ),
         )
         return
@@ -584,6 +609,7 @@ async def _stream_body(
             correlation_id=egress.correlation_id,
             provider_id=provider_id,
             model_id=final_model_id,
+            stream_id=stream_id,
         ),
     )
 
@@ -645,6 +671,7 @@ def _finalize_stream_ledger(
             model_id=outcome.model_id,
             authorization_reference=auth_ref,
             source_sha256=billing_config.architecture_sha256,
+            stream_id=outcome.stream_id,
         )
     except Exception as exc:
         _log(

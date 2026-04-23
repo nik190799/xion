@@ -196,6 +196,7 @@ def build_payment_row(
     source_sha256: str,
     seq: int,
     prev_hash: str,
+    stream_id: str | None = None,
 ) -> dict[str, Any]:
     """Assemble a PAYMENT_LEDGER row and compute its ``this_hash``.
 
@@ -293,6 +294,33 @@ def build_payment_row(
     if seq < 0:
         raise ValueError("seq must be non-negative")
 
+    # Phase 5g-ii Commit 5: ``stream_id`` is an OPTIONAL additive
+    # field. A PAYMENT row that originated from the streaming Chat
+    # Surface (``POST /chat/stream``) carries a lowercase hex
+    # identifier (32 chars, 128 bits of entropy); a row from the
+    # non-streaming ``POST /chat`` handler omits the field entirely.
+    # Schema is additive: the canonicalization rule (json.dumps
+    # sort_keys) hashes absent keys as absent, so existing
+    # pre-commit-5 rows on disk stay byte-exact.
+    if stream_id is not None:
+        if not isinstance(stream_id, str):
+            raise ValueError("stream_id must be a string when present")
+        if len(stream_id) != 32:
+            raise ValueError(
+                f"stream_id must be exactly 32 hex chars (got {len(stream_id)})"
+            )
+        if not all(c in "0123456789abcdef" for c in stream_id):
+            raise ValueError(
+                "stream_id must be lowercase hex (0-9a-f)"
+            )
+        if outcome == "cancelled" and stream_id is None:
+            # Defensive: cancellation without a stream_id is structurally
+            # impossible (cancel only fires on streams) but re-asserted
+            # here so a future refactor cannot silently drop the field.
+            raise ValueError(
+                "outcome=cancelled requires stream_id (streams only)"
+            )
+
     row: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "seq": seq,
@@ -311,6 +339,8 @@ def build_payment_row(
         "authorization_reference": authorization_reference,
         "source_sha256": source_sha256,
     }
+    if stream_id is not None:
+        row["stream_id"] = stream_id
     row["this_hash"] = _sha256_hex(_canonical_bytes_excluding_this_hash(row))
     return row
 
@@ -331,6 +361,7 @@ def append_payment_row(
     model_id: str | None,
     authorization_reference: str,
     source_sha256: str,
+    stream_id: str | None = None,
 ) -> dict[str, Any]:
     """Append a new row to the ledger. Returns the written row.
 
@@ -359,6 +390,7 @@ def append_payment_row(
             source_sha256=source_sha256,
             seq=next_seq,
             prev_hash=prev_hash,
+            stream_id=stream_id,
         )
         line = json.dumps(
             row,
@@ -531,6 +563,29 @@ def verify_chain(path: Path) -> tuple[int, str]:
                     f"seq={seq}: posture=disabled requires "
                     f"authorization_reference=''"
                 )
+
+        # Phase 5g-ii Commit 5: optional ``stream_id`` field. If
+        # present, it MUST be a lowercase 32-hex string. Cancel rows
+        # MUST carry it (cancellation is stream-only). Non-stream rows
+        # MUST omit it; a legacy row on disk without the field is
+        # tolerated.
+        stream_id_val = row.get("stream_id")
+        if stream_id_val is not None:
+            if not isinstance(stream_id_val, str):
+                raise ChainBroken(
+                    f"seq={seq}: stream_id must be a string when present"
+                )
+            if len(stream_id_val) != 32 or not all(
+                c in "0123456789abcdef" for c in stream_id_val
+            ):
+                raise ChainBroken(
+                    f"seq={seq}: stream_id must be 32 lowercase hex chars"
+                )
+        elif outcome == "cancelled":
+            raise ChainBroken(
+                f"seq={seq}: outcome=cancelled requires stream_id "
+                f"(cancellation is stream-only)"
+            )
 
         last_this = str(row["this_hash"])
         expected_prev = last_this

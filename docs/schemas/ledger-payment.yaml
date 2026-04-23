@@ -56,7 +56,7 @@
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   5a6dc6eabca799e144f16d9544a1de8ee59f3a71d18974c0168a892606058236
+source_sha256:   bcb305989e76c32d65a72bdcccee064ba5b4671c6d7145e87af7490ed41818f6
 
 operational_doctrine: docs/29-BILLING-X402.md
 
@@ -91,6 +91,9 @@ row:
     - model_id               # nullable string; specific model used or null if refused pre-selection
     - authorization_reference # string; B1 payload hash, B2 commitment hash, or "" in disabled posture
     - source_sha256          # hex64; anchor hash of docs/04-ARCHITECTURE.md at row-write time
+
+  optional_fields:
+    - stream_id              # hex32; present iff row originated on POST /chat/stream (Phase 5g-ii)
 
   conditional_fields:
     posture:
@@ -215,6 +218,19 @@ row:
         written. Lets future verifiers confirm the row was produced
         under a known-good doctrine version (doctrine drift detection).
 
+    stream_id:
+      type:     "hex32 | absent"
+      required: "iff outcome=cancelled (streams only); present on any row written by POST /chat/stream"
+      absent_when: "row was written by POST /chat (non-streaming)"
+      shape: "32 lowercase hex chars (128 bits of entropy), allocated once per streaming turn"
+      note: >-
+        Phase 5g-ii Commit 5 additive field. The canonicalization rule
+        (json.dumps sort_keys) hashes absent keys as absent, so existing
+        pre-5g-ii rows on disk stay byte-exact and newly-written
+        non-streaming rows also omit the field. xion-verify
+        chat-streaming-fidelity uses stream_id to group streaming rows
+        and enforce the stream-level invariants below.
+
 # Canonicalization rule for hashing (must match implementation exactly).
 # Identical to SAFETY_LEDGER's canonicalization rule.
 hash:
@@ -244,12 +260,17 @@ structural_invariants:
   - "posture=B3 => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
   - "outcome IN {refunded_partial, stranded} => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
   - "outcome=cancelled => NO paired SAFETY_LEDGER egress verdict=refuse row (the Arbiter never evaluated the candidate; cancel is operational, not Covenant)"
+  - "outcome=cancelled => stream_id IS NOT NULL (cancel is stream-only)"
+  - "stream_id present => row originated on POST /chat/stream; stream_id absent => row originated on POST /chat (non-streaming)"
+  - "stream_id MUST be 32 lowercase hex chars when present"
   - "correlation_id MUST match at least one SAFETY_LEDGER row's correlation_id (enforced by cross-ledger verifier, not by this ledger's chain-check alone)"
 
 # What runs against this ledger today.
 verifier_implementation:
   in_process: orchestrator.billing.ledger.verify_chain
-  cli:        xion-verify refusal-is-free
+  cli:
+    - xion-verify refusal-is-free
+    - xion-verify chat-streaming-fidelity  # Phase 5g-ii Commit 5 — stream-level invariants keyed on stream_id
   semantics: |
     Walks the file row-by-row and asserts:
       (a) every row is well-formed JSON matching the schema_version 1 shape,

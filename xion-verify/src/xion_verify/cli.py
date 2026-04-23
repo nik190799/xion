@@ -23,6 +23,7 @@ from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.arbiter_up import arbiter_up
+from xion_verify.commands.chat_streaming_fidelity import chat_streaming_fidelity
 from xion_verify.commands.cognition import cognition
 from xion_verify.commands.constitutional import (
     covenant,
@@ -77,6 +78,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "sensorium-ledger": sensorium_ledger,
     "api-tokens": api_tokens,
     "web-client": web_client,
+    "chat-streaming-fidelity": chat_streaming_fidelity,
 }
 
 
