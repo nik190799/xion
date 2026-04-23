@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Content-Security-Policy: structural defense-in-depth on top of the
+      xion-verify web-client structural check that greps the emitted JS/HTML
+      for any non-self origin. Enforces: only same-origin resources; no
+      framing into third-party pages; forms can only submit to self; the
+      base URI cannot be rewritten.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    />
+    <meta
+      name="description"
+      content="Xion operator dashboard — Phase 5g-v web client against the admission-gated HTTP surface."
+    />
+    <title>Xion</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

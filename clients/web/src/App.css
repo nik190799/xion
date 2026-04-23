@@ -1,0 +1,381 @@
+/*
+ * Xion web client — design-system tokens + minimal layout.
+ *
+ * Plain CSS with custom properties. No Tailwind, no component library
+ * theme, no CSS-in-JS. The ruleset is small enough to be audited by
+ * eye; the tokens live at :root so a future operator can override any
+ * value in a one-line user stylesheet (or a downstream fork can re-skin
+ * without reaching into component files).
+ *
+ * Contrast ratios are chosen against WCAG 2.2 AA (≥4.5:1 for body text,
+ * ≥3:1 for large text / UI components). axe-core asserts this in CI.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Palette: restrained; Xion is not a consumer product that pretends
+     to be cheerful. */
+  --xion-bg: #0f1114;
+  --xion-bg-raised: #181b20;
+  --xion-bg-panel: #1d2127;
+  --xion-text: #e8eaed;
+  --xion-text-muted: #a1a8b3;
+  --xion-text-inverse: #0f1114;
+  --xion-accent: #7dd3fc;       /* sky-300 */
+  --xion-accent-strong: #38bdf8; /* sky-400 */
+  --xion-border: #2a2f37;
+  --xion-border-focus: #7dd3fc;
+
+  --xion-ok: #86efac;            /* green-300 */
+  --xion-warn: #fbbf24;          /* amber-400 */
+  --xion-err: #fca5a5;           /* red-300 */
+
+  --xion-radius: 6px;
+  --xion-radius-lg: 10px;
+  --xion-gap: 0.75rem;
+  --xion-gap-lg: 1.25rem;
+
+  --xion-font-body:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --xion-font-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  background: var(--xion-bg);
+  color: var(--xion-text);
+  font-family: var(--xion-font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+code {
+  font-family: var(--xion-font-mono);
+  font-size: 0.95em;
+  background: var(--xion-bg-raised);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+.xion-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--xion-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap-lg);
+  min-height: 100vh;
+}
+
+.xion-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--xion-gap);
+  border-bottom: 1px solid var(--xion-border);
+  padding-bottom: var(--xion-gap);
+}
+
+.xion-header__tagline {
+  margin: 0;
+  color: var(--xion-text-muted);
+  font-size: 0.875rem;
+}
+
+.xion-h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: 0.02em;
+}
+
+.xion-h2 {
+  margin: 0 0 var(--xion-gap) 0;
+  font-size: 1.25rem;
+}
+
+.xion-h3 {
+  margin: 0 0 var(--xion-gap) 0;
+  font-size: 1rem;
+}
+
+.xion-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap-lg);
+}
+
+.xion-footer {
+  border-top: 1px solid var(--xion-border);
+  padding-top: var(--xion-gap);
+  color: var(--xion-text-muted);
+  font-size: 0.875rem;
+}
+
+/* --- Chat view --- */
+
+.xion-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap);
+}
+
+.xion-chat__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap);
+}
+
+.xion-label {
+  font-weight: 600;
+  color: var(--xion-text);
+}
+
+.xion-hint {
+  margin: 0;
+  color: var(--xion-text-muted);
+  font-size: 0.875rem;
+}
+
+.xion-textarea,
+.xion-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--xion-bg-panel);
+  color: var(--xion-text);
+  border: 1px solid var(--xion-border);
+  border-radius: var(--xion-radius);
+  font-family: var(--xion-font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.xion-textarea:focus-visible,
+.xion-input:focus-visible,
+.xion-button:focus-visible {
+  outline: 3px solid var(--xion-border-focus);
+  outline-offset: 2px;
+}
+
+.xion-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.xion-chat__actions {
+  display: flex;
+  gap: var(--xion-gap);
+  align-items: center;
+}
+
+.xion-button {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--xion-radius);
+  border: 1px solid var(--xion-border);
+  background: var(--xion-bg-panel);
+  color: var(--xion-text);
+  cursor: pointer;
+}
+
+.xion-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.xion-button--primary {
+  background: var(--xion-accent);
+  color: var(--xion-text-inverse);
+  border-color: var(--xion-accent-strong);
+  font-weight: 600;
+}
+
+.xion-button--primary:hover:not(:disabled) {
+  background: var(--xion-accent-strong);
+}
+
+.xion-button--ghost {
+  background: transparent;
+}
+
+.xion-button--inline {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.xion-chat__output {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap);
+  min-height: 4rem;
+}
+
+/* --- Chat bubble --- */
+
+.xion-bubble {
+  border: 1px solid var(--xion-border);
+  border-radius: var(--xion-radius-lg);
+  background: var(--xion-bg-raised);
+  padding: var(--xion-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap);
+}
+
+.xion-bubble__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--xion-gap);
+  align-items: baseline;
+  color: var(--xion-text-muted);
+  font-size: 0.875rem;
+}
+
+.xion-role {
+  font-weight: 700;
+  color: var(--xion-accent);
+}
+
+.xion-meta {
+  font-family: var(--xion-font-mono);
+  font-size: 0.8rem;
+}
+
+.xion-bubble__text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: var(--xion-font-body);
+  font-size: 1rem;
+}
+
+.xion-bubble__footer {
+  color: var(--xion-text-muted);
+  font-size: 0.8rem;
+}
+
+.xion-corr {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.xion-corr__value {
+  word-break: break-all;
+}
+
+/* --- Panels (auth, rate-limit, refusal, billing, error) --- */
+
+.xion-panel {
+  border: 1px solid var(--xion-border);
+  border-radius: var(--xion-radius-lg);
+  background: var(--xion-bg-raised);
+  padding: var(--xion-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--xion-gap);
+}
+
+.xion-panel--auth {
+  border-left: 4px solid var(--xion-accent);
+}
+
+.xion-panel--billing {
+  border-left: 4px solid var(--xion-warn);
+}
+
+.xion-panel--rate {
+  border-left: 4px solid var(--xion-warn);
+}
+
+.xion-panel--refused {
+  border-left: 4px solid var(--xion-err);
+}
+
+.xion-panel--unavailable,
+.xion-panel--timeout {
+  border-left: 4px solid var(--xion-warn);
+}
+
+.xion-panel--error {
+  border-left: 4px solid var(--xion-err);
+}
+
+.xion-error {
+  margin: 0;
+  color: var(--xion-err);
+  font-size: 0.9rem;
+}
+
+.xion-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.75rem;
+  margin: 0;
+}
+
+.xion-dl dt {
+  font-weight: 600;
+  color: var(--xion-text-muted);
+}
+
+.xion-dl dd {
+  margin: 0;
+}
+
+/* --- Progress indicator --- */
+
+.xion-progress {
+  position: relative;
+  background: var(--xion-bg-panel);
+  border: 1px solid var(--xion-border);
+  border-radius: var(--xion-radius);
+  overflow: hidden;
+  height: 2.25rem;
+}
+
+.xion-progress__bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--xion-accent);
+  opacity: 0.25;
+  transition: width 200ms linear;
+}
+
+.xion-progress__label {
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--xion-text);
+}
+
+.xion-signedin {
+  color: var(--xion-text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* --- Accessibility: honor prefers-reduced-motion --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .xion-progress__bar {
+    transition: none;
+  }
+}
