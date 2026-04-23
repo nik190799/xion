@@ -64,8 +64,6 @@ _UNSEALED = (
              "AO Core not yet deployed.", "Phase 6"),
     StubSpec("treasury", "Multi-chain treasury tier readout; bridge cap; origin separation (Invariant 16).",
              "Treasury vaults not yet deployed.", "Phase 6"),
-    StubSpec("pricing", "Current posted per-message price and five-slice breakdown.",
-             "Relay /pricing endpoint not yet live.", "Phase 5"),
     StubSpec("treasury-flow", "Verify routed revenue matches the five-slice composition.",
              "Treasury router not yet live.", "Phase 6"),
     StubSpec("cutoff-events", "Anonymized cutoff-events audit (KW-ECON-002 mitigation 5).",

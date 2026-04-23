@@ -38,7 +38,9 @@ from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.links import links
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
+from xion_verify.commands.pricing import pricing
 from xion_verify.commands.refund_fidelity import refund_fidelity
+from xion_verify.commands.refusal_is_free import refusal_is_free
 from xion_verify.commands.refusal_rate import refusal_rate
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.schemas import schemas
@@ -65,7 +67,9 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "state-chain": state_chain,
     "arbiter-up": arbiter_up,
     "refusal-rate": refusal_rate,
+    "pricing": pricing,
     "refund-fidelity": refund_fidelity,
+    "refusal-is-free": refusal_is_free,
     "crisis-fidelity": crisis_fidelity,
     "inference-sovereignty": inference_sovereignty,
     "sensorium-ledger": sensorium_ledger,

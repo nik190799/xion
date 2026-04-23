@@ -57,6 +57,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "vitals",
     "amendments",
     "refund-fidelity",
+    "refusal-is-free",
     "crisis-fidelity",
     "sensorium-ledger",
     "spof",

@@ -19,7 +19,8 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 1. Covenant Supremacy | `xion-verify covenant` confirms the Covenant on disk byte-matches GENESIS_ARTIFACT § 4. |
 | 2. Memory Permanence | `xion-verify memory` confirms the MEMORY doctrine. Live archive sweep is `Phase 6`. |
 | 4. State Chain Append-Only | `xion-verify state-chain` is a pre-D2 stub; live Merkle re-verification lands in Phase 6. |
-| 6. Arbiter Refusal Right | `xion-verify arbiter-up` is live and verifies the Arbiter library + local `SAFETY_LEDGER` hash chain; `refusal-rate` and `refund-fidelity` remain `NOT_YET_SEALED`. |
+| 6. Arbiter Refusal Right | `xion-verify arbiter-up` is live and verifies the Arbiter library + local `SAFETY_LEDGER` hash chain. `refusal-rate` and `refund-fidelity` are live (Phase 5a). `refusal-is-free` (Phase 5g-iii) joins `SAFETY_LEDGER` ↔ `PAYMENT_LEDGER` on `correlation_id` and asserts the Covenant addendum's structural refund property (every SAFETY `verdict=refuse` row paired to a PAYMENT row → `outcome=refunded` with `refund_XION == committed_XION`). |
+| Pay-to-Activate (`docs/07-ECONOMY.md`) | `xion-verify pricing` is live (Phase 5g-iii) and loads the same `PricingConfig` the Relay lifespan loads. It enforces "five slices sum to 1.0 within tolerance, each in [0, 1], governance_revision_id non-empty ≤ 128 chars, posted price non-negative" and prints a stable, human-readable breakdown of the posted price. A config that fails any invariant is a constitutional violation of `docs/07-ECONOMY.md` § Five-slice posted price; the verifier reports the specific reason. |
 | 7. Core Identity Singularity | `xion-verify identity` is `NOT_YET_SEALED` until AO Core deploys. |
 | 8–9. Supply Caps | `xion-verify supply` is `NOT_YET_SEALED` until contracts deploy. |
 | 14. Crypto-Agility Mandate | `xion-verify crypto-currency` is `NOT_YET_SEALED`; `hashing.py` is the single algorithmic cite-point. |
