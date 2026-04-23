@@ -90,7 +90,7 @@ Every entry has the same shape:
 - **Domain:** `RUNTIME`
 - **Discovered:** 2026-04-22 (Phase 5g-v web-client landing)
 - **Severity:** low
-- **Status:** `mitigated-residual` (the deadline-countdown mitigation is shipped; the streaming UX is a Phase 5g-ii deliverable)
+- **Status:** `pending-closure` (Phase 5g-ii doctrine + SSE server transport landed; cancellation + client streaming render-path + verifier land in the same phase — final `closed` status written in Commit 5 of Phase 5g-ii)
 - **Description:** Phase 5g-v's `ChatView` issues a single `POST /chat` and renders the response when it returns. The underlying server handler is the Phase 5g-i non-streaming surface, which threads through ingress moderation + floor generation + egress moderation before returning the complete `candidate_text`. A multi-second generation therefore blocks the client's chat bubble for the full duration, up to the server's per-turn 30 s deadline. There is no progressive-text rendering, no keystroke-rate illusion, and no cancel affordance during the block.
 - **Why it exists:** Streaming requires a per-chunk moderation story (the Arbiter cannot be asked to moderate a streaming response at completion without either buffering the full response — which defeats streaming — or moderating per chunk — which changes the Arbiter's input shape and requires its own doctrine). That doctrine is Phase 5g-ii (`KW-CHAT-001`). Shipping a non-streaming UX at 5g-v with an explicit deadline countdown is honest about the blocking duration and lets the streaming work land in 5g-ii without rebuilding the client.
 - **Mitigations:**
@@ -306,7 +306,7 @@ Every entry has the same shape:
 - **Domain:** `PROTOCOL`
 - **Discovered:** 2026-04-21 (Phase 5g-i Chat Surface landing)
 - **Severity:** low
-- **Status:** `paying-down`
+- **Status:** `pending-closure` (Phase 5g-ii doctrine pinned the "Speculative-with-retroactive-refusal" posture in `docs/04-ARCHITECTURE.md` § "Streaming the Chat Surface (Phase 5g-ii)" and `docs/32-CHAT-STREAMING.md`; the SSE server transport, cancellation propagation, client render-path, and `xion-verify chat-streaming-fidelity` verifier land in the remaining commits of the same phase — final `closed` status written in Commit 5 of Phase 5g-ii)
 - **Description:** `POST /chat` in Phase 5g-i is a single request-response endpoint. The entire generated candidate is produced server-side before any byte reaches the client. For multi-second generations — common at the open-weights floor on commodity hardware — the connection blocks for the full generation duration. A user watching a cursor blink has no way to see partial progress, and a client under a connection-pool time budget can time out mid-generation and waste a full OpenRouter bill on unsurfaced text.
 - **Why it exists:** The doctrinal ordering in Phase 5g put "moderate both sides correctly" ahead of "stream incrementally." Two-sided moderation is the constitutional property the Chat Surface owes its users; streaming is an ergonomic improvement that must not be shipped in a way that bypasses egress moderation mid-stream. Designing streaming-with-egress-moderation correctly — deciding whether to moderate per-chunk (false-positive risk) or per-full-candidate (latency regression) or speculative-then-truncate (complexity cost) — is doctrine work worth its own sub-phase. Shipping a correct single-turn endpoint first and a streaming endpoint second is the cheaper path to a correct answer at both endpoints.
 - **Mitigations:**
@@ -321,7 +321,7 @@ Every entry has the same shape:
 - **Domain:** `PROTOCOL`
 - **Discovered:** 2026-04-21 (Phase 5g-i Chat Surface landing)
 - **Severity:** low
-- **Status:** `paying-down`
+- **Status:** `pending-closure` (Phase 5g-ii doctrine committed to `Request.is_disconnected()` polling + provider-task cancel + `outcome=cancelled` `PAYMENT_LEDGER` row with full refund in `docs/04-ARCHITECTURE.md` § "Streaming the Chat Surface" and `docs/32-CHAT-STREAMING.md` § "Cancellation semantics"; the mechanism and verifier land in the remaining commits of the same phase — final `closed` status written in Commit 5 of Phase 5g-ii)
 - **Description:** The Phase 5g-i Chat handler calls the generative provider inside `asyncio.wait_for(asyncio.to_thread(...), timeout=deadline_s)`. A client who disconnects mid-generation has no way to signal the server to abort the outbound provider call; the Python thread running the provider's HTTP POST finishes to completion or hits the deadline, whichever comes first. The operator pays the full generation cost (OpenRouter tokens at the hosted tier, Ollama CPU time at the floor) even when no one is listening. This is a mild ergonomic and cost problem, not a correctness problem — the response is discarded if the client is gone.
 - **Why it exists:** `asyncio.to_thread` does not support cancellation; the underlying `concurrent.futures.ThreadPoolExecutor` has no way to interrupt a stdlib `http.client` request from the outside without writing a custom transport. Writing a streaming-capable, cancellation-aware HTTP client inside Phase 5g-i would widen the diff far beyond the "ship smallest correct thing" doctrine. The simpler fix ships alongside streaming in Phase 5g-ii.
 - **Mitigations:**

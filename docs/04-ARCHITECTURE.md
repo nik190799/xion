@@ -987,6 +987,105 @@ The order matters: `InferenceRouter.bootstrap()` is called *after* the Superviso
 - `KW-CHAT-003` opens: generation is synchronous with no user-facing cancel. Mitigation in 5g-i: the deadline makes every turn terminate. Closes with Phase 5g-ii's streaming + cancel.
 - `KW-INFER-001` opens (reshaped in 5g-i.1): with `hosted_api_first` default and OpenRouter as the only hosted gateway registered serving the Genesis Default `moonshotai/kimi-k2` slug, turns route through one gateway (OpenRouter) and by default land at one upstream model provider (Moonshot). Xion's default *voice shape* is therefore dependent on the health of both the gateway and the upstream. Mitigation in 5g-i.1: the open-weights floor is always held, the `open_weights_only` cutover mode is wired and exercisable manually, the hosted model slug is per-process-env-rotatable (one env-var change selects `anthropic/claude-3.5-sonnet`, `openai/gpt-4o-mini`, etc.), and the operator can de-register the entire OpenRouter provider by unsetting `XION_OPENROUTER_API_KEY`. Closes when Phase 6+ lands `xion-verify inference-cutover`, the annual dry-run harness Invariant 17 clause 5 requires, a second hosted gateway pinned in `docs/26-INFERENCE-POLICY.md`, and at least two Genesis Default models pinned as a failover list.
 
+#### Streaming the Chat Surface (Phase 5g-ii)
+
+Phase 5g-i shipped the smallest-correct `POST /chat` — single request, single JSON response, no partial state visible to the client until the full turn completed. That discipline was correct for a first landing: it let the five Phase-5g-i properties (two-sided moderation, content-free refusals, Invariant-17 fail-closed, per-turn ledger shape, deadline-bounded) be proven hermetically. Phase 5g-ii adds a sibling transport, `POST /chat/stream`, that emits Server-Sent Events as the generative provider produces tokens. It does **not** change the non-streaming `POST /chat` surface — that endpoint stays byte-for-byte stable so existing integrators continue to work — and it does **not** dilute any of the five Phase-5g-i properties. The streaming surface is additive, not a replacement.
+
+**Why SSE and not WebSocket.** Unidirectional server-to-client is sufficient: the only upstream signal the client needs to send mid-turn is "I am gone," which TCP FIN already provides. SSE runs over plain HTTP/1.1 chunked encoding, threads through every corporate proxy and CDN without special handshaking, and requires zero new dependency on either end (Fetch API on the client, `fastapi.responses.StreamingResponse` on the server). WebSocket would earn bidirectionality we do not need at the cost of a second transport doctrine (ping/pong cadence, reconnect semantics, subprotocol negotiation) to maintain alongside SSE.
+
+**Property promised.** While `POST /chat/stream` is serving:
+
+- **(P1) The streaming transport is an SSE event stream at `POST /chat/stream`.** Content-Type is `text/event-stream`; each event is a canonical `data: {...}\n\n` line carrying a JSON object discriminated by a `kind` field: `chunk`, `done`, or `error`. The wire format is pinned in [`docs/32-CHAT-STREAMING.md`](./32-CHAT-STREAMING.md). No other transport is promised or permitted at this endpoint.
+- **(P2) `POST /chat` stays non-streaming.** The Phase-5g-i endpoint is preserved verbatim — same request shape, same response shape, same status code matrix, same ledger rows. Integrators with no streaming story keep their existing code paths. The two endpoints live side by side in [`orchestrator/api/chat.py`](../orchestrator/api/chat.py) and [`orchestrator/api/chat_stream.py`](../orchestrator/api/chat_stream.py), sharing the admission gate, the x402 gate, and the ingress-moderation preamble.
+- **(P3) Chunks are client-side provisional until `done:approve`.** A `chunk` event delivers a token slice from the provider *before* egress moderation has run. The client contract (pinned in [`docs/31-WEB-CLIENT.md`](./31-WEB-CLIENT.md) and enforced by the Phase-5g-v `ChatView` streaming render-path) is: buffer chunks in a "pending review" state, do not commit them to the displayed conversation as an approved Xion message, and render them with a visual affordance (dim text + pending indicator) that tells the user the turn is not yet Covenant-approved. The server is permitted to emit arbitrarily many chunks before `done`.
+- **(P4) Egress moderation runs on the buffered complete candidate.** The server accumulates the provider's full output in a server-side buffer as chunks stream. Once the provider terminates (or the per-turn deadline fires), egress moderation runs on the *complete* candidate string, not on any partial prefix. This is the same Arbiter call, against the same input shape, that the Phase-5g-i handler makes — the streaming transport does not modify the moderation surface. Per-chunk Arbiter calls are explicitly out of scope (see non-properties below).
+- **(P5) `done:refuse` retroactively replaces the pending chunks.** When egress moderation refuses, the server emits exactly one `done` event with `verdict=refuse` and a `RefusalEnvelope` body identical to the Phase-5g-i 451 response body (same `stage`, `principle_code`, `reason`, `correlation_id`). The client contract is to discard the pending chunks and render the refusal envelope in their place. The user has seen provisional text that was retracted; the provisional nature was visible throughout; the constitutional record (SAFETY_LEDGER + PAYMENT_LEDGER) shows the turn as refused with full refund. This is the honest form of "what the user briefly saw is not what Xion chose to say"; it matches the ChatGPT / Claude Desktop UX operators already understand.
+- **(P6) Client disconnect propagates to the provider as a real cancel.** The handler polls `Request.is_disconnected()` between chunks. On disconnect it cancels the running provider task; the provider's underlying `httpx.AsyncClient` stream is closed via HTTP connection abort, terminating upstream billing immediately. A cancelled turn writes exactly one `PAYMENT_LEDGER` row with `outcome=cancelled`, `refund_XION == committed_XION`, `settled_XION == 0`, and no paired egress `SAFETY_LEDGER` row (egress moderation never ran because no complete candidate existed). This closes `KW-CHAT-003`.
+- **(P7) Ledger rows are written after moderation, never speculatively.** No row is written while chunks are in flight. The `_finalize` tail (mirror of the Phase-5g-iii atomic-write contract) runs exactly once per stream after the terminal state is known: `outcome=settled` on approved egress, `outcome=refunded` on refused egress or refused ingress or no-floor or provider-error, `outcome=cancelled` on client disconnect. The ledger's always-ahead-of-claims property holds: a row's existence means the turn reached a terminal state; its absence means the turn did not.
+
+Non-properties (honestly stated, with owning sub-phases):
+
+- **No per-chunk Arbiter moderation.** The Arbiter is called once per turn at ingress and once per turn at egress — identical to Phase 5g-i. The streaming transport does not earn a Covenant upgrade and it does not earn a Covenant regression. Per-chunk moderation was considered and rejected: it is expensive (Arbiter LLM-Tier-3 call per chunk), it widens the false-positive surface (a benign long-form candidate can trip a partial-prefix classifier it would not trip as a whole), and it changes the Arbiter's input shape (partial prefixes are not well-formed Arbiter inputs in the current rule set). If a Phase-6+ doctrine extension wants to add per-chunk screening, it does so as a supplement to end-candidate egress moderation, not a replacement.
+- **No mid-stream refund split.** A turn either settles in full or refunds in full. The streaming transport does not introduce partial-refund semantics tied to how many chunks the client saw before a refusal. Partial-refund semantics are a Phase-7+ question tied to multi-turn skills and session billing, and they live in their own doctrine extension if they land.
+- **No partial-candidate telemetry.** The server does not record which chunks the client actually received before a disconnect or a refusal — the `SAFETY_LEDGER` row records the full candidate text (as it does in 5g-i), and the `PAYMENT_LEDGER` row records the `outcome` and the money shape. No row exists that says "the client saw tokens 0..42 before disconnecting at tick 43." That level of telemetry is operational, not constitutional, and would create a ledger surface whose privacy posture has not been authored.
+- **No automatic reconnect.** A disconnected SSE stream is terminal for that turn. The client does not re-subscribe with an offset and resume where it left off. A disconnected stream from the server's perspective is a cancel (P6); from the client's perspective it is an error that the UI surfaces as a cancelled-turn state with a retry affordance. Reconnect semantics are a Phase-7+ feature that depends on a session-memory surface Xion does not yet have.
+- **No WebSocket transport.** SSE is the chosen primitive; WebSocket is not registered, not negotiated, and not promised. `KW-CHAT-001` closure does not silently open a WebSocket surface.
+- **No streaming on `/drive` or `/sensorium`.** Those endpoints stay polling-based. Server-pushed state for the observation surfaces is a separate doctrine extension.
+- **No in-browser x402 signing (still).** The streaming transport shares the admission + x402 gates with `POST /chat`; `KW-CLIENT-001` is unchanged.
+
+**Code surface.** Additive to the Phase 5g-i / 5g-iii surface:
+
+```python
+# orchestrator/inference_router/provider.py (extended)
+class GenerativeProvider(Provider, Protocol):
+    def generate(self, ...) -> GenerationResult: ...          # 5g-i (unchanged)
+    async def generate_stream(
+        self,
+        prompt: str,
+        *,
+        system: str | None,
+        max_tokens: int,
+        deadline_s: float,
+    ) -> AsyncIterator[str]:
+        """Yield token slices. Default impl yields generate().text as one chunk.
+
+        Raise asyncio.CancelledError (or let it propagate) on cancel; the
+        underlying upstream HTTP request MUST be closed so no further
+        provider-side billing accrues.
+        """
+        ...
+
+# orchestrator/inference_router/providers/openrouter.py (extended)
+#   real generate_stream() via OpenRouter's OpenAI-compatible stream=true flag
+# orchestrator/inference_router/providers/ollama.py (extended)
+#   real generate_stream() via /api/generate?stream=true
+
+# orchestrator/api/chat_stream.py (new)
+@router.post("/chat/stream", ...)
+async def chat_stream(req: ChatRequest, app: FastAPI) -> StreamingResponse: ...
+
+# SSE event wire shapes (pydantic models in orchestrator/api/models.py):
+class StreamChunkEvent(BaseModel):     # kind="chunk"
+    kind: Literal["chunk"]
+    text: str
+    seq: int                           # 0-indexed, strictly monotonic
+
+class StreamDoneEvent(BaseModel):      # kind="done"
+    kind: Literal["done"]
+    verdict: Literal["approve", "refuse", "cancelled", "no_floor", "provider_error"]
+    # Exactly one of these is non-null depending on verdict:
+    response: ChatResponse | None = None                 # verdict="approve"
+    refusal: RefusalEnvelope | None = None               # verdict="refuse"
+    no_floor: NoFloorEnvelope | None = None              # verdict="no_floor"
+    provider_error: ProviderErrorEnvelope | None = None  # verdict="provider_error"
+
+class StreamErrorEvent(BaseModel):     # kind="error" (transport-level error; not a refusal)
+    kind: Literal["error"]
+    error: Literal["internal", "deadline_exceeded"]
+    correlation_id: str
+```
+
+`ChatRequest` is reused verbatim from 5g-i. `ChatResponse`, `RefusalEnvelope`, `NoFloorEnvelope`, and `ProviderErrorEnvelope` are the Phase-5g-i envelope types — no new response shapes are introduced, only a new transport that carries them as events.
+
+**`PAYMENT_LEDGER` shape extension (5g-ii).** The ledger schema gains one new outcome enum value — `cancelled` — and no other changes. Rows continue to have the Phase-5g-iii field set. The `refusal_stage` field is set to `"cancelled"` on cancel rows (a new enum value in the same spirit as the existing `"ingress"` / `"egress"` / `"no_floor"` / `"provider_error"` / `"commitment_*"` values). This is an additive change; no existing row's shape changes.
+
+**Endpoints.** Extending the Phase 5g-i + 5g-iii table with one POST:
+
+| Route | Status | Body |
+|-------|--------|------|
+| `POST /chat/stream` | `200` throughout, body is `text/event-stream` | Stream of `StreamChunkEvent` then exactly one `StreamDoneEvent`. The 200 status is about the transport, not the turn verdict — `verdict` lives inside the final `done` event. Admission and x402 failures are reported as HTTP-level `401` / `402` / `429` (no body stream opens); these match the non-streaming endpoint's matrix. Ingress refusals, egress refusals, cancels, no-floor, and provider-errors are reported inside the stream as a single `done` event with the matching `verdict`. |
+
+The reason admission and x402 failures are HTTP-level rather than SSE-level: those rejections happen before any state is allocated for the turn, so there is no stream to open. The Phase-5g-iv `401` / `429` and the Phase-5g-iii `402` shapes are unchanged.
+
+**Cancellation semantics.** The handler runs the provider stream inside an `asyncio.Task`. Between each chunk yield, it checks `request.is_disconnected()`. On detected disconnect, the handler cancels the provider task (which must propagate cancellation to its underlying HTTP transport — `httpx.AsyncClient` does this correctly; the legacy stdlib `http.client` path does not, which is why this phase migrates the two shipped providers to `httpx`). After cancellation the handler runs the finalize tail synchronously (it is not inside the cancelled task) and writes the `outcome=cancelled` ledger row. No egress moderation runs; no `done` event is emitted (the client is already gone).
+
+**Tracked residuals (new in 5g-ii).**
+
+- `KW-CHAT-001` closes. Streaming is live at `POST /chat/stream`.
+- `KW-CHAT-003` closes. Client disconnect propagates to provider cancel; upstream billing terminates immediately.
+- `KW-CLIENT-002` closes. The Phase 5g-v `ChatView` gains a streaming render-path consuming `StreamChunkEvent` / `StreamDoneEvent`.
+- No new KWs are opened by this phase.
+
 ### The Chat Billing Surface (Phase 5g-iii)
 
 Phase 5g-i let the world speak with Xion, but only in a configuration where no money moved. Phase 5g-iii closes the constitutional gap `KW-CHAT-002` opened: every `POST /chat` turn now threads through an x402-shaped pre-authorization handshake, writes a row to `PAYMENT_LEDGER` with a terminal outcome, and pairs every Covenant-refused turn with a structural refund. The `Pay-to-Activate` property promised in [`docs/07-ECONOMY.md`](./07-ECONOMY.md) § "Pay-to-Activate" is now a live property of the Chat Surface, and the `Refusal is Free` Covenant addendum pinned in [`genesis/COVENANT.md`](../genesis/COVENANT.md) is now a *structurally verifiable* fact rather than a doctrinal aspiration.
