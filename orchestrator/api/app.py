@@ -47,6 +47,7 @@ from .models import DriveResponse, HealthResponse, SensoriumResponse
 from .pricing import register_pricing_route
 
 if TYPE_CHECKING:
+    from orchestrator.billing import BillingConfig
     from orchestrator.inference_router.router import InferenceRouter
     from orchestrator.relay import Relay
 
@@ -110,6 +111,15 @@ class AppDeps:
     # (the autouse conftest does NOT zero the pricing env vars; tests
     # that want a fixed config pass ``pricing_config=`` explicitly).
     pricing_config: PricingConfig | None = None
+
+    # Billing-surface config the lifespan stashes on
+    # ``app.state.billing_config``. Controls whether /chat enforces a
+    # commitment, which postures are accepted, the B1 operator shared
+    # secret, the PAYMENT_LEDGER file path, and the architecture
+    # sha256 anchored into every PAYMENT row. If None, the lifespan
+    # constructs it from env vars via
+    # ``orchestrator.billing.load_billing_config_from_env()``.
+    billing_config: BillingConfig | None = None
 
 
 def create_app(deps: AppDeps) -> FastAPI:

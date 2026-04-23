@@ -75,8 +75,22 @@ def _no_repo_ledger_leaks(
         "XION_PRICE_SLICE_SMALL_BUFFER",
         "XION_PRICING_LAST_REVIEWED_UTC_NS",
         "XION_PRICING_REVISION_ID",
+        "XION_BILLING_ALLOW_X402",
+        "XION_OPERATOR_ATTESTATION_SECRET",
     ):
         monkeypatch.delenv(_name, raising=False)
+    # Phase 5g-iii: default to the 5g-i backward-compat mode
+    # (billing_required=false) for tests that don't opt in. Tests that
+    # exercise the billing gate construct an explicit BillingConfig
+    # and pass ``billing_config=`` to ``app_factory``, which wins over
+    # this default.
+    monkeypatch.setenv("XION_BILLING_REQUIRED", "false")
+    # Redirect the PAYMENT_LEDGER path to tmp_path so any accidental
+    # forgotten-kwarg write cannot contaminate the repo root.
+    monkeypatch.setenv(
+        "XION_PAYMENT_LEDGER",
+        str(tmp_path / "_autouse_PAYMENT_LEDGER.jsonl"),
+    )
 
 
 @pytest.fixture
@@ -113,6 +127,7 @@ def app_factory(
         policy_mode: str = "hosted_api_first",
         chat_deadline_s: float = 5.0,
         pricing_config: Any = None,
+        billing_config: Any = None,
         **relay_kwargs: Any,
     ) -> Any:
         """Build a hermetic FastAPI app for tests.
@@ -172,6 +187,7 @@ def app_factory(
             router=router,
             chat_deadline_s=chat_deadline_s,
             pricing_config=pricing_config,
+            billing_config=billing_config,
         )
         app = create_app(deps)
         app.state.test_relay = relay

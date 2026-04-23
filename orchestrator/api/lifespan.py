@@ -48,6 +48,11 @@ from orchestrator.inference_router import (
     PolicyMode,
     default_manifest_path,
 )
+from orchestrator.billing import (
+    ChainBroken as PaymentChainBroken,
+    load_billing_config_from_env,
+    verify_chain as verify_payment_chain,
+)
 from orchestrator.supervisor import Supervisor
 
 from .pricing import load_pricing_config_from_env
@@ -126,6 +131,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.pricing_config = deps.pricing_config
     else:
         app.state.pricing_config = load_pricing_config_from_env()
+
+    # --- Phase 5g-iii: load billing config + verify PAYMENT_LEDGER chain
+    # Doctrine pin (docs/04-ARCHITECTURE.md § "Lifespan contract"):
+    # a corrupt PAYMENT_LEDGER is a constitutional failure, not a
+    # warning; the app refuses to register /chat if the existing
+    # ledger file's chain is broken. Explicitly-supplied configs on
+    # ``deps.billing_config`` win over the env loader (test seam).
+    if getattr(deps, "billing_config", None) is not None:
+        app.state.billing_config = deps.billing_config
+    else:
+        app.state.billing_config = load_billing_config_from_env()
+
+    try:
+        verify_payment_chain(app.state.billing_config.payment_ledger_path)
+    except PaymentChainBroken as e:
+        raise PaymentChainBroken(
+            "PAYMENT_LEDGER chain broken at startup; refusing to start. "
+            f"Detail: {e}"
+        ) from e
 
     # Wire the Supervisor into the Relay AFTER the pre-seed tick, so
     # any in-process code that races the lifespan cannot observe a
