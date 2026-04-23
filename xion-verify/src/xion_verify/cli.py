@@ -49,6 +49,7 @@ from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
 from xion_verify.commands.state_chain import state_chain
+from xion_verify.commands.supervisor_singleton import supervisor_singleton
 from xion_verify.commands.web_client import web_client
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.exit_codes import name as exit_code_name
@@ -79,6 +80,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "api-tokens": api_tokens,
     "web-client": web_client,
     "chat-streaming-fidelity": chat_streaming_fidelity,
+    "supervisor-singleton": supervisor_singleton,
 }
 
 

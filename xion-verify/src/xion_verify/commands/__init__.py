@@ -72,4 +72,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "api-tokens",
     "web-client",
     "chat-streaming-fidelity",
+    "supervisor-singleton",
 )
