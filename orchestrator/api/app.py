@@ -46,6 +46,11 @@ from .chat import register_chat_route
 from .lifespan import lifespan
 from .models import DriveResponse, HealthResponse, SensoriumResponse
 from .pricing import register_pricing_route
+from .web_client import (
+    WebClientConfig,
+    load_web_client_config_from_env,
+    mount_web_client,
+)
 
 if TYPE_CHECKING:
     from orchestrator.billing import BillingConfig
@@ -136,6 +141,18 @@ class AppDeps:
     # gate pass an explicit AdmissionConfig here.
     admission_config: AdmissionConfig | None = None
 
+    # --- Phase 5g-v additions --------------------------------------
+    # Web-client mount config. Controls whether the FastAPI app mounts
+    # the static SPA at /app/* and redirects / to /app/. If None, the
+    # factory loads it from env vars via
+    # ``orchestrator.api.web_client.load_web_client_config_from_env()``;
+    # the env loader defaults to disabled (XION_WEB_CLIENT_ENABLED=false).
+    # Tests that want the mount exercised pass an explicit
+    # ``WebClientConfig(enabled=True, dist_path=...)`` pointing at a
+    # tmp_path-built SPA; tests that do NOT want it pass
+    # ``WebClientConfig(enabled=False)`` to skip the env lookup.
+    web_client_config: WebClientConfig | None = None
+
 
 def create_app(deps: AppDeps) -> FastAPI:
     """Construct a FastAPI app wired against ``deps``.
@@ -223,6 +240,20 @@ def create_app(deps: AppDeps) -> FastAPI:
 
     register_pricing_route(app)
     register_chat_route(app)
+
+    # --- Phase 5g-v: optional web-client mount ---------------------
+    # Registered last so /app/* cannot shadow any admission-gated API
+    # route (FastAPI routes are resolved in registration order). The
+    # loader is fail-closed: WebClientConfig.__post_init__ raises if
+    # XION_WEB_CLIENT_ENABLED=true but the dist directory / index.html
+    # is missing, and the raise propagates out of create_app so the
+    # operator sees the failure at startup — not at first /app/ GET.
+    if deps.web_client_config is not None:
+        web_client_config = deps.web_client_config
+    else:
+        web_client_config = load_web_client_config_from_env()
+    mount_web_client(app, web_client_config)
+    app.state.web_client_config = web_client_config
 
     return app
 

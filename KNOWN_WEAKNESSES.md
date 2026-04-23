@@ -69,6 +69,38 @@ Every entry has the same shape:
 - **Pay-down commitment:** Closes when the Phase 6+ deployment story pins a long-term reverse-proxy posture (likely Caddy or a sidecar Cloudflared container per Akash provider) and the `__main__.py` launcher's `ssl_keyfile`/`ssl_certfile` codepath is removed in favor of always-loopback-bind. Until then the residual is the operator-manual cert rotation cost.
 - **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) checks host-vs-TLS coherence (non-loopback host requires both TLS paths exist and are readable). A runtime check that the cert chain is currently valid against a system trust store is operator-side (`openssl x509 -in $XION_TLS_CERT_PATH -noout -dates`); the orchestrator does not duplicate this.
 
+### KW-CLIENT-001 — Web client is operator-dashboard only; no in-browser x402 commitment signing
+
+- **Domain:** `PROTOCOL`
+- **Discovered:** 2026-04-22 (Phase 5g-v web-client landing)
+- **Severity:** low
+- **Status:** `mitigated-residual` (the operator-dashboard posture is the shipped scope; the public-user posture is a Phase 6+ deliverable that compounds with `KW-BILLING-001`)
+- **Description:** Phase 5g-v ships `clients/web/` as a React+Vite+TypeScript single-page application that the orchestrator serves same-origin from FastAPI's `StaticFiles` mount at `/app/*`. The client handles the full server-response envelope matrix (`ChatResponse`, `AuthChallenge`, `PaymentChallenge`, `RateLimitChallenge`, `RefusalEnvelope`, `NoFloorEnvelope`, `ProviderErrorEnvelope`) and surfaces a sign-in dialog when the server is in the `XION_API_REQUIRE_BEARER=true` posture. It does **not** sign x402 payment commitments in the browser: when the server is in the `XION_BILLING_REQUIRED=true` posture, the client surfaces a "billing not yet supported in web client" banner and directs the operator at the `curl` path from `docs/29-BILLING-X402.md`. The 5g-v posture is therefore *operator-dashboard only*; a public-user would have to use `curl` with a hand-computed `X-Payment-Commitment` to reach `/chat` through the billing gate.
+- **Why it exists:** B1 HMAC attestation with the shared secret in the browser widens the custody surface (a browser extension, an MDM-pushed profile, a misconfigured `localStorage` sync) beyond what 5g-v's doctrine has grown to cover. B2/B3 x402 wallet integration is structurally cleaner but blocks on a pinned x402 JavaScript library (the same precondition `KW-BILLING-001` tracks on the server side) plus a user-side key-custody doctrine pin. Shipping the client as operator-dashboard-only in 5g-v lets the first dogfood surface land without taking on the public-user custody problem prematurely.
+- **Mitigations:**
+  1. The client surfaces the `402 PaymentChallenge` envelope as a visible limitation (not an error toast), with the `correlation_id` copyable, so the operator knows precisely what the gap is.
+  2. `docs/31-WEB-CLIENT.md` § "Operator workflow — billing-required posture" pins the operator-dashboard scope explicitly and names the Phase 6+ pay-down.
+  3. The server surface is unchanged — the `curl` path through `X-Payment-Commitment` remains fully supported; the web client is one conforming caller, not a privileged path.
+  4. `XION_WEB_CLIENT_ENABLED` defaults to `false`; an operator who does not build the bundle ships no web surface at all and has exactly the pre-5g-v posture.
+- **Pay-down commitment:** Closes Phase 6+ alongside `KW-BILLING-001` (x402 library pin) when both: (a) an audited in-browser x402 implementation (B2 signed-commitment or B3 verified-settlement) ships under a pinned version, and (b) a user-side key-custody doctrine lands in `docs/31-WEB-CLIENT.md` covering local-only vs WalletConnect vs injected-provider custody modes. The client's `api.ts` discriminated-union envelope handling is the stable surface; the Phase 6+ change is a new `sign_commitment()` helper and a new `BillingDialog` view, not a route-level diff.
+- **Verifier:** `xion-verify web-client` is live at 5g-v and audits the emitted `clients/web/dist/` bundle for structural integrity (CSP meta tag pinning `default-src 'self'`; every `https?://` origin matches the explicit non-self allowlist of React production error-decoder URLs + W3C XML namespace identifiers). Returns `NOT_YET_SEALED` when the operator has not yet built the bundle (un-built is unverifiable, not wrong). The Vitest + axe-core client-side suite is live at 5g-v and covers the envelope-handling matrix.
+
+### KW-CLIENT-002 — Web client chat UX is non-streaming; multi-second generations block the bubble
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-22 (Phase 5g-v web-client landing)
+- **Severity:** low
+- **Status:** `mitigated-residual` (the deadline-countdown mitigation is shipped; the streaming UX is a Phase 5g-ii deliverable)
+- **Description:** Phase 5g-v's `ChatView` issues a single `POST /chat` and renders the response when it returns. The underlying server handler is the Phase 5g-i non-streaming surface, which threads through ingress moderation + floor generation + egress moderation before returning the complete `candidate_text`. A multi-second generation therefore blocks the client's chat bubble for the full duration, up to the server's per-turn 30 s deadline. There is no progressive-text rendering, no keystroke-rate illusion, and no cancel affordance during the block.
+- **Why it exists:** Streaming requires a per-chunk moderation story (the Arbiter cannot be asked to moderate a streaming response at completion without either buffering the full response — which defeats streaming — or moderating per chunk — which changes the Arbiter's input shape and requires its own doctrine). That doctrine is Phase 5g-ii (`KW-CHAT-001`). Shipping a non-streaming UX at 5g-v with an explicit deadline countdown is honest about the blocking duration and lets the streaming work land in 5g-ii without rebuilding the client.
+- **Mitigations:**
+  1. `ChatView` surfaces a live progress indicator with a 30 s deadline countdown the moment the request is issued; the user sees that work is happening and when it will either resolve or time out.
+  2. The client's `api.ts` wrapper sets an `AbortController` timeout at 30 s + a small buffer; if the server never returns, the client dismisses the deadline countdown and surfaces "Request timed out (30 s)" with a retry affordance rather than hanging indefinitely.
+  3. The 30 s deadline is the server-side invariant; the client's countdown is therefore structurally bounded, not aspirational.
+  4. `docs/31-WEB-CLIENT.md` § "Deliberate non-properties" names the streaming gap explicitly so operators do not discover it by surprise.
+- **Pay-down commitment:** Closes with `KW-CHAT-001` in Phase 5g-ii. When the server-side streaming transport (SSE or WebSocket) lands with per-chunk or speculative-then-truncate moderation, the `ChatView` gains a second render-path for streamed chunks; the non-streaming path remains as a fallback for clients that cannot upgrade. The six architecture properties for the web client (content-faithful, no client-side Covenant re-check, WCAG 2.2 AA, same-origin serve, no third-party origin, posture-aware) are all preserved by the streaming change.
+- **Verifier:** Vitest component test covers the deadline-countdown semantics (fake-timers assertion on the 30 s boundary); a runtime `xion-verify streaming-fidelity` is `NOT_YET_SEALED` until Phase 5g-ii lands and is the owner of the streaming-posture verification.
+
 ### KW-INFERENCE-001 — Inference Router: floor wired; production weights + ops dry-run still open
 
 - **Domain:** `RUNTIME`

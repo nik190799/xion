@@ -109,6 +109,12 @@ def _no_repo_ledger_leaks(
         "XION_API_TRUST_FORWARDED_FOR",
     ):
         monkeypatch.delenv(_name, raising=False)
+    # Phase 5g-v: default to web-client-disabled so tests that don't opt
+    # in don't attempt to mount a non-existent dist/ directory. Tests
+    # that exercise the mount construct an explicit WebClientConfig
+    # and pass ``web_client_config=`` to ``app_factory``.
+    monkeypatch.setenv("XION_WEB_CLIENT_ENABLED", "false")
+    monkeypatch.delenv("XION_WEB_CLIENT_DIST_PATH", raising=False)
 
 
 @pytest.fixture
@@ -147,6 +153,7 @@ def app_factory(
         pricing_config: Any = None,
         billing_config: Any = None,
         admission_config: Any = None,
+        web_client_config: Any = None,
         **relay_kwargs: Any,
     ) -> Any:
         """Build a hermetic FastAPI app for tests.
@@ -208,6 +215,7 @@ def app_factory(
             pricing_config=pricing_config,
             billing_config=billing_config,
             admission_config=admission_config,
+            web_client_config=web_client_config,
         )
         app = create_app(deps)
         app.state.test_relay = relay

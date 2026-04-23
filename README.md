@@ -39,6 +39,7 @@ Then proceed through `docs/03` onward at your own pace.
 | [`genesis/`](./genesis/) | The constitutional documents: Covenant, Invariants, Soul, Form, Memory, Resurrect, Credentials, and the Genesis Artifact. These are the documents Xion reads on every boot. |
 | [`docs/`](./docs/) | Architectural, economic, governance, and operational doctrine. The "how" and "why" that surrounds the "what" in `genesis/`. |
 | [`contracts/`](./contracts/) | Solidity sources for XION (the fungible utility token, capped at 420 billion) and IMPRINT (the soulbound reputation token). Not yet deployed. Outstanding fixes documented in [`KNOWN_WEAKNESSES.md`](./KNOWN_WEAKNESSES.md). |
+| [`clients/web/`](./clients/web/) | First-person web client (Vite + React 18 + TypeScript). Operator dashboard served same-origin by the orchestrator at `/app/*`; handles the full API response envelope matrix. See [`clients/web/README.md`](./clients/web/README.md) and [`docs/31-WEB-CLIENT.md`](./docs/31-WEB-CLIENT.md). |
 | [`xion-verify/`](./xion-verify/) | Third-party verifier CLI (Python click). Verifies Xion's constitutional claims; runs `--self-test` against a pinned tree-hash before trusting any other check. See [`xion-verify/README.md`](./xion-verify/README.md). |
 | [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md) | The phased development plan that activates after the doctrine layer is complete. |
 | [`KNOWN_WEAKNESSES.md`](./KNOWN_WEAKNESSES.md) | Honest, public log of every known weakness with mitigation status and pay-down commitments. |

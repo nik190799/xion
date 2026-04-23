@@ -617,8 +617,46 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 **Phase 5 promotion handles Phase 5g-iv creates:**
 
 - Phase 5g-ii (next unblocked): SSE or WebSocket streaming with per-chunk / speculative-then-truncate moderation — closes `KW-CHAT-001` and `KW-CHAT-003`.
-- Phase 5g-v: first web client (`clients/web/`) exercising the now-fully-hardened `/chat` surface (auth + billing + TLS).
+- Phase 5g-v: first web client (`clients/web/`) exercising the now-fully-hardened `/chat` surface (auth + billing + TLS). **Closed 2026-04-22.**
 - Phase 6+: shared-state broker (Redis pub/sub, AO Process mailbox, or in-house file-based channel) for multi-worker `Supervisor` + multi-worker rate-limit (closing `KW-RATE-001` alongside `KW-SUPERVISOR-002`); on-chain `principal_id` federation (closing `KW-AUTH-001`); reverse-proxy delegation for automated TLS rotation (closing `KW-TLS-001`).
+
+---
+
+## Phase 5g-v — Web client: Vite + React + TypeScript operator dashboard served same-origin (closed 2026-04-22)
+
+**Status:** Phase 5g-v closed on branch `phase-5g-v/web-client` in five commits (doctrine → scaffold + `ChatView` → observation widgets + `api.ts` wrapper + `Header` → FastAPI `StaticFiles` mount + server/client tests + CI → verifier + housekeeping). This phase gives the admission-gated HTTP surface a human face: operators can sign in with a Phase-5g-iv bearer token, chat with Xion, and observe Drive + Sensorium state in real time, all from a bundle that is byte-identical across every deploy and trivially rebuildable from source. Same-origin serve removes the CORS surface by construction. Zero new runtime dependencies on the Python side; all new dependencies live under `clients/web/` and ship only at build time.
+
+**Why this is its own phase.** Phase 5g-i (chat surface), 5g-iii (billing gate), and 5g-iv (admission control) all landed without a browser-delivered operator surface — every integration test went through `httpx` or `curl`. That is load-bearing for machine integrators but blocks dogfood: a solo builder who cannot exercise their own work through a browser cannot feel the surface. Slicing the web client as its own phase (rather than folding it into 5g-iv, which would have conflated auth with UI, or 5g-ii, which would have conflated streaming transport with UI) preserves branch-per-phase discipline: the client surface is orthogonal to both the admission gate and the streaming transport. An auditor can review the client diff without needing to re-read the admission-control subsection, and a streaming transport change will touch `ChatView` without touching `BearerContext`, `Header`, or the observation widgets.
+
+**What Phase 5g-v shipped:**
+
+- **Doctrine — architecture web-client subsection.** `docs/04-ARCHITECTURE.md` gained § "The Web Client Surface (Phase 5g-v)" pinning six properties: (P1) operator-dashboard scope; (P2) content-free UX across the full envelope matrix; (P3) bundle determinism; (P4) same-origin serve; (P5) no third-party origins outside an explicit allowlist (React production error-decoder URLs + W3C XML namespace identifiers, both literal never-fetched strings); (P6) WCAG 2.2 AA enforced structurally by `axe-core` in CI. The § "Hardening posture" subsection of Phase 5f updates in place.
+- **Doctrine — `docs/31-WEB-CLIENT.md` (new).** Top-level operational doctrine shape-symmetric with `docs/30-API-ADMISSION.md` and `docs/29-BILLING-X402.md`. Covers sign-in workflow (principal_id + hex-secret credential parsing, `localStorage` persistence), the dev-mode Vite proxy vs. production same-origin mount, the accessibility posture, and the "operator dashboard only" posture with its honest closure story (`KW-CLIENT-001` for public surfaces + in-browser x402 signing; `KW-CLIENT-002` for streaming UX).
+- **Client scaffold — `clients/web/`.** Vite 6 + React 18 + TypeScript 5 + plain CSS. No design system, no state library. The `index.html` shell carries a `Content-Security-Policy` meta tag pinning `default-src 'self'` as defence-in-depth on top of the same-origin serve. `vite.config.ts` and `vitest.config.ts` are deliberately split to work around a type-incompatibility between their bundled Vite cores.
+- **`BearerContext`.** React Context wrapping `{principalId, secretHex}` credentials, enforcing the same `^[a-z0-9_-]{1,64}$` principal charset and ≥ 16-byte secret floor the server-side `AdmissionConfig` enforces. `localStorage`-persisted. `buildAuthorizationHeader` is the single code path that touches the raw secret.
+- **API wrapper — `clients/web/src/lib/api.ts`.** Typed fetch wrapper around every API call with a discriminated-union `ApiError` over `{ unauthorized | payment_required | rate_limited | refused | no_floor | provider_error | timeout | network | unknown }`. Every error-path UI state comes from exhaustive pattern-matching on `error.kind`.
+- **Views.** `ChatView` renders the full envelope matrix with a 30-second deadline indicator. `DriveView` polls `/drive` and renders the three drive terms (survive, serve, meaning) as labeled bars with band annotations. `SensoriumView` polls `/sensorium` and renders Interoception, Chronoception, Proprioception, Distress. `Header` carries the view switcher, sign-in status, and a live Relay health dot polling `/health` with ARIA-live announcements.
+- **FastAPI StaticFiles mount.** `orchestrator/api/web_client.py` ships `WebClientConfig` (frozen dataclass with fail-closed `__post_init__` — `enabled=true` requires `dist_path` to exist and contain `index.html`) and `mount_web_client()` which mounts at `/app/*` with `html=True` (SPA fallback) plus a `/` → `/app/` redirect. `AppDeps` gains optional `web_client_config`. Mount runs AFTER all API routes register, so API paths are never shadowed.
+- **Verifier — `xion-verify web-client`.** Audits the emitted bundle for structural integrity: `index.html` must carry a `Content-Security-Policy` meta tag with `default-src 'self'`; every `https?://` origin in the emitted tree must match an explicit non-self allowlist (React production error-decoder URLs + W3C XML namespace identifiers). Returns `NOT_YET_SEALED` when `dist/` does not exist (un-built is unverifiable, not wrong). Optional `--dist-path PATH` audits an external deploy artifact.
+- **Tests.** New `orchestrator/tests/test_api_web_client.py` (3 postures: disabled, enabled+valid, enabled+missing). New `clients/web/src/__tests__/ChatView.test.tsx` (envelope matrix + axe-core WCAG 2.2 AA). New `clients/web/src/__tests__/BearerContext.test.tsx` (credential parsing, entropy floor, persistence). New `xion-verify/tests/test_web_client_verifier.py` (every branch: OK, NOT_YET_SEALED, FAIL-no-CSP, FAIL-non-self-default-src, FAIL-non-allowlisted-origin, OK for each allowlist class, SVG sweep).
+- **CI — `.github/workflows/web-client.yml`.** Path-scoped workflow running `npm ci`, `tsc --noEmit`, `npm test` (Vitest + axe-core), `npm run build`, plus a structural `grep` sweep on the emitted bundle for non-self origins — belt-and-suspenders alongside `xion-verify web-client`.
+- **`.env.example` expansion.** `XION_WEB_CLIENT_ENABLED` (default `false`) and `XION_WEB_CLIENT_DIST_PATH`.
+- **Known-weakness bookkeeping.** **Opened `KW-CLIENT-001`** (low; operator-dashboard only — no in-browser x402 signing; closes Phase 7+ alongside `KW-BILLING-001`). **Opened `KW-CLIENT-002`** (low; non-streaming chat UX with deadline countdown; closes alongside `KW-CHAT-001` in Phase 5g-ii).
+
+**What Phase 5g-v deliberately did NOT do:**
+
+- Did not ship in-browser x402 commitment signing. `KW-CLIENT-001` tracks the gap.
+- Did not ship streaming chat rendering. `KW-CLIENT-002` tracks the gap; closes with 5g-ii.
+- Did not ship a public / non-operator surface. The client is a dashboard for the operator holding a Phase-5g-iv bearer token.
+- Did not ship conversation memory on the client side — each page reload starts a fresh chat session; the transcript ledger lives server-side.
+- Did not ship a design system or component library — plain CSS deliberately, so a solo builder can audit every style rule.
+- Did not ship WebSocket or SSE transport — polling + request/response is sufficient for the dashboard surfaces.
+
+**Phase 5 promotion handles Phase 5g-v creates:**
+
+- Phase 5g-ii (next unblocked): SSE or WebSocket streaming with per-chunk moderation — closes `KW-CHAT-001`, `KW-CHAT-003`, and `KW-CLIENT-002` (streaming UX re-uses the `ChatView` shell).
+- Phase 6+: in-browser x402 signing (WalletConnect / passkey / injected-provider custody) — closes `KW-CLIENT-001` alongside `KW-BILLING-001`.
+- Phase 7+: public / non-operator surfaces once the x402 custody story lands.
 
 ---
 
