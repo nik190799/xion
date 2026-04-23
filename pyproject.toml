@@ -126,6 +126,13 @@ dev = [
 # `pip install -e ".[dev]"` from the repo root registers this entry point
 # so CI + operators can invoke the Arbiter CLI from any directory.
 xion-arbiter = "orchestrator.safety.__main__:main"
+# `pip install -e ".[api]"` from the repo root registers the standalone
+# orchestrator launcher (Phase 5g-iv). Reads admission-control env vars
+# (XION_API_REQUIRE_BEARER, XION_API_BEARER_TOKENS, XION_TLS_CERT_PATH,
+# XION_TLS_KEY_PATH, XION_API_HOST, XION_API_PORT, etc.), constructs a
+# real AppDeps, and runs uvicorn with --workers 1 enforced and TLS
+# fail-closed for non-loopback binds. See docs/30-API-ADMISSION.md.
+xion-orchestrator-api = "orchestrator.api.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/xion-os"

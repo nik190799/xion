@@ -42,19 +42,27 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from orchestrator.billing import (
+    ChainBroken as PaymentChainBroken,
+)
+from orchestrator.billing import (
+    load_billing_config_from_env,
+)
+from orchestrator.billing import (
+    verify_chain as verify_payment_chain,
+)
 from orchestrator.inference_router import (
     DEFAULT_POLICY_MODE,
     InferenceRouter,
     PolicyMode,
     default_manifest_path,
 )
-from orchestrator.billing import (
-    ChainBroken as PaymentChainBroken,
-    load_billing_config_from_env,
-    verify_chain as verify_payment_chain,
-)
 from orchestrator.supervisor import Supervisor
 
+from .admission import (
+    build_rate_limiters,
+    load_admission_config_from_env,
+)
 from .pricing import load_pricing_config_from_env
 
 
@@ -150,6 +158,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "PAYMENT_LEDGER chain broken at startup; refusing to start. "
             f"Detail: {e}"
         ) from e
+
+    # --- Phase 5g-iv: load admission config + build rate limiters ---
+    # Doctrine pin (docs/04-ARCHITECTURE.md § "The Admission-Control
+    # Surface (Phase 5g-iv)" → "Lifespan contract"): a misconfigured
+    # admission table (short token, malformed principal_id, non-loopback
+    # bind without TLS) is a constitutional failure, not a warning.
+    # The app refuses to register any route if the admission config
+    # does not load. Explicitly-supplied configs on
+    # ``deps.admission_config`` win over the env loader (test seam).
+    if getattr(deps, "admission_config", None) is not None:
+        admission_config = deps.admission_config
+    else:
+        admission_config = load_admission_config_from_env()
+    app.state.admission_config = admission_config
+    app.state.rate_limiters = build_rate_limiters(admission_config)
+    # The /health per-IP bucket map is built lazily on first request;
+    # initialise the slot so admission_dependency does not have to
+    # check for its existence on every call.
+    app.state.health_rate_limiters = {}
 
     # Wire the Supervisor into the Relay AFTER the pre-seed tick, so
     # any in-process code that races the lifespan cannot observe a

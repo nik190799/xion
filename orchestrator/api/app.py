@@ -37,10 +37,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from orchestrator.volition import Volition
 
+from .admission import admission_dependency
 from .chat import register_chat_route
 from .lifespan import lifespan
 from .models import DriveResponse, HealthResponse, SensoriumResponse
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from orchestrator.inference_router.router import InferenceRouter
     from orchestrator.relay import Relay
 
+    from .admission import AdmissionConfig
     from .pricing import PricingConfig
 
 
@@ -121,6 +123,19 @@ class AppDeps:
     # ``orchestrator.billing.load_billing_config_from_env()``.
     billing_config: BillingConfig | None = None
 
+    # --- Phase 5g-iv additions -------------------------------------
+    # Admission-control config the lifespan stashes on
+    # ``app.state.admission_config``. Controls bearer-token gating on
+    # /drive, /sensorium, /chat; the per-principal sliding-window
+    # rate-limit; the per-IP /health bucket; and the bind-host /
+    # TLS knobs the launcher reads. If None, the lifespan constructs
+    # it from env vars via
+    # ``orchestrator.api.admission.load_admission_config_from_env()``.
+    # The autouse conftest fixture sets XION_API_REQUIRE_BEARER=false
+    # so existing test suites do not regress; tests that exercise the
+    # gate pass an explicit AdmissionConfig here.
+    admission_config: AdmissionConfig | None = None
+
 
 def create_app(deps: AppDeps) -> FastAPI:
     """Construct a FastAPI app wired against ``deps``.
@@ -155,10 +170,19 @@ def create_app(deps: AppDeps) -> FastAPI:
     app.state.volition = Volition()
     app.state.chat_deadline_s = deps.chat_deadline_s
 
+    # Phase 5g-iv admission ordering. ``admission_dependency`` runs
+    # 401 → 429 in front of every route below; routes do not need to
+    # know whether bearer is required (the dependency consults
+    # ``app.state.admission_config`` and short-circuits in the
+    # require_bearer=false 5g-i compat mode). The dependency returns
+    # the matched ``principal_id`` (or ``"unauth-public"`` for /health
+    # and /pricing); routes ignore it at 5g-iv (KW-AUTH-001 closes
+    # promotion to PAYMENT_LEDGER in Phase 6).
     @app.get(
         "/health",
         response_model=HealthResponse,
         summary="Relay self-reported health (Phase 5f)",
+        dependencies=[Depends(admission_dependency)],
     )
     def get_health() -> dict[str, Any]:
         health = deps.relay.health_snapshot()
@@ -178,6 +202,7 @@ def create_app(deps: AppDeps) -> FastAPI:
         # ``"methodology_hash": null``.
         response_model_exclude_none=True,
         summary="Volition drive-vector readout (Phase 5f)",
+        dependencies=[Depends(admission_dependency)],
     )
     def get_drive() -> dict[str, Any]:
         state = _require_snapshot(app)
@@ -190,6 +215,7 @@ def create_app(deps: AppDeps) -> FastAPI:
         "/sensorium",
         response_model=SensoriumResponse,
         summary="Sensorium senses readout (Phase 5f)",
+        dependencies=[Depends(admission_dependency)],
     )
     def get_sensorium() -> dict[str, Any]:
         state = _require_snapshot(app)

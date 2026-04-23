@@ -21,9 +21,9 @@ import click
 
 from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
+from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.cognition import cognition
-from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.constitutional import (
     covenant,
     credentials,
@@ -34,15 +34,16 @@ from xion_verify.commands.constitutional import (
     soul,
     unknowns,
 )
+from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
+from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.links import links
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
 from xion_verify.commands.pricing import pricing
 from xion_verify.commands.refund_fidelity import refund_fidelity
 from xion_verify.commands.refusal_is_free import refusal_is_free
 from xion_verify.commands.refusal_rate import refusal_rate
-from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
@@ -73,6 +74,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "crisis-fidelity": crisis_fidelity,
     "inference-sovereignty": inference_sovereignty,
     "sensorium-ledger": sensorium_ledger,
+    "api-tokens": api_tokens,
 }
 
 

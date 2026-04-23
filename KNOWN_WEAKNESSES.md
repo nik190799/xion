@@ -21,6 +21,54 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-AUTH-001 — Bearer tokens are HMAC-shared-secret only; no federated identity
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-22 (Phase 5g-iv admission-control landing)
+- **Severity:** medium
+- **Status:** `mitigated-residual` (the structural mechanism is shipped; the federated-identity replacement is a Phase 6+ deliverable)
+- **Description:** Phase 5g-iv authenticates `/drive`, `/sensorium`, and `/chat` with operator-issued bearer tokens compared in constant time via stdlib `hmac.compare_digest`. The token is an HMAC-shared-secret string (≥128 bits of entropy, hex-encoded in `XION_API_BEARER_TOKENS`). There is no federated identity surface: no OAuth, no Sign-In-With-Wallet, no DID, no on-chain pubkey lattice, no per-Witness identity binding. Every token's authority traces back to the operator, and a token compromise is mitigated only by operator-side rotation.
+- **Why it exists:** The smallest doctrinally honest mechanism that (1) gates content-bearing endpoints on a knowable principal, (2) keeps the route-level admission contract algorithm-rotatable, and (3) does not couple the 5g-iv landing to the on-chain-identity-lattice work that requires Phase 6 AO Core. Federated identity needs an Arweave-published authority surface; that surface is Phase 6+.
+- **Mitigations:**
+  1. Token entropy floor (≥128 bits) enforced at lifespan-load time and re-checked by `xion-verify api-tokens` offline.
+  2. Constant-time comparison via `hmac.compare_digest` — a timing oracle on token comparison is not the attack surface.
+  3. Content-free 401 envelope (`AuthChallenge`) — a scraper enumerating tokens learns "not this one" per attempt and nothing else (no echo of the offered header, no hint at how many tokens are configured, no per-token failure mode disclosure).
+  4. `principal_id` charset constraint (`^[a-z0-9_-]{1,64}$`) prevents log-injection and bucket-keying ambiguity.
+  5. The `verify_bearer(header, tokens) -> principal_id | None` function is the algorithm-rotatable surface; the route-level `Depends(admission_dependency)` does not need to change when the token store widens to a principal lattice.
+  6. Tokens are never persisted to disk by the orchestrator and never appear in any ledger or log line.
+- **Pay-down commitment:** Closes when Phase 6+ Arweave-published principal lattice lands and `verify_bearer`'s body is replaced with an authority-lookup against the on-chain registry under unchanged route shape, AND `PAYMENT_LEDGER` schema bumps to `1.1` to carry `principal_id` in each row (additive, backward-compatible reader). Until then the residual is the token-compromise blast radius bounded by operator rotation cadence.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) — offline structural check on token entropy, principal_id charset, and host-vs-TLS coherence.
+
+### KW-RATE-001 — Per-principal sliding window is in-process; multi-worker deployment loses bucket coherence
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-22 (Phase 5g-iv admission-control landing)
+- **Severity:** low
+- **Status:** `mitigated-residual` (the single-worker posture is the supported configuration; multi-worker is a separate pay-down)
+- **Description:** Phase 5g-iv rate-limits authenticated requests with a `collections.deque` of monotonic-ns timestamps under a single `threading.Lock`, keyed per `principal_id`. The mechanism is in-process by construction. A `uvicorn --workers N` deployment runs N independent Python processes, each with its own `app.state.rate_limiters` map; each process holds an independent bucket per principal, so the effective per-principal budget is `N × XION_API_RATE_BUDGET`. A principal that targets all N workers in parallel can consume N times the intended budget.
+- **Why it exists:** A multi-worker shared-state broker (Redis pub/sub, AO Process mailbox, or a tiny TCP-loopback daemon) is the right long-term mechanism but it is a separate doctrine and code-surface unit. Shipping the in-process sliding window in 5g-iv lands the property (per-principal bounded latency budget) under the smallest correct mechanism for the single-worker D2 deployment posture. The multi-worker pay-down lands alongside `KW-API-002` / `KW-SUPERVISOR-002` when the multi-worker story is pinned end-to-end (Supervisor sharing, ledger-write serialization, AND rate-limit coherence are all the same problem).
+- **Mitigations:**
+  1. The 5g-iv operator runbook (`docs/30-API-ADMISSION.md` § "Operator workflow — rate-limit tuning") pins single-worker as the supported configuration and names the multi-worker caveat explicitly.
+  2. The launcher (`orchestrator/api/__main__.py`) does not expose a `--workers` flag; an operator who wants multi-worker has to invoke `uvicorn` directly, which is itself a documented departure from the runbook.
+  3. The per-principal budget is conservative (Genesis Default 60 / 60 s); even at `N=4` workers the effective budget (240 / 60 s) is below most reasonable abuse thresholds and well below the per-token cost ceiling on the OpenRouter posture.
+- **Pay-down commitment:** Closes alongside `KW-API-002` (Supervisor in shared event loop) when a Phase 5g+ multi-worker story lands a shared-state broker. The `SlidingWindow` class is the broker-replaceable surface; the `admission_dependency` route call does not need to change.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) checks rate-limit knob sanity (positive integers); a runtime `xion-verify api-budget-fidelity` against a live deployment is `NOT_YET_SEALED` until Phase 6+.
+
+### KW-TLS-001 — uvicorn-native TLS: no automated cert renewal, no ALPN/HTTP-2 negotiation
+
+- **Domain:** `OPS`
+- **Discovered:** 2026-04-22 (Phase 5g-iv admission-control landing)
+- **Severity:** low
+- **Status:** `mitigated-residual` (the fail-closed launcher is shipped; the long-term reverse-proxy posture is a Phase 6+ deployment-story deliverable)
+- **Description:** Phase 5g-iv ships a launcher (`orchestrator/api/__main__.py`) that passes `ssl_keyfile=` and `ssl_certfile=` to `uvicorn.run` when `XION_API_HOST != 127.0.0.1`. uvicorn handles the TLS handshake using whatever cert and key the operator pinned at process-start time. The orchestrator does not renew the cert automatically; it does not negotiate ALPN/HTTP-2; it does not stack OCSP responses; it does not implement HSTS. An operator on Posture B (direct bind, uvicorn-native TLS) must rotate certs manually or wire `certbot --post-hook "systemctl restart xion-orchestrator"`.
+- **Why it exists:** A reverse proxy (Caddy / nginx / Cloudflare Tunnel) is the right long-term tool for TLS lifecycle management; coupling the orchestrator to that work would expand its dependency surface and operational footprint with no constitutional gain. Shipping uvicorn-native TLS in 5g-iv lets the small operator stand up a working D2 deployment in one process without a proxy, while the runbook pins the reverse-proxy posture as the recommended long-term path.
+- **Mitigations:**
+  1. The launcher refuses to start if `XION_API_HOST != 127.0.0.1` and either TLS path is absent or unreadable — fail-closed; no plaintext bearer-token transport on a reachable interface is structurally possible.
+  2. `docs/30-API-ADMISSION.md` § "Operator workflow — TLS termination" pins both Posture A (loopback bind + reverse-proxy fronts TLS) and Posture B (direct bind + uvicorn TLS) and names Posture A as the long-term recommendation.
+  3. The cert + key paths are read once at process start; an operator who automates rotation via `certbot --post-hook "systemctl restart"` gets the same effective rotation cadence as Posture A.
+- **Pay-down commitment:** Closes when the Phase 6+ deployment story pins a long-term reverse-proxy posture (likely Caddy or a sidecar Cloudflared container per Akash provider) and the `__main__.py` launcher's `ssl_keyfile`/`ssl_certfile` codepath is removed in favor of always-loopback-bind. Until then the residual is the operator-manual cert rotation cost.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv) checks host-vs-TLS coherence (non-loopback host requires both TLS paths exist and are readable). A runtime check that the cert chain is currently valid against a system trust store is operator-side (`openssl x509 -in $XION_TLS_CERT_PATH -noout -dates`); the orchestrator does not duplicate this.
+
 ### KW-INFERENCE-001 — Inference Router: floor wired; production weights + ops dry-run still open
 
 - **Domain:** `RUNTIME`
@@ -204,22 +252,6 @@ Every entry has the same shape:
   4. `arbiter_healthy=False` does not trigger an escalation by itself — it feeds Proprioception, which feeds Volition's `survive` term. A false negative degrades Volition readout but does not block user traffic. The Covenant posture is unchanged.
 - **Pay-down commitment:** Closes when (a) at least one full production quarter of tick_commit data has been walked, (b) the quiet-window threshold is re-pinned from measured arbiter-idle distribution in a commit that updates `docs/04-ARCHITECTURE.md` § "The Supervisor (Phase 5d)" and `CHANGELOG.md`, and (c) the test suite pins the tuned values.
 - **Verifier:** No external verifier — this is a parameter-tuning KW, not an integrity KW. `xion-verify sensorium-ledger` (live) reports per-event-type tallies and is the data feed for the re-pin commit.
-
-### KW-API-001 — HTTP surface has no auth, no TLS, no rate-limit
-
-- **Domain:** `PROTOCOL`
-- **Discovered:** 2026-04-21 (Phase 5f HTTP read-only surface landing)
-- **Severity:** low
-- **Status:** `paying-down`
-- **Description:** `orchestrator/api/` ships three read-only endpoints (`GET /health`, `/drive`, `/sensorium`) with no authentication, no TLS termination, no rate limiting, and no `/chat`. Anyone who can reach the bound socket can read Xion's internal state at arbitrary query rate. There is no mechanism in this module to reject a client, distinguish a friendly reader from a hostile scraper, or require a credential. The Phase 5f posture is "content-free read-only surface" — the endpoints leak no candidate text, no user id, and no prompt by construction (field-allowlist asserted in `orchestrator/tests/test_http_api.py::test_sensorium_field_allowlist_content_free`) — but a hostile reader could still observe Supervisor cadence, drive-vector skew, and Relay health over time and correlate that with external events.
-- **Why it exists:** The doctrinal ordering chose observation before admission-control. Phase 5f is the first time anything outside the process can see Xion at all, and the right first step is to surface the state the Supervisor already maintains without simultaneously committing to the larger surface (`/chat`, x402 billing, refunds on refusal, session state) whose hardening posture needs its own doctrine. Shipping auth + TLS + rate-limit in Phase 5f would either bake decisions that `/chat` would rename in Phase 5g, or delay Phase 5f indefinitely while we design the Phase 5g surface in its absence. Both are worse than the narrow read-only surface that ships today.
-- **Mitigations:**
-  1. **Doctrine pins the surface shape.** `docs/04-ARCHITECTURE.md` § "The HTTP Surface (Phase 5f)" enumerates the three endpoints and marks "no /chat, no billing, no auth, no TLS, no rate-limit, no multi-worker" as explicit non-properties. A PR that adds an endpoint to `orchestrator/api/app.py` without updating that section is reviewable at PR time.
-  2. **Content-free structural guarantee.** Every pydantic model sets `extra="forbid"`, and the test suite pins an explicit field allowlist on `/sensorium`. A future commit that adds a content-bearing field (e.g. `candidate_text`) to `SensoriumState` FAILs the round-trip test first and the field-allowlist test second, forcing an explicit deliberate expansion or a strip-at-boundary decision.
-  3. **Operator runbook binds to localhost by default.** The operator deployment guide (still pending until Phase 5g ships a real deployment target) will document `uvicorn --host 127.0.0.1` as the Phase 5f pattern; reaching the surface from outside the host requires an explicit reverse proxy, which is where auth and TLS naturally live.
-  4. **No side effects.** All three endpoints are pure GETs that touch no ledger, spawn no child process, make no outbound call. A DDoS wastes the Relay's threadpool on trivial dict copies but cannot force a SENSORIUM_LEDGER write beyond the Supervisor's own 10s cadence.
-- **Pay-down commitment:** Closes in Phase 5g when the same module (or its successor) ships `POST /chat` + x402 billing + authentication (bearer tokens or signed session cookies, choice deferred to 5g doctrine) + TLS via uvicorn or a reverse proxy + per-token rate-limiting. The closure commit updates this KW's `Status` to `closed` with the specific PR that ships the hardened posture, and pins the new threat model in `docs/04-ARCHITECTURE.md`.
-- **Verifier:** No external verifier today — a hardness verifier on a live HTTP deployment requires the deployment target to exist, which is Phase 5g. Phase 5f's attestation is the doctrine section, the pydantic models, the field-allowlist test, and the `TestClient`-based test suite covering all three endpoints.
 
 ### KW-API-002 — Supervisor shares FastAPI event loop; single uvicorn worker only
 
@@ -562,6 +594,26 @@ Every entry has the same shape:
 ## Closed
 
 *(Entries move here with a closure date and the artifact (commit hash, PR, deploy tx, or doctrine version) that closed them.)*
+
+### KW-API-001 — HTTP surface has no auth, no TLS, no rate-limit
+
+- **Domain:** `PROTOCOL`
+- **Discovered:** 2026-04-21 (Phase 5f HTTP read-only surface landing)
+- **Severity:** low
+- **Status:** `closed` on 2026-04-22 by the Phase 5g-iv admission-control landing (branch `phase-5g-iv/admission-control`).
+- **Description:** `orchestrator/api/` shipped its first three read-only endpoints (`GET /health`, `/drive`, `/sensorium`) at Phase 5f with no authentication, no TLS termination, no rate limiting, and no `/chat`. Phase 5g-i added `POST /chat` and Phase 5g-iii added the billing gate, but anyone who could reach the bound socket could still read Xion's internal state at arbitrary query rate, and `/chat` ran without a per-token bucket — a hostile scraper holding one valid commitment template could in principle drain provider budget at line-rate. There was no mechanism in `orchestrator/api/` to reject a client by identity, distinguish a friendly reader from a hostile scraper, require a TLS-encrypted connection on a non-loopback bind, or budget per-caller request volume. This was the last explicit D2-deploy blocker named in [`docs/04-ARCHITECTURE.md`](./docs/04-ARCHITECTURE.md) § "The HTTP Surface (Phase 5f)" → "Hardening posture".
+- **How it closed:** Phase 5g-iv shipped every clause of the pay-down commitment in five commits on `phase-5g-iv/admission-control`:
+  1. **Doctrine.** [`docs/04-ARCHITECTURE.md`](./docs/04-ARCHITECTURE.md) § "The Admission-Control Surface (Phase 5g-iv)" pins the six properties (bearer authentication, sliding-window per-principal rate-limiting, fail-closed TLS for non-loopback binds, `401 → 429 → 402` admission ordering, content-free 401/429 bodies, `principal_id` naming convention with no leak into `PAYMENT_LEDGER` until Phase 6). The § "The HTTP Surface (Phase 5f)" → "Hardening posture" subsection is updated in place to mark the gap closed and link forward. [`docs/30-API-ADMISSION.md`](./docs/30-API-ADMISSION.md) lands as a new top-level operational doctrine for the admission surface mirroring [`docs/29-BILLING-X402.md`](./docs/29-BILLING-X402.md)'s posture for the billing surface (token issuance, TLS cert procurement, rate-limit budget tuning, deployment runbook, crypto-agility).
+  2. **Module.** [`orchestrator/api/admission.py`](./orchestrator/api/admission.py) ships `AdmissionConfig` (frozen dataclass, fail-closed `__post_init__` validation: token entropy ≥ 128 bits, `principal_id` matches `^[a-z0-9_-]{1,64}$`, non-loopback host requires both TLS paths and both files exist), `SlidingWindow` (deque-of-monotonic-ns timestamps under a single `threading.Lock`, O(1) amortized check + record), `verify_bearer` (constant-time via `hmac.compare_digest` over every token), `load_admission_config_from_env`, and the `admission_dependency` FastAPI callable. Stdlib-only; no new core runtime dep.
+  3. **Launcher.** [`orchestrator/api/__main__.py`](./orchestrator/api/__main__.py) builds a real `AppDeps` from env vars and runs `uvicorn` with `--workers 1` enforced (a `KW-RATE-001` mitigation: in-process sliding window cannot share state across workers) and TLS configured from `XION_TLS_CERT_PATH` / `XION_TLS_KEY_PATH`. The launcher refuses to bind a non-loopback host without both — fail-closed regardless of `XION_API_REQUIRE_BEARER` mode.
+  4. **Routes + ordering.** `Depends(admission_dependency)` is wired into [`orchestrator/api/app.py`](./orchestrator/api/app.py) (`/health`, `/drive`, `/sensorium`), [`orchestrator/api/chat.py`](./orchestrator/api/chat.py) (`/chat`, in front of the existing 5g-iii billing gate so the constitutional `401 → 429 → 402` ordering is structural, not aspirational), and [`orchestrator/api/pricing.py`](./orchestrator/api/pricing.py) (`/pricing`, defense-in-depth — the route remains constitutionally public and unrate-limited via the dependency's public-route shortcut). Content-free `AuthChallenge` (401) and `RateLimitChallenge` (429) Pydantic models with `extra="forbid"` and `frozen=True` ensure no internal state leaks through error responses. [`orchestrator/api/lifespan.py`](./orchestrator/api/lifespan.py) loads the `AdmissionConfig` and builds the per-principal `SlidingWindow` map at startup.
+  5. **Verifier.** [`xion-verify api-tokens`](./xion-verify/src/xion_verify/commands/api_tokens.py) is new (promoted from `NOT_YET_SEALED` to live): loads the same `AdmissionConfig` the orchestrator's lifespan loads and applies the same `__post_init__` validation, so a config the verifier passes is structurally identical to one the orchestrator will accept. Optional `--env-file PATH` lets a CI gate audit a deployment `.env` without invoking the operator's shell. Reports `OK` against [`./.env.example`](./.env.example) (loopback default, `require_bearer=false`); reports the specific `AdmissionConfigError` reason on any misconfiguration.
+  6. **Tests.** New `orchestrator/tests/test_api_admission.py` covers `AdmissionConfig` validation, `SlidingWindow` behaviour, `verify_bearer`, `AuthChallenge` / `RateLimitChallenge` contract adherence, end-to-end 401/429/200 on `/drive`, `/sensorium`, `/chat`, public access on `/health` + `/pricing`, and crucially the `401 → 429 → 402` ordering (401 wins over 402 with valid commitment but missing token; 429 wins over 402 within bucket overflow). New `xion-verify/tests/test_api_tokens_verifier.py` covers the verifier's full validation matrix and the `--env-file` overlay's environment restoration. Full suite **637 / 637** pass; `xion-verify api-tokens --env-file .env.example` returns `OK`.
+- **Residual / remaining weaknesses (tracked separately):**
+  - `KW-AUTH-001` — Bearer tokens are operator-issued shared secrets; no on-chain federated identity. Closes Phase 6+ when `principal_id` binds to an Arweave-stored pubkey lattice.
+  - `KW-RATE-001` — Sliding window is in-process; multi-worker would have N independent buckets. Closes alongside `KW-SUPERVISOR-002` when the multi-worker shared-state broker lands.
+  - `KW-TLS-001` — uvicorn-native TLS has no automated cert rotation and no ALPN/HTTP-2; long-term path is reverse-proxy delegation.
+- **Verifier:** `xion-verify api-tokens` (live as of Phase 5g-iv).
 
 ### KW-CHAT-002 — /chat runs with billing disabled; blocks any D2 deploy
 

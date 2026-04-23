@@ -69,4 +69,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "inference-sovereignty",
     "substrate-portability",
     "regulatory-ledger",
+    "api-tokens",
 )
