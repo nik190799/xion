@@ -59,6 +59,7 @@ import json
 import os
 import re
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 from urllib.parse import urlparse
@@ -263,6 +264,128 @@ class OpenRouterGenerativeProvider:
             ) from None
 
         return _parse_openai_completion(payload, model=self.model, latency_ms=latency_ms)
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        *,
+        system: str | None,
+        max_tokens: int,
+        deadline_s: float,
+    ) -> AsyncIterator[str | GenerationResult]:
+        """Phase 5g-ii streaming generation via OpenRouter's OpenAI-
+        compatible ``stream=true`` flag.
+
+        Yields ``str`` chunks as each ``data: { ... "delta": { "content": ...
+        } ... }`` SSE event arrives from the upstream, then yields
+        exactly one ``GenerationResult`` with the final metadata
+        (usage parsed from the OpenRouter ``usage`` event, if emitted;
+        otherwise zero — upstreams vary). An ``asyncio.CancelledError``
+        propagates cleanly: the ``httpx.AsyncClient`` context closes
+        the upstream HTTP connection, which terminates upstream
+        generation and billing.
+
+        Uses ``httpx.AsyncClient`` (pulled in by the ``[api]`` extra)
+        for native async + cancel — stdlib ``http.client`` in
+        ``asyncio.to_thread`` does not propagate cancel to the
+        underlying socket, which is the whole reason Phase 5g-ii adds
+        this path. The non-streaming ``generate()`` keeps its stdlib
+        path so existing call sites and tests continue working.
+        """
+        # Imported inside the method so ``import orchestrator.*`` does
+        # not require httpx at import time for consumers that don't
+        # use the streaming path (shape symmetry with the stdlib-only
+        # ``generate()`` above).
+        import httpx
+
+        if deadline_s <= 0:
+            raise OpenRouterProviderError("generate_stream: deadline_s must be positive")
+
+        messages: list[dict[str, str]] = []
+        if system is not None:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        body = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+
+        url = self.base_url.rstrip("/") + "/chat/completions"
+        headers = self._auth_headers()
+        headers["Content-Type"] = "application/json"
+        headers["Accept"] = "text/event-stream"
+        headers["User-Agent"] = "xion-os/0.3.0 (+phase-5g-ii)"
+
+        started = time.monotonic()
+        model_id = self.model
+        usage_in = 0
+        usage_out = 0
+        finish = "stop"
+
+        try:
+            async with httpx.AsyncClient(timeout=deadline_s) as client:
+                async with client.stream(
+                    "POST",
+                    url,
+                    json=body,
+                    headers=headers,
+                ) as resp:
+                    if not (200 <= resp.status_code < 300):
+                        raw_bytes = await resp.aread()
+                        snippet = raw_bytes[:512].decode("utf-8", errors="replace")
+                        raise OpenRouterProviderError(
+                            f"openrouter HTTP {resp.status_code}: "
+                            f"{_scrub(snippet, self._api_key)}"
+                        )
+                    async for line in resp.aiter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+                        payload_text = line[len("data:"):].strip()
+                        if payload_text == "[DONE]":
+                            break
+                        try:
+                            event = json.loads(payload_text)
+                        except json.JSONDecodeError:
+                            continue
+                        # OpenRouter forwards OpenAI's choices/delta shape.
+                        choices = event.get("choices") or []
+                        if choices:
+                            first = choices[0] or {}
+                            delta = first.get("delta") or {}
+                            content = delta.get("content")
+                            if isinstance(content, str) and content:
+                                yield content
+                            finish_reason = first.get("finish_reason")
+                            if finish_reason:
+                                finish = str(finish_reason)
+                        # Usage typically arrives on the final event
+                        # (OpenAI-compat) or on a dedicated trailer
+                        # OpenRouter emits when ``stream_options.include_usage``
+                        # is set. Parse defensively either way.
+                        usage_obj = event.get("usage")
+                        if isinstance(usage_obj, dict):
+                            usage_in = int(usage_obj.get("prompt_tokens") or usage_in)
+                            usage_out = int(usage_obj.get("completion_tokens") or usage_out)
+                        returned_model = event.get("model")
+                        if isinstance(returned_model, str) and returned_model:
+                            model_id = returned_model
+        except (TimeoutError, httpx.HTTPError) as e:
+            raise OpenRouterProviderError(
+                f"openrouter stream transport error: {_scrub(str(e), self._api_key)}"
+            ) from None
+
+        latency_ms = max(0, int((time.monotonic() - started) * 1000))
+        yield GenerationResult(
+            text="",
+            model_id=model_id,
+            usage_in=usage_in,
+            usage_out=usage_out,
+            finish_reason=finish,
+            latency_ms=latency_ms,
+        )
 
     def _auth_headers(self) -> dict[str, str]:
         """Assemble auth + optional app-identity headers.

@@ -611,6 +611,157 @@ class PaymentChallenge(BaseModel):
     )
 
 
+# ----------------------------------------------------------- /chat/stream
+#
+# Phase 5g-ii. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "Streaming
+# the Chat Surface (Phase 5g-ii)" + ``docs/32-CHAT-STREAMING.md``.
+#
+# The streaming transport at ``POST /chat/stream`` returns
+# ``text/event-stream`` with each SSE record carrying a JSON body of
+# one of three discriminated shapes (``kind ∈ {"chunk","done","error"}``).
+# The full response envelope types used INSIDE ``done`` events
+# (``ChatResponse``, ``RefusalEnvelope``, ``NoFloorEnvelope``,
+# ``ProviderErrorEnvelope``) are the Phase 5g-i surface pinned above —
+# no new response shapes are introduced, only a new transport.
+#
+# Serializing rule: each ``StreamChunkEvent`` / ``StreamDoneEvent`` /
+# ``StreamErrorEvent`` goes on the wire as ``data: <model.model_dump_json()>\n\n``.
+# The SSE parser on the client side reads up to ``\n\n``, strips the
+# leading ``data: `` prefix, parses the JSON, and dispatches on
+# ``kind``.
+
+
+class StreamChunkEvent(BaseModel):
+    """One token-slice event emitted as a ``kind="chunk"`` SSE record.
+
+    ``seq`` is a 0-indexed strictly monotonic counter; a non-monotonic
+    ``seq`` the client sees is a transport error and the client MUST
+    close the stream. The server guarantees monotonicity.
+
+    ``text`` is a literal UTF-8 string — NOT JSON-escaped. Empty
+    ``text`` is permitted (the provider emitted a no-op delta) and
+    contributes zero bytes to the buffered candidate.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["chunk"] = Field(
+        description="Discriminator. Always 'chunk' for this shape.",
+    )
+    seq: int = Field(
+        ge=0,
+        description=(
+            "0-indexed strictly monotonic sequence number. A well-formed "
+            "stream has chunks 0, 1, 2, … in order; non-monotonicity is "
+            "a transport error."
+        ),
+    )
+    text: str = Field(
+        description=(
+            "Literal token-slice text from the provider, UTF-8 encoded. "
+            "May be empty (rare; the provider emitted a no-op delta). "
+            "The concatenation of all chunks' text equals the final "
+            "candidate text that egress moderation evaluates."
+        ),
+    )
+
+
+class StreamDoneEvent(BaseModel):
+    """Terminal event emitted exactly once per stream as a ``kind="done"`` SSE record.
+
+    Exactly one of ``response`` / ``refusal`` / ``no_floor`` /
+    ``provider_error`` is non-null, discriminated by ``verdict``:
+
+      - ``verdict="approve"`` → ``response`` non-null, others null.
+      - ``verdict="refuse"``  → ``refusal`` non-null, others null.
+      - ``verdict="no_floor"`` → ``no_floor`` non-null, others null.
+      - ``verdict="provider_error"`` → ``provider_error`` non-null, others null.
+      - ``verdict="cancelled"`` → ALL four null (Phase 5g-ii Commit 3;
+        see note below).
+
+    Phase 5g-ii Commit 2 uses four verdicts: approve, refuse, no_floor,
+    provider_error. The ``cancelled`` verdict enum value is reserved
+    here and used starting in Commit 3 (client-disconnect cancel
+    propagation). When a stream is ``cancelled`` on the server side,
+    the client has already disconnected, so the server emits NO
+    ``done`` event at all — the ``cancelled`` verdict exists only so
+    operator-side tooling that replays a server-side stream transcript
+    can represent the cancel as a terminal event.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["done"] = Field(
+        description="Discriminator. Always 'done' for this shape.",
+    )
+    verdict: Literal["approve", "refuse", "cancelled", "no_floor", "provider_error"] = Field(
+        description=(
+            "Terminal verdict. 'approve' + 'refuse' + 'no_floor' + "
+            "'provider_error' are wire-emitted in Phase 5g-ii Commit 2. "
+            "'cancelled' is reserved for Commit 3 operator-side "
+            "replay tooling and is never emitted on the live wire "
+            "(a cancelled stream's client is already gone)."
+        ),
+    )
+    response: ChatResponse | None = Field(
+        default=None,
+        description="Non-null iff verdict='approve'; the moderated ChatResponse.",
+    )
+    refusal: RefusalEnvelope | None = Field(
+        default=None,
+        description="Non-null iff verdict='refuse'; the content-free RefusalEnvelope.",
+    )
+    no_floor: NoFloorEnvelope | None = Field(
+        default=None,
+        description=(
+            "Non-null iff verdict='no_floor'; Invariant-17 floor was "
+            "not held when the stream was about to select a provider."
+        ),
+    )
+    provider_error: ProviderErrorEnvelope | None = Field(
+        default=None,
+        description=(
+            "Non-null iff verdict='provider_error'; no registered "
+            "provider was healthy, or the provider raised during "
+            "generation."
+        ),
+    )
+
+
+class StreamErrorEvent(BaseModel):
+    """Transport-level error event. Reserved for failures that are
+    neither a Covenant refusal nor a structural operational error
+    (no-floor / provider-error). In Phase 5g-ii this covers only
+    ``deadline_exceeded`` and ``internal`` — the latter is a bug-
+    class, logged server-side before emission.
+
+    A client seeing ``kind="error"`` MUST treat the stream as
+    terminal; no further events follow.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["error"] = Field(
+        description="Discriminator. Always 'error' for this shape.",
+    )
+    error: Literal["internal", "deadline_exceeded"] = Field(
+        description=(
+            "Enumerated transport error kind. 'internal' means a "
+            "server-side bug (also logged with correlation_id to "
+            "stderr); 'deadline_exceeded' means the per-turn deadline "
+            "fired before generation completed."
+        ),
+    )
+    correlation_id: str = Field(
+        description=(
+            "SAFETY_LEDGER correlation_id of the ingress Arbiter call "
+            "(which always ran before any error could be emitted). "
+            "Lets a Witness join the stream-error with the ingress "
+            "moderation row."
+        ),
+    )
+
+
 # ----------------------------------------------------------- /admission
 #
 # Phase 5g-iv. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "The
@@ -710,5 +861,8 @@ __all__ = [
     "RateLimitChallenge",
     "RefusalEnvelope",
     "SensoriumResponse",
+    "StreamChunkEvent",
+    "StreamDoneEvent",
+    "StreamErrorEvent",
     "UsageEnvelope",
 ]

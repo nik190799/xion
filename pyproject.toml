@@ -114,6 +114,17 @@ api = [
     # pydantic v2 is the shape FastAPI 0.110 expects. <3 leaves headroom
     # for pydantic 2.x patch/minor updates without re-pinning.
     "pydantic>=2.5,<3",
+    # Phase 5g-ii (streaming) — httpx.AsyncClient is the async HTTP
+    # transport the streaming generative-provider paths use. Pinned
+    # explicitly here (even though FastAPI's TestClient pulls it in
+    # transitively) because the Phase 5g-ii OpenRouter and Ollama
+    # providers depend on it at runtime for native cancel-propagation
+    # (closing the stream context cleanly terminates the upstream HTTP
+    # request, which closes upstream billing — KW-CHAT-003 closure).
+    # Lower bound 0.27 pulls in the ``aiter_lines``/``aiter_bytes``
+    # API shapes the providers use. <1 because httpx pre-1.0 has been
+    # API-stable in practice but a 1.x break is possible.
+    "httpx>=0.27,<1",
 ]
 
 dev = [
