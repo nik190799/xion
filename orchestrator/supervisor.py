@@ -55,7 +55,7 @@ import asyncio
 import threading
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Protocol
 
 from orchestrator.sensorium import (
     Chronoception,
@@ -124,6 +124,7 @@ class Supervisor:
         sensorium_ledger_path: Path | None = None,
         clock_ns: Callable[[], int] = time.time_ns,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
+        publish: Callable[[Mapping[str, Any]], None] | None = None,
     ) -> None:
         if tick_cadence_s <= 0:
             raise ValueError("Supervisor: tick_cadence_s must be > 0")
@@ -135,6 +136,12 @@ class Supervisor:
         )
         self._clock_ns = clock_ns
         self._monotonic_ns = monotonic_ns
+        # Phase 5g+ broker hook. When provided, called with
+        # ``state.to_dict()`` after every successful ``tick_once()`` so
+        # a shared-state broker can publish the snapshot to follower
+        # workers. Keeps the Supervisor broker-agnostic — the hook is
+        # ``None`` in the single-worker posture and during tests.
+        self._publish = publish
 
         # Monotonic-drift baseline: the delta between wall and monotonic
         # clocks at Supervisor start. Phase 5d's Chronoception reports the
@@ -200,6 +207,23 @@ class Supervisor:
         )
         with self._snapshot_lock:
             self._latest_snapshot = state
+        # Phase 5g+ broker hook. Best-effort; a publish failure must
+        # not corrupt the in-process snapshot, so any exception from
+        # the broker is swallowed after a best-effort log. The tick
+        # has already succeeded — the only consequence of a missed
+        # publish is that followers lag by one tick.
+        if self._publish is not None:
+            try:
+                self._publish(state.to_dict())
+            except Exception as exc:  # noqa: BLE001
+                import sys as _sys
+
+                print(
+                    "State-of-Xion: Supervisor publish hook raised; "
+                    f"followers may lag by one tick. Detail: {exc!r}",
+                    file=_sys.stderr,
+                    flush=True,
+                )
         return state
 
     def _build_sensorium_state(self) -> SensoriumState:

@@ -26,12 +26,20 @@ from orchestrator.runtime.broker import (
     SqliteBroker,
     load_broker_from_env,
 )
+from orchestrator.runtime.supervisor_shell import (
+    BrokerSupervisorShell,
+    default_worker_id,
+    deserialize_sensorium_state,
+)
 
 __all__ = [
     "Broker",
     "BrokerConfig",
     "BrokerError",
+    "BrokerSupervisorShell",
     "RateCheck",
     "SqliteBroker",
+    "default_worker_id",
+    "deserialize_sensorium_state",
     "load_broker_from_env",
 ]

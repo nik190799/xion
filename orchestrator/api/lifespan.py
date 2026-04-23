@@ -57,6 +57,11 @@ from orchestrator.inference_router import (
     PolicyMode,
     default_manifest_path,
 )
+from orchestrator.runtime import (
+    BrokerSupervisorShell,
+    default_worker_id,
+    load_broker_from_env,
+)
 from orchestrator.supervisor import Supervisor
 
 from .admission import (
@@ -74,20 +79,61 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     deps = app.state.deps
 
-    supervisor = Supervisor(
-        relay=deps.relay,
-        tick_cadence_s=deps.tick_cadence_s,
-        sensorium_ledger_path=deps.sensorium_ledger_path,
-    )
+    # --- Phase 5g+: load shared-state broker (optional) ---------------
+    # When XION_BROKER_DB_PATH is unset, the broker is disabled and the
+    # orchestrator runs in the single-worker posture exactly as
+    # Phase 5g-iv / 5g-v / 5g-ii shipped it (full backward compat).
+    # When set, the launcher will have ensured this worker is one of
+    # XION_API_WORKERS processes sharing the broker, and this lifespan
+    # instance elects itself leader or follower via the broker.
+    broker = None
+    broker_renew_s = 10.0
+    if getattr(deps, "broker", None) is not None:
+        broker = deps.broker
+        broker_renew_s = getattr(deps, "broker_leader_renew_s", 10.0)
+    else:
+        broker = load_broker_from_env()
+        if broker is not None:
+            # Pull the renew cadence off the broker's config for the
+            # shell's renewal loop.
+            from orchestrator.runtime import SqliteBroker as _SqliteBroker
 
-    # Doctrine pin: pre-seed the snapshot synchronously. After this
-    # returns, ``supervisor.latest_snapshot()`` is non-None and the
-    # first SENSORIUM_LEDGER tick_commit row is on disk. A pre-seed
-    # failure (disk full, permission error) propagates out of the
-    # lifespan and FastAPI refuses to start the app — which is the
-    # correct behaviour, because a process that cannot write its
-    # first tick has no business serving /sensorium or /drive.
-    supervisor.tick_once()
+            if isinstance(broker, _SqliteBroker):
+                broker_renew_s = broker.config.leader_renew_s
+    app.state.broker = broker
+
+    if broker is None:
+        supervisor = Supervisor(
+            relay=deps.relay,
+            tick_cadence_s=deps.tick_cadence_s,
+            sensorium_ledger_path=deps.sensorium_ledger_path,
+        )
+        # Doctrine pin: pre-seed the snapshot synchronously. After this
+        # returns, ``supervisor.latest_snapshot()`` is non-None and the
+        # first SENSORIUM_LEDGER tick_commit row is on disk. A pre-seed
+        # failure (disk full, permission error) propagates out of the
+        # lifespan and FastAPI refuses to start the app — which is the
+        # correct behaviour, because a process that cannot write its
+        # first tick has no business serving /sensorium or /drive.
+        supervisor.tick_once()
+        app.state.supervisor_shell = None
+    else:
+        # Broker-backed posture. Build the shell, attempt leader
+        # election, pre-seed if we win. Followers do not pre-seed
+        # (they read the leader's published snapshot on the first
+        # /drive / /sensorium request).
+        shell = BrokerSupervisorShell(
+            broker=broker,
+            worker_id=default_worker_id(),
+            leader_renew_s=broker_renew_s,
+            supervisor_factory=Supervisor,
+            sensorium_ledger_path=deps.sensorium_ledger_path,
+            tick_cadence_s=deps.tick_cadence_s,
+            relay=deps.relay,
+        )
+        shell.initial_seed()
+        supervisor = shell  # type: ignore[assignment]
+        app.state.supervisor_shell = shell
 
     # --- Phase 5g-i: load .env, register providers, bootstrap -------
     # Runs AFTER the Supervisor pre-seed so a failed floor does not
@@ -178,14 +224,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # check for its existence on every call.
     app.state.health_rate_limiters = {}
 
-    # Wire the Supervisor into the Relay AFTER the pre-seed tick, so
-    # any in-process code that races the lifespan cannot observe a
-    # sensorium_source whose latest_snapshot is still None. The private
-    # attribute write is intentional: the Relay's public __init__
-    # accepts sensorium_source at construction time, but the lifespan
-    # constructs the Supervisor after the Relay — a post-construction
-    # setter would be public API clutter for the one caller that needs
-    # it. If a second caller appears, promote this to a Relay method.
+    # Wire the Supervisor (or broker shell) into the Relay AFTER the
+    # pre-seed tick, so any in-process code that races the lifespan
+    # cannot observe a sensorium_source whose latest_snapshot is still
+    # None. The private attribute write is intentional: the Relay's
+    # public __init__ accepts sensorium_source at construction time,
+    # but the lifespan constructs the Supervisor after the Relay — a
+    # post-construction setter would be public API clutter for the one
+    # caller that needs it. If a second caller appears, promote this
+    # to a Relay method.
     deps.relay._sensorium_source = supervisor
 
     # Schedule the run loop. asyncio.create_task requires a running
@@ -223,6 +270,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # possible in test re-runs on the same Relay instance) does
         # not observe a stale Supervisor.
         deps.relay._sensorium_source = None
+
+        # Close the broker if we own it. The shell's run loop has
+        # already stopped by this point; closing the broker after the
+        # shell is safe (no in-flight writes).
+        if app.state.broker is not None:
+            with contextlib.suppress(Exception):
+                app.state.broker.close()
+            app.state.broker = None
 
 
 def _load_dotenv_if_present() -> None:

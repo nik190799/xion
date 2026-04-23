@@ -115,6 +115,19 @@ def _no_repo_ledger_leaks(
     # and pass ``web_client_config=`` to ``app_factory``.
     monkeypatch.setenv("XION_WEB_CLIENT_ENABLED", "false")
     monkeypatch.delenv("XION_WEB_CLIENT_DIST_PATH", raising=False)
+    # Phase 5g+: default to broker-disabled so tests that don't opt
+    # into multi-worker coherence don't open a SQLite broker file on
+    # every run. Tests that exercise the broker-backed lifespan pass
+    # XION_BROKER_DB_PATH via ``monkeypatch.setenv`` or construct a
+    # ``SqliteBroker`` explicitly.
+    for _name in (
+        "XION_BROKER_DB_PATH",
+        "XION_BROKER_LEADER_LEASE_S",
+        "XION_BROKER_LEADER_RENEW_S",
+        "XION_BROKER_BUSY_TIMEOUT_MS",
+        "XION_API_WORKERS",
+    ):
+        monkeypatch.delenv(_name, raising=False)
 
 
 @pytest.fixture

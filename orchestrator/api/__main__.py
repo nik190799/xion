@@ -25,11 +25,14 @@ What this launcher does:
 
   3. Calls ``uvicorn.run`` with the ``ssl_keyfile`` / ``ssl_certfile``
      arguments populated iff the bind host is non-loopback. ``workers``
-     is hard-coded to 1 — the operator runbook (KW-RATE-001 mitigation)
-     pins single-worker as the supported configuration; the launcher
-     enforces it. An operator who knows what they are doing can invoke
-     ``uvicorn`` directly with ``--workers N`` and inherit the bucket-
-     coherence caveat the runbook describes.
+     reads ``XION_API_WORKERS`` (default 1). When ``workers > 1``, the
+     launcher fails-closed at startup if ``XION_BROKER_DB_PATH`` is
+     not set — the documented corruption path (multiple Supervisors
+     writing tick_commit with different relay_ids under the same
+     cadence; per-worker rate-limit buckets multiplying the effective
+     budget). With ``XION_BROKER_DB_PATH`` set, the Phase 5g+
+     SqliteBroker elects one leader and serves globally-coherent
+     rate-limit buckets across workers.
 
 What this launcher does NOT do:
 
@@ -48,6 +51,7 @@ failure, not a transient.
 
 from __future__ import annotations
 
+import os
 import sys
 
 from orchestrator.relay import Relay
@@ -59,6 +63,60 @@ from .admission import (
     load_admission_config_from_env,
 )
 from .app import AppDeps, create_app
+
+
+_DEFAULT_API_WORKERS = 1
+
+
+def _resolve_workers() -> int:
+    """Read ``XION_API_WORKERS`` from env, defaulting to 1.
+
+    Parse failure (non-integer) or non-positive value is a fail-closed
+    operator-surface error: the launcher exits non-zero rather than
+    silently falling back to 1 and masking the misconfiguration.
+    """
+    raw = os.environ.get("XION_API_WORKERS", "").strip()
+    if not raw:
+        return _DEFAULT_API_WORKERS
+    try:
+        value = int(raw)
+    except ValueError:
+        _print_state_of_xion(
+            f"XION_API_WORKERS={raw!r} is not an integer. "
+            "Refusing to start. See docs/33-MULTI-WORKER.md § 'Operator runbook'."
+        )
+        sys.exit(2)
+    if value < 1:
+        _print_state_of_xion(
+            f"XION_API_WORKERS={value} is not a positive integer. "
+            "Refusing to start. See docs/33-MULTI-WORKER.md § 'Operator runbook'."
+        )
+        sys.exit(2)
+    return value
+
+
+def _enforce_broker_for_multi_worker(workers: int) -> None:
+    """Phase 5g+ fail-closed: if workers>1, XION_BROKER_DB_PATH must be set.
+
+    Running N uvicorn workers without a broker is the documented
+    corruption path — each worker constructs its own Supervisor
+    (multiple tick_commit streams under different relay_ids corrupt
+    the cadence record) and its own in-process rate-limit store
+    (effective budget = N × configured budget per principal). The
+    launcher refuses to start this configuration; operators who want
+    the risk must explicitly set XION_BROKER_DB_PATH.
+    """
+    if workers <= 1:
+        return
+    broker_path = os.environ.get("XION_BROKER_DB_PATH", "").strip()
+    if not broker_path:
+        _print_state_of_xion(
+            f"XION_API_WORKERS={workers} requires XION_BROKER_DB_PATH "
+            "to be set. Multi-worker without a broker is the documented "
+            "corruption path (KW-API-002, KW-RATE-001). Refusing to start. "
+            "See docs/33-MULTI-WORKER.md § 'Operator runbook'."
+        )
+        sys.exit(2)
 
 
 def _print_state_of_xion(message: str) -> None:
@@ -92,33 +150,50 @@ def _resolve_admission_config() -> AdmissionConfig:
         sys.exit(2)
 
 
-def _uvicorn_kwargs_for(config: AdmissionConfig) -> dict:
+def _uvicorn_kwargs_for(config: AdmissionConfig, workers: int) -> dict:
     """Build the ``uvicorn.run`` keyword arguments from the admission
-    config.
+    config + worker count.
 
     TLS args are populated iff the bind host is non-loopback. This
     mirrors the AdmissionConfig ``__post_init__`` invariant: a
     non-loopback host without both TLS paths is structurally invalid
     and would have refused at config-load time.
 
-    ``workers`` is fixed at 1 (single-worker posture pinned in the
-    runbook; the in-process sliding-window rate-limit cannot share
-    state across workers — KW-RATE-001).
+    ``workers`` is sourced from ``XION_API_WORKERS`` (default 1). When
+    ``workers > 1`` the Phase 5g+ SqliteBroker provides cross-process
+    Supervisor leader election + rate-limit coherence; the caller has
+    already fail-closed-checked that ``XION_BROKER_DB_PATH`` is set.
     """
     kwargs: dict = {
         "host": config.api_host,
         "port": config.api_port,
-        "workers": 1,
+        "workers": workers,
     }
     if not _is_loopback_host(config.api_host):
-        # __post_init__ guarantees both paths are non-None and exist.
-        # Cast to str for uvicorn (it accepts Path on recent versions
-        # but the docs say str; stay on the conservative interface).
         assert config.tls_cert_path is not None
         assert config.tls_key_path is not None
         kwargs["ssl_certfile"] = str(config.tls_cert_path)
         kwargs["ssl_keyfile"] = str(config.tls_key_path)
     return kwargs
+
+
+def create_default_app():
+    """Module-level app factory used by ``uvicorn.run(..., factory=True)``
+    when running in multi-worker mode.
+
+    Each uvicorn worker process imports this factory, calls it once to
+    build its own ``Relay`` + ``AppDeps`` + ``FastAPI`` app, and then
+    serves requests from that app. The Phase 5g+ lifespan inside each
+    app constructs its own ``BrokerSupervisorShell`` and elects itself
+    leader or follower via the shared SQLite broker.
+    """
+    config = _resolve_admission_config()
+    relay = Relay()
+    deps = AppDeps(
+        relay=relay,
+        admission_config=config,
+    )
+    return create_app(deps)
 
 
 def main() -> int:
@@ -142,36 +217,45 @@ def main() -> int:
         )
         return 2
 
+    workers = _resolve_workers()
+    _enforce_broker_for_multi_worker(workers)
     config = _resolve_admission_config()
 
-    relay = Relay()
-    deps = AppDeps(
-        relay=relay,
-        admission_config=config,
+    posture_suffix = (
+        "single-worker"
+        if workers == 1
+        else f"multi-worker (workers={workers}, broker via XION_BROKER_DB_PATH)"
     )
-
-    app = create_app(deps)
-
-    kwargs = _uvicorn_kwargs_for(config)
     if _is_loopback_host(config.api_host):
         _print_state_of_xion(
             f"orchestrator binding loopback {config.api_host}:{config.api_port} "
-            "(plaintext; front with a reverse proxy for external traffic)."
+            f"(plaintext; {posture_suffix})."
         )
     else:
         _print_state_of_xion(
             f"orchestrator binding {config.api_host}:{config.api_port} "
-            f"with TLS cert {config.tls_cert_path} (single-worker; "
-            "KW-RATE-001 multi-worker caveat applies)."
+            f"with TLS cert {config.tls_cert_path} ({posture_suffix})."
         )
 
-    try:
-        uvicorn.run(app, **kwargs)
-    finally:
-        # Relay holds a ThreadPoolExecutor + open ledger writer file
-        # handles. Close cleanly on launcher exit so a Ctrl-C does not
-        # leak threads / fds.
-        relay.close()
+    kwargs = _uvicorn_kwargs_for(config, workers)
+
+    if workers == 1:
+        relay = Relay()
+        deps = AppDeps(
+            relay=relay,
+            admission_config=config,
+        )
+        app = create_app(deps)
+        try:
+            uvicorn.run(app, **kwargs)
+        finally:
+            relay.close()
+    else:
+        uvicorn.run(
+            "orchestrator.api.__main__:create_default_app",
+            factory=True,
+            **kwargs,
+        )
     return 0
 
 
