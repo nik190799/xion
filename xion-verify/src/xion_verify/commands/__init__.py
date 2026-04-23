@@ -71,4 +71,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "regulatory-ledger",
     "api-tokens",
     "web-client",
+    "chat-streaming-fidelity",
 )

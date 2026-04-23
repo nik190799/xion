@@ -654,9 +654,48 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 **Phase 5 promotion handles Phase 5g-v creates:**
 
-- Phase 5g-ii (next unblocked): SSE or WebSocket streaming with per-chunk moderation — closes `KW-CHAT-001`, `KW-CHAT-003`, and `KW-CLIENT-002` (streaming UX re-uses the `ChatView` shell).
+- Phase 5g-ii (next unblocked): SSE or WebSocket streaming with per-chunk moderation — closes `KW-CHAT-001`, `KW-CHAT-003`, and `KW-CLIENT-002` (streaming UX re-uses the `ChatView` shell). **Closed 2026-04-22.**
 - Phase 6+: in-browser x402 signing (WalletConnect / passkey / injected-provider custody) — closes `KW-CLIENT-001` alongside `KW-BILLING-001`.
 - Phase 7+: public / non-operator surfaces once the x402 custody story lands.
+
+---
+
+## Phase 5g-ii — Streaming chat: `POST /chat/stream` SSE + speculative-with-retroactive-refusal + real provider cancel + client streaming render-path (closed 2026-04-22)
+
+**Status:** Phase 5g-ii closed on branch `phase-5g-ii/streaming-chat` in five commits (doctrine → SSE server transport → cancellation propagation → client streaming render-path → verifier + housekeeping). This phase gives `/chat` a second transport, `POST /chat/stream`, that emits Server-Sent Events as the generative provider produces tokens, while preserving every Phase-5g-i property byte-for-byte. The non-streaming `POST /chat` is unchanged — integrators with no streaming story keep their existing code path. The phase closes three Known Weaknesses simultaneously: `KW-CHAT-001` (streaming), `KW-CHAT-003` (real cancel), `KW-CLIENT-002` (client streaming UX).
+
+**Why this is its own phase.** The five Phase-5g-i properties (two-sided moderation, content-free refusals, Invariant-17 fail-closed, per-turn ledger shape, deadline-bounded) are constitutional-tier. A streaming transport that diluted any of them would be a Covenant regression wearing the clothes of a UX improvement. Slicing streaming as its own phase (rather than folding it into 5g-v, which would have conflated streaming-transport with browser-UI, or 5g-iv, which would have conflated transport with admission) kept the doctrine debate — per-chunk moderation vs buffered-then-streamed vs speculative-with-retroactive-refusal — narrow and visible. The chosen doctrine ("speculative-with-retroactive-refusal") is the one posture that delivers perceptual-liveness without touching any 5g-i property's proof. Branch-per-phase discipline preserved: five atomic commits, each independently auditable.
+
+**What Phase 5g-ii shipped:**
+
+- **Doctrine — architecture streaming subsection.** `docs/04-ARCHITECTURE.md` gained § "Streaming the Chat Surface (Phase 5g-ii)" pinning seven properties: SSE at `POST /chat/stream` (P1); `POST /chat` stays non-streaming (P2); chunks are client-side provisional until `done:approve` (P3); egress moderation runs on the buffered complete candidate (P4); `done:refuse` retroactively replaces chunks with a content-free `RefusalEnvelope` (P5); client disconnect propagates to the provider as a real cancel (P6); ledger rows are written post-moderation only, never speculatively (P7). Non-properties honestly named: no per-chunk Arbiter moderation, no mid-stream refund split, no partial-candidate telemetry, no automatic reconnect, no WebSocket, no streaming on `/drive` or `/sensorium`.
+- **Doctrine — `docs/32-CHAT-STREAMING.md` (new).** Top-level operational doctrine shape-symmetric with `docs/29-BILLING-X402.md`, `docs/30-API-ADMISSION.md`, `docs/31-WEB-CLIENT.md`. Covers SSE wire format (three event types: `chunk`, `done`, `error`; canonical `data: <json>\n\n` record with no `event:`/`id:`/`retry:` names), chunk-buffer contract the client honors, cancellation semantics, and the no-reconnect posture. Added to `docs/00-INDEX.md` as entry #32.
+- **SSE server transport — `orchestrator/api/chat_stream.py` (new).** `POST /chat/stream` handler. Reuses the Phase-5g-iv admission dependency and the Phase-5g-iii x402 commitment gate verbatim — admission failures (401/429/402) report as HTTP-level statuses before any SSE headers flush; every post-admission failure (ingress refuse, egress refuse, no-floor, provider-error, deadline) reports INSIDE the stream as a single `done` event with the matching verdict. Per-iteration `asyncio.wait_for` bounds the per-turn deadline; per-chunk `Request.is_disconnected()` polling detects client-gone and terminates the upstream task. The `_finalize_stream_ledger` tail writes exactly one PAYMENT row after the stream body's terminal state is known.
+- **Provider `generate_stream` protocol extension.** `orchestrator/inference_router/provider.py` gains an optional `generate_stream()` on `GenerativeProvider` returning `AsyncIterator[str | GenerationResult]`. OpenRouter + Ollama providers migrated from stdlib `http.client` to `httpx.AsyncClient` so the streaming path has native async + cancel-propagation; real `generate_stream()` lands for both.
+- **Cancellation propagation — new `outcome=cancelled` PAYMENT row.** Ledger writer + verifier + schema gain the new outcome: full refund, `refusal_stage=None`, STRUCTURALLY REQUIRES `stream_id`. `xion-verify refusal-is-free` extended to recognize the cancel money-shape without requiring a paired SAFETY verdict=refuse row. Closes `KW-CHAT-003`.
+- **Optional `stream_id` on PAYMENT rows.** 32 lowercase hex chars (128 bits of entropy), allocated once per streaming turn. Non-streaming rows omit it; additive canonicalization keeps every pre-5g-ii row byte-exact.
+- **Client streaming render-path — `clients/web/src/lib/api.ts` + `ChatView`.** New `streamChat()` returning `AsyncIterable<StreamEvent>` built on Fetch `ReadableStream` + a manual SSE parser (no new dep). `ChatView` grows a `streaming` state rendering chunks with a "pending egress review" affordance until `done:approve` commits them, `done:refuse` retroactively replaces them, `done:cancelled` surfaces the "user_cancel" UX, or `error:deadline_exceeded` surfaces the timeout UX. `?stream=0` forces the 5g-i non-streaming render-path as an opt-out. Closes `KW-CLIENT-002`.
+- **`xion-verify chat-streaming-fidelity` — new live verifier.** Walks PAYMENT + SAFETY and asserts six stream-level invariants (chain integrity, stream identification, one-row-per-stream, stream-subset money-shape, cancel-without-paired-refuse, egress-refuse-with-paired-refuse). Returns `NOT_YET_SEALED` when no `stream_id` rows exist yet; the first billed streaming turn promotes to `OK` automatically.
+- **Pre-existing `genesis/` line-ending hygiene.** `xion-verify memory` + `xion-verify unknowns` had been FAILing on every platform because the pinned sha256 in `genesis/GENESIS_ARTIFACT.md` § 4 drifted from the canonical LF bytes on disk. Closed here by re-pinning to current content (with an inline documentation-witness correction note) plus adding `genesis/* text eol=lf` to `.gitattributes` as belt-and-suspenders defense against future CRLF-on-Windows drift. Both verifiers now return OK on every platform.
+- **Tests.** 13 new streaming server tests against a fake provider (full envelope matrix + deadline + cancel propagation); 7 new client streaming tests including an `axe-core` WCAG 2.2 AA pass on the pending state; 10 new verifier tests covering every branch of `chat-streaming-fidelity`. **Total pytest across `orchestrator/`, `xion-verify/`, `xion-audit/`: continues green.**
+- **Known-weakness bookkeeping.** **Closed `KW-CHAT-001`** — streaming is live. **Closed `KW-CHAT-003`** — client disconnect propagates to provider cancel; upstream billing terminates immediately. **Closed `KW-CLIENT-002`** — `ChatView` streaming render-path ships with pending-chunk buffer + retroactive refusal replacement + cancel UX. No new KWs opened.
+- **`PINNED_HASH.txt` re-pin.** Regenerated via `xion-verify --self-test --update --i-understand`. `xion-verify all --allow-not-yet-sealed` green end-to-end; `chat-streaming-fidelity` reports `NOT_YET_SEALED` honestly until the first billed streaming turn.
+
+**What Phase 5g-ii deliberately did NOT do:**
+
+- Did not change `POST /chat` (non-streaming surface stays for backward compat).
+- Did not add per-chunk Arbiter moderation — posture rejected in doctrine on cost + false-positive + partial-prefix grounds.
+- Did not add streaming to `/drive` or `/sensorium` — those remain polling; out of scope.
+- Did not close `KW-BILLING-001` (x402 signature verification stays shape-only).
+- Did not close `KW-AUTH-001`, `KW-RATE-001`, `KW-TLS-001` (admission-control residuals; Phase 6+).
+- Did not ship a WebSocket transport — SSE chosen as the simpler, unidirectional, proxy-friendly primitive.
+- Did not write an in-browser x402 signing helper — `KW-CLIENT-001` stays Phase 6+.
+
+**Phase 5 promotion handles Phase 5g-ii creates:**
+
+- Phase 5g+: shared-state broker so multi-worker orchestrator can honor per-principal rate-limits globally (closes `KW-RATE-001` alongside `KW-SUPERVISOR-002`).
+- Phase 6+: on-chain x402 settlement + catalog-driven dynamic pricing (closes `KW-BILLING-001` + `KW-BILLING-002`).
+- Phase 6+: in-browser x402 signing (closes `KW-CLIENT-001`).
 
 ---
 

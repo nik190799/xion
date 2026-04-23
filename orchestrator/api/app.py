@@ -43,6 +43,7 @@ from orchestrator.volition import Volition
 
 from .admission import admission_dependency
 from .chat import register_chat_route
+from .chat_stream import register_chat_stream_route
 from .lifespan import lifespan
 from .models import DriveResponse, HealthResponse, SensoriumResponse
 from .pricing import register_pricing_route
@@ -240,6 +241,7 @@ def create_app(deps: AppDeps) -> FastAPI:
 
     register_pricing_route(app)
     register_chat_route(app)
+    register_chat_stream_route(app)
 
     # --- Phase 5g-v: optional web-client mount ---------------------
     # Registered last so /app/* cannot shadow any admission-gated API

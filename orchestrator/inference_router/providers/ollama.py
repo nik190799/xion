@@ -29,6 +29,7 @@ import http.client
 import json
 import os
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 from urllib.parse import urlparse
@@ -190,6 +191,100 @@ class OllamaGenerativeProvider:
         return GenerationResult(
             text=text,
             model_id=returned_model,
+            usage_in=usage_in,
+            usage_out=usage_out,
+            finish_reason=finish,
+            latency_ms=latency_ms,
+        )
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        *,
+        system: str | None,
+        max_tokens: int,
+        deadline_s: float,
+    ) -> AsyncIterator[str | GenerationResult]:
+        """Phase 5g-ii streaming generation via Ollama's NDJSON stream.
+
+        Ollama emits one JSON object per line with a ``response`` field
+        carrying the delta text and a ``done`` bool that flips True on
+        the final line (which also carries ``prompt_eval_count`` and
+        ``eval_count`` for usage). Uses ``httpx.AsyncClient`` so an
+        ``asyncio.CancelledError`` on the handler side closes the
+        upstream HTTP connection promptly.
+
+        Falls back to the same ``GenerationResult`` terminal convention
+        as the OpenRouter streaming path: yields ``str`` chunks, then
+        exactly one ``GenerationResult`` with ``text=""`` and the full
+        metadata.
+        """
+        import httpx
+
+        if deadline_s <= 0:
+            raise OllamaProviderError("generate_stream: deadline_s must be positive")
+
+        body_dict: dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": True,
+            "options": {"num_predict": int(max_tokens)},
+        }
+        if system is not None:
+            body_dict["system"] = system
+
+        url = self.base_url.rstrip("/") + "/api/generate"
+
+        started = time.monotonic()
+        model_id = self.model
+        usage_in = 0
+        usage_out = 0
+        finish = "stop"
+
+        try:
+            async with httpx.AsyncClient(timeout=deadline_s) as client:
+                async with client.stream(
+                    "POST",
+                    url,
+                    json=body_dict,
+                    headers={
+                        "Content-Type": "application/json",
+                        "User-Agent": "xion-os/0.3.0 (+phase-5g-ii)",
+                    },
+                ) as resp:
+                    if not (200 <= resp.status_code < 300):
+                        raw_bytes = await resp.aread()
+                        snippet = raw_bytes[:512].decode("utf-8", errors="replace")
+                        raise OllamaProviderError(
+                            f"ollama HTTP {resp.status_code}: {snippet}"
+                        )
+                    async for line in resp.aiter_lines():
+                        if not line.strip():
+                            continue
+                        try:
+                            event = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        chunk = event.get("response")
+                        if isinstance(chunk, str) and chunk:
+                            yield chunk
+                        if event.get("done"):
+                            usage_in = int(event.get("prompt_eval_count") or 0)
+                            usage_out = int(event.get("eval_count") or 0)
+                            returned = event.get("model")
+                            if isinstance(returned, str) and returned:
+                                model_id = returned
+                            finish = "length" if event.get("done_reason") == "length" else "stop"
+                            break
+        except (TimeoutError, httpx.HTTPError) as e:
+            raise OllamaProviderError(
+                f"ollama stream transport error: {e}"
+            ) from None
+
+        latency_ms = max(0, int((time.monotonic() - started) * 1000))
+        yield GenerationResult(
+            text="",
+            model_id=model_id,
             usage_in=usage_in,
             usage_out=usage_out,
             finish_reason=finish,

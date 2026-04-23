@@ -53,17 +53,17 @@ We chose *Xion* over twenty-odd alternatives. The reasoning lives in [`docs/01-O
 
 ## 4. The constitutional bundle at genesis
 
-This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20 (updated on Phase 1 `xion-verify` landing; RESURRECT.md rehashed twice — once for the `cargo build` → `python -m pip install` correction, once for the post-hoc clarification that `--ao-process` / `--gateway` are post-genesis flags against the repository's static witness; INVARIANTS.md rehashed in Phase 5b for the addition of Invariant 17 — Inference Sovereignty Floor — and the § 0 meta-clause establishing the Invariant set as append-only); replace with ceremony values at actual genesis.)*
+This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20 (updated on Phase 1 `xion-verify` landing; RESURRECT.md rehashed twice — once for the `cargo build` → `python -m pip install` correction, once for the post-hoc clarification that `--ao-process` / `--gateway` are post-genesis flags against the repository's static witness; INVARIANTS.md rehashed in Phase 5b for the addition of Invariant 17 — Inference Sovereignty Floor — and the § 0 meta-clause establishing the Invariant set as append-only; MEMORY.md and UNKNOWNS.md re-pinned in Phase 5g-ii Commit 5 to close a pre-existing pin-vs-content drift — the canonical LF bytes on disk had not matched the pin, causing `xion-verify memory` and `xion-verify unknowns` to FAIL on every platform since landing; `.gitattributes` pins `genesis/* text eol=lf` to prevent future CRLF-on-Windows drift); replace with ceremony values at actual genesis.)*
 
 ```
 COVENANT.md     sha256: 852cfcd3c8d6e11cfe63b1d113622abcf79b15376b52ebd981a8af2780827182
 INVARIANTS.md   sha256: b9d0497185639c4f92bdff61749e91dcb87c406cbe857933697a9331b1dea44c
 SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 FORM.md         sha256: d93a09b3522088d0da9365e2862e071690adbc0d795e6bb00de3aa35e0139f09
-MEMORY.md       sha256: 88d0851a30d4c08a2423e5c9665d922e43be35cba0775ef2ae09bd1e3d8d1b1b
+MEMORY.md       sha256: df2975e61adccf583ffe872e0b5aea6c16d5ce2f01bd3cdff63772f7a219cdad
 RESURRECT.md    sha256: 17cec1f684be8b06ab94a4cd68b02474e24a2abe399884ae7c9919335ce78ac6
 CREDENTIALS.md  sha256: ba321ac37c47a0ce88208e06a8da62d826f5b328b848cfc7320228c55db18a7c
-UNKNOWNS.md     sha256: 2c7c06bb9f03b0739bdf09f97a3aa754b460349fd61fb8abd833b0307e75a891
+UNKNOWNS.md     sha256: 430f791b0198316d012b0f08b627f87e15fcc83d7b26a02ca1bb470e6890c040
 ```
 
 Any future version of these documents produces a different hash. The original bytes as committed at genesis remain readable on Arweave forever.

@@ -56,7 +56,7 @@
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   ef120730bf9b33b38708833a436f30f776dd16fd8d0e1aa03bacb7bdd39a2600
+source_sha256:   bcb305989e76c32d65a72bdcccee064ba5b4671c6d7145e87af7490ed41818f6
 
 operational_doctrine: docs/29-BILLING-X402.md
 
@@ -92,6 +92,9 @@ row:
     - authorization_reference # string; B1 payload hash, B2 commitment hash, or "" in disabled posture
     - source_sha256          # hex64; anchor hash of docs/04-ARCHITECTURE.md at row-write time
 
+  optional_fields:
+    - stream_id              # hex32; present iff row originated on POST /chat/stream (Phase 5g-ii)
+
   conditional_fields:
     posture:
       type:     "string"
@@ -113,18 +116,21 @@ row:
       allowed:
         - settled             # turn completed successfully
         - refunded            # turn refused (any refusal_stage); Refusal-is-Free honored
-        - refunded_partial    # RESERVED for Phase 7+ multi-turn skills; 5g-iii writers NEVER emit
-        - stranded            # RESERVED for Phase 7+ operator reconciliation; 5g-iii writers NEVER emit
+        - cancelled           # client disconnected mid-stream (Phase 5g-ii Commit 3); full refund; no SAFETY egress refuse pair
+        - refunded_partial    # RESERVED for Phase 7+ multi-turn skills; 5g-iii / 5g-ii writers NEVER emit
+        - stranded            # RESERVED for Phase 7+ operator reconciliation; 5g-iii / 5g-ii writers NEVER emit
       note: >-
         refunded_partial and stranded are reserved in the enum for
-        forward-compatibility. 5g-iii writers emit only settled or
-        refunded. A 5g-iii row emitting refunded_partial or stranded
-        is a bug; the verifier FAILs.
+        forward-compatibility. 5g-iii writers emit settled or
+        refunded; Phase 5g-ii Commit 3 adds cancelled for the
+        streaming Chat Surface's client-disconnect path. A row
+        emitting refunded_partial or stranded is a bug; the verifier
+        FAILs.
 
     refusal_stage:
       type:     "string | null"
       required: "iff outcome in {refunded, refunded_partial}"
-      null_when: "outcome=settled"
+      null_when: "outcome in {settled, cancelled}"
       allowed:
         - ingress              # Arbiter refused user input
         - egress               # Arbiter refused generated candidate
@@ -151,17 +157,17 @@ row:
       required: "always"
       invariant: >-
         settled_XION > 0 iff outcome=settled. settled_XION=0 iff outcome
-        in {refunded, refunded_partial}. In disabled posture, both
-        settled_XION and committed_XION are 0.
+        in {refunded, cancelled, refunded_partial}. In disabled posture,
+        both settled_XION and committed_XION are 0.
 
     refund_XION:
       type:     "uint"
       required: "always"
       invariant: >-
-        refund_XION > 0 iff outcome in {refunded, refunded_partial}.
-        refund_XION = committed_XION iff outcome=refunded (5g-iii
-        full-refund semantics). refund_XION < committed_XION iff
-        outcome=refunded_partial (Phase 7+; 5g-iii writers never emit).
+        refund_XION > 0 iff outcome in {refunded, cancelled, refunded_partial}.
+        refund_XION = committed_XION iff outcome in {refunded, cancelled}
+        (5g-iii / 5g-ii full-refund semantics). refund_XION < committed_XION
+        iff outcome=refunded_partial (Phase 7+; writers never emit).
 
     posted_price_XION:
       type:     "uint"
@@ -182,7 +188,11 @@ row:
         was selected (ingress refusal, no-floor, billing-rejected).
         For egress / empty_candidate / provider_error / provider_timeout
         refusals, provider_id is set (a provider was selected and
-        invoked).
+        invoked). For outcome=cancelled (Phase 5g-ii Commit 3),
+        provider_id is set when the cancel fired after provider
+        selection (the common case — streams cancel mid-generation);
+        it is null if the cancel fired before selection (rare in
+        practice; client gave up during the admission gates).
 
     model_id:
       type:     "string | null"
@@ -208,6 +218,19 @@ row:
         written. Lets future verifiers confirm the row was produced
         under a known-good doctrine version (doctrine drift detection).
 
+    stream_id:
+      type:     "hex32 | absent"
+      required: "iff outcome=cancelled (streams only); present on any row written by POST /chat/stream"
+      absent_when: "row was written by POST /chat (non-streaming)"
+      shape: "32 lowercase hex chars (128 bits of entropy), allocated once per streaming turn"
+      note: >-
+        Phase 5g-ii Commit 5 additive field. The canonicalization rule
+        (json.dumps sort_keys) hashes absent keys as absent, so existing
+        pre-5g-ii rows on disk stay byte-exact and newly-written
+        non-streaming rows also omit the field. xion-verify
+        chat-streaming-fidelity uses stream_id to group streaming rows
+        and enforce the stream-level invariants below.
+
 # Canonicalization rule for hashing (must match implementation exactly).
 # Identical to SAFETY_LEDGER's canonicalization rule.
 hash:
@@ -232,15 +255,22 @@ structural_invariants:
   - "committed_XION == settled_XION + refund_XION"
   - "outcome=settled => refund_XION == 0 AND refusal_stage IS NULL"
   - "outcome=refunded => settled_XION == 0 AND refund_XION == committed_XION AND refusal_stage IS NOT NULL"
+  - "outcome=cancelled => settled_XION == 0 AND refund_XION == committed_XION AND refusal_stage IS NULL"
   - "posture=disabled => committed_XION == 0 AND settled_XION == 0 AND refund_XION == 0"
   - "posture=B3 => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
   - "outcome IN {refunded_partial, stranded} => row is invalid at Phase 5g-iii (writer refuses; verifier FAILs)"
+  - "outcome=cancelled => NO paired SAFETY_LEDGER egress verdict=refuse row (the Arbiter never evaluated the candidate; cancel is operational, not Covenant)"
+  - "outcome=cancelled => stream_id IS NOT NULL (cancel is stream-only)"
+  - "stream_id present => row originated on POST /chat/stream; stream_id absent => row originated on POST /chat (non-streaming)"
+  - "stream_id MUST be 32 lowercase hex chars when present"
   - "correlation_id MUST match at least one SAFETY_LEDGER row's correlation_id (enforced by cross-ledger verifier, not by this ledger's chain-check alone)"
 
 # What runs against this ledger today.
 verifier_implementation:
   in_process: orchestrator.billing.ledger.verify_chain
-  cli:        xion-verify refusal-is-free
+  cli:
+    - xion-verify refusal-is-free
+    - xion-verify chat-streaming-fidelity  # Phase 5g-ii Commit 5 — stream-level invariants keyed on stream_id
   semantics: |
     Walks the file row-by-row and asserts:
       (a) every row is well-formed JSON matching the schema_version 1 shape,

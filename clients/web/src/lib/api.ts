@@ -194,6 +194,176 @@ export function postChat(
   });
 }
 
+// ----- Streaming chat (Phase 5g-ii) --------------------------------------
+//
+// Doctrine anchor: docs/32-CHAT-STREAMING.md § "SSE wire format" +
+// docs/04-ARCHITECTURE.md § "Streaming the Chat Surface (Phase 5g-ii)".
+//
+// The server emits SSE records of the form ``data: <json>\n\n``. Each
+// JSON object is one of three discriminated shapes keyed by ``kind``:
+// ``chunk``, ``done``, ``error``. ``streamChat`` returns an
+// ``AsyncIterable<StreamEvent>`` the caller consumes with ``for await``.
+//
+// HTTP-level admission failures (401/402/429) never open the stream —
+// they surface as a thrown ``ApiErrorException`` before the async
+// iterator produces any event, so the caller can reuse the same
+// envelope-matrix branching as ``postChat``.
+//
+// The fetch is wired to ``AbortSignal`` so a user-side cancel closes
+// the underlying connection; the server's Commit-3 disconnect
+// detection will observe the close and write an ``outcome=cancelled``
+// PAYMENT row.
+
+export type StreamChunkServerEvent = {
+  kind: "chunk";
+  seq: number;
+  text: string;
+};
+
+export type StreamDoneServerEvent = {
+  kind: "done";
+  verdict: "approve" | "refuse" | "cancelled" | "no_floor" | "provider_error";
+  response?: ChatSuccessResponse | null;
+  refusal?: RefusalEnvelopeBody | null;
+  no_floor?: NoFloorBody | null;
+  provider_error?: ProviderErrorBody | null;
+};
+
+export type StreamErrorServerEvent = {
+  kind: "error";
+  error: "internal" | "deadline_exceeded";
+  correlation_id: string;
+};
+
+export type StreamEvent =
+  | StreamChunkServerEvent
+  | StreamDoneServerEvent
+  | StreamErrorServerEvent;
+
+export interface StreamChatRequest {
+  credential: BearerCredential | null;
+  message: string;
+  maxTokens: number;
+  signal?: AbortSignal;
+  /** Matches ``apiFetch``'s default so the server envelope wins over
+   *  a client-side abort. */
+  deadlineMs?: number;
+}
+
+export async function* streamChat(
+  req: StreamChatRequest,
+): AsyncIterable<StreamEvent> {
+  const controller = new AbortController();
+  const timeoutHandle = window.setTimeout(
+    () => controller.abort(),
+    req.deadlineMs ?? 32_000,
+  );
+  if (req.signal) {
+    if (req.signal.aborted) {
+      controller.abort();
+    } else {
+      req.signal.addEventListener("abort", () => controller.abort(), {
+        once: true,
+      });
+    }
+  }
+  try {
+    const response = await fetch("/chat/stream", {
+      method: "POST",
+      headers: {
+        ...buildAuthorizationHeader(req.credential),
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({ message: req.message, max_tokens: req.maxTokens }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const body = await parseJson(response);
+      throw new ApiErrorException(classifyNon2xx(response.status, body));
+    }
+    if (!response.body) {
+      throw new ApiErrorException({
+        kind: "network",
+        status: 0,
+        message: "streaming response body missing",
+      });
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // SSE records are separated by blank lines (\n\n). Split the
+      // current buffer; keep the tail (potentially incomplete record)
+      // for the next read.
+      let sepIndex: number;
+      while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+        const record = buffer.slice(0, sepIndex);
+        buffer = buffer.slice(sepIndex + 2);
+        const parsed = _parseSseRecord(record);
+        if (parsed !== null) {
+          yield parsed;
+        }
+      }
+    }
+    // Drain any trailing record that lacked a final \n\n (defensive;
+    // the server pins \n\n terminators).
+    if (buffer.trim().length > 0) {
+      const parsed = _parseSseRecord(buffer);
+      if (parsed !== null) {
+        yield parsed;
+      }
+    }
+  } catch (err) {
+    if (err instanceof ApiErrorException) {
+      throw err;
+    }
+    if (controller.signal.aborted) {
+      const reason: ApiError =
+        req.signal?.aborted
+          ? { kind: "aborted", status: 0, reason: "user_cancel" }
+          : { kind: "aborted", status: 0, reason: "timeout" };
+      throw new ApiErrorException(reason);
+    }
+    throw new ApiErrorException({
+      kind: "network",
+      status: 0,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  } finally {
+    window.clearTimeout(timeoutHandle);
+  }
+}
+
+function _parseSseRecord(record: string): StreamEvent | null {
+  const trimmed = record.trim();
+  if (trimmed.length === 0) return null;
+  // Accept multi-line records but the server only ever emits one
+  // "data:" line per record; concatenate any continuation lines
+  // defensively per SSE spec.
+  const lines = trimmed.split("\n");
+  const dataLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).replace(/^ /, ""));
+    }
+    // ``event:``, ``id:``, and ``retry:`` lines are ignored per
+    // docs/32-CHAT-STREAMING.md § "SSE wire format" (the server
+    // never emits them).
+  }
+  if (dataLines.length === 0) return null;
+  const payload = dataLines.join("\n");
+  try {
+    return JSON.parse(payload) as StreamEvent;
+  } catch {
+    return null;
+  }
+}
+
 export type HealthResponse = {
   relay_healthy: boolean;
   arbiter_healthy: boolean;
