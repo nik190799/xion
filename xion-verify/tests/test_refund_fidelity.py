@@ -10,6 +10,10 @@ from pathlib import Path
 
 from click.testing import CliRunner
 from orchestrator.relay import Relay
+from orchestrator.relay.ledger import (
+    ProviderAttemptRecord,
+    append_provider_attempt,
+)
 from orchestrator.safety import ledger as safety_ledger
 from orchestrator.safety.types import Decision
 
@@ -178,3 +182,199 @@ def test_outcome_mismatch_fails(synthetic_repo: Path):
     code, err = _invoke(synthetic_repo)
     assert code == FAIL
     assert "final_outcome" in err
+
+
+# ----- v2 multi-attempt provider rows (Phase 5g-vii) ------------------------
+#
+# These tests verify that `refund-fidelity` correctly handles the v2
+# REQUEST_LEDGER rows that `orchestrator/api/chat.py` writes per
+# provider-attempt. Each test seeds a clean v1 gate-call row first (so
+# the v2 rows have a matching correlation_id to join against under
+# Property 7), then appends v2 rows to exercise a specific invariant.
+
+
+def _seed_v1_turn(synthetic_repo: Path) -> tuple[Path, Path, str]:
+    """Write a single clean v1 row and return its correlation_id."""
+    safety_path = synthetic_repo / "SAFETY_LEDGER.jsonl"
+    request_path = synthetic_repo / "REQUEST_LEDGER.jsonl"
+    with Relay(
+        safety_ledger_path=safety_path,
+        request_ledger_path=request_path,
+        gate_fn=_ok_gate,
+    ) as relay:
+        result = relay.evaluate("hello")
+    cid = result.correlation_id
+    return safety_path, request_path, cid
+
+
+def _v2_row(
+    cid: str,
+    *,
+    chat_turn_id: str = "a" * 32,
+    attempt_index: int = 0,
+    provider_id: str = "fake-hosted",
+    outcome: str = "success",
+    failure_reason_class: str | None = None,
+) -> ProviderAttemptRecord:
+    state_height, _nonce = cid.split(":", 1)
+    return ProviderAttemptRecord(
+        correlation_id=cid,
+        state_height=state_height,
+        relay_id="relay-test",
+        request_arrived_utc_ns=1_700_000_000_000_000_000,
+        responded_utc_ns=1_700_000_000_000_000_100,
+        chat_turn_id=chat_turn_id,
+        attempt_index=attempt_index,
+        provider_id=provider_id,
+        outcome=outcome,
+        failure_reason_class=failure_reason_class,
+    )
+
+
+def test_v2_clean_single_success_turn_passes(synthetic_repo: Path):
+    _safety, request_path, cid = _seed_v1_turn(synthetic_repo)
+    append_provider_attempt(request_path, _v2_row(cid))
+    code, out = _invoke(synthetic_repo)
+    assert code == OK
+    assert "v2 attempt rows: turns=1" in out
+    assert "success=1" in out
+
+
+def test_v2_clean_fallback_turn_passes(synthetic_repo: Path):
+    """Hosted fails on credits -> floor succeeds: two v2 rows, terminal
+    success, distinct providers."""
+    _safety, request_path, cid = _seed_v1_turn(synthetic_repo)
+    append_provider_attempt(
+        request_path,
+        _v2_row(
+            cid,
+            attempt_index=0,
+            provider_id="hosted",
+            outcome="failure",
+            failure_reason_class="insufficient_credits",
+        ),
+    )
+    append_provider_attempt(
+        request_path,
+        _v2_row(cid, attempt_index=1, provider_id="sentinel-llm-v0"),
+    )
+    code, out = _invoke(synthetic_repo)
+    assert code == OK
+    assert "success=1" in out
+    assert "insufficient_credits=1" in out
+
+
+def test_v2_orphan_correlation_id_fails_property_7(synthetic_repo: Path):
+    """v2 row with a correlation_id that has no v1 peer = Property 7
+    violation."""
+    safety_path, request_path, _real_cid = _seed_v1_turn(synthetic_repo)
+    fake_cid = "deadbeefdeadbeef:" + "0" * 32
+    append_provider_attempt(request_path, _v2_row(fake_cid))
+    code, err = _invoke(synthetic_repo)
+    assert code == FAIL
+    assert "v2" in err
+    assert "NO matching v1 gate-call row" in err
+
+
+def test_v2_attempt_index_gap_fails_property_8(synthetic_repo: Path):
+    """attempt_index = [0, 2] is not {0, 1, ..., N-1} — Property 8
+    violation. Writing that requires bypassing `append_provider_attempt`'s
+    own contiguity check is NOT what we want — we want to catch it at
+    verify-chain time. But `verify_chain` already rejects it at
+    chain-level before the refund-fidelity command runs its own check.
+    So this test simply confirms the chain-break path surfaces with a
+    message that an operator can trace."""
+    _safety, request_path, cid = _seed_v1_turn(synthetic_repo)
+    append_provider_attempt(request_path, _v2_row(cid, attempt_index=0))
+    # Insert a second row at attempt_index=2, skipping 1. `verify_chain`
+    # on the REQUEST_LEDGER will catch the gap; refund-fidelity's
+    # _fail('REQUEST_LEDGER chain broken') surfaces.
+    append_provider_attempt(
+        request_path,
+        _v2_row(
+            cid,
+            attempt_index=2,
+            provider_id="floor",
+            outcome="failure",
+            failure_reason_class="timeout",
+        ),
+    )
+    code, err = _invoke(synthetic_repo)
+    assert code == FAIL
+    # Either the chain-break or the Property-8 shape error is acceptable;
+    # both are true and both name the offending row:
+    assert (
+        "attempt_index sequence" in err
+        or "REQUEST_LEDGER chain broken" in err
+    )
+
+
+def test_v2_two_success_rows_fails_property_8(synthetic_repo: Path):
+    """Two rows with outcome=success in one chat_turn_id = the fallback
+    loop didn't short-circuit — Property 8 'at most one success'."""
+    _safety, request_path, cid = _seed_v1_turn(synthetic_repo)
+    append_provider_attempt(
+        request_path,
+        _v2_row(cid, attempt_index=0, outcome="success"),
+    )
+    append_provider_attempt(
+        request_path,
+        _v2_row(cid, attempt_index=1, outcome="success"),
+    )
+    code, err = _invoke(synthetic_repo)
+    assert code == FAIL
+    assert "outcome='success'" in err
+    assert "at most once" in err
+
+
+def test_v2_non_terminal_success_fails_property_8(synthetic_repo: Path):
+    """Success at attempt 0 with a failure row at attempt 1 = the
+    handler kept trying after success — Property 8 terminality."""
+    _safety, request_path, cid = _seed_v1_turn(synthetic_repo)
+    append_provider_attempt(
+        request_path,
+        _v2_row(cid, attempt_index=0, outcome="success"),
+    )
+    append_provider_attempt(
+        request_path,
+        _v2_row(
+            cid,
+            attempt_index=1,
+            outcome="failure",
+            failure_reason_class="timeout",
+        ),
+    )
+    code, err = _invoke(synthetic_repo)
+    assert code == FAIL
+    assert "not the terminal attempt" in err
+
+
+def test_v2_all_fail_turn_passes(synthetic_repo: Path):
+    """A turn where every provider failed is a LEGAL shape (a 503 to
+    the user). verify passes; summary reflects all-fail."""
+    _safety, request_path, cid = _seed_v1_turn(synthetic_repo)
+    append_provider_attempt(
+        request_path,
+        _v2_row(
+            cid,
+            attempt_index=0,
+            provider_id="hosted",
+            outcome="failure",
+            failure_reason_class="insufficient_credits",
+        ),
+    )
+    append_provider_attempt(
+        request_path,
+        _v2_row(
+            cid,
+            attempt_index=1,
+            provider_id="floor",
+            outcome="failure",
+            failure_reason_class="provider_unreachable",
+        ),
+    )
+    code, out = _invoke(synthetic_repo)
+    assert code == OK
+    assert "all_fail=1" in out
+    assert "insufficient_credits=1" in out
+    assert "provider_unreachable=1" in out
