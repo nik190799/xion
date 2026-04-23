@@ -49,7 +49,6 @@ failure, not a transient.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from orchestrator.relay import Relay
 

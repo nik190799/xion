@@ -60,7 +60,6 @@ from fastapi import HTTPException, Request
 
 from .models import AuthChallenge, RateLimitChallenge
 
-
 # --- Errors --------------------------------------------------------------
 
 

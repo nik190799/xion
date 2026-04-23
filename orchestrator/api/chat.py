@@ -92,15 +92,28 @@ class _Outcome:
 
 
 def register_chat_route(app: FastAPI) -> None:
-    """Register ``POST /chat`` on ``app``."""
+    """Register ``POST /chat`` on ``app``.
+
+    Phase 5g-iv: ``admission_dependency`` runs in front of this route
+    to enforce 401 (missing/bad bearer) and 429 (per-principal rate
+    limit) before the existing 402 (payment commitment) gate. The
+    constitutional ordering is ``401 → 429 → 402``: auth before
+    rate-limit (so the bucket is per-token, not per-IP); rate-limit
+    before payment (so an unauthenticated scraper cannot probe
+    pricing-validity by spamming 402-bait requests).
+    """
+    from fastapi import Depends
+
+    from .admission import admission_dependency
 
     @app.post(
         "/chat",
         response_model=None,
         summary=(
-            "Single-turn chat, moderated on both sides + x402 pre-auth "
-            "(Phase 5g-i + 5g-iii)"
+            "Single-turn chat, moderated on both sides + bearer/rate "
+            "admission + x402 pre-auth (Phase 5g-i + 5g-iii + 5g-iv)"
         ),
+        dependencies=[Depends(admission_dependency)],
     )
     async def post_chat(
         req: ChatRequest,

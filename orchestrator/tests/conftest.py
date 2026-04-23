@@ -146,6 +146,7 @@ def app_factory(
         chat_deadline_s: float = 5.0,
         pricing_config: Any = None,
         billing_config: Any = None,
+        admission_config: Any = None,
         **relay_kwargs: Any,
     ) -> Any:
         """Build a hermetic FastAPI app for tests.
@@ -206,6 +207,7 @@ def app_factory(
             chat_deadline_s=chat_deadline_s,
             pricing_config=pricing_config,
             billing_config=billing_config,
+            admission_config=admission_config,
         )
         app = create_app(deps)
         app.state.test_relay = relay

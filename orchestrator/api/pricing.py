@@ -315,12 +315,22 @@ def register_pricing_route(app: "FastAPI") -> None:
     endpoint is constitutionally free and public per
     ``docs/04-ARCHITECTURE.md`` § "The Chat Billing Surface" — the
     operator posting a price owes the world the transparency to read it.
+
+    Phase 5g-iv: ``admission_dependency`` runs in front but matches
+    ``/pricing`` against ``_PUBLIC_ROUTES`` and short-circuits without
+    any auth or rate-limit check; the dependency is wired in defense-
+    in-depth so a future route added without ``Depends(admission_dependency)``
+    is structurally distinguishable from a deliberately-public route.
     """
+    from fastapi import Depends
+
+    from .admission import admission_dependency
 
     @app.get(
         "/pricing",
         response_model=PricingResponse,
         summary="Governance-posted per-message price (Phase 5g-iii)",
+        dependencies=[Depends(admission_dependency)],
     )
     def get_pricing() -> dict[str, Any]:
         config: PricingConfig | None = getattr(

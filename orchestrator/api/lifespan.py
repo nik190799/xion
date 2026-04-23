@@ -42,16 +42,20 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from orchestrator.billing import (
+    ChainBroken as PaymentChainBroken,
+)
+from orchestrator.billing import (
+    load_billing_config_from_env,
+)
+from orchestrator.billing import (
+    verify_chain as verify_payment_chain,
+)
 from orchestrator.inference_router import (
     DEFAULT_POLICY_MODE,
     InferenceRouter,
     PolicyMode,
     default_manifest_path,
-)
-from orchestrator.billing import (
-    ChainBroken as PaymentChainBroken,
-    load_billing_config_from_env,
-    verify_chain as verify_payment_chain,
 )
 from orchestrator.supervisor import Supervisor
 
