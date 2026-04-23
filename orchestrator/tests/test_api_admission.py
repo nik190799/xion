@@ -570,3 +570,240 @@ def test_ordering_402_when_authed_and_within_budget(
         r = client.post("/chat", json={"message": "hi"}, headers=_bearer())
     assert r.status_code == 402
     assert r.json()["error"] == "payment_required"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5g+ RateLimitStore variants
+# ---------------------------------------------------------------------------
+
+
+def test_in_process_store_lazily_allocates_per_principal() -> None:
+    """The default store allocates buckets on first admit, not at
+    construction time. This is the 5g+ pay-down of the 5g-iv
+    pre-populated posture: a principal that never connects consumes
+    zero bucket memory."""
+    from orchestrator.api.admission import InProcessSlidingWindowStore
+
+    store = InProcessSlidingWindowStore(budget=2, window_ns=1_000_000_000)
+    assert store.known_principals() == []
+    admitted, retry = store.check_and_record("alice", now_ns=10**9)
+    assert admitted is True
+    assert retry == 0
+    assert store.known_principals() == ["alice"]
+    # A second principal opens its own bucket; they do not share.
+    store.check_and_record("bob", now_ns=10**9)
+    assert set(store.known_principals()) == {"alice", "bob"}
+
+
+def test_in_process_store_rejects_on_overflow_same_principal() -> None:
+    from orchestrator.api.admission import InProcessSlidingWindowStore
+
+    store = InProcessSlidingWindowStore(budget=2, window_ns=1_000_000_000)
+    t0 = 10**9
+    assert store.check_and_record("alice", now_ns=t0)[0] is True
+    assert store.check_and_record("alice", now_ns=t0 + 1)[0] is True
+    admitted, retry = store.check_and_record("alice", now_ns=t0 + 2)
+    assert admitted is False
+    assert retry >= 1
+
+
+def test_in_process_store_independent_principals_independent_budgets() -> None:
+    """Property: one principal overflowing does not starve another.
+    A bucket is per-principal; different principals do not share."""
+    from orchestrator.api.admission import InProcessSlidingWindowStore
+
+    store = InProcessSlidingWindowStore(budget=1, window_ns=1_000_000_000)
+    t0 = 10**9
+    assert store.check_and_record("alice", now_ns=t0)[0] is True
+    # Alice over budget:
+    assert store.check_and_record("alice", now_ns=t0 + 1)[0] is False
+    # Bob has a full budget still:
+    assert store.check_and_record("bob", now_ns=t0 + 1)[0] is True
+
+
+# ---------------------------------------------------------------------------
+# Phase 5g+ broker-backed multi-worker budget coherence (closes KW-RATE-001)
+# ---------------------------------------------------------------------------
+
+
+def test_broker_backed_store_two_workers_share_one_global_bucket(
+    tmp_path: Path,
+) -> None:
+    """Multi-worker budget-coherence property (closes KW-RATE-001):
+    two workers sharing one broker DB see one global bucket per
+    principal. A principal hitting worker A then worker B exhausts
+    the global budget in N total requests, not N × workers requests.
+
+    This is the core property Phase 5g+ closes. In the 5g-iv in-process
+    posture, two workers would each allow N admits before rejecting —
+    a 2× budget inflation. With the broker, the 1st admit on worker A
+    and the 1st admit on worker B share the same SQLite-backed bucket;
+    the (N+1)th admit across both workers rejects.
+    """
+    from orchestrator.api.admission import BrokerBackedSlidingWindowStore
+    from orchestrator.runtime import BrokerConfig, SqliteBroker
+
+    db_path = tmp_path / "broker.sqlite3"
+    broker_a = SqliteBroker(config=BrokerConfig(
+        db_path=db_path, leader_lease_s=10.0, leader_renew_s=1.0
+    ))
+    broker_b = SqliteBroker(config=BrokerConfig(
+        db_path=db_path, leader_lease_s=10.0, leader_renew_s=1.0
+    ))
+    try:
+        store_a = BrokerBackedSlidingWindowStore(
+            broker=broker_a, budget=3, window_ns=10_000_000_000
+        )
+        store_b = BrokerBackedSlidingWindowStore(
+            broker=broker_b, budget=3, window_ns=10_000_000_000
+        )
+        t0 = 1_000_000_000_000
+        # Two admits on A; one admit on B. Budget is 3. Total is 3 —
+        # the global bucket is now full.
+        assert store_a.check_and_record("alice", now_ns=t0)[0] is True
+        assert store_a.check_and_record("alice", now_ns=t0 + 1)[0] is True
+        assert store_b.check_and_record("alice", now_ns=t0 + 2)[0] is True
+        # The 4th total attempt — on either worker — rejects.
+        admitted_a, retry_a = store_a.check_and_record("alice", now_ns=t0 + 3)
+        assert admitted_a is False
+        assert retry_a >= 1
+        admitted_b, retry_b = store_b.check_and_record("alice", now_ns=t0 + 4)
+        assert admitted_b is False
+        assert retry_b >= 1
+    finally:
+        broker_a.close()
+        broker_b.close()
+
+
+def test_broker_backed_store_different_principals_do_not_share(
+    tmp_path: Path,
+) -> None:
+    """The broker keys buckets by principal_id; different principals
+    maintain independent budgets even through a shared broker."""
+    from orchestrator.api.admission import BrokerBackedSlidingWindowStore
+    from orchestrator.runtime import BrokerConfig, SqliteBroker
+
+    db_path = tmp_path / "broker.sqlite3"
+    broker = SqliteBroker(config=BrokerConfig(
+        db_path=db_path, leader_lease_s=10.0, leader_renew_s=1.0
+    ))
+    try:
+        store = BrokerBackedSlidingWindowStore(
+            broker=broker, budget=1, window_ns=10_000_000_000
+        )
+        t0 = 1_000_000_000_000
+        assert store.check_and_record("alice", now_ns=t0)[0] is True
+        # Alice over budget:
+        assert store.check_and_record("alice", now_ns=t0 + 1)[0] is False
+        # Bob has a fresh budget:
+        assert store.check_and_record("bob", now_ns=t0 + 2)[0] is True
+    finally:
+        broker.close()
+
+
+def test_broker_backed_store_eviction_across_workers(tmp_path: Path) -> None:
+    """Global bucket eviction: a time advance past the window frees
+    the bucket for BOTH workers (the broker's DELETE is scoped by
+    principal, not by worker)."""
+    from orchestrator.api.admission import BrokerBackedSlidingWindowStore
+    from orchestrator.runtime import BrokerConfig, SqliteBroker
+
+    db_path = tmp_path / "broker.sqlite3"
+    broker_a = SqliteBroker(config=BrokerConfig(
+        db_path=db_path, leader_lease_s=10.0, leader_renew_s=1.0
+    ))
+    broker_b = SqliteBroker(config=BrokerConfig(
+        db_path=db_path, leader_lease_s=10.0, leader_renew_s=1.0
+    ))
+    try:
+        window_ns = 1_000_000_000
+        store_a = BrokerBackedSlidingWindowStore(
+            broker=broker_a, budget=1, window_ns=window_ns
+        )
+        store_b = BrokerBackedSlidingWindowStore(
+            broker=broker_b, budget=1, window_ns=window_ns
+        )
+        t0 = 1_000_000_000_000
+        assert store_a.check_and_record("alice", now_ns=t0)[0] is True
+        # Worker B sees the global bucket full:
+        assert store_b.check_and_record("alice", now_ns=t0 + 1)[0] is False
+        # Advance past the window; the prior admit evicts. The next
+        # admit on either worker succeeds.
+        assert store_b.check_and_record(
+            "alice", now_ns=t0 + window_ns + 10
+        )[0] is True
+    finally:
+        broker_a.close()
+        broker_b.close()
+
+
+def test_build_rate_limiters_returns_in_process_store_when_no_broker() -> None:
+    """Backward-compat: build_rate_limiters without a broker returns the
+    in-process store (the 5g-iv posture, Lazy-allocated per-principal)."""
+    from orchestrator.api.admission import (
+        InProcessSlidingWindowStore,
+        build_rate_limiters,
+    )
+
+    config = _admission(rate_budget=10, rate_window_s=30)
+    store = build_rate_limiters(config)
+    assert isinstance(store, InProcessSlidingWindowStore)
+
+
+def test_build_rate_limiters_returns_broker_backed_store_with_broker(
+    tmp_path: Path,
+) -> None:
+    """When build_rate_limiters is handed a broker, it returns the
+    broker-backed store. This is the lifespan's wiring path when
+    XION_BROKER_DB_PATH is set."""
+    from orchestrator.api.admission import (
+        BrokerBackedSlidingWindowStore,
+        build_rate_limiters,
+    )
+    from orchestrator.runtime import BrokerConfig, SqliteBroker
+
+    broker = SqliteBroker(config=BrokerConfig(
+        db_path=tmp_path / "broker.sqlite3",
+        leader_lease_s=10.0,
+        leader_renew_s=1.0,
+    ))
+    try:
+        config = _admission(rate_budget=10, rate_window_s=30)
+        store = build_rate_limiters(config, broker=broker)
+        assert isinstance(store, BrokerBackedSlidingWindowStore)
+    finally:
+        broker.close()
+
+
+def test_admission_dependency_with_broker_backed_store_enforces_429(
+    app_factory: Callable[..., Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end integration: a lifespan with XION_BROKER_DB_PATH set
+    wires a BrokerBackedSlidingWindowStore; admission_dependency reads
+    it and still enforces 429 on overflow (the wire-shape stays
+    identical; only the storage swapped)."""
+    broker_path = tmp_path / "broker.sqlite3"
+    monkeypatch.setenv("XION_BROKER_DB_PATH", str(broker_path))
+    monkeypatch.setenv("XION_BROKER_LEADER_LEASE_S", "10.0")
+    monkeypatch.setenv("XION_BROKER_LEADER_RENEW_S", "1.0")
+
+    app = app_factory(
+        admission_config=_admission(rate_budget=2, rate_window_s=60),
+        tick_cadence_s=0.05,
+    )
+    with TestClient(app) as client:
+        # Verify the broker-backed path is live.
+        from orchestrator.api.admission import BrokerBackedSlidingWindowStore
+
+        assert isinstance(
+            app.state.rate_limiters, BrokerBackedSlidingWindowStore
+        )
+        r1 = client.get("/drive", headers=_bearer())
+        assert r1.status_code == 200, r1.text
+        r2 = client.get("/drive", headers=_bearer())
+        assert r2.status_code == 200, r2.text
+        r3 = client.get("/drive", headers=_bearer())
+    assert r3.status_code == 429, r3.text
+    assert r3.json()["detail"]["bucket"] == "principal"

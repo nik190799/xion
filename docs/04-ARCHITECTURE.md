@@ -1399,6 +1399,89 @@ The orchestrator never writes into `clients/web/`. The orchestrator reads `dist/
 
 **What 5g-v deliberately does NOT do.** Did not ship in-browser billing (`KW-CLIENT-001`). Did not ship streaming UX (`KW-CLIENT-002`). Did not ship conversation memory. Did not ship markdown rendering, syntax highlighting, or tool-use visualisation. Did not ship a component library, CSS framework, state library, or router library. Did not ship analytics or tracking of any kind. Did not ship a public-user wallet integration (Phase 6+). Did not land a live `xion-verify web-client` (the verifier ships `NOT_YET_SEALED` and promotes to live at first operator deployment; its tests live alongside the commit that promotes it).
 
+### Multi-worker coherence (Phase 5g+)
+
+Phase 5g-iv pinned the admission surface under the honest constraint that it was single-worker. Phase 5g-v gave the operator a browser seat at the surface. Phase 5g-ii taught `/chat` how to stream. All three landings left two linked Known Weaknesses open on purpose: `KW-API-002` (the Supervisor tick loop shares the FastAPI event loop and therefore the deployment has to run `uvicorn --workers 1`) and `KW-RATE-001` (the per-principal sliding-window rate limiter is in-process, so N uvicorn workers would each hold an independent bucket and the effective per-principal budget would be `N × XION_API_RATE_BUDGET`). Each of those KWs names the same mechanism as its pay-down: a shared-state broker. Phase 5g+ ships that broker and closes both.
+
+The operator pressure is concrete. A solo-builder deployment on commodity hardware can serve the Phase-5g-ii streaming `/chat` surface at the Genesis Default cadence without breaking a sweat; the bottleneck at single-worker was never CPU. The bottleneck was the latent fragility of saying "the only supported configuration is `--workers 1`" to an operator whose hosting provider's liveness probe or auto-restart logic does not know that rule. The honest engineering outcome is that the orchestrator knows how to share state across workers; the deployment documentation still pins `workers=1` as the Genesis Default, but `workers>1` stops corrupting `SENSORIUM_LEDGER` (it silently violates the singleton-Supervisor property) and stops over-allocating rate budgets (it silently violates the per-principal-budget property). The broker is the mechanism that makes both properties deployment-independent.
+
+#### Properties
+
+- **(P1) Chosen mechanism: SQLite in WAL mode at a configurable path.** The broker is a single SQLite database file that `sqlite3.Connection`s on each worker open with `PRAGMA journal_mode=WAL` and `PRAGMA synchronous=NORMAL`. Three tables: a one-row `supervisor_snapshot` holding the latest tick payload, a one-row `supervisor_leader` holding the lease-based election state, and an append-with-prune `rate_limit_events` table keyed on `(principal_id, event_at_ns)`. Rejected alternatives, named honestly so that a future maintainer reading this in 2026-Q4 can see the decision space: **Redis pub/sub** (correct mechanism but adds a second service, a persistence story, a TLS/authn story, and an operational weight that a solo builder cannot sustain — this is enterprise-grade complexity for a single-machine coherence problem); **an AO Process mailbox on AO Core** (correct long-term home — Phase 6+ — but AO Core does not exist yet at the Phase-5g+ time horizon); **a small TCP-loopback daemon** (second process, supervision story, hand-rolled wire protocol, second failure mode the operator has to monitor — all for coherence work SQLite already solves). SQLite-WAL is pure stdlib (`sqlite3` ships with Python), reliable on Windows (where `KW-API-002` explicitly named filesystem pub/sub quirks as the reason *not* to roll our own — SQLite's file-locking is the reason it ships cross-platform in the first place), kill-safe (no second process to supervise), inspectable with `sqlite3 <path>` at 3am, one file to back up, one file to nuke and re-create. The `Broker` Protocol in [`orchestrator/runtime/broker.py`](../orchestrator/runtime/broker.py) is the Phase-6-replaceable surface — when the AO Core mailbox ships, the implementation behind the Protocol swaps; call-sites do not change.
+- **(P2) Single-leader Supervisor via lease-based election (closes `KW-API-002`).** At startup, each worker calls `Broker.try_acquire_leader(worker_id=<pid>, now_ns=<time.time_ns()>)`. Exactly one worker wins the lease (`supervisor_leader.lease_expires_at_ns` is `> now_ns`); all others become followers. The leader runs the existing Supervisor loop and, after each `tick_once()`, calls `Broker.publish_snapshot(snap)`. The leader renews its lease on a cadence that is strictly less than half the lease TTL (renew every 10s on a 30s lease) so that a single missed renewal does not cause a spurious failover. Followers skip the Supervisor entirely; their `get_latest_snapshot()` reads `Broker.latest_snapshot()`. On leader crash, the first follower whose `try_acquire_leader` call runs after the lease expiry promotes itself atomically via a `BEGIN IMMEDIATE` transaction (no split-brain: SQLite's page-level locking serializes the election). The `relay_id` written to `SENSORIUM_LEDGER.tick_commit` rows therefore tracks the current leader, and a failover transition is visible as a bounded `relay_id` change — observable to `xion-verify supervisor-singleton` as a single dominant-id window with bounded transitions per `leader_lease_s` budget.
+- **(P3) Global per-principal rate-limit buckets (closes `KW-RATE-001`).** `orchestrator/api/admission.py`'s `SlidingWindow` class is extracted behind a `RateLimitStore` Protocol; the existing in-process implementation becomes `InProcessSlidingWindow`, and a new `BrokerBackedSlidingWindow` wraps `Broker.check_and_record_rate(principal_id, window_ns, budget, now_ns)`. The broker-side implementation runs each check-and-record in a single `BEGIN IMMEDIATE` transaction: delete events older than `now_ns - window_ns`, count remaining, conditionally insert the new event, return `RateCheck(allowed, retry_after_s, events_in_window)`. A principal targeting worker A and worker B in parallel therefore exhausts exactly `budget` events across the entire deployment, not `N × budget`. The `admission_dependency` FastAPI route call is unchanged — the Protocol is the seam.
+- **(P4) Phase-6 replacement path.** The `Broker` Protocol (six methods: `publish_snapshot`, `latest_snapshot`, `try_acquire_leader`, `renew_leader`, `is_leader`, `check_and_record_rate`) is deliberately narrow. When Phase 6+ AO Core lands, an `AoMailboxBroker` implementation honors the same Protocol, the `load_broker_from_env()` factory dispatches to it on a new env knob, and call-sites do not change. This is the same shape-symmetric replacement path that `verify_bearer` carries for the Phase-6 identity-lattice work named in `KW-AUTH-001`.
+- **(P5) Additive operator surface.** Two new env knobs: `XION_BROKER_DB_PATH` (default unset — when unset the broker is disabled and the orchestrator keeps its single-worker posture exactly as 5g-iv/5g-v/5g-ii shipped it; full backward compatibility) and `XION_API_WORKERS` (default `1`). The launcher ([`orchestrator/api/__main__.py`](../orchestrator/api/__main__.py)) removes the hardcoded `--workers 1` enforcement and reads `XION_API_WORKERS`; when `workers > 1` and `XION_BROKER_DB_PATH` is unset, the launcher fails closed at startup — `workers>1` without a broker is the exact corruption path `KW-API-002` and `KW-RATE-001` named, and shipping a launcher that allows it silently would be dishonest.
+
+#### Non-properties (explicit)
+
+- **No cross-host coordination.** The SQLite file is single-machine by design. A multi-host D2 deployment (one orchestrator per Akash provider) still runs one broker per host; cross-host Supervisor consensus is Phase 6+ AO Core territory and is explicitly named as out of scope here.
+- **No distributed transaction semantics.** The broker provides serialized access to a small number of narrow operations. It is not a general-purpose distributed database, a queue, or a pub/sub bus. Adding those surfaces would widen the Protocol into territory the AO Core mailbox is the right long-term home for.
+- **No broker-side authn.** The DB file sits on the orchestrator's trusted filesystem alongside every ledger. A malicious operator with write access to the orchestrator's working directory can already corrupt every ledger by editing the JSONL files directly; a broker-side authn story would be security theater at that threat level.
+- **Does not close `KW-SUPERVISOR-002`.** `KW-SUPERVISOR-002` (tick_commit heartbeat continuity across deploys) needs a deploy-event row in `SENSORIUM_LEDGER` or `OPS_LEDGER` that the orchestrator does not yet publish. Phase 5g+ closes only the two KWs the broker mechanism directly resolves. `KW-SUPERVISOR-002` stays open with its existing pay-down commitment.
+
+#### Code-surface layout
+
+```
+# orchestrator/runtime/__init__.py (new package for cross-cutting coordination primitives)
+# orchestrator/runtime/broker.py (new)
+#   - BrokerConfig (frozen dataclass: db_path, leader_lease_s=30.0,
+#     leader_renew_s=10.0; __post_init__ enforces leader_renew_s < leader_lease_s/2
+#     and parent dir exists).
+#   - RateCheck (frozen dataclass: allowed, retry_after_s, events_in_window).
+#   - Broker Protocol — the Phase-6-replaceable surface.
+#   - SqliteBroker — concrete implementation. One sqlite3.Connection per worker
+#     (check_same_thread=False) + an internal threading.Lock (SQLite-WAL allows
+#     concurrent readers but serializes writers; the lock prevents stdlib re-entry
+#     corruption across asyncio coroutines sharing the connection).
+#     Tables:
+#       supervisor_snapshot(id INTEGER PRIMARY KEY CHECK (id=1),
+#                           json_blob TEXT, updated_at_ns INTEGER)
+#       supervisor_leader(singleton_id INTEGER PRIMARY KEY CHECK (singleton_id=1),
+#                         worker_id TEXT, lease_expires_at_ns INTEGER)
+#       rate_limit_events(principal_id TEXT, event_at_ns INTEGER)
+#                    + INDEX (principal_id, event_at_ns)
+#   - load_broker_from_env() -> Broker | None   (None when XION_BROKER_DB_PATH unset)
+
+# orchestrator/api/lifespan.py (extended)
+#   When BrokerConfig is present:
+#     - Construct SqliteBroker.
+#     - Attempt try_acquire_leader(worker_id=<os.getpid()>). Leader runs the
+#       Supervisor loop and publishes snapshots + renews the lease on a
+#       leader_renew_s cadence. Follower skips Supervisor, reads latest_snapshot.
+#     - Build BrokerBackedSlidingWindow instances (instead of InProcessSlidingWindow).
+#   When BrokerConfig is absent:
+#     - Existing single-worker posture unchanged.
+
+# orchestrator/supervisor.py (extended)
+#   Accepts publish: Callable[[dict], None] | None = None in the constructor.
+#   Tick loop invokes publish(snap) after every successful tick_once (no-op when None).
+#   The Supervisor is not coupled to SQLite directly; the hook keeps it broker-agnostic.
+
+# orchestrator/api/admission.py (extended)
+#   RateLimitStore Protocol (check_and_record(principal_id, now_ns) -> RateCheck).
+#   InProcessSlidingWindow (the existing class, renamed and made to honor the Protocol).
+#   BrokerBackedSlidingWindow (new; wraps Broker.check_and_record_rate).
+#   admission_dependency is unchanged.
+
+# orchestrator/api/__main__.py (extended)
+#   Reads XION_API_WORKERS (default 1). When > 1, requires XION_BROKER_DB_PATH
+#   to be set and points at a writable filesystem location (parent dir exists).
+#   Fails closed at startup otherwise.
+```
+
+#### Verification
+
+`xion-verify supervisor-singleton` (new at Phase 5g+) walks `SENSORIUM_LEDGER.jsonl` for `tick_commit` rows within a configurable time window (default last 24 h) and asserts: (S1) `relay_id` values over the window form a single dominant id with bounded failover events (at most one transition per `leader_lease_s` slack budget, operator-configurable); (S2) `as_of_utc_ns` timestamps within a single-leader epoch are strictly monotonic; (S3) no two `relay_id`s overlap in the same tick cadence band (the corruption signature `KW-API-002` named). Returns `NOT_YET_SEALED` when no broker is configured in the observed environment — a single-worker deployment trivially satisfies the singleton property without the broker, and the verifier honestly reports that rather than issue a fake green.
+
+#### Operator runbook
+
+Ship reference is [`docs/33-MULTI-WORKER.md`](./33-MULTI-WORKER.md) — broker schema, lease semantics, SQLite-WAL posture, backup / reset runbook, and the Phase-6 replacement contract the AO Core mailbox implementation will honor.
+
+**Tracked residuals (new in 5g+).** None new. `KW-API-002` and `KW-RATE-001` are both closed by this landing and move to the Closed section of `KNOWN_WEAKNESSES.md` with this phase's closure commits.
+
+**What 5g+ deliberately does NOT do.** Did not close `KW-SUPERVISOR-002` (that closure needs a deploy-event ledger row the orchestrator does not yet publish — honest scope). Did not add cross-host coordination (single-machine by design; cross-host is Phase 6+ AO Core). Did not replace the in-process `SlidingWindow` class when no broker is configured (the default single-worker posture stays backward-compatible). Did not ship broker-side authn (trusted-filesystem assumption matches every ledger in the tree; see § Non-properties). Did not migrate to Redis, WebSocket, or any external dep. All new functionality is stdlib-only.
+
 ## Tier III — The Protocol
 
 **The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or Akash providers.
