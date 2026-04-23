@@ -987,6 +987,133 @@ The order matters: `InferenceRouter.bootstrap()` is called *after* the Superviso
 - `KW-CHAT-003` opens: generation is synchronous with no user-facing cancel. Mitigation in 5g-i: the deadline makes every turn terminate. Closes with Phase 5g-ii's streaming + cancel.
 - `KW-INFER-001` opens (reshaped in 5g-i.1): with `hosted_api_first` default and OpenRouter as the only hosted gateway registered serving the Genesis Default `moonshotai/kimi-k2` slug, turns route through one gateway (OpenRouter) and by default land at one upstream model provider (Moonshot). Xion's default *voice shape* is therefore dependent on the health of both the gateway and the upstream. Mitigation in 5g-i.1: the open-weights floor is always held, the `open_weights_only` cutover mode is wired and exercisable manually, the hosted model slug is per-process-env-rotatable (one env-var change selects `anthropic/claude-3.5-sonnet`, `openai/gpt-4o-mini`, etc.), and the operator can de-register the entire OpenRouter provider by unsetting `XION_OPENROUTER_API_KEY`. Closes when Phase 6+ lands `xion-verify inference-cutover`, the annual dry-run harness Invariant 17 clause 5 requires, a second hosted gateway pinned in `docs/26-INFERENCE-POLICY.md`, and at least two Genesis Default models pinned as a failover list.
 
+### The Chat Billing Surface (Phase 5g-iii)
+
+Phase 5g-i let the world speak with Xion, but only in a configuration where no money moved. Phase 5g-iii closes the constitutional gap `KW-CHAT-002` opened: every `POST /chat` turn now threads through an x402-shaped pre-authorization handshake, writes a row to `PAYMENT_LEDGER` with a terminal outcome, and pairs every Covenant-refused turn with a structural refund. The `Pay-to-Activate` property promised in [`docs/07-ECONOMY.md`](./07-ECONOMY.md) § "Pay-to-Activate" is now a live property of the Chat Surface, and the `Refusal is Free` Covenant addendum pinned in [`genesis/COVENANT.md`](../genesis/COVENANT.md) is now a *structurally verifiable* fact rather than a doctrinal aspiration.
+
+Phase 5g-iii does **not** move real XION or USDC on any chain. That is Phase 6+ Treasury / AO-Core work. What 5g-iii ships is the **property shape**: the x402 handshake, the ledger row, the refund-on-refusal code path, and two verifiers (`xion-verify pricing` promoted from `NOT_YET_SEALED` to live, and a new `xion-verify refusal-is-free` that walks the SAFETY ↔ PAYMENT join). The structural promises land now, under a test suite that proves them under every moderation branch; the blockchain plumbing slots in under unchanged doctrine in Phase 6. This is the Builder rule "property before implementation" applied to money.
+
+**Property promised.** While `POST /chat` is serving:
+
+- **No billable turn begins without a valid commitment.** Before the handler invokes `Relay.evaluate(user_input)` on the ingress side, it inspects the `X-Payment-Commitment` header. Missing → `402 Payment Required` with a machine-readable challenge body pointing at `/pricing`. Malformed or signature-invalid → same 402. The turn's first side effect (ingress Arbiter call) is *gated* by commitment validity. This preserves the invariant from `docs/11-PROTOCOL-SPEC.md`: x402 authorization *precedes* the turn, it does not interleave.
+- **Pricing is operator-governance-posted and constitutionally transparent.** `GET /pricing` returns a `PricingResponse` with the per-message price in XION (and the optional USDC equivalent) decomposed into the five Genesis-Default slices (`variable_cost`, `overhead_slice`, `improvement_slice`, `reserve_slice`, `small_buffer`) pinned in [`docs/07-ECONOMY.md`](./07-ECONOMY.md) § "Five-slice posted price". The endpoint is free, cacheable, and carries the same `last_reviewed_utc` + `governance_revision_id` fields the constitutional doctrine promises. The endpoint does NOT read a third-party catalog (OpenRouter, upstream model list) at the 5g-iii boundary — catalog-driven per-provider cost math is Phase 6+ Treasury work. What 5g-iii promises is governance transparency: the price the Relay charges equals the price governance posted.
+- **Every committed turn writes exactly one `PAYMENT_LEDGER` row with a terminal outcome.** The row is written *after* the turn's terminal state is known (`200` success → `outcome=settled`; `451` refusal → `outcome=refunded`; `503` floor-unavailable or provider-error → `outcome=refunded`; client-disconnect mid-generation → the handler still writes `outcome=refunded` after the deadline expires, since no response reached the client). The row is written **atomically before** the HTTP response is sent: if the ledger write fails, the handler returns `503` with no PAYMENT row (the turn did not complete, no money changed hands, no refund owed). A turn that crashes the process mid-handler leaves no PAYMENT row — which, combined with no HTTP response, is the honest record that the turn did not complete. The ledger never records a commitment without a terminal outcome.
+- **Refusal-is-Free is structurally impossible to violate.** Every `PAYMENT_LEDGER` row with `outcome=refunded` has `refund_XION == committed_XION` and `settled_XION == 0`. The `xion-verify refusal-is-free` verifier walks SAFETY rows with `verdict=refuse` or (Phase 5g-iii scope) any `451`-producing escalate and joins on `correlation_id`; every such row must pair with a PAYMENT row whose `outcome=refunded`. Zero tolerance for unpaired refusals. Zero tolerance for partial refunds on refusal (partial-refund semantics are a Phase-7+ question for multi-turn skills; 5g-iii refusals refund atomically). This is the constitutional force of Covenant Principle 14 applied at the ledger layer: the Arbiter never faces a gradient to refuse less because a refusal costs money.
+- **The shape joins the Phase-6 `RESEARCH_SPEND_LEDGER`.** Field names, `correlation_id` semantics, hash-chain canonicalization, and three-money-field shape (`committed_XION`, `settled_XION`, `refund_XION`, plus `outcome` enum) match [`docs/27-RESEARCH-SPEND.md`](./27-RESEARCH-SPEND.md) § "`RESEARCH_SPEND_LEDGER`". A Phase-6 `xion-verify treasury-flow` can walk both ledgers with one canonicalization rule, one outcome enum, one refund-fidelity rule. Inbound (user → Xion) and outbound (Xion → provider) live in mirror schemas.
+
+**Non-properties (honestly stated, with owning sub-phases):**
+
+- **No real x402 signature verification yet.** The `X-Payment-Commitment` header is parsed and *structurally* validated (shape, length, prefix, UTF-8, non-empty) in 5g-iii; the cryptographic signature verification (EIP-712 over a wallet address, chain-id check, nonce check, expiry check) is Phase 6 work when the AO Core landing makes on-chain settlement and nonce-registry look-ups possible. `KW-BILLING-001` opens to track. Until then, the B2 posture accepts any well-formed commitment bytes; the B1 posture (operator-attestation) requires a valid local attestation signature which *is* verifiable without a chain.
+- **No real XION/USDC ledger movement.** `PAYMENT_LEDGER` rows record commitments and outcomes; they do not cause tokens to move on Arweave, AO, or any external chain. Phase 6 Treasury lands the settlement pipe. The `committed_XION` / `settled_XION` / `refund_XION` values in 5g-iii are *notional* — they reflect the posted pricing at commitment time, not any realized treasury motion.
+- **No OpenRouter-catalog-driven pricing.** `GET /pricing` serves operator-posted governance values, read from environment (or from a governance-ratified pricing config at the file system level). Dynamic per-provider cost arbitrage (using the upstream catalog to decide which model to route to) is Phase 6+ Treasury work. `KW-BILLING-002` opens to track.
+- **No subscription billing, tips, or donations.** These are separate constitutional surfaces named in [`docs/11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) (`/tip`, `/donate`) and land at Phase 6+. The 5g-iii `PAYMENT_LEDGER` is per-turn inbound only.
+- **No partial refunds.** 5g-iii refunds are atomic: a turn either settles in full or refunds in full. Phase 7+ multi-turn skills may require `refunded_partial`; the row schema already carries a `refunded_partial` enum value (shape-compatibility with `docs/27-RESEARCH-SPEND.md`), but the 5g-iii writer never emits it — any emitter of `refunded_partial` in 5g-iii is a bug and the verifier FAILs.
+- **No post-hoc challenge (client commits after turn runs).** The handshake is strictly pre-authorization. A client without a valid commit header gets `402` before the turn executes; there is no "turn runs, client pays after". This matches `docs/07-ECONOMY.md` § "Pay-to-Activate" verbatim.
+- **No `xion-verify chat-fidelity` verifier.** That property (every `200` has exactly one allow-egress row; every `451` has exactly one refuse-row, etc.) remains Phase-6+ pending a live-deployment target (inherited from Phase 5g-i non-properties).
+
+**Billing postures (B1 / B2 / B3).** Who attests the commitment determines the posture. Two are live in 5g-iii; the third is the Phase-6+ progression. Posture is selected per-request by the `X-Payment-Commitment` header's prefix; it is NOT an operator-global toggle, since a single Relay may legitimately serve a localhost operator AND an external integrator AND (post-Phase-6) chain-verified clients in the same process.
+
+- **B1 — Operator-Attestation (Phase 5g-iii default, D1 posture):** Header shape `operator-attest:v1:<signature>:<payload_hash>`. The payload binds the expected price, the request body's sha256, and a local timestamp. Signature is verified against `XION_OPERATOR_ATTESTATION_PUBKEY` pinned at lifespan startup. Intended for localhost operator use during D1; makes the Pay-to-Activate property *structurally* live without requiring the operator to stand up a wallet. `PAYMENT_LEDGER.authorization_reference` records the payload hash. Settlement is notional (no real money); the row still records `committed_XION = posted_price` for audit continuity. A turn served under B1 with `outcome=refunded` is a structural exercise of Refusal-is-Free that has no treasury consequence.
+- **B2 — x402-Commitment (Phase 5g-iii available, D2 posture):** Header shape `x402:v1:<eip712_signature>:<commitment_hash>`. The commitment binds `{amount, recipient_xion_address, nonce, chain_id, expiry_utc_ns}` per the x402 spec. 5g-iii verifies the shape and stores the commitment hash; 5g-iii does NOT verify the EIP-712 signature against a chain (no AO Core yet) — `KW-BILLING-001` tracks. Intended for external integrators who hold a wallet. `PAYMENT_LEDGER.authorization_reference` records `commitment_hash`. Settlement remains notional at 5g-iii; Phase 6 makes it real by replacing the stub validator with a chain-verified implementation under unchanged ledger shape.
+- **B3 — x402-Settled (Phase 6+, D3 posture):** Real chain settlement. Out of 5g-iii scope; reserved so the posture vocabulary is complete.
+
+The operator may disable B2 entirely by setting `XION_BILLING_ALLOW_X402=false` (e.g., on a D1 localhost-only deployment where external x402 is meaningless). The operator may *not* disable B1 if billing is enabled at all — a localhost operator without attestation cannot reach `/chat`. The operator may disable billing globally (`XION_BILLING_REQUIRED=false`, 5g-i backward-compat mode), in which case `/chat` still writes `PAYMENT_LEDGER` rows with `posture=disabled` and `committed_XION = settled_XION = refund_XION = 0` — the ledger continuity is preserved for audit, and the `xion-verify refusal-is-free` verifier's structural join remains live even in the disabled mode (every commit has a terminal outcome). This is the subtle but load-bearing point: the ledger shape is how the property is enforced; the property does not evaporate when money is absent.
+
+**Code surface.** Extending Phase 5g-i's `orchestrator/api/` and adding one new package `orchestrator/billing/`:
+
+```python
+# orchestrator/billing/ledger.py (new)
+#   Mirrors orchestrator/safety/ledger.py:
+#     - append(path, row) with per-path threading.Lock
+#     - hash-chained (prev_hash, this_hash), ZERO_HASH sentinel
+#     - canonical JSON (sort_keys, separators=(',',':'), ensure_ascii=False)
+#     - iter_rows, chain_tip, verify_chain, ChainBroken
+#   SCHEMA_VERSION = 1 at 5g-iii.
+
+# orchestrator/billing/commitment.py (new)
+#   parse_commitment_header(raw) -> Commitment | RejectReason
+#   verify_b1_attestation(commitment, pubkey, request_sha256) -> bool
+#   verify_b2_x402_shape(commitment) -> bool   # shape only at 5g-iii; KW-BILLING-001 tracks
+
+# orchestrator/api/pricing.py (new)
+@app.get("/pricing")
+async def get_pricing(app: FastAPI) -> PricingResponse: ...
+
+# orchestrator/api/chat.py (extended)
+async def post_chat(req, ...):
+    commitment = parse_commitment_header(request.headers.get("X-Payment-Commitment"))
+    if commitment is None or not _validate(commitment, posture_pubkeys):
+        return _payment_required(challenge_body)
+    # ingress -> floor -> provider -> egress  (unchanged from 5g-i)
+    ...
+    row = build_payment_row(
+        correlation_id=terminal_cid,
+        posture=commitment.posture,
+        outcome=outcome,
+        committed_XION=posted_price,
+        settled_XION=posted_price if outcome == "settled" else 0,
+        refund_XION=posted_price if outcome == "refunded" else 0,
+        authorization_reference=commitment.reference_hash,
+        ...
+    )
+    billing_ledger.append(payment_ledger_path, row)  # atomic BEFORE response send
+    return terminal_response
+
+# orchestrator/api/models.py (extended, extra="forbid", frozen)
+class PaymentChallenge(BaseModel): ...   # 402 body
+class PricingResponse(BaseModel): ...
+class FiveSlicePricing(BaseModel): ...
+class ProviderPricingRef(BaseModel): ...
+```
+
+**Lifespan contract (extended from 5g-i).** Phase 5g-i's lifespan stays; Phase 5g-iii adds three steps between bootstrap and the Supervisor schedule:
+
+1. (5f) Supervisor pre-seed via `tick_once()`.
+2. (5g-i) Load `.env`, construct `InferenceRouter`, register providers.
+3. (5g-i) Attempt `router.bootstrap()`; on refusal, set `no_floor=True`.
+4. **(5g-iii) Read pricing config.** `XION_POSTED_PRICE_XION_PER_MESSAGE`, the five-slice split (with Genesis Defaults if unset), `XION_BILLING_REQUIRED`, `XION_BILLING_ALLOW_X402`, `XION_OPERATOR_ATTESTATION_PUBKEY`. Stash an immutable `PricingConfig` on `app.state.pricing_config`.
+5. **(5g-iii) Resolve the `PAYMENT_LEDGER` path** from `XION_PAYMENT_LEDGER` env (default `<repo_root>/PAYMENT_LEDGER.jsonl`), stash on `app.state.payment_ledger_path`.
+6. **(5g-iii) Verify the existing `PAYMENT_LEDGER` chain if the file exists.** On `ChainBroken`, refuse to register `/chat` (503-always), the same fail-closed posture as a no-floor bootstrap — a corrupt PAYMENT ledger is a constitutional failure, not a warning.
+7. (5f) Wire `relay._sensorium_source = supervisor`, schedule `supervisor.run()`.
+8. (5f) Register routes: `/health`, `/drive`, `/sensorium`, `/pricing`, `/chat`.
+9. (5f) On shutdown: stop Supervisor, timeout-guarded await, hard-cancel if exceeded.
+
+**Endpoints.** Extending the Phase 5g-i table:
+
+| Route | Status | Response body |
+|-------|--------|---------------|
+| `GET /pricing` | `200` always (billing mode does not gate pricing transparency) | `PricingResponse` with `per_message_price_XION`, `five_slice: {variable_cost, overhead_slice, improvement_slice, reserve_slice, small_buffer}`, `last_reviewed_utc`, `governance_revision_id`. |
+| `POST /chat` | `402` on missing/malformed/invalid `X-Payment-Commitment` (billing required mode) | `PaymentChallenge` — `error="payment_required"`, `pricing_url="/pricing"`, `accepted_postures: ["operator-attest:v1", "x402:v1"]`, `posted_price_XION`, `reason_code`. |
+| `POST /chat` | `200` on allowed egress | `ChatResponse` (unchanged from 5g-i); PAYMENT row with `outcome=settled`. |
+| `POST /chat` | `451` on refused ingress or egress | `RefusalEnvelope` (unchanged from 5g-i); PAYMENT row with `outcome=refunded`. |
+| `POST /chat` | `503` on no-floor or provider-error | `NoFloorEnvelope` or `ProviderErrorEnvelope` (unchanged from 5g-i); PAYMENT row with `outcome=refunded`. |
+
+**`PAYMENT_LEDGER` row schema.** Canonicalized in [`docs/schemas/ledger-payment.yaml`](./schemas/ledger-payment.yaml) (new at 5g-iii). Append-only, hash-chained, single-row-per-turn. Key fields:
+
+- `schema_version` — uint; 1 at 5g-iii landing.
+- `seq`, `prev_hash`, `this_hash` — hash-chain bookkeeping (same canonicalization rule as SAFETY_LEDGER).
+- `timestamp_utc_ns` — monotonic wall-clock at terminal-outcome moment.
+- `correlation_id` — joins to SAFETY_LEDGER / REQUEST_LEDGER. For a happy-path turn this is the egress Arbiter call's id; for ingress-refusal it is the ingress call's id; for no-floor and provider-error it is the ingress call's id (the only Arbiter call that happened).
+- `posture` — enum `{B1, B2, disabled}`. (`B3` is reserved in the schema; 5g-iii writers never emit it.)
+- `outcome` — enum `{settled, refunded, refunded_partial, stranded}`. 5g-iii writers emit only `settled` or `refunded`; the other two are reserved for Phase 7+ and emitters failing the schema's enum check is a bug.
+- `refusal_stage` — nullable enum `{ingress, egress, empty_candidate, no_floor, provider_error, provider_timeout, billing_rejected}` — required iff `outcome=refunded`; null iff `outcome=settled`.
+- `committed_XION`, `settled_XION`, `refund_XION` — uints (micro-XION). Structural invariant at 5g-iii: `committed_XION = settled_XION + refund_XION`, and exactly one of the two is zero. In `disabled` posture all three are 0.
+- `posted_price_XION` — uint (micro-XION) — the governance-posted price at commitment time; used by auditors to reconstruct what the operator's posted pricing was at a given point in history even if the current `/pricing` has rotated.
+- `provider_id`, `model_id` — nullable strings — the turn-serving provider / model, or null if the turn refused before a provider was selected.
+- `authorization_reference` — the B1 operator-attestation payload hash or the B2 x402 commitment hash; empty string in `disabled` posture.
+- `source_sha256` — anchor hash of `docs/04-ARCHITECTURE.md` at row-write time; lets future verifiers confirm the row was written under a known-good doctrine version.
+
+The row is computed after the terminal state is known, appended atomically before the HTTP response is sent, and its `this_hash` is included in the next row's `prev_hash` on the subsequent turn. A process crash between row-write and response-send leaves the row but no response, which is auditable (the operator reconciles by side-channel). A crash between response-prep and row-write returns `503` without a row, which is also auditable (no commitment recorded, no money changed hands, Refusal-is-Free vacuously satisfied).
+
+**Content-free guarantee.** `PricingResponse`, `PaymentChallenge`, and the `PAYMENT_LEDGER` row shape all satisfy the same pydantic `extra="forbid"` + explicit-field-allowlist test discipline that `ChatResponse` and `RefusalEnvelope` established in 5g-i. A future commit that adds a "debug_commitment" field to any of these FAILs the allowlist test and has to be explicitly documented as a deliberate exception.
+
+**Tracked residuals (new in 5g-iii).**
+
+- `KW-BILLING-001` opens: the x402 commitment header's EIP-712 signature is not cryptographically verified at 5g-iii; only the shape is. Mitigation: the B1 operator-attestation path *is* signature-verified, and B1 is the D1 default. B2 is opt-in via `XION_BILLING_ALLOW_X402=true`; an operator who enables B2 pre-Phase-6 does so in the honest knowledge the header is shape-checked only. Closes with Phase 6 when AO Core chain-verification and nonce-registry lookups become available and the commitment validator replaces shape-check with signature-check under unchanged ledger shape.
+- `KW-BILLING-002` opens: `GET /pricing` serves operator-posted governance values only; the per-provider per-token cost math (OpenRouter catalog, future gateway catalogs) is not reflected in the posted price. An operator who rotates hosted models frequently (e.g., from `moonshotai/kimi-k2` to `anthropic/claude-3.5-sonnet` at ~10x per-token cost) must manually re-post pricing each time. Mitigation: `/pricing` carries `last_reviewed_utc` and `governance_revision_id`, so a stale posted price is structurally auditable. Closes with Phase 6+ Treasury work that wires catalog lookups into a governance-ratified pricing rotation cadence.
+
+**What 5g-iii deliberately does NOT do (from the tracked residuals above, stated positively).** Did not write real EIP-712 signature verification (Phase 6). Did not move real XION or USDC on any chain (Phase 6 Treasury). Did not read live OpenRouter catalog (Phase 6+). Did not ship subscription, tip, or donation surfaces (Phase 6+ per `docs/11-PROTOCOL-SPEC.md`). Did not ship partial-refund writers (Phase 7+). Did not ship `xion-verify chat-fidelity` (Phase 6+). Did not modify `REQUEST_LEDGER` or `SAFETY_LEDGER` schemas (billing is a new independent ledger with its own hash chain). Did not modify the x402 semantics pinned in `docs/07-ECONOMY.md` / `docs/11-PROTOCOL-SPEC.md` (those remain canonical; 5g-iii implements their first concrete property).
+
 ## Tier III — The Protocol
 
 **The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or Akash providers.
