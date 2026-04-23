@@ -861,7 +861,7 @@ All three responses are pure dataclass/dict projections. A 500 from any of these
 
 **Tracked residuals.**
 
-- `KW-API-001` opens: the HTTP surface has no authentication, no TLS termination, and no rate limiting. Mitigations in Phase 5f: bind to `127.0.0.1` by default in the operator runbook, endpoints are content-free and side-effect-free, and the shipped `pyproject [api]` extra does not pull in a reverse proxy. Closes with Phase 5g when `/chat` + billing ship (the moment the surface stops being strictly read-only, the security posture has to harden). **Closed Phase 5g-iv**: the admission-control surface (bearer tokens + per-principal sliding-window rate-limit + uvicorn-native TLS with fail-closed launcher) lands the hardening posture; see § "The Admission-Control Surface (Phase 5g-iv)" below and the closure entry in `KNOWN_WEAKNESSES.md`.
+- `KW-API-001` opens: the HTTP surface has no authentication, no TLS termination, and no rate limiting. Mitigations in Phase 5f: bind to `127.0.0.1` by default in the operator runbook, endpoints are content-free and side-effect-free, and the shipped `pyproject [api]` extra does not pull in a reverse proxy. Closes with Phase 5g when `/chat` + billing ship (the moment the surface stops being strictly read-only, the security posture has to harden). **Closed Phase 5g-iv**: the admission-control surface (bearer tokens + per-principal sliding-window rate-limit + uvicorn-native TLS with fail-closed launcher) lands the hardening posture; see § "The Admission-Control Surface (Phase 5g-iv)" below and the closure entry in `KNOWN_WEAKNESSES.md`. The web client shipped in Phase 5g-v consumes this admission-gated surface same-origin; see § "The Web Client Surface (Phase 5g-v)" below.
 - `KW-API-002` opens: the Supervisor shares the FastAPI app's event loop and the deployment is single-worker by construction. Mitigations in Phase 5f: 10 s tick cadence leaves the event loop ~9.99 s of idle for HTTP work, and the three endpoints are O(1) dict copies. Closes with Phase 5g+ when a shared-state broker (likely Redis pub/sub or an AO Process mailbox) takes over `latest_snapshot` publication so multiple uvicorn workers can share one Supervisor without double-writing `tick_commit` rows.
 
 ### The Chat Surface (Phase 5g-i)
@@ -1226,6 +1226,79 @@ flowchart TD
 - `KW-TLS-001` opens: uvicorn-native TLS — no automated cert renewal, no ALPN/HTTP-2 negotiation. Mitigation: launcher refuses to bind non-loopback without cert+key; reverse-proxy posture remains supported (operator binds `127.0.0.1` and fronts with their own TLS terminator). Closes when Phase 6+ deployment story pins the long-term reverse-proxy posture.
 
 **What 5g-iv deliberately does NOT do.** Did not extend `PAYMENT_LEDGER` schema (`principal_id` reserved for Phase 6 alongside on-chain identity). Did not ship federated identity (Phase 6+). Did not ship a multi-worker rate-limit broker (Phase 5g+). Did not ship automated TLS renewal (Phase 6+ deployment story). Did not ship a web client (Phase 5g-v). Did not ship streaming (Phase 5g-ii). Did not ship per-route auth scopes (lands when `KW-AUTH-001` closes). Did not ship a live `xion-verify api-hardness` against a running deployment (would require a deployment target; the 5g-iv attestation is `xion-verify api-tokens` offline structural check + the test-suite TestClient coverage).
+
+### The Web Client Surface (Phase 5g-v)
+
+Phase 5g-iv hardened the HTTP surface so that an external byte was structurally identifiable. Phase 5g-v adds the smallest possible surface that lets a human hold the other end: a static single-page React+Vite+TypeScript bundle that the operator builds locally, the orchestrator serves same-origin from its own FastAPI process, and the browser uses to talk to the Chat Surface it has already spent four phases hardening. The client is the **operator's own dashboard** at 5g-v — not a public-user surface. A public-user surface requires in-browser x402 commitment signing, which requires a pinned x402 library (`KW-BILLING-001`), and which requires user-side key custody doctrine; none of those exist at 5g-v and none is a D2 blocker.
+
+The full operational doctrine — install/build/serve runbook, bearer-token workflow, dev-vs-production Vite serve, accessibility commitment, the operator-dashboard-only posture — lives in [`docs/31-WEB-CLIENT.md`](./31-WEB-CLIENT.md), parallel to how `docs/30-API-ADMISSION.md` handles admission and `docs/29-BILLING-X402.md` handles billing. This architecture section pins the **constitutional shape** (six properties); that document pins the **operator workflow**.
+
+**Property promised.** While the API process is running with `XION_WEB_CLIENT_ENABLED=true` and `XION_WEB_CLIENT_DIST_PATH` pointing at a readable directory containing an `index.html`:
+
+- **Content-faithful rendering is structural.** Server-emitted `candidate_text` renders as plain text. No client-side markdown interpretation, no HTML synthesis, no syntax highlighting, no tool-use-call rendering. Whatever the server said, the human reads — byte-exact, zero mediation. A refusal envelope (`451 RefusalEnvelope`) surfaces as an explicit refusal UX state, not as an error toast and not as an empty chat bubble; the principle-id and correlation-id are surfaced so the operator can cross-reference the `SAFETY_LEDGER` row.
+- **The client re-runs no Covenant check.** The browser does not re-moderate the server's response. The server's Arbiter verdict (ingress and egress) is final; a second in-browser moderation pass would introduce a second refusal-authority which the Covenant doctrine does not sanction and which an auditor would (correctly) read as a second Arbiter. The client's role is transport and display, not authority.
+- **Accessibility floor is WCAG 2.2 AA, enforced in CI.** Keyboard-reachable navigation for every interactive element. ARIA landmarks for the three views (Chat, Drive, Sensorium) and the header. Focus management on every state transition. Colour-contrast ratios validated by `axe-core` in the bundle's Vitest CI gate — zero violations required to pass. This is doctrinal: a client that cannot be used by keyboard or by a screen reader violates Covenant Principle 7 (Protection of the Vulnerable) by excluding categories of users who have every right to speak with Xion.
+- **Same-origin serve in production, dev-proxy in development.** The production bundle is served by FastAPI's stdlib-adjacent `StaticFiles` mount under the `/app/*` prefix from the same origin that serves `/chat`, `/drive`, `/sensorium`, `/health`, `/pricing`. One origin, one TLS surface, no CORS, no third-party DNS. Dev mode uses Vite's dev server on `:5173` with an explicit `proxy` config pointing at `http://127.0.0.1:8000` for every API route; the cross-origin posture exists only on the developer's own machine.
+- **No third-party origin in the emitted bundle.** The built `dist/` contains zero references to any network origin other than `/` and `./` — no CDN fonts, no CDN scripts, no analytics beacons, no third-party error reporting, no telemetry. The `xion-verify web-client` command (Phase 5g-v ships it `NOT_YET_SEALED`, promoted to live at first operator deployment) greps the emitted JS + HTML for any `http://`/`https://` reference and fails closed on any match. A `Content-Security-Policy` `<meta>` tag pinning `default-src 'self'` lands in `index.html` as a second structural guard.
+- **Bearer + billing posture-aware, not posture-prescribing.** The client reads the server's posture rather than dictating it. When the server is in the Genesis-Default `XION_API_REQUIRE_BEARER=false` + `XION_BILLING_REQUIRED=false` posture (the `.env.example` default for local-development), the client works out of the box with no sign-in. When the operator flips `REQUIRE_BEARER=true`, the client surfaces a minimal sign-in dialog (paste token → store in `localStorage` under `xion:bearer` → inject `Authorization: Bearer` on every fetch → explicit sign-out button clears it). When the operator flips `BILLING_REQUIRED=true`, the client surfaces a banner noting the web surface does not yet support in-browser x402 commitment signing and directs the operator to either run with billing disabled for the 5g-v posture or use the `curl` surface with a hand-computed `X-Payment-Commitment`. Phase 6+ wallet integration (`KW-CLIENT-001`) closes the billing-gap path.
+
+Non-properties (honestly stated, with owning sub-phases):
+
+- **No in-browser x402 commitment signing.** A B1 HMAC secret cannot live in the browser without the browser becoming a new custody surface the Covenant has not yet grown a doctrine for. B2 x402 wallet integration is structurally cleaner but blocks on a pinned x402 library (`KW-BILLING-001`). `KW-CLIENT-001` opens at 5g-v; closes Phase 6+ alongside `KW-BILLING-001` pay-down.
+- **No streaming UX.** 5g-v inherits the Phase-5g-i non-streaming `/chat` handler unchanged. The client mitigates the multi-second blocking turn with a progress indicator and a deadline countdown, but the surface remains request-response. `KW-CLIENT-002` opens at 5g-v; closes with `KW-CHAT-001` in Phase 5g-ii (same moment the streaming transport lands).
+- **No conversation memory.** Each turn is a fresh request. The server has no session state; the client does not fabricate one. Multi-turn memory is its own doctrinal surface (tracked in `genesis/MEMORY.md` and deferred to a future Phase 5g+ / Phase 6).
+- **No markdown / syntax-highlighting / tool-use rendering.** Adding any client-side text transform re-opens the content-faithful property. If a future phase wants markdown rendering, it lands with its own doctrine section justifying the transform and its own `xion-verify` structural check.
+- **No server-side rendering, no cookies, no analytics, no tracking.** The bundle is strictly static; the only persistent browser state is one `localStorage` entry (`xion:bearer`) under the operator's own explicit control.
+- **No component library, no CSS framework, no state library, no router library.** A client this small does not need them; the supply-chain widening would outweigh the ergonomic saving. Plain CSS with custom properties for theming, native HTML elements with ARIA, React `useState`/`useReducer`/`Context`. Adding any of these is its own phase's decision.
+
+**Code surface.**
+
+```
+clients/web/                              (new, operator-built)
+  package.json                            Vite + React 18 + TypeScript,
+                                          no component lib, no state lib
+  package-lock.json                       Committed; `npm ci` in CI
+  vite.config.ts                          Dev proxy for /chat /drive ...
+  tsconfig.json
+  index.html                              CSP meta: default-src 'self'
+  src/
+    main.tsx                              Root mount + Context providers
+    App.tsx                               Layout + route switcher
+    App.css                               Design-system tokens
+    auth/
+      BearerContext.tsx                   Token store (localStorage-backed)
+    lib/
+      api.ts                              Single fetch wrapper; typed ApiError
+                                          discriminated union covering 401,
+                                          402, 429, 451, 503
+    views/
+      ChatView.tsx                        Every envelope handled explicitly
+      DriveView.tsx                       Polls /drive on 10 s cadence
+      SensoriumView.tsx                   Polls /sensorium; content-free
+    components/
+      Header.tsx                          Nav + sign-in + /health dot
+    __tests__/
+      App.test.tsx                        Vitest + axe-core zero-violation
+
+orchestrator/api/
+  app.py                                  (extended)
+    Optional StaticFiles mount at /app/*
+    SPA fallback at / returning index.html when dist is readable
+  lifespan.py                             (extended)
+    Loads XION_WEB_CLIENT_ENABLED + XION_WEB_CLIENT_DIST_PATH
+    Fail-closed if enabled but path missing / unreadable
+```
+
+The orchestrator never writes into `clients/web/`. The orchestrator reads `dist/` exactly once per request (FastAPI's `StaticFiles` stats the file per request as it always does) and never modifies it. Bundle integrity is therefore byte-pinned by whatever produced the bundle; `xion-verify web-client` (Phase 5g-v ships it `NOT_YET_SEALED`) is the eventual operator-side audit hook.
+
+**Admission ordering is unchanged.** `GET /app/*` and `GET /` (SPA fallback) bypass the admission gate because the bundle itself is constitutionally public — a human must be able to load a page before they can sign in. The bundle loading is constant-time, constant-size (the `index.html` + a pinned set of assets), and the sliding-window per-IP bucket on `/health` provides the DDoS-floor for static-asset scraping as well. Once the bundle executes, every API call it makes threads through the existing 5g-iv `401 → 429 → 402 → 5g-iii flow` — the client has no privilege the bearer-token header does not already grant.
+
+**Tracked residuals (new in 5g-v).**
+
+- `KW-CLIENT-001` opens: the web client is the operator's own dashboard; public-user billing (in-browser x402 commitment signing) is not supported. Mitigation: bundle posture is the operator's own identity; `docs/31-WEB-CLIENT.md` operator runbook names the gap. Closes Phase 6+ alongside `KW-BILLING-001` pay-down when a pinned x402 library + user-side key custody doctrine both land.
+- `KW-CLIENT-002` opens: non-streaming chat UX — a multi-second generation blocks the response until the per-turn deadline. Mitigation: progress indicator + 30 s deadline countdown. Closes with `KW-CHAT-001` in Phase 5g-ii when SSE/WebSocket streaming lands.
+
+**What 5g-v deliberately does NOT do.** Did not ship in-browser billing (`KW-CLIENT-001`). Did not ship streaming UX (`KW-CLIENT-002`). Did not ship conversation memory. Did not ship markdown rendering, syntax highlighting, or tool-use visualisation. Did not ship a component library, CSS framework, state library, or router library. Did not ship analytics or tracking of any kind. Did not ship a public-user wallet integration (Phase 6+). Did not land a live `xion-verify web-client` (the verifier ships `NOT_YET_SEALED` and promotes to live at first operator deployment; its tests live alongside the commit that promotes it).
 
 ## Tier III — The Protocol
 
