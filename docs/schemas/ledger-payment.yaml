@@ -198,7 +198,7 @@ row:
       type:     "string | null"
       required: "iff provider_id is non-null"
       null_when: "provider_id is null"
-      allowed_examples: ["moonshotai/kimi-k2", "gemma3:4b"]
+      allowed_examples: ["moonshotai/kimi-k2.6", "gemma3:4b"]
 
     authorization_reference:
       type:     "string"

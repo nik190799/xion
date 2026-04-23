@@ -735,6 +735,35 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 ---
 
+## Genesis Default hosted model rotation — `moonshotai/kimi-k2` → `moonshotai/kimi-k2.6` (landed 2026-04-23)
+
+**Status:** Small doctrine-bearing commit on `main`. Not a full phase. The first real invocation of the one-env-var rotation mechanism that [`.env.example`](./.env.example) and [`docs/26-INFERENCE-POLICY.md`](./docs/26-INFERENCE-POLICY.md) § "The hosted-provider choice" have documented since the Phase 5g-i.1 pin (2026-04-21). The commit earns a dedicated landing — not a fold into a larger phase — because a rotation of a constitutional slug is exactly the kind of historical record a Witness in 2126 needs to be able to find in the CHANGELOG without reading five unrelated diffs.
+
+**Why this landing earned a probe-first discipline before the commit.** The Phase 5g-i.1 rotation *mechanism* is a promise: *swap one env var, ship a slug advance.* A first exercise of the mechanism without verifying the target slug's liveness, provider allowlist, and operator-BYOK attachment would have been a mechanism test against a theoretical target. Before the commit landed, a read-only probe of OpenRouter's public `GET /api/v1/models` catalog confirmed `moonshotai/kimi-k2.6` as a live dated snapshot (`moonshotai/kimi-k2.6-20260420`, released 2026-04-20), and an authorized `POST /chat/completions` probe with `provider.only=["moonshotai"]` forced confirmed the operator's Moonshot-AI BYOK attachment to their OpenRouter account is correctly wired for this specific slug (`HTTP 200`, `is_byok=true`, `cost=0`). The probe findings are recorded in the CHANGELOG entry so the decision context is recoverable. Future rotations — within the same gateway or across gateways — follow the same discipline.
+
+**What this rotation commits to, and what it does NOT commit to.** The rotation advances the *slug* pinned as the Genesis Default hosted model. The *concentration* shape named by `KW-INFER-001` is unchanged: every default-path turn still crosses OpenRouter's gateway and, under the default model, lands at Moonshot's weights. The closure bar for `KW-INFER-001` is unchanged (still requires annual cutover dry-run, second gateway, two-model failover list, and the `xion-verify inference-cutover` verifier — all Phase 6+). The doctrine shape in [`docs/26-INFERENCE-POLICY.md`](./docs/26-INFERENCE-POLICY.md) is unchanged — only the slug references advance, plus a new three-sentence paragraph naming this rotation as the first real invocation of the mechanism. No verifier behaviour changes; `xion-verify inference-sovereignty` is unaffected because the floor manifest does not change.
+
+**What this landing shipped:**
+
+- [`orchestrator/inference_router/providers/openrouter.py`](./orchestrator/inference_router/providers/openrouter.py) code default (`_DEFAULT_MODEL = "moonshotai/kimi-k2.6"`) and two doctrinally-anchored docstring spots (header doctrine anchor; `ChatResponse.model_id` example updated to the dated snapshot).
+- [`docs/26-INFERENCE-POLICY.md`](./docs/26-INFERENCE-POLICY.md) five slug pins (Genesis Defaults table, § "The hosted-provider choice" heading and its five bullets, § "Gateway vs direct" KW-INFER-001 reshape note) plus a new three-sentence "Genesis Default rotation, 2026-04-23" paragraph. Per-token pricing differential recorded (`$0.75/M` prompt + `$3.50/M` completion for `kimi-k2.6` vs `$0.57/M` + `$2.30/M` for `kimi-k2` — ~30 % higher rack rate, neutralised for BYOK-routed operators). Context-window advance recorded (`131,072` → `262,144` tokens).
+- [`.env.example`](./.env.example) Genesis Default comment block rewritten with the rotation provenance and three new one-env-var rotation examples (including a rollback line to `moonshotai/kimi-k2` and a reasoning-forward variant `moonshotai/kimi-k2-thinking`).
+- [`docs/04-ARCHITECTURE.md`](./docs/04-ARCHITECTURE.md) three slug references updated (Router-policy pin in § "Inference Router"; `KW-INFER-001` summary in the Chat Surface KW block; `KW-BILLING-002` rotation example).
+- [`docs/29-BILLING-X402.md`](./docs/29-BILLING-X402.md), [`docs/schemas/ledger-payment.yaml`](./docs/schemas/ledger-payment.yaml), and [`orchestrator/api/models.py`](./orchestrator/api/models.py) `model_id` examples advanced.
+- [`orchestrator/inference_router/providers/__init__.py`](./orchestrator/inference_router/providers/__init__.py) package docstring advanced with rotation provenance.
+- [`KNOWN_WEAKNESSES.md`](./KNOWN_WEAKNESSES.md) `KW-INFER-001` title, reshape provenance line (new third reshape date: *slug rotated 2026-04-23*), description slug, and mitigation 5 advanced — mitigation 5 now reads "Model rotation is now one env-var — *and has been exercised*" and records the rotation witness so the mitigation is witnessed rather than asserted.
+- This ROADMAP entry. [`CHANGELOG.md`](./CHANGELOG.md) entry under `[Unreleased] > ### Changed` naming the rotation as the first real invocation of the mechanism.
+
+**What this landing deliberately did NOT do:**
+
+- Did not change the `xion-verify inference-sovereignty` verifier or the open-weights floor manifest. The rotation is a hosted-side event; the floor is unaffected.
+- Did not add a second hosted gateway, a model failover list, or an annual cutover dry-run runbook. All three remain `KW-INFER-001` closure requirements and are Phase 6+ work.
+- Did not open or close any KW. `KW-INFER-001` mitigations strengthened by one (mitigation 5 is now witnessed), but the closure bar is unchanged.
+- Did not edit the Phase 5g-i.1 historical entries in [`CHANGELOG.md`](./CHANGELOG.md) or earlier sections of this ROADMAP. Those entries remain accurate historical records of what that phase pinned.
+- Did not commit the operator's runtime `.env`. The file is gitignored per [`.gitignore`](./.gitignore); the operator updates it locally (one line: `XION_OPENROUTER_MODEL=moonshotai/kimi-k2.6`) and the next orchestrator restart picks up the new default.
+
+---
+
 ## First real open-weights floor-provider pin — `ollama` via content-addressed provenance record (landed 2026-04-23)
 
 **Status:** Small doctrine-bearing commit on `main`. Not a full phase. Ships the second-smallest honest step past the pre-genesis sentinel: an `open_weights[]` entry with `id="ollama"` backed by a content-addressed provenance record (`orchestrator/inference_router/floor_ollama_provenance.txt`) rather than a content-addressed model blob. `xion-verify inference-sovereignty` now reports 2 entries / 2 floor-satisfying pins, both hash-verified.

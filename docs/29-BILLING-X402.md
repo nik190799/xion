@@ -97,7 +97,7 @@ Append-only. One row per turn that made it past pre-authorization. Hash-chained 
 | `refund_XION` | uint; non-zero iff `outcome=refunded` |
 | `posted_price_XION` | uint; the governance-posted price at commitment time (lets auditors reconstruct pricing history) |
 | `provider_id` | nullable string; the turn-serving provider (`openrouter`, `ollama`) or null if refused pre-selection |
-| `model_id` | nullable string; the specific model used (`moonshotai/kimi-k2`, `gemma3:4b`) or null if refused pre-selection |
+| `model_id` | nullable string; the specific model used (`moonshotai/kimi-k2.6`, `gemma3:4b`) or null if refused pre-selection |
 | `authorization_reference` | string; B1 operator-attestation payload hash, B2 x402 commitment hash, or `""` in disabled posture |
 | `source_sha256` | hex64; anchor hash of `docs/04-ARCHITECTURE.md` at row-write time |
 

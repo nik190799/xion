@@ -8,8 +8,11 @@ Two providers ship in Phase 5g-i.1:
   OpenAI-compatible ``/v1/chat/completions``), ``category="hosted_api"``.
   Registered only when ``XION_OPENROUTER_API_KEY`` is set in the
   environment. The Genesis Default upstream model slug served through
-  the gateway is ``moonshotai/kimi-k2``; operators rotate via
-  ``XION_OPENROUTER_MODEL`` with no code change.
+  the gateway is ``moonshotai/kimi-k2.6`` (rotated 2026-04-23 from the
+  Phase 5g-i.1 pin ``moonshotai/kimi-k2``; see
+  ``docs/26-INFERENCE-POLICY.md`` § "The hosted-provider choice" for the
+  rotation record); operators rotate further via ``XION_OPENROUTER_MODEL``
+  with no code change.
 
 - ``OllamaGenerativeProvider`` — self-hosted open-weights floor via a
   local Ollama daemon, ``category="open_weights_self_hostable"``.

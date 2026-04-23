@@ -1,8 +1,15 @@
 """OpenRouter hosted-gateway generative provider (Phase 5g-i.1).
 
 Doctrine anchor: ``docs/26-INFERENCE-POLICY.md`` § "The hosted-provider
-choice (OpenRouter gateway + `moonshotai/kimi-k2` default model)" and
-§ "Gateway vs direct (a vendor-of-vendors honest accounting)".
+choice (OpenRouter gateway + `moonshotai/kimi-k2.6` default model)" and
+§ "Gateway vs direct (a vendor-of-vendors honest accounting)". The
+Phase 5g-i.1 pin was ``moonshotai/kimi-k2``; on 2026-04-23 the Genesis
+Default rotated to ``moonshotai/kimi-k2.6`` via the documented one-
+env-var mechanism — the first real invocation of that mechanism. See
+the CHANGELOG entry under [Unreleased] > ### Changed for the rotation
+record, and docs/26-INFERENCE-POLICY.md § "The hosted-provider choice"
+for the rationale (doubled context window 131K→262K; wider provider
+allowlist; operator BYOK toward Moonshot directly is confirmed).
 
 Hits OpenRouter's OpenAI-compatible ``/v1/chat/completions`` endpoint
 via stdlib ``http.client`` — no third-party SDK, no new dependency.
@@ -79,7 +86,13 @@ class OpenRouterProviderError(RuntimeError):
 
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-_DEFAULT_MODEL = "moonshotai/kimi-k2"
+# Genesis Default hosted model. Rotated 2026-04-23 from ``moonshotai/kimi-k2``
+# to ``moonshotai/kimi-k2.6`` (released 2026-04-20 as dated snapshot
+# ``moonshotai/kimi-k2.6-20260420``). First real invocation of the one-env-var
+# rotation mechanism documented in docs/26-INFERENCE-POLICY.md. Operators who
+# prefer a different slug set ``XION_OPENROUTER_MODEL`` in their environment
+# and the default here is never read.
+_DEFAULT_MODEL = "moonshotai/kimi-k2.6"
 _DEFAULT_APP_NAME = "xion-os"
 _HEALTH_CACHE_TTL_S = 60.0
 _HEALTH_TIMEOUT_S = 5.0
@@ -120,8 +133,10 @@ class OpenRouterGenerativeProvider:
     the Router's log lines, health reports, and ``ChatResponse.model_id``
     surface a stable string regardless of which upstream-model slug is
     selected. ``ChatResponse.model_id`` still carries the underlying
-    slug OpenRouter returns (e.g., ``moonshotai/kimi-k2``), so the
-    auditor can see which upstream model served each turn.
+    slug OpenRouter returns (e.g., ``moonshotai/kimi-k2.6-20260420`` —
+    the dated snapshot that the Genesis Default ``moonshotai/kimi-k2.6``
+    slug points to as of 2026-04-23), so the auditor can see which
+    upstream model served each turn.
     """
 
     provider_id: str = "openrouter"
