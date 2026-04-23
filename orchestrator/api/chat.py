@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import secrets
 import sys
 import time
 from dataclasses import dataclass
@@ -55,6 +56,15 @@ from orchestrator.billing import (
     verify_b1_attestation,
     verify_b2_x402_shape,
 )
+from orchestrator.inference_router.provider import (
+    ProviderError,
+    ProviderTimeoutError,
+    UnknownProviderError,
+)
+from orchestrator.relay.ledger import (
+    ProviderAttemptRecord,
+    append_provider_attempt,
+)
 
 from .models import (
     ChatRequest,
@@ -68,7 +78,10 @@ from .models import (
 
 if TYPE_CHECKING:
     from orchestrator.billing import BillingConfig
-    from orchestrator.inference_router.provider import GenerativeProvider
+    from orchestrator.inference_router.provider import (
+        GenerationResult,
+        GenerativeProvider,
+    )
     from orchestrator.relay.relay import RelayResult
 
     from .pricing import PricingConfig
@@ -186,10 +199,26 @@ def register_chat_route(app: FastAPI) -> None:
                 ),
             )
 
-        # -- 4. Provider selection ---------------------------------
+        # -- 4. Provider selection + fallback loop (Phase 5g-vii) ---
+        #
+        # Doctrine anchor: docs/26-INFERENCE-POLICY.md § "Provider
+        # fallback semantics" P1/P2/P3. The handler iterates the full
+        # policy-legal attempt order from ``InferenceRouter.select_ordered()``
+        # and, for each attempt, writes exactly one REQUEST_LEDGER v2
+        # row tagged with the turn's ``chat_turn_id``. A successful
+        # attempt short-circuits the loop; a typed ProviderError is
+        # classified and the loop continues. When the ordered list is
+        # exhausted, the handler surfaces the last failure's typed
+        # class (P4).
         router = getattr(app.state, "router", None)
-        provider = router.select() if router is not None else None
-        if provider is None or not callable(getattr(provider, "generate", None)):
+        ordered: list["GenerativeProvider"] = (
+            router.select_ordered() if router is not None else []
+        )
+        ordered = [
+            p for p in ordered if callable(getattr(p, "generate", None))
+        ]
+
+        if not ordered:
             body_pe = ProviderErrorEnvelope(
                 reason="no_healthy_provider",
                 correlation_id=ingress.correlation_id,
@@ -208,24 +237,113 @@ def register_chat_route(app: FastAPI) -> None:
                 ),
             )
 
-        provider_id = getattr(provider, "provider_id", None) or type(provider).__name__
+        chat_turn_id = secrets.token_hex(16)
+        request_ledger_path = _request_ledger_path(app)
+        relay_id = _relay_id(app)
+        ingress_state_height = _state_height_from_correlation(ingress.correlation_id)
 
-        # -- 5. Generation -----------------------------------------
-        try:
-            result = await asyncio.wait_for(
-                asyncio.to_thread(
-                    _invoke_generate,
-                    provider,
-                    req.message,
-                    req.max_tokens,
-                    deadline_s,
-                ),
-                timeout=deadline_s,
+        last_failure_class: str = "unknown_provider_error"
+        last_provider_id: str | None = None
+        result: "GenerationResult | None" = None
+        provider_id: str | None = None
+
+        for attempt_index, provider in enumerate(ordered):
+            provider_id = (
+                getattr(provider, "provider_id", None) or type(provider).__name__
             )
-        except TimeoutError:
-            body_pe = ProviderErrorEnvelope(
-                reason="no_healthy_provider",
+            last_provider_id = provider_id
+
+            attempt_started_ns = time.time_ns()
+            try:
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        _invoke_generate,
+                        provider,
+                        req.message,
+                        req.max_tokens,
+                        deadline_s,
+                    ),
+                    timeout=deadline_s,
+                )
+            except (TimeoutError, asyncio.TimeoutError) as exc:
+                failure_class = (
+                    exc.failure_reason_class
+                    if isinstance(exc, ProviderError)
+                    else ProviderTimeoutError.failure_reason_class
+                )
+                last_failure_class = failure_class
+                _write_attempt_row(
+                    path=request_ledger_path,
+                    correlation_id=ingress.correlation_id,
+                    state_height=ingress_state_height,
+                    relay_id=relay_id,
+                    request_arrived_utc_ns=attempt_started_ns,
+                    chat_turn_id=chat_turn_id,
+                    attempt_index=attempt_index,
+                    provider_id=provider_id,
+                    outcome="failure",
+                    failure_reason_class=failure_class,
+                )
+                continue
+            except ProviderError as exc:
+                last_failure_class = exc.failure_reason_class
+                _write_attempt_row(
+                    path=request_ledger_path,
+                    correlation_id=ingress.correlation_id,
+                    state_height=ingress_state_height,
+                    relay_id=relay_id,
+                    request_arrived_utc_ns=attempt_started_ns,
+                    chat_turn_id=chat_turn_id,
+                    attempt_index=attempt_index,
+                    provider_id=provider_id,
+                    outcome="failure",
+                    failure_reason_class=exc.failure_reason_class,
+                )
+                continue
+            except Exception:
+                last_failure_class = UnknownProviderError.failure_reason_class
+                _write_attempt_row(
+                    path=request_ledger_path,
+                    correlation_id=ingress.correlation_id,
+                    state_height=ingress_state_height,
+                    relay_id=relay_id,
+                    request_arrived_utc_ns=attempt_started_ns,
+                    chat_turn_id=chat_turn_id,
+                    attempt_index=attempt_index,
+                    provider_id=provider_id,
+                    outcome="failure",
+                    failure_reason_class=last_failure_class,
+                )
+                continue
+
+            # Success: the provider returned a GenerationResult. An
+            # empty candidate is handled below (egress-refused by
+            # convention); for the REQUEST_LEDGER v2 row it is still
+            # recorded as a successful provider attempt — the Arbiter
+            # is what refuses the candidate, not the provider.
+            _write_attempt_row(
+                path=request_ledger_path,
                 correlation_id=ingress.correlation_id,
+                state_height=ingress_state_height,
+                relay_id=relay_id,
+                request_arrived_utc_ns=attempt_started_ns,
+                chat_turn_id=chat_turn_id,
+                attempt_index=attempt_index,
+                provider_id=provider_id,
+                outcome="success",
+                failure_reason_class=None,
+            )
+            break
+
+        if result is None:
+            body_pe = ProviderErrorEnvelope(
+                reason=last_failure_class,  # type: ignore[arg-type]
+                correlation_id=ingress.correlation_id,
+            )
+            refusal_stage = (
+                "provider_timeout"
+                if last_failure_class == "timeout"
+                else "provider_error"
             )
             return _finalize(
                 app,
@@ -234,27 +352,9 @@ def register_chat_route(app: FastAPI) -> None:
                     http_status=503,
                     body=body_pe.model_dump(),
                     outcome="refunded",
-                    refusal_stage="provider_timeout",
+                    refusal_stage=refusal_stage,
                     correlation_id=ingress.correlation_id,
-                    provider_id=provider_id,
-                    model_id=None,
-                ),
-            )
-        except Exception:
-            body_pe = ProviderErrorEnvelope(
-                reason="no_healthy_provider",
-                correlation_id=ingress.correlation_id,
-            )
-            return _finalize(
-                app,
-                commitment,
-                _Outcome(
-                    http_status=503,
-                    body=body_pe.model_dump(),
-                    outcome="refunded",
-                    refusal_stage="provider_error",
-                    correlation_id=ingress.correlation_id,
-                    provider_id=provider_id,
+                    provider_id=last_provider_id,
                     model_id=None,
                 ),
             )
@@ -541,6 +641,94 @@ def _refusal_body(r: "RelayResult", *, stage: str) -> RefusalEnvelope:
         reason=reason,  # type: ignore[arg-type]
         correlation_id=r.correlation_id,
     )
+
+
+def _state_height_from_correlation(correlation_id: str) -> str:
+    """Return the state_height prefix of a correlation_id.
+
+    REQUEST_LEDGER enforces ``state_height == correlation_id.split(":")[0]``
+    at both v1 and v2 readers. The Relay encodes this pairing via
+    ``derive_correlation_id()``; the chat handler recovers it here so
+    v2 attempt rows carry a self-consistent ``state_height`` without
+    taking a private dependency on ``RelayResult`` internals.
+    """
+    if ":" in correlation_id:
+        return correlation_id.split(":", 1)[0]
+    return correlation_id
+
+
+def _request_ledger_path(app: FastAPI) -> Any:
+    """Resolve the REQUEST_LEDGER path from the app-scoped Relay.
+
+    The Relay owns REQUEST_LEDGER — both the gate-call v1 writes it does
+    inside ``evaluate()`` and the chat-handler v2 writes below target the
+    same file. A missing Relay or unset path is a programmer error
+    (lifespan is expected to wire ``relay._request_ledger_path``); we
+    raise rather than silently discard.
+    """
+    deps = app.state.deps
+    relay = deps.relay
+    path = getattr(relay, "_request_ledger_path", None)
+    if path is None:
+        raise RuntimeError(
+            "Chat handler: Relay._request_ledger_path is unset; "
+            "lifespan must configure it before /chat serves."
+        )
+    return path
+
+
+def _relay_id(app: FastAPI) -> str:
+    deps = app.state.deps
+    relay = deps.relay
+    return getattr(relay, "_relay_id", "") or "relay-local-d2"
+
+
+def _write_attempt_row(
+    *,
+    path: Any,
+    correlation_id: str,
+    state_height: str,
+    relay_id: str,
+    request_arrived_utc_ns: int,
+    chat_turn_id: str,
+    attempt_index: int,
+    provider_id: str,
+    outcome: str,
+    failure_reason_class: str | None,
+) -> None:
+    """Write one REQUEST_LEDGER v2 provider-attempt row.
+
+    Best-effort: a ledger-write failure is logged to stderr but does not
+    terminate the chat turn. The operator sees a State-of-Xion marker on
+    the attempt ladder; the surrounding PAYMENT_LEDGER row still records
+    the turn's money shape via ``_finalize``. A durable write failure
+    here does not convert a successful candidate into a 503 — that
+    escalation belongs to ``_finalize`` which writes the authoritative
+    PAYMENT_LEDGER row.
+    """
+    try:
+        record = ProviderAttemptRecord(
+            correlation_id=correlation_id,
+            state_height=state_height,
+            relay_id=relay_id,
+            request_arrived_utc_ns=request_arrived_utc_ns,
+            responded_utc_ns=time.time_ns(),
+            chat_turn_id=chat_turn_id,
+            attempt_index=attempt_index,
+            provider_id=provider_id,
+            outcome=outcome,
+            failure_reason_class=failure_reason_class,
+        )
+        append_provider_attempt(path, record)
+    except Exception as exc:
+        print(
+            "State-of-Xion: REQUEST_LEDGER v2 provider-attempt append "
+            f"failed (chat_turn_id={chat_turn_id} attempt_index="
+            f"{attempt_index} provider_id={provider_id} outcome={outcome} "
+            f"failure_reason_class={failure_reason_class}): {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def _principle_to_int(pid: str) -> int:

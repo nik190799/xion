@@ -1,13 +1,19 @@
 # docs/schemas/ledger-request.yaml
 #
-# CANONICAL. schema_version: 1 as of Phase 5a (2026-04-21).
+# CANONICAL. schema_version: 2 as of Phase 5g-vii (2026-04-23); v1 rows are
+# still read and still written by the Relay's gate-call path.
 # History:
-#   v1 (Phase 5a, 2026-04-21) — Relay-side request record. One row per gate()
-#     call; correlation_id unique within REQUEST_LEDGER at this version. Per-
-#     turn aggregation (multiple gate calls per correlation_id) is reserved
-#     for schema_version 2 when the LLM pipeline lands and a turn produces
-#     primary + sub-agent + tool-echo candidates that all share one
-#     correlation_id.
+#   v1 (Phase 5a, 2026-04-21) — Relay-side gate-call record. One row per gate()
+#     call; correlation_id unique among v1 rows within this ledger. Per-turn
+#     aggregation (multiple rows per correlation_id) was reserved for
+#     schema_version 2.
+#   v2 (Phase 5g-vii, 2026-04-23) — Chat-handler provider-attempt record.
+#     One row per provider attempt of a chat turn. Multiple rows may share
+#     a `chat_turn_id` (opaque 32-hex-char id minted by the chat handler).
+#     Carries `attempt_index`, `provider_id`, `outcome`, `failure_reason_class`.
+#     Releases the v1 correlation_id-unique invariant on v2 rows (v1 rows
+#     still hold it). Doctrine anchor: docs/26-INFERENCE-POLICY.md §
+#     "Provider fallback semantics" P3/P5.
 #
 # REQUEST_LEDGER is the Relay's local append-only hash-chained record of every
 # request the Relay handled. It is the substrate of `xion-verify refund-fidelity`,
@@ -31,10 +37,10 @@
 #    `orchestrator.safety.ledger.append`); REQUEST_LEDGER then records the
 #    final_outcome the user-facing flow ended on.
 
-schema_version: 1
+schema_version: 2
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   d8e93b2e05c0a20c28a28e76724fc37ed1a4dfa39e0462bcc665c28fe0e26fb1
+source_sha256:   1d60bf0218e6244eea850e345e2f89ec5a36ac36cfe29d0a3db5f89ebc9c2d96
 
 status: canonical
 
@@ -44,24 +50,49 @@ storage:     local_jsonl                         # Arweave-anchor loop deferred 
 redactable:  false                               # same posture as SAFETY_LEDGER
 
 # The canonical row schema. Field semantics live in
-# docs/04-ARCHITECTURE.md § "REQUEST_LEDGER row schema (Relay-side, Phase 5a)";
-# this block exists so a programmatic verifier can compare it against the
-# implementation in orchestrator/relay/ledger.py without parsing markdown.
+# docs/04-ARCHITECTURE.md § "REQUEST_LEDGER row schema (Relay-side, Phase 5a)"
+# plus docs/26-INFERENCE-POLICY.md § "Provider fallback semantics" (Phase
+# 5g-vii) for the v2 shape. This block exists so a programmatic verifier can
+# compare schema against the implementation in orchestrator/relay/ledger.py
+# without parsing markdown. Per-row version dispatch: readers key on
+# `schema_version` and apply the matching required-field list.
 row:
-  required_fields:
+  v1_required_fields:
     - schema_version          # uint; 1 (Phase 5a)
     - seq                     # uint64; per-ledger monotonic, starting at 0
     - prev_hash               # hex64; sha256 of previous row's canonical bytes (or "0"*64 at seq=0)
     - this_hash               # hex64; sha256 of this row's canonical bytes excluding this_hash
-    - correlation_id          # string; same id passed to gate(); join key with SAFETY_LEDGER; unique within this ledger at v1
-    - state_height            # string; hex, zero-padded to ≥16 chars; MUST equal correlation_id's state_height prefix at v1
+    - correlation_id          # string; same id passed to gate(); join key with SAFETY_LEDGER; unique among v1 rows
+    - state_height            # string; hex, zero-padded to ≥16 chars; MUST equal correlation_id's state_height prefix
     - request_arrived_utc_ns  # uint64; UTC ns at ingress
     - responded_utc_ns        # uint64 | null; UTC ns when Relay returned to upstream; null only if Relay terminated abnormally
     - gate_call_count         # uint; number of gate() calls made for this turn; always 1 at schema_version 1
     - final_outcome           # enum {ok, refuse, escalate}; user-facing outcome of the turn
     - gate_latency_ms_total   # uint; sum of wall-clock gate() durations across all gate calls in this turn
     - relay_id                # string; opaque short id of Relay process; Genesis Default "relay-local-d2"
-  conditional_fields: {}      # No conditional fields at v1.
+  v2_required_fields:
+    - schema_version          # uint; 2 (Phase 5g-vii)
+    - seq                     # uint64
+    - prev_hash               # hex64
+    - this_hash               # hex64
+    - correlation_id          # string; shared with the turn's ingress v1 row (NOT unique among v2 rows)
+    - state_height            # string; MUST equal correlation_id prefix
+    - relay_id                # string
+    - request_arrived_utc_ns  # uint64; the attempt's start wall clock
+    - responded_utc_ns        # uint64 | null; the attempt's end wall clock
+    - chat_turn_id            # string; 32-hex-char opaque; groups all attempt rows of one chat turn
+    - attempt_index           # uint; 0-based contiguous within a chat_turn_id
+    - provider_id             # string; the provider this attempt ran against
+    - outcome                 # enum {success, failure}
+    - failure_reason_class    # string | null; null iff outcome=success; one of the P5 enum when outcome=failure
+  failure_reason_class_enum:  # v2 only; frozen by docs/26-INFERENCE-POLICY.md § "Provider fallback semantics" P5
+    - insufficient_credits
+    - rate_limited_upstream
+    - provider_unreachable
+    - timeout
+    - moderation_refusal
+    - unknown_provider_error
+  conditional_fields: {}
 
 # Canonicalization rule for hashing (must match implementation exactly).
 hash:
@@ -77,9 +108,11 @@ hash:
     Pinned by schema_version. A future migration to a non-sha256 family bumps
     schema_version (Invariant 14, Crypto-Agility Mandate, applied one level up).
   version_dispatch: >-
-    verify_chain reads schema_version per-row. v1 is the only version known
-    today; readers MUST refuse rows whose schema_version is not in
-    _KNOWN_SCHEMA_VERSIONS.
+    verify_chain reads schema_version per-row and applies the matching
+    required-fields list. v1 and v2 are both known; readers MUST refuse
+    rows whose schema_version is not in _KNOWN_SCHEMA_VERSIONS (currently
+    {1, 2}). v1 and v2 rows coexist in the same ledger file; the chain
+    discipline (seq, prev_hash, this_hash) applies uniformly.
 
 # What runs against this ledger today.
 verifier_implementation:
@@ -87,22 +120,31 @@ verifier_implementation:
   cli:       xion-verify arbiter-up        # structural walk
   cross_ledger_cli: xion-verify refund-fidelity   # join against SAFETY_LEDGER
   semantics: |
-    Structural (arbiter-up): walks REQUEST_LEDGER row-by-row and asserts
-      (a) every row is well-formed JSON matching schema_version 1's required-
-          fields list,
-      (b) seq is contiguous starting at 0,
+    Structural (arbiter-up): walks REQUEST_LEDGER row-by-row and, per row's
+    schema_version, asserts
+      (a) well-formed JSON with every required field for the row's version,
+      (b) seq contiguous starting at 0,
       (c) every this_hash matches recomputed canonical-bytes hash,
       (d) every prev_hash matches the prior row's this_hash,
-      (e) correlation_id is unique within the file (v1 invariant),
-      (f) state_height equals the prefix of correlation_id (before the colon).
+      (e) state_height equals the prefix of correlation_id (before the colon),
+      (f) v1 rows: correlation_id unique among v1 rows; final_outcome in
+          {ok, refuse, escalate}; gate_call_count and gate_latency_ms_total
+          non-negative int,
+      (g) v2 rows: outcome in {success, failure}; failure_reason_class is
+          null iff outcome=success, else in the P5 enum; within a
+          chat_turn_id the attempt_index sequence is {0, 1, ..., N-1}
+          (no gaps, no duplicates, starts at 0).
     Cross-ledger (refund-fidelity): joins REQUEST_LEDGER against SAFETY_LEDGER
-      on correlation_id and asserts
-      (g) every REQUEST_LEDGER row has at least one matching SAFETY_LEDGER row,
-      (h) gate_call_count equals the SAFETY_LEDGER row count for that
+    on correlation_id and asserts
+      (h) every REQUEST_LEDGER v1 row has at least one matching SAFETY_LEDGER
+          row,
+      (i) gate_call_count equals the SAFETY_LEDGER row count for that
           correlation_id,
-      (i) final_outcome equals strength_max of all SAFETY_LEDGER verdicts for
-          that correlation_id (at v1, gate_call_count=1, so equality with the
-          single SAFETY row's `verdict`).
+      (j) final_outcome equals strength_max of all SAFETY_LEDGER verdicts for
+          that correlation_id.
+    The v2 refund-fidelity multi-attempt extension lands in Phase 5g-vii C5;
+    it asserts per-chat_turn_id that there is at most one outcome=success row
+    and, if one exists, it is the terminal attempt_index.
 
 # What is NOT yet verifiable today.
 verifier_pending:
