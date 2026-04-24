@@ -32,7 +32,7 @@
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   f0eb203bcd408f83c0cf7f0005ca3ef8eff1584c1c2117797935c1f29fdabd68
+source_sha256:   567673846b6fc9503b8208c5febedaa972124716633604f5dc7b1241e8e52c4b
 
 status: canonical
 

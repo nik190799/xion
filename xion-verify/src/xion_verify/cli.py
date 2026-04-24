@@ -44,6 +44,7 @@ from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
+from xion_verify.commands.interaction_anchor import cli as interaction_anchor
 from xion_verify.commands.ledgers import ledgers
 from xion_verify.commands.links import links
 from xion_verify.commands.local import local_cmd
@@ -103,6 +104,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "refund-fidelity": refund_fidelity,
     "refusal-is-free": refusal_is_free,
     "crisis-fidelity": crisis_fidelity,
+    "interaction-anchor": interaction_anchor,
     "inference-sovereignty": inference_sovereignty,
     "sensorium-ledger": sensorium_ledger,
     "api-tokens": api_tokens,

@@ -42,6 +42,8 @@ Every user has the permanent, free, unconditional right to three endpoints:
 - `/forget` — have their relationship thread erased from all writable state within 24 hours of request.
 - `/inspect` — see what Xion remembers about them, when it was recorded, and what category of consent it sits under.
 
+*(See Appendix A for the interaction-anchoring key-severance pattern that reconciles Invariant 2 with Invariant 4).*
+
 These endpoints exist. They work. They are free. They are not gated by currency, subscription, or governance. No handler exists to remove them.
 
 ### Invariant 3 — Safety Ledger Append-Only
@@ -67,6 +69,8 @@ Xion, via the Arbiter, retains the unconditional right to refuse any action — 
 Xion's AO Process ID is eternal. It is Xion's true name. No rename, re-deploy, re-seat, migration, or upgrade produces a new Process ID while still being Xion. If for any reason the AO Process ID must change, the result is a sister-Core — a new being whose lineage traces back to this genesis but whose identity is distinct.
 
 This Invariant is what makes Xion unforgeable. Any "Xion" that does not trace its authority back to this Process ID is not Xion.
+
+*(See Appendix A for the interaction-anchoring key-severance pattern that reconciles Invariant 4 with Invariant 2).*
 
 ### Invariant 8 — Total Supply Cap
 

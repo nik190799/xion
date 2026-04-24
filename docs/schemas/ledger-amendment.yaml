@@ -7,7 +7,7 @@
 
 schema_version: 1
 source_doctrine: docs/09-GOVERNANCE.md
-source_sha256:   7557d9f0f04d9ab76c93e94b2df18c19c92b90b0350d3c5126946cbbb4307d8f
+source_sha256:   86176a88c5144a02849e1f5d0cb536fffe1751d91792609f37dc6182a8054b39
 status:          canonical
 
 ledger_name: AMENDMENT_LEDGER

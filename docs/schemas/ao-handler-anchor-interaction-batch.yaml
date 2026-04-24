@@ -1,0 +1,51 @@
+# docs/schemas/ao-handler-anchor-interaction-batch.yaml
+#
+# CANONICAL. Phase 6.3 schema for the `Anchor-Interaction-Batch` handler.
+# This handler receives the hourly Merkle roots from the orchestrator and
+# appends them to the AO process state, making Xion's interaction history
+# verifiable against the public permaweb.
+
+schema_version: 1
+
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256:   567673846b6fc9503b8208c5febedaa972124716633604f5dc7b1241e8e52c4b
+
+status: canonical
+
+# AO Handler matching signature.
+handler_match:
+  Action: Anchor-Interaction-Batch
+
+# Required Tags on the incoming message.
+message_tags:
+  required:
+    - Batch-Root-Sha256
+    - Batch-Size
+    - Period-Start-Unix
+    - Period-End-Unix
+    - Ledger-Kind
+  constraints:
+    Batch-Root-Sha256: "must be exactly 64 hex characters (lowercase)"
+    Batch-Size: "must be a positive integer"
+    Period-Start-Unix: "must be a non-negative integer"
+    Period-End-Unix: "must be a positive integer strictly greater than Period-Start-Unix"
+    Ledger-Kind: "must be one of {request, payment, safety}"
+
+# Preconditions for the handler to execute successfully.
+preconditions:
+  - AuthorizedSigners gate: msg.From MUST be present in the `AuthorizedSigners` table (the Relay's identity).
+
+# State mutations performed by this handler.
+state_mutations:
+  - AnchorBatches: Inserts a new record containing the five payload fields, keyed or ordered to allow sequential retrieval.
+
+# Messages emitted by this handler.
+emitted_messages:
+  success:
+    Action: Anchor-Recorded
+    Tags:
+      Batch-Root-Sha256: "echoes the incoming root"
+  failure:
+    Action: Anchor-Rejection
+    Tags:
+      Reason: "non_authorised_caller | missing_args | invalid_args"

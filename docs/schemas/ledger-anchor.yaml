@@ -1,0 +1,72 @@
+# docs/schemas/ledger-anchor.yaml
+#
+# CANONICAL. schema_version: 1 as of Phase 6.3.
+#
+# ANCHOR_LEDGER is the hourly Merkle-root rollup of REQUEST_LEDGER, PAYMENT_LEDGER,
+# and SAFETY_LEDGER. It provides the proof substrate for `GET /me/receipts` and
+# protects the Relay's operating history against undetected tail truncation,
+# without requiring every chat turn to block on a public-blockchain transaction.
+#
+# In Phase 6.3 this ledger is local-only. In Phase 6.3.b (after AO Core unblocks),
+# the daemon ALSO posts these rows to AO Core via Anchor-Interaction-Batch, making
+# the chain verifiable by a third party.
+
+schema_version: 1
+
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256:   567673846b6fc9503b8208c5febedaa972124716633604f5dc7b1241e8e52c4b
+
+status: canonical
+
+ledger_name: ANCHOR_LEDGER
+append_only: true
+storage:     local_jsonl_plus_ao_core
+redactable:  false
+
+# The canonical row schema.
+row:
+  required_fields:
+    - schema_version          # uint; 1 (Phase 6.3)
+    - seq                     # uint64; per-ledger monotonic, starting at 0
+    - prev_hash               # hex64; sha256 of previous row's canonical bytes (or "0"*64 at seq=0)
+    - this_hash               # hex64; sha256 of this row's canonical bytes excluding this_hash
+    - period_start_unix       # uint64; start of the anchoring window (inclusive)
+    - period_end_unix         # uint64; end of the anchoring window (exclusive)
+    - ledger_kind             # enum {request, payment, safety}; the source ledger being anchored
+    - batch_root_sha256       # hex64; Merkle root of the batch
+    - batch_size              # uint; number of leaves in the Merkle tree (must be >0)
+    - leaf_correlation_ids    # list[string]; the correlation_ids of the leaves, sorted lexicographically
+  optional_fields:
+    - ao_message_id           # string | null; null in Phase 6.3, populated in Phase 6.3.b when AO unblocks
+
+# Canonicalization rule for hashing (must match implementation exactly).
+hash:
+  algorithm:        sha256
+  canonicalization: |
+    json.dumps(
+      {k: v for k, v in row.items() if k != "this_hash"},
+      sort_keys=True,
+      separators=(",", ":"),
+      ensure_ascii=False,
+    ).encode("utf-8")
+  algorithm_pin_note: >-
+    Pinned by schema_version. A future migration to a non-sha256 family bumps
+    schema_version.
+
+verifier_implementation:
+  in_process: orchestrator.anchor.ledger.verify_chain
+  cli:        xion-verify interaction-anchor
+  semantics: |
+    Structural (interaction-anchor): walks ANCHOR_LEDGER row-by-row and asserts
+      (a) well-formed JSON with every required field,
+      (b) seq contiguous starting at 0,
+      (c) every this_hash matches recomputed canonical-bytes hash,
+      (d) every prev_hash matches the prior row's this_hash,
+      (e) period_start_unix < period_end_unix,
+      (f) ledger_kind in {request, payment, safety},
+      (g) batch_size > 0 and len(leaf_correlation_ids) == batch_size,
+      (h) leaf_correlation_ids is strictly sorted.
+    Cross-ledger: reads the named source ledger for the same time window and asserts
+      (i) every correlation_id in the source window is present in the anchor row,
+      (j) recomputing the Merkle root from the source rows yields batch_root_sha256,
+      (k) spot-checks the inclusion proof for the first, middle, and last leaf.

@@ -21,6 +21,28 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-PROOF-001 — user_proof_commit is passthrough-only; no client-side signing
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Phase 6.3 Interaction Anchoring)
+- **Severity:** low
+- **Status:** open
+- **Description:** The `user_proof_commit` field added to the ledgers in Phase 6.3 records whatever the client sends, but the orchestrator does not verify that the client actually signed anything.
+- **Why it exists:** Client-side Ed25519 key generation and signature logic were deferred to Phase 6.3.b to decouple the backend anchoring infrastructure from the frontend cryptography.
+- **Mitigations:** Algorithm-agnostic schema means Phase 6.3.b can ship without schema migration.
+- **Pay-down commitment:** Phase 6.3.b will land client-side signing and `/forget` IndexedDB key wipe.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3.b stub).
+
+### KW-ANCHOR-AO-001 — AnchorDaemon writes to local ledger only; AO Core sink deferred
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Phase 6.3 Interaction Anchoring)
+- **Severity:** medium
+- **Status:** open
+- **Description:** The hourly Merkle interaction roots are written to the local `ANCHOR_LEDGER.jsonl` but are not posted to AO Core.
+- **Why it exists:** `AOCoreSink` was deferred to Phase 6.3.b because the testnet deployment is currently blocked by `KW-AOCORE-004`.
+- **Mitigations:** The verifier `interaction-anchor` checks all local integrity properties and explicitly prints that it checks 0 anchors on-chain.
+- **Pay-down commitment:** Phase 6.3.b will ship `AOCoreSink` once Phase 6.1 unblocks.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3.b stub).
+
 ### KW-AOCORE-004 — Phase 6.1 testnet seal blocked by aos-2.0 mainnet default + upstream legacy MU 500
 - **Domain:** OPS
 - **Discovered:** 2026-04-24 (second Phase 6.1-residuals attempt; agent-driven)
@@ -47,12 +69,12 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
 - **Severity:** medium
-- **Status:** open
+- **Status:** closed (2026-04-24 by Phase 6.3 Interaction Anchoring)
 - **Description:** Users cannot verify their interactions on-chain without Xion storing content on-chain.
 - **Why it exists:** Interaction anchoring was deferred to Phase 6.3 to prioritize the core Relay.
 - **Mitigations:** Local ledger provides operator-side transparency.
 - **Pay-down commitment:** Phase 6.3 will introduce hourly Merkle anchors and `GET /me/receipts`.
-- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3 block).
+- **Verifier:** `xion-verify interaction-anchor` and `GET /me/receipts` endpoint.
 
 ### KW-PRESENCE-EMITTER-001 — Visual Emitter is not implemented
 - **Domain:** RUNTIME

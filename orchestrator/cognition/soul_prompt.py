@@ -16,7 +16,7 @@ from pathlib import Path
 # The exact SHA-256 of genesis/SOUL_PROMPT.md.
 # A mismatch means the file was edited without updating this pin.
 # The `xion-verify soul-prompt` subcommand checks this offline.
-PINNED_SOUL_PROMPT_SHA256 = "0691f4d58b5b97f28e9694b1fa00b4941c412b2afd981976ccd7b1616a54803a"
+PINNED_SOUL_PROMPT_SHA256 = "84bde58a5a29c14ead45829e357bdaa0abb4cd48663d1a39e28043540361faf4"
 
 class SoulPromptHashMismatchError(Exception):
     """Raised when genesis/SOUL_PROMPT.md does not match the pinned hash."""

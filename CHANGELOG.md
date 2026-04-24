@@ -10,6 +10,18 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+## [Phase 6.3] — 2026-04-24
+
+### Added
+- **`ANCHOR_LEDGER` and Interaction Merkle Roots:** Implemented the `AnchorDaemon` which wakes hourly to read `REQUEST_LEDGER`, `PAYMENT_LEDGER`, and `SAFETY_LEDGER`, creating a Merkle tree of interactions and storing the root locally in `ANCHOR_LEDGER.jsonl`.
+- **`GET /me/receipts` endpoint:** Added to `orchestrator/api/me.py` to return correlation_id-keyed Merkle inclusion proofs to the user, proving their interactions were anchored.
+- **`xion-verify interaction-anchor`:** Promoted from NOT_YET_SEALED to live. Verifies chain integrity, root recomputability, and cross-checks the source ledgers.
+- **Schema additions:** `docs/schemas/ledger-anchor.yaml`, `docs/schemas/ao-handler-anchor-interaction-batch.yaml`, and optional fields (`user_proof_commit`, `user_proof_algorithm`) added to `ledger-request.yaml` and `ledger-payment.yaml`.
+- **Doctrine additions:** Phase 6.3 section in `04-ARCHITECTURE.md`, `Anchor-Interaction-Batch` ABI in `28-AO-CORE.md`, Key-Fragment-Severance pattern in `INVARIANTS.md` Appendix A.
+
+### Changed
+- **`KNOWN_WEAKNESSES.md`:** Closed `KW-INTERACT-001` (Interaction Anchoring shipped). Opened `KW-PROOF-001` (client-side signing deferred to 6.3.b) and `KW-ANCHOR-AO-001` (AOCoreSink deferred to 6.3.b due to AO Core block).
+
 ## [Phase 6.1-residuals attempt-2 + hardening] — 2026-04-24
 
 ### Added

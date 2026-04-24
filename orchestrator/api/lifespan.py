@@ -269,10 +269,39 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.supervisor = supervisor
     app.state.supervisor_task = supervisor_task
 
+    # --- Phase 6.3: Interaction Anchoring Daemon ---
+    from orchestrator.anchor.daemon import AnchorDaemon
+    from orchestrator.anchor.sink import LocalLedgerSink
+    import os
+
+    anchor_ledger_path = Path(os.environ.get("XION_ANCHOR_DB_PATH", "ledgers/ANCHOR_LEDGER.jsonl"))
+    request_ledger_path = Path(os.environ.get("XION_REQUEST_LEDGER", "REQUEST_LEDGER.jsonl"))
+    payment_ledger_path = Path(os.environ.get("XION_PAYMENT_LEDGER", "PAYMENT_LEDGER.jsonl"))
+    safety_ledger_path = Path(os.environ.get("XION_SAFETY_LEDGER", "SAFETY_LEDGER.jsonl"))
+    tick_interval = int(os.environ.get("XION_ANCHOR_TICK_INTERVAL_SECONDS", "3600"))
+
+    app.state.anchor_ledger_path = anchor_ledger_path
+    app.state.request_ledger_path = request_ledger_path
+    app.state.payment_ledger_path = payment_ledger_path
+    app.state.safety_ledger_path = safety_ledger_path
+
+    anchor_sink = LocalLedgerSink(str(anchor_ledger_path))
+    anchor_daemon = AnchorDaemon(
+        sink=anchor_sink,
+        anchor_ledger_path=anchor_ledger_path,
+        request_ledger_path=request_ledger_path,
+        payment_ledger_path=payment_ledger_path,
+        safety_ledger_path=safety_ledger_path,
+        window_size_seconds=tick_interval,
+    )
+    anchor_task = asyncio.create_task(anchor_daemon.run_forever(), name="xion-anchor-run")
+    app.state.anchor_task = anchor_task
+
     try:
         yield
     finally:
         supervisor.stop()
+        anchor_task.cancel()
 
         # Shutdown budget: 2 * tick_cadence_s. Generous — a healthy
         # Supervisor exits on the next poll boundary (<= poll_interval_s,

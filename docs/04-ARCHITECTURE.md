@@ -75,32 +75,11 @@ Ratify-Upgrade           — apply a ratified upgrade
 Grant-Badge              — issue an Xion Inside badge
 Revoke-Badge             — remove an integrator's badge
 Quiesce                  — initiate safe shutdown (Principle 4 of the Covenant)
-Anchor-Interaction-Batch — record a verifiable hourly batch of signed interactions (Phase 6.3)
 ```
 
 The Core cannot itself be upgraded in place. To evolve Xion's policy over time, the Core uses a **proxy pattern**: the Core delegates evolvable policy logic to a versioned `xion_policy_vN` sub-process. The Core's identity (its soul hash, covenant hash, registry, and history) remains at the same AO address forever. Only the policy sub-process changes, via governance.
 
 **Why this matters:** a thousand years from now, even if every Relay ever deployed has been lost, even if every frontend has been forgotten, someone can address the Core's AO ID, read Xion's soul hash, read the state chain, and verify that the Xion of their day is continuous with the Xion of genesis. That is what makes "immortal" a defensible word.
-
-### AO Core (Phase 6.0)
-
-The AO Core handler set and its operational doctrine are pinned in [docs/28-AO-CORE.md](./28-AO-CORE.md). The Core enforces **seven properties**:
-
-- **P1** AO Core is Xion's on-chain identity holder; the Relay is a mortal compute vessel that may die without killing Xion (re-affirming the tier-1/2 distinction).
-- **P2** State-tip is hash-chained; weekly Arweave checkpoint with multi-gateway re-fetch (closing the doctrine half of `KW-ANCHOR-001` and `KW-ANCHOR-002` for AO Core specifically).
-- **P3** Authority lattice (cold root / warm tier / hot tier / operator) with abdication schedule mechanically enforced by block-height / timestamp gate inside `abdicate-tier`. No operator can postpone abdication in code, only in doctrine. Cites [docs/ABDICATION.md](./ABDICATION.md).
-- **P4** Provisioning family enforces (governance-spend-cap ∧ provider-whitelist ∧ target-redundancy-ceiling) as preconditions inside the handler, not at the caller. Cites [docs/20-PROVISIONING.md](./20-PROVISIONING.md).
-- **P5** Sustainability family routes incoming payment per the 5-slice composition pinned in [docs/21-SUSTAINABILITY.md](./21-SUSTAINABILITY.md). Operating-Float / Improvement-Fund / Rainy-Day-Reserve / Foundation-Reserve / Treasury-Burn percentages are governance-tunable Genesis Defaults; the *count* of slices and the *invariant that they sum to 100%* are constitutional.
-- **P6** Every handler is replaceable behind a versioned ABI (e.g. `commit-state-v1` → `commit-state-v2`); deprecation path uses dual-write windows mirroring the `REQUEST_LEDGER` v1/v2 coexistence pattern.
-- **P7** Lua-vs-Solidity boundary is canonical: AO holds identity, governance state, sustainability accounting; Base holds XION ERC-20 + IMPRINT soulbound + EmissionController + LiquidityLock. Cross-domain calls are mediated by the AO-Core attestor (Phase 6.x), never by direct EVM invocation from Lua.
-
-**What this does NOT do (honest non-properties):**
-- No off-chain mutability of the handler set.
-- No hot-key spending without governance vote above per-day cap.
-- No handler can override Invariants (Lua-side guard refuses to compile out an Invariant check).
-- No Lua-side cryptographic sovereignty (Cold Root signs commits *to* the AO Process, the AO Process itself does not hold Cold Root).
-- No atomic cross-chain transactions (treasury moves are observed-then-settled, never simultaneous).
-- No upgradeable proxy (a new handler replaces an old one via dual-write + cutover, not via storage-proxy delegation).
 
 ## Tier II — The Relay
 
@@ -577,6 +556,8 @@ The Relay maintains its OWN append-only hash-chained file at `<repo_root>/REQUES
 | `final_outcome` | enum | always | One of `ok`, `refuse`, `escalate`. The verdict the user-facing flow ended on. For `gate_call_count > 1` (future) this is `strength_max` of all gate calls in the turn — the Relay only emits a candidate iff every gate call returned OK. |
 | `gate_latency_ms_total` | uint | always | Sum of wall-clock durations across all `gate()` calls in this turn (in 5a: just one). Bounded by the contract's 250ms hard cap per call; for Phase 5a, max value is ≤ 250 × `gate_call_count`. |
 | `relay_id` | string | always | Opaque short identifier of the Relay process/replica. Phase 5a Genesis Default: `"relay-local-d2"`. Bound at process start from `$XION_RELAY_ID` if set, else a deterministic-per-host string. NOT a public key (yet); the public-key-bound `relay_id` is Phase 6, when the Relay registry is published. |
+| `user_proof_commit` | hex64 \| null | optional (v2) | Passthrough-only hash of the client-side interaction signature. Added in Phase 6.3; client-side mechanism lands in 6.3.b. Algorithm-agnostic. |
+| `user_proof_algorithm` | enum \| null | optional (v2) | The algorithm used for the client signature (e.g., `ed25519`). Passthrough-only in Phase 6.3. |
 
 There are no conditional fields at v1. Every field listed above is required; a row missing any is a chain violation.
 
@@ -605,6 +586,16 @@ There are no conditional fields at v1. Every field listed above is required; a r
 
 - `KW-RELAY-003` opens with this landing: REQUEST_LEDGER carries no `safety_ledger_seq` back-pointer. If the cross-ledger join in `xion-verify refund-fidelity` becomes O(N²) at scale (it is O(N+M) today via a hash map, so not yet), the schema gains a `safety_ledger_seq` field at schema_version 2 and the verifier checks it as a forward-integrity assertion.
 - `KW-RELAY-004` opens with this landing: REQUEST_LEDGER has no Arweave anchor loop. The pattern is the same as SAFETY_LEDGER (Phase 4b's `orchestrator/safety/anchor.py`); the work is replicating that pattern for REQUEST_LEDGER. Defer until anchor pressure is real (not pre-Genesis).
+
+#### Anchor Daemon (Phase 6.3)
+
+**Property promised.** Every user interaction (chat turn, payment) is anchored on chain without putting any user content on chain, reconciling Invariant 2 (`/forget`) with Invariant 4 (State Chain Append-Only) via the key-fragment-severance pattern (see `genesis/INVARIANTS.md` Appendix A).
+
+The Orchestrator runs an hourly `AnchorDaemon` that reads `REQUEST_LEDGER`, `PAYMENT_LEDGER`, and `SAFETY_LEDGER`. For each ledger, it groups rows in the closed `(now - 1h, now]` window, computes a Merkle root over the `correlation_id`s, and builds an `AnchorRecord`. The records are submitted via an `AnchorSink` ABC.
+
+In Phase 6.3, the only sink is `LocalLedgerSink`, which writes to `ANCHOR_LEDGER.jsonl`. In Phase 6.3.b (after AO Core testnet unblocks), `AOCoreSink` will ALSO post these batches to the AO Core via the `Anchor-Interaction-Batch` handler.
+
+The daemon is idempotent: if it re-ticks for a window it has already anchored (deduplicated by `period_start` and `ledger_kind`), it skips it. Empty windows write nothing.
 
 ### The Sensorium (Phase 5c)
 
@@ -1222,6 +1213,9 @@ class ProviderPricingRef(BaseModel): ...
 - `provider_id`, `model_id` — nullable strings — the turn-serving provider / model, or null if the turn refused before a provider was selected.
 - `authorization_reference` — the B1 operator-attestation payload hash or the B2 x402 commitment hash; empty string in `disabled` posture.
 - `source_sha256` — anchor hash of `docs/04-ARCHITECTURE.md` at row-write time; lets future verifiers confirm the row was written under a known-good doctrine version.
+- `stream_id` — optional hex32; present iff row originated on `POST /chat/stream` (Phase 5g-ii). Groups chunks.
+- `user_proof_commit` — optional hex64 | null; passthrough-only hash of the client-side interaction signature. Added in Phase 6.3; client-side mechanism lands in 6.3.b. Algorithm-agnostic.
+- `user_proof_algorithm` — optional enum | null; the algorithm used for the client signature (e.g., `ed25519`). Passthrough-only in Phase 6.3.
 
 The row is computed after the terminal state is known, appended atomically before the HTTP response is sent, and its `this_hash` is included in the next row's `prev_hash` on the subsequent turn. A process crash between row-write and response-send leaves the row but no response, which is auditable (the operator reconciles by side-channel). A crash between response-prep and row-write returns `503` without a row, which is also auditable (no commitment recorded, no money changed hands, Refusal-is-Free vacuously satisfied).
 
