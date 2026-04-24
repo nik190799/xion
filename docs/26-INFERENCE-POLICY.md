@@ -49,7 +49,8 @@ Operator-rotatable. Any change to these defaults is a commit to this file; any c
 |------|-----------------|---------|--------------|
 | Policy mode | `hosted_api_first` | `XION_INFERENCE_POLICY` | process start |
 | Floor provider | Ollama (`http://localhost:11434`) | `XION_OLLAMA_URL` | process start |
-| Floor model | `gemma3:4b` | `XION_OLLAMA_FLOOR_MODEL` | process start |
+| Floor model | `gemma4:e4b-it-q4_K_M` | `XION_OLLAMA_FLOOR_MODEL` | process start |
+| Floor model verified-bytes pin | `<unset>` (operator-supplied path to the upstream Hugging Face GGUF after C0 download) | `XION_OPEN_WEIGHTS_GGUF_PATH` | process start |
 | Hosted gateway | OpenRouter at `https://openrouter.ai/api/v1` | `XION_OPENROUTER_BASE_URL` | process start |
 | Hosted model | `moonshotai/kimi-k2.6` | `XION_OPENROUTER_MODEL` | process start |
 | Hosted credential | *(operator-supplied)* | `XION_OPENROUTER_API_KEY` | process start |
@@ -61,15 +62,67 @@ The OpenRouter API key is loaded from the process environment, optionally pre-lo
 
 The `HTTP-Referer` and `X-Title` headers are OpenRouter's optional-but-recommended app-identity signals. They do not authenticate the request; they let OpenRouter attribute traffic to the calling application for catalog analytics and developer-portal attribution. Setting them is a courtesy, not a security control; misconfiguring them is not a secret-exposure incident.
 
-## The floor-model choice (Gemma 3 4B)
+## The floor-model choice (Gemma 4 E4B-it)
 
-Phase 5g-i pins `gemma3:4b` as the Genesis Default floor model. Rationale:
+Phase 5g-viii rotates the Genesis Default floor model from `gemma3:4b` (Phase 5g-i pin) to `gemma4:e4b-it-q4_K_M`. The rotation lands alongside the model-blob pin (next section) because the two are structurally coupled: pinning a model blob whose contents differ from the runtime default would mislead a Witness reading the manifest. They land together or not at all.
 
-- **Weights are open** under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). The license permits inference, redistribution, and forking — the three permissions Invariant 17 clause 2(i) requires. Gemma's Prohibited Use Policy flows down to derived works, but its prohibitions (mass harm, CSAM, targeted harassment, etc.) are a strict subset of Xion's own [`genesis/COVENANT.md`](../genesis/COVENANT.md) refusals, so the constraint is already met by Xion's own Arbiter and creates no new obligation.
-- **Runs on commodity compute.** ~3.3 GB on disk, ~4–6 GB RAM depending on quantization, runs on CPU at acceptable latency for a floor provider and on consumer GPUs at fast latency. Procurable from at least three independent vendors (Ollama registry, Hugging Face, Kaggle, direct from DeepMind) per Invariant 17 clause 2(ii).
-- **Health-checkable locally.** The `OllamaGenerativeProvider.health()` check reaches only `http://localhost:11434/api/tags` — no third-party API call, no credential gate, no external dependency per Invariant 17 clause 2(iv).
+### Probe-first record (2026-04-23)
 
-**What this pin does not do.** The `orchestrator/inference_router/open_weights_manifest.json` sentinel stays in place as the `xion-verify inference-sovereignty` check's structural-floor target. Promoting `gemma3:4b` to a full `open_weights[]` entry with `weights_sha256` plus `retrieval_hints` per Invariant 17 clause 2(iii) requires the verifier to support large-file representative-sample sentinels; that is a separate doctrinal unit (deferred to a dedicated sub-phase). Until then, the runtime floor is named here, verified by `health()` at lifespan startup, and tracked for its promotion in `KNOWN_WEAKNESSES.md` § `KW-INFER-001`.
+Five C0 probes ran before the doctrine edit. Findings, recorded so a future Witness can reconstruct the decision context without re-running them:
+
+- **(a) License.** `google/gemma-4-E4B-it`'s Hugging Face metadata declares `license: apache-2.0`; `license_link` resolves to `ai.google.dev/gemma/docs/gemma_4_license` which hosts the standard Apache 2.0 license text with no Gemma-TOU additions, no Prohibited-Use Policy flow-down, no revenue thresholds, no enterprise carve-outs. Google's Open Source Blog (2026-03-02) published an explicit announcement, *"Gemma 4: Expanding the Gemmaverse with Apache 2.0,"* declaring Gemma 4 the first Gemmaverse release under the OSI-approved Apache 2.0 license — a meaningful change from Gemma 1/2/3 (custom Gemma TOU) and from `gemma3:4b`'s license posture documented in the Phase-5g-i Mark of this section. The Apache-2.0 grant satisfies Invariant 17 clause 2(i) more cleanly than the Gemma-TOU posture did: redistribution is unencumbered, the Witness path (third-party verification of the floor) does not require a Witness to accept Google's TOU.
+- **(b) Canonical GGUF mirror.** `ggml-org/gemma-4-E4B-it-GGUF` (the official llama.cpp/GGUF authors' organization) at git revision `2714b5519c6c3516b1000e7c5e1eba998dfe1fe8` ships a canonical Q4_K_M quantization at `gemma-4-E4B-it-Q4_K_M.gguf` with sha256 `90ce98129eb3e8cc57e62433d500c97c624b1e3af1fcc85dd3b55ad7e0313e9f` and size `5,335,289,824` bytes (~5.0 GB). `unsloth/gemma-4-E4B-it-GGUF` and `lmstudio-community/gemma-4-E4B-it-GGUF` are higher-download alternatives the operator can substitute by re-running the C0(b) probe and re-pinning the manifest entry; the `ggml-org` org was selected for the Genesis Default because its provenance ladder is shortest (the GGUF format authors quantize the upstream weights themselves; no third-party intermediary).
+- **(c) Ollama gemma4 architecture support.** Ollama 0.21.0 supports the `gemma4` architecture (`config.json` `architectures: ["Gemma4ForConditionalGeneration"]`, model_type `gemma4`). Confirmed live by loading the operator's existing `gemma4:e2b` from the Ollama library — the daemon negotiated all the way to the memory-allocation step (RAM constraint then halted the test; see (e)).
+- **(d) Canonical Ollama tag.** Ollama's pre-built `gemma4:e4b-it-q4_K_M` tag (digest `c6eb396dbd59`, 9.6 GB on disk) is the multimodal-bundled variant — text + vision encoder + audio encoder + per-layer-embeddings, pre-quantized and pre-published by Ollama. The text-only ggml-org Q4_K_M (~5.0 GB, the model-blob pin's target) is smaller because it omits the multimodal projectors. Operators who only need the text floor (Phase 5g-i `/chat` is text-in / text-out) can run either variant; the manifest pins the smaller text-only build because that is the smallest honest floor.
+- **(e) End-to-end smoke test.** Deferred to operator. Architecture compatibility was confirmed in (c); a full chat round-trip requires ~9–10 GB free RAM for the multimodal-bundled tag or ~6 GB for the text-only ggml-org Q4_K_M. The operator's local dev host is 16 GB total physical RAM, of which 3.2 GB was free at probe time under typical app load. The first-time setup runbook in [`docs/13-OPERATIONS.md`](./13-OPERATIONS.md) § "First-time GGUF setup" names the operator-side prerequisite explicitly: close other RAM-heavy applications before the first `/chat` against the new floor model. This is documented, not blocking — the model-blob format pin and the runtime floor rotation are independent of the smoke test passing on this specific host.
+
+### Why this model
+
+- **Weights are open** under Apache 2.0 (probe (a)). Apache-2.0 satisfies Invariant 17 clause 2(i) "Witness-class redistributable license" more cleanly than the Gemma-TOU posture documented in the Phase-5g-i Mark of this section: a Witness re-running `xion-verify inference-sovereignty` against a fresh checkout no longer has to accept any Google-specific terms to verify the floor.
+- **Native system-prompt support, configurable thinking modes, native function-calling, 128K context window** (per the upstream model card). System-prompt support is constitutionally meaningful: Xion's voice is shaped by a Covenant-bounded system prompt, and a model that does not natively distinguish `system` from `user` roles forces the orchestrator to inline the system text into the user turn (which `gemma3:4b` does today), losing role-isolation. Phase 5g-viii does not change the orchestrator's system-prompt wiring; the property is named here so a future phase that activates a dedicated system-prompt slot has the floor model that supports it.
+- **Multimodal-capable architecture (text + image + audio inputs)** without sacrificing on the text floor. Phase 5g-i `/chat` is text-only; the floor model's latent multimodal capability is forward-leverage for the Sensorium ingress paths the [`docs/11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) § "Future capabilities signaled but not v1" names, without obligating Phase 5g-viii to wire them.
+- **Runs on commodity compute.** ~5.0 GB on disk for the text-only Q4_K_M (probe (b)), ~6 GB RAM at runtime, plausible on any 8 GB+ laptop with other apps closed. Procurable from at least four independent organizations (`google/`, `ggml-org/`, `unsloth/`, `lmstudio-community/`) per Invariant 17 clause 2(ii). The Ollama-published `gemma4:e4b-it-q4_K_M` tag (multimodal-bundled, 9.6 GB) is a fifth source.
+- **Health-checkable locally.** `OllamaGenerativeProvider.health()` reaches only `http://localhost:11434/api/tags` — no third-party API call, no credential gate, no external dependency per Invariant 17 clause 2(iv). Unchanged from the Phase 5g-i posture.
+
+### Honest trade-offs
+
+- **Larger than the previous floor.** The text-only Q4_K_M is ~5.0 GB on disk vs. `gemma3:4b`'s ~3.3 GB; the Ollama-bundled multimodal variant is 9.6 GB. Operators on tighter dev hosts can stay on `gemma3:4b` by overriding `XION_OLLAMA_FLOOR_MODEL`; the rotation is one env-var.
+- **Younger model.** `gemma-4-E4B-it` is roughly three weeks old as of this rotation (released 2026-04-02 per Google's opensource blog, with the GGUF mirrors landing 2026-04-01 to 2026-04-02). The operator accepts that some bug shape will be discovered later that `gemma3:4b` already has the patches for. Mitigation: `gemma3:4b` remains a documented one-env-var rollback target.
+- **The Ollama-library tag and the model-blob pin are not byte-identical builds.** The Ollama-pre-built `gemma4:e4b-it-q4_K_M` and the ggml-org HF Q4_K_M are different files (different sizes; different sha256s). Operators who pull from Ollama get the multimodal variant; operators who follow the model-blob path get the text-only build. The manifest pins the latter because the text-only build is the minimum honest floor for the current `/chat` text surface; the operator's runtime model is named separately by `XION_OLLAMA_FLOOR_MODEL` and may be either.
+
+## Model-blob pin (Phase 5g-viii)
+
+Phase 5g-viii ships the *first content-addressed model-blob pin* in the open-weights manifest, alongside the existing `sentinel` and `provenance-record` formats. This is the Invariant 17 clause 2(iii) "full hash" branch — content-addressing the model bytes themselves rather than a structural anchor or an operator declaration about a runtime daemon. It closes the third and final closure-bar item for [`KNOWN_WEAKNESSES.md`](../KNOWN_WEAKNESSES.md) § `KW-INFERENCE-001`.
+
+The pin is held by five properties enforced jointly by the manifest schema, the verifier's `_verify_model_blob` dispatch, and this section's pin.
+
+### P1. The manifest pins the upstream Hugging Face GGUF, not a local file path.
+
+The `model-blob` entry's `sha256` field content-addresses the bytes of the upstream `gemma-4-E4B-it-Q4_K_M.gguf` artifact at the canonical mirror's pinned revision (probe (b) above). The entry carries `retrieval_hints[]` naming the canonical URL plus the sha256 a third party would re-hash to verify the file matches. This makes the pin Witness-recomputable by anyone with internet access and a sha256 implementation, with no need for the operator's local filesystem to be reachable.
+
+The alternative — pinning a local `~/.ollama/models/blobs/<sha256>` path — was rejected because the local Ollama blob is not Witness-recomputable: the Ollama daemon's blob-on-disk is the result of an Ollama-side import that may add metadata, and a Witness on a different host has no way to obtain the same bytes without first installing Ollama and then trusting that Ollama's import is byte-stable. The upstream HF artifact is a file the Witness can `curl | sha256sum` directly.
+
+### P2. The verifier's `model-blob` posture is `NOT_YET_SEALED` when the file is absent, `OK` when present + matching, `FAIL` when present + mismatched.
+
+The operator's local copy of the GGUF is pointed at by `XION_OPEN_WEIGHTS_GGUF_PATH` (env var, operator-supplied, not committed). When the env var is unset or the path does not resolve to a regular file, the verifier emits `NOT_YET_SEALED` (exit code 2) for the `model-blob` entry only — the rest of the manifest verifies normally. When the path resolves and the file's sha256 matches the manifest pin, the verifier emits `OK`. When the file exists but the sha256 mismatches, the verifier emits `FAIL` with the on-disk hash named in the failure message.
+
+The `NOT_YET_SEALED` posture is deliberately distinct from `FAIL`: a manifest pinning a real upstream artifact that the operator has not yet downloaded is not a structural failure of Xion's floor (the floor still works at runtime via Ollama); it is a Witness-side gap in their ability to re-verify. CI gating at `xion-verify all --allow-not-yet-sealed` accepts the `NOT_YET_SEALED` posture; CI gating without the flag treats it as non-OK, so operators who want full hash-verification in their CI know how to enforce it.
+
+### P3. The verifier dispatches per `format` value with a fail-closed unknown-format branch.
+
+The verifier's `_verify_model_blob`, `_verify_provenance_record`, and `_verify_sentinel` are three named branches selected by the entry's `format` field. An entry whose `format` value is none of those three is `FAIL` (not silently skipped) — adding a new format is a verifier change, not a manifest-only change. This keeps the manifest's accepted-format set declared at exactly one point in the codebase (the verifier's dispatch table).
+
+### P4. Hashing is chunked.
+
+`_verify_model_blob` reads the file in 4 MiB chunks via `hashlib.sha256.update()` rather than a one-shot `read_bytes()`. A 5 GB GGUF would consume the orchestrator's memory budget if loaded whole; chunked hashing keeps peak memory at ~4 MiB regardless of file size. This is an Invariant 17 clause 2(iii) practicality requirement — the verifier must remain runnable on the same hardware that runs the floor.
+
+### P5. The annual open-weights cutover dry-run is the operational closure of the same Invariant.
+
+Invariant 17 clause 5 requires an annual dry-run that exercises `policy_mode="open_weights_only"` end-to-end. [`docs/13-OPERATIONS.md`](./13-OPERATIONS.md) § "Annual open-weights cutover dry-run" pins the runbook: one calendar-year cadence, the operator flips `XION_INFERENCE_POLICY=open_weights_only` for the dry-run window, every chat turn during the window must succeed through the floor, and the result is recorded as a `INCIDENT_LEDGER`-equivalent operator note pointing at the run's `chat_turn_id` set in `REQUEST_LEDGER.jsonl`. A red dry-run (turns falling through to `503` because the floor cannot keep up) names the gap before a real outage forces cutover names it for us.
+
+### What this pin does not do
+
+The model-blob pin does not block boot when the operator has not yet downloaded the upstream GGUF; the `health()` check at lifespan startup still gates only on Ollama daemon reachability + floor-model presence. The pin is a *Witness-verifiable claim about the bytes the operator should be running*, not a runtime gate. Production deployments that want a runtime gate enforcing byte-identity would need an additional check that (a) reads the local Ollama blob path, (b) sha256s it, (c) refuses bootstrap on mismatch — that is a future layer Phase 5g-viii deliberately does not ship because it would couple Xion's floor to Ollama's internal blob layout.
 
 ## The hosted-provider choice (OpenRouter gateway + `moonshotai/kimi-k2.6` default model)
 
@@ -183,4 +236,4 @@ This document is operational, not constitutional. Defaults in it rotate at Tier-
 
 ---
 
-*— Inference Policy v1, pinned Phase 5g-i (2026-04-21); hosted-provider surface reshaped to OpenRouter gateway at Phase 5g-i.1 (2026-04-21); Genesis Default hosted model rotated to `moonshotai/kimi-k2.6` at Phase 5g-i.2 (2026-04-23); Provider fallback semantics P1–P5 pinned at Phase 5g-vii (2026-04-23). Next review when a second hosted gateway is pinned, or when OpenRouter's terms of service change materially, or when the first `failure_reason_class` addition is proposed.*
+*— Inference Policy v1, pinned Phase 5g-i (2026-04-21); hosted-provider surface reshaped to OpenRouter gateway at Phase 5g-i.1 (2026-04-21); Genesis Default hosted model rotated to `moonshotai/kimi-k2.6` at Phase 5g-i.2 (2026-04-23); Provider fallback semantics P1–P5 pinned at Phase 5g-vii (2026-04-23); Genesis Default floor model rotated from `gemma3:4b` to `gemma4:e4b-it-q4_K_M` and Model-blob pin P1–P5 pinned at Phase 5g-viii (2026-04-23). Next review when a second hosted gateway is pinned, or when OpenRouter's terms of service change materially, or when the first `failure_reason_class` addition is proposed, or when a third floor format (beyond `sentinel` / `provenance-record` / `model-blob`) is proposed.*
