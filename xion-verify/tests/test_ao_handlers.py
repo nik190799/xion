@@ -77,7 +77,7 @@ operational_sha256: {core_hash}
         
     result = CliRunner().invoke(_CLI, ["ao-handlers"])
     assert result.exit_code == NOT_YET_SEALED
-    assert "19 handler schema(s) verified against doctrine, awaiting Lua skeleton" in result.output
+    assert "19 handler schema(s) verified, awaiting Lua skeleton" in result.output
 
 
 def test_ao_handlers_fail_missing_handler(tmp_path: Path, monkeypatch) -> None:

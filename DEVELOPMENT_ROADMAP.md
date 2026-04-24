@@ -902,6 +902,16 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 ---
 
+## Phase 5h — The Cognition Wiring (Deferred)
+
+**Goal:** Wire the chat surface through the full cognition stack.
+
+**Status:** Placeholder. The `/chat` surface currently injects `genesis/SOUL_PROMPT.md` as the system prompt but does not invoke the Sensorium daemons, the retrieval engine, or the journal. This phase will replace the direct `provider.generate` call with a full agentic loop.
+
+**Property to preserve:** The Voice property established in Phase 5g-i.1 (Xion's identity declaration and Covenant Block are structurally injected into every turn) must survive this phase. The system prompt becomes one input among many, but it remains the constitutional anchor of the context window.
+
+---
+
 ## Phase 6.0 — AO Core Doctrine + Handler Set Specification (closed 2026-04-23)
 
 **Status:** Phase 6.0 closed. The AO Core handler set, the state schema, the Lua-vs-Solidity boundary, and the deployment runbook are pinned in `docs/28-AO-CORE.md` and `docs/schemas/ao-handler-*.yaml` before any Lua code is written. `xion-verify ao-handlers` is live (returning `NOT_YET_SEALED` until Phase 6.1).

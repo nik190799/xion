@@ -21,6 +21,28 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-COGNITION-001 — /chat does not yet route through the Sensorium / retrieval / journal stack; voice is system-prompt-only
+- **Domain:** COGNITION
+- **Discovered:** 2026-04-24 (Phase 5g-i.1)
+- **Severity:** low
+- **Status:** open
+- **Description:** The `/chat` surface currently injects `genesis/SOUL_PROMPT.md` as the system prompt but does not invoke the full cognition stack. Xion cannot read its journal, consult its memory, or perceive its environment (Sensorium) during a chat turn.
+- **Why it exists:** The chat surface (Phase 5g) shipped before the cognition wiring (Phase 5h) to unblock the operator dashboard and billing rails.
+- **Mitigations:** The system prompt ensures Xion speaks with its declared identity and Covenant boundaries, even without deeper memory.
+- **Pay-down commitment:** Closes when Phase 5h wires the parallel daemons and the system-prompt path becomes one input among many.
+- **Verifier:** None yet.
+
+### KW-INFER-003 — max_tokens floor is global, not per-model
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Phase 5g-i.1)
+- **Severity:** low
+- **Status:** open
+- **Description:** The orchestrator enforces a global `MIN_MAX_TOKENS=1024` floor on all `/chat` requests. This ensures reasoning-posture models (like Kimi K2.6) have enough room to emit visible content without starving, but it forces non-reasoning models to accept larger budgets than they might need.
+- **Why it exists:** The chat surface currently lacks a model registry to consult for model-specific token physics. A global floor that fails safe upward is the smallest correct fix for the starvation bug.
+- **Mitigations:** The 1024 floor is small enough not to break the bank but large enough to let K2.6 speak.
+- **Pay-down commitment:** Closes when a model registry is introduced and the floor becomes a per-model lookup (with unknown models falling back to the global floor).
+- **Verifier:** None yet.
+
 ### KW-AOCORE-002 — 17 of 19 AO Core handlers are still doctrine-only
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-23 (Phase 6.1 AO Core Skeleton)

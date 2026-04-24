@@ -51,6 +51,10 @@ from orchestrator.billing import (
 from orchestrator.billing import (
     verify_chain as verify_payment_chain,
 )
+from orchestrator.cognition.soul_prompt import (
+    SoulPromptHashMismatchError,
+    load_soul_prompt,
+)
 from orchestrator.inference_router import (
     DEFAULT_POLICY_MODE,
     InferenceRouter,
@@ -173,6 +177,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             file=sys.stderr,
             flush=True,
         )
+
+    # --- Phase 5g-i.1: load Soul Prompt ----------------------------
+    try:
+        app.state.soul_prompt = load_soul_prompt()
+    except SoulPromptHashMismatchError as e:
+        print(
+            f"State-of-Xion: Soul Prompt refused load. {e} "
+            "Refusing to start. See genesis/SOUL.md § 0.",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise
 
     # --- Phase 5g-iii: load posted-pricing config ------------------
     # Runs BEFORE the Relay wire-up so a misconfigured pricing split

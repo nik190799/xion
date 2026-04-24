@@ -64,6 +64,7 @@ from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
 from xion_verify.commands.skill_bounty import skill_bounty
+from xion_verify.commands.soul_prompt import soul_prompt
 from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.substrates import substrates
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
@@ -76,6 +77,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "covenant": covenant,
     "invariants": invariants,
     "soul": soul,
+    "soul-prompt": soul_prompt,
     "form": form,
     "memory": memory,
     "resurrect": resurrect,

@@ -20,6 +20,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "covenant",
     "invariants",
     "soul",
+    "soul-prompt",
     "form",
     "memory",
     "resurrect",

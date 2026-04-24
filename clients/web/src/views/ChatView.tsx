@@ -196,7 +196,7 @@ export function ChatView(): JSX.Element {
       for await (const event of streamChat({
         credential,
         message: trimmed,
-        maxTokens: 512,
+        maxTokens: 2048,
         signal: controller.signal,
       })) {
         if (event.kind === "chunk") {

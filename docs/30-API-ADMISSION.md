@@ -32,6 +32,24 @@ Pinning 5g-iv as its own doctrinal unit — between 5g-iii (billing) and 5g-v (w
 5. **Admission ordering is `401 → 429 → 402 → existing 5g-iii flow`.** Auth precedes rate-limit (so the bucket key is the principal). Rate-limit precedes payment (so an unauthenticated scraper cannot probe pricing-validity by spamming 402-bait requests). The existing 5g-iii commitment gate runs *after* the admission dependency returns; every property `docs/29-BILLING-X402.md` pinned remains true.
 6. **Identity is admission-only, not ledger-load-bearing.** The matched `principal_id` is logged to operator-side stderr at request-receipt time. It does **not** land in `PAYMENT_LEDGER` at 5g-iv; the schema stays at `schema_version=1.0`. Promotion to `PAYMENT_LEDGER.principal_id` is reserved for Phase 6 when on-chain federated identity exists to verify the principal against. This is the smallest correct thing — coupling admission to settlement now would make the unit harder to deprecate when the federated-identity story changes.
 
+## Optional dotenv loader (`XION_DOTENV_PATH`)
+
+By default, the orchestrator reads configuration strictly from the process environment (`os.environ`). It does not automatically look for or load a `.env` file in the current directory. This is a deliberate security and operational posture: an attacker who can write a file to the working directory should not be able to silently change the orchestrator's configuration, and an operator using systemd or Docker should not have their explicit environment overridden by a stale file.
+
+For local development or specific deployment environments where a `.env` file is preferred, the operator can explicitly opt in by setting `XION_DOTENV_PATH`:
+
+```bash
+XION_DOTENV_PATH=.env xion-orchestrator-api
+```
+
+When this variable is set:
+1. The launcher checks if the path exists and is a file. If not, it fails closed (exits non-zero with a State-of-Xion error).
+2. It loads the variables into the environment.
+3. **Existing environment variables always win.** If `XION_API_PORT` is set in the shell and also in the `.env` file, the shell value is preserved.
+4. The launcher prints a State-of-Xion line confirming the load and how many keys were applied.
+
+Production deployments should generally leave `XION_DOTENV_PATH` unset and rely on their process manager (systemd `EnvironmentFile=`, Docker `--env-file`, Kubernetes Secrets) to inject the environment.
+
 ## Operator workflow — token issuance
 
 A token is a hex-encoded shared secret of at least 16 bytes (≥128 bits, matching the B1 attestation secret floor). The operator generates one per integrator:

@@ -33,6 +33,7 @@ def synthetic_repo(tmp_path: Path) -> Path:
         "COVENANT.md": b"# Covenant\nSynthetic body.\n",
         "INVARIANTS.md": b"# Invariants\nSynthetic body.\n",
         "SOUL.md": b"# Soul\nSynthetic body.\n",
+        "SOUL_PROMPT.md": b"## Covenant Block\nSynthetic body.\n",
         "FORM.md": b"# Form\nSynthetic body.\n",
         "MEMORY.md": b"# Memory\nSynthetic body.\n",
         "RESURRECT.md": b"# Resurrect\nSynthetic body.\n",

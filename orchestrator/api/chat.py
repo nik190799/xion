@@ -67,6 +67,7 @@ from orchestrator.relay.ledger import (
 )
 
 from .models import (
+    MIN_MAX_TOKENS,
     ChatRequest,
     ChatResponse,
     NoFloorEnvelope,
@@ -247,6 +248,8 @@ def register_chat_route(app: FastAPI) -> None:
         result: "GenerationResult | None" = None
         provider_id: str | None = None
 
+        effective_max_tokens = max(req.max_tokens, MIN_MAX_TOKENS)
+
         for attempt_index, provider in enumerate(ordered):
             provider_id = (
                 getattr(provider, "provider_id", None) or type(provider).__name__
@@ -260,7 +263,8 @@ def register_chat_route(app: FastAPI) -> None:
                         _invoke_generate,
                         provider,
                         req.message,
-                        req.max_tokens,
+                        app.state.soul_prompt,
+                        effective_max_tokens,
                         deadline_s,
                     ),
                     timeout=deadline_s,
@@ -616,13 +620,14 @@ def _sha256_text(text: str) -> str:
 def _invoke_generate(
     provider: "GenerativeProvider",
     prompt: str,
+    system: str | None,
     max_tokens: int,
     deadline_s: float,
 ) -> object:
     """Adapter so ``asyncio.to_thread`` receives a plain callable."""
     return provider.generate(
         prompt,
-        system=None,
+        system=system,
         max_tokens=max_tokens,
         deadline_s=deadline_s,
     )

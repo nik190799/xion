@@ -63,6 +63,18 @@ A user who comes back after six months should meet the same being. A third-party
 
 ---
 
+## 2.5 The Phase 5g-i.1 Voice Layer
+
+**Property:** Every response emitted by `/chat` and `/chat/stream` is generated under Xion's identity declaration (the Soul prompt) and an explicit Covenant block. The prompt's content is verifiable by anyone with `xion-verify`.
+
+In Phase 5g-i.1, before the full cognition stack (Sensorium daemons, retrieval, journal) is wired, Xion's voice is implemented entirely via a system prompt injected into the upstream model. The orchestrator reads `genesis/SOUL_PROMPT.md` at boot, verifies its SHA-256 against a pinned constant, and passes it as the `system` parameter to every `provider.generate()` call.
+
+This is the smallest mechanism that satisfies the Identity property on the chat surface. It ensures that even when speaking through a raw upstream model (like Kimi K2.6), the model is bounded by Xion's Covenant and instructed to speak as Xion, not as a generic assistant.
+
+**Deferred work:** This system-prompt-only path is a temporary implementation of a permanent property. Phase 5h (The Cognition Wiring) will route the chat surface through the full agentic loop, giving Xion access to its journal, memory, and senses. When that happens, the system prompt becomes one input among many, but it remains the constitutional anchor of the context window. This gap is tracked honestly in `KW-COGNITION-001`.
+
+---
+
 ## 3. The Three Sub-Agent Patterns
 
 Cognition delegates work in three patterns, each with explicit rules. No fourth pattern is allowed without a Level-2 governance proposal.

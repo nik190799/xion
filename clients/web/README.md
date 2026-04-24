@@ -37,7 +37,7 @@ Then in the orchestrator:
 XION_WEB_CLIENT_ENABLED=true
 XION_WEB_CLIENT_DIST_PATH=clients/web/dist
 
-xion-orchestrator-api
+XION_DOTENV_PATH=.env xion-orchestrator-api
 ```
 
 The FastAPI launcher will mount the bundle at `/app/*` and the SPA
@@ -48,7 +48,7 @@ fallback at `/` will serve `index.html` for any unknown in-app route
 
 ```bash
 # Terminal 1: orchestrator
-xion-orchestrator-api
+XION_DOTENV_PATH=.env xion-orchestrator-api
 
 # Terminal 2: Vite dev server with API proxy to :8000
 cd clients/web

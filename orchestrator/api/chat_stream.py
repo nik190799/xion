@@ -67,6 +67,7 @@ from orchestrator.inference_router.provider import (
 
 from .chat import _gate_commitment, _principle_to_int
 from .models import (
+    MIN_MAX_TOKENS,
     ChatRequest,
     ChatResponse,
     NoFloorEnvelope,
@@ -354,11 +355,14 @@ async def _stream_body(
     seq = 0
     terminal: GenerationResult | None = None
     turn_deadline_monotonic = time.monotonic() + deadline_s
+    
+    effective_max_tokens = max(req.max_tokens, MIN_MAX_TOKENS)
+    
     gen = stream_generate(
         provider,
         req.message,
-        system=None,
-        max_tokens=req.max_tokens,
+        system=app.state.soul_prompt,
+        max_tokens=effective_max_tokens,
         deadline_s=deadline_s,
     )
     try:

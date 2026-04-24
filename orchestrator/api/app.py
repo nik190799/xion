@@ -187,6 +187,7 @@ def create_app(deps: AppDeps) -> FastAPI:
     app.state.deps = deps
     app.state.volition = Volition()
     app.state.chat_deadline_s = deps.chat_deadline_s
+    app.state.soul_prompt = ""
 
     # Phase 5g-iv admission ordering. ``admission_dependency`` runs
     # 401 → 429 in front of every route below; routes do not need to

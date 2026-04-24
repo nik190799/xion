@@ -279,6 +279,9 @@ class UsageEnvelope(BaseModel):
     )
 
 
+MIN_MAX_TOKENS = 1024
+
+
 class ChatRequest(BaseModel):
     """Phase 5g-i request body for ``POST /chat``.
 
@@ -301,13 +304,15 @@ class ChatRequest(BaseModel):
         ),
     )
     max_tokens: int = Field(
-        default=512,
-        ge=1,
+        default=2048,
+        ge=MIN_MAX_TOKENS,
         le=4096,
         description=(
             "Upper bound on output tokens the generative provider will "
             "produce. Provider-specific tokenisation applies; the bound "
-            "is enforced by the provider, not re-enforced here."
+            "is enforced by the provider, not re-enforced here. "
+            "The floor is set to 1024 (MIN_MAX_TOKENS) so reasoning-posture "
+            "models have room to emit visible content (see docs/26-INFERENCE-POLICY.md)."
         ),
     )
 

@@ -41,6 +41,16 @@ Opt-in via env or runtime switch. Behavior:
 
 Rationale. Invariant 17 clause 5 requires an annual cutover dry-run. This mode is how the dry-run runs: for the duration of the exercise, the floor carries 100% of traffic at the current load. A green dry-run means the floor is provisioned for real, not for the manifest. A red dry-run names the gap before the real outage that forces cutover names it for us.
 
+## Reasoning-posture token floor (Phase 5g-i.1)
+
+**Property:** Every accepted `/chat` and `/chat/stream` request gets a `max_tokens` budget large enough that the configured upstream model — including reasoning-posture models — has token room to emit visible content. The client cannot under-budget the floor.
+
+The orchestrator enforces a hard server-side minimum (`MIN_MAX_TOKENS = 1024`) on the `max_tokens` budget for every turn. If a client requests fewer tokens, the orchestrator silently clamps the budget up to the floor before passing it to the generative provider.
+
+**Rationale:** Reasoning-posture models (like Kimi K2.6, the Genesis Default hosted model) burn hundreds of tokens in their hidden reasoning chain before emitting any visible content. If the token budget is too small (e.g., the old 512 default), the model exhausts its budget during the reasoning phase and returns an empty candidate. The orchestrator's egress moderation correctly rejects empty candidates (returning 451 `provider_empty_candidate`), but the root cause is structural starvation, not a safety violation. The 1024 floor is an empirical minimum that gives a ~500-token reasoning chain enough room to complete and emit a useful response.
+
+**Deferred work:** This floor is currently global. A future phase will introduce per-model adaptive floors via a model-registry consult (`KW-INFER-00x`), allowing non-reasoning models to use tighter budgets while reasoning models get the headroom they need. Until then, the global floor fails safe upward.
+
 ## Genesis Defaults (Phase 5g-i.1, 2026-04-21)
 
 Operator-rotatable. Any change to these defaults is a commit to this file; any change that would alter which provider Xion speaks through by default is a Tier-2 operational decision per `docs/14-UPGRADE-PATHS.md`.
