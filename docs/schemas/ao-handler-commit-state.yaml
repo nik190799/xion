@@ -1,0 +1,32 @@
+handler: commit-state
+family: lifecycle
+schema_version: 1
+status: doctrine_only
+defer_to: Phase 6.1
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256: 71e2e0b7c13e99d3fdb1f8b892a263fbd684a1d57acd04f16730ee02e460a771
+operational_doctrine: docs/28-AO-CORE.md
+operational_sha256: 29c3b36350e82ffe7f42eceeaa82bc5409988c6dd976a3e8e1c26a546662ae18
+args:
+  - name: state_root_sha256
+    type: hex64
+    required: true
+  - name: tip_height
+    type: uint64
+    required: true
+preconditions:
+  - caller is hot-tier or warm-tier signer
+  - tip_height == current_tip_height + 1
+  - state_root_sha256 != current_state_root
+state_changes:
+  - "state_tip := {height: tip_height, root: state_root_sha256, prev: current_state_root}"
+state_tip_emission: true
+ledger_writes:
+  - STATE_CHAIN_LEDGER (off-chain mirror)
+failure_modes:
+  - non_authorised_caller -> reject + emit STATE_REJECTION row
+  - tip_height_skip -> reject + emit STATE_REJECTION row
+  - duplicate_root -> reject (no-op)
+deprecation_path:
+  - replaced_by: commit-state-v2 (when?)
+  - dual_write_window: 4 weeks min

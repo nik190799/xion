@@ -42,7 +42,7 @@ _REQUIRED_META: tuple[str, ...] = (
     "source_sha256",
     "status",
 )
-_ALLOWED_STATUSES: frozenset[str] = frozenset({"canonical", "underspecified"})
+_ALLOWED_STATUSES: frozenset[str] = frozenset({"canonical", "underspecified", "doctrine_only"})
 
 
 def _fail(label: str, message: str) -> tuple[int, str]:
@@ -78,10 +78,10 @@ def _check_one_schema(path: Path, repo_root: Path) -> tuple[int, str]:
             f"status must be one of {sorted(_ALLOWED_STATUSES)}; got {status!r}",
         )
 
-    if status == "underspecified" and "defer_to" not in data:
+    if status in ("underspecified", "doctrine_only") and "defer_to" not in data:
         return _fail(
             label,
-            "status=underspecified requires a 'defer_to' field naming the roadmap phase",
+            "status=underspecified/doctrine_only requires a 'defer_to' field naming the roadmap phase",
         )
 
     source_rel = data["source_doctrine"]

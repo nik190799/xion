@@ -1,0 +1,19 @@
+handler: provision-witness
+family: provisioning
+schema_version: 1
+status: doctrine_only
+defer_to: Phase 6.1
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256: 71e2e0b7c13e99d3fdb1f8b892a263fbd684a1d57acd04f16730ee02e460a771
+operational_doctrine: docs/28-AO-CORE.md
+operational_sha256: 29c3b36350e82ffe7f42eceeaa82bc5409988c6dd976a3e8e1c26a546662ae18
+args:
+  - name: dummy_arg
+    type: string
+    required: true
+preconditions:
+  - dummy precondition
+state_changes:
+  - dummy state change
+failure_modes:
+  - dummy failure mode

@@ -48,6 +48,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "covenant-addenda",
     "cadence-audit",
     "hermes-version",
+    "ao-handlers",
     "credentials-vault",
     "provisioning",
     "improvement-fund",

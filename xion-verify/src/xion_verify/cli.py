@@ -22,6 +22,7 @@ import click
 from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.api_tokens import api_tokens
+from xion_verify.commands.ao_handlers import verify_ao_handlers
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.auto_research import auto_research
 from xion_verify.commands.charter_signed import charter_signed
@@ -115,6 +116,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "auto-research": auto_research,
     "skill-bounty": skill_bounty,
     "charter-signed": charter_signed,
+    "ao-handlers": verify_ao_handlers,
 }
 
 

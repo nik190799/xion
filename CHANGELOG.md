@@ -12,6 +12,13 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ### Added
 
+- **Phase 6.0 landing — AO Core Doctrine + Handler Set Specification (2026-04-23).** Phase 6.0 closed. The AO Core handler set, the state schema, the Lua-vs-Solidity boundary, and the deployment runbook are pinned in `docs/28-AO-CORE.md` and `docs/schemas/ao-handler-*.yaml` before any Lua code is written. `xion-verify ao-handlers` is live (returning `NOT_YET_SEALED` until Phase 6.1). This phase is the smallest honest first step into Phase 6, ensuring the Lua implementation is built to a spec that a future Witness can read, rather than the doctrine being reverse-engineered from whatever the Lua happened to do.
+  - **Architecture doctrine.** `docs/04-ARCHITECTURE.md` § "AO Core (Phase 6.0)" pins the seven properties (identity holder, hash-chained state-tip, authority lattice, provisioning preconditions, sustainability slices, versioned ABI replacement, canonical boundary) and the six honest non-properties.
+  - **Operational doctrine.** `docs/28-AO-CORE.md` pins the 19 handlers across four families (lifecycle, authority, provisioning, sustainability), the state schema, the weekly Arweave checkpoint shape, the chicken-and-egg Relay posture, the Phase 6 dependency map, the operator runbook, and the replacement-path doctrine.
+  - **Schema YAMLs.** 19 new files in `docs/schemas/ao-handler-*.yaml`, each pinning its `source_sha256` to the doctrine.
+  - **Verifier.** `xion-verify ao-handlers` asserts every handler named in doctrine has a schema, every schema parses and has the required fields, and every schema's hash matches the doctrine bytes.
+  - **Known-weakness bookkeeping.** Opened `KW-AOCORE-001` (Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet).
+
 - **Phase 6+ landing — Pre-Genesis Velocity Hardening (2026-04-23).** Phase 6+ closed. All 17 velocity-multiplying primitives from the unified list have been shipped, independently verified by a `xion-verify` subcommand, and rolled up into a single `xion-verify pre-genesis` composite drill that Phase 7 cannot pass without.
   - **Tier A (Parallelizable):** Disjoint surface architecture verifier (`cognition-disjoint`), contract-first plugin registries (`registries`), CLI scaffolders (`new`), local development mode (`local`), reproducible Docker build verifier (`rebuild`), anonymization pipeline (`replay-corpus`), Hermes framework spike (`HERMES_SPIKE_RESULT.md`), vital-signs dashboard (`vitals`), ledger gap-fill (`ledgers`), doctrine/lexicon/contributing docs.
   - **Tier B (Depends on Phase 5 chat):** Pre-warmed shadow Relay (`shadow-relay`), PR CI canary (`pr_canary.py`), Cost-Pressure Response Ladder (`cost-pressure`).

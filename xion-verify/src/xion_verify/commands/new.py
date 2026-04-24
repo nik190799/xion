@@ -44,9 +44,12 @@ def _write_file(path: Path, content: str) -> None:
     click.echo(f"Created {path}")
 
 
-@click.group(name="new", help="Scaffold generators for Xion plugins.")
-def new_cmd() -> None:
-    pass
+@click.group(name="new", help="Scaffold generators for Xion plugins.", invoke_without_command=True)
+@click.pass_context
+def new_cmd(ctx: click.Context) -> None:
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+        ctx.exit(OK)
 
 
 @new_cmd.command(name="skill", help="Generate a new skill skeleton.")

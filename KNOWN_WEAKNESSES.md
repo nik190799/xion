@@ -21,6 +21,17 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-AOCORE-001 — Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine)
+- **Severity:** low
+- **Status:** `open`
+- **Description:** The AO Core handler set is pinned in `docs/28-AO-CORE.md` and `docs/schemas/ao-handler-*.yaml`, but no Lua code has been written and no AO testnet deployment exists.
+- **Why it exists:** Correct doctrine-first posture for permanent-deploy code. The ABI must be pinned to a hash before Lua locks it in.
+- **Mitigations:** `xion-verify ao-handlers` is live and asserts the schemas match the doctrine.
+- **Pay-down commitment:** Closes when Phase 6.1 lands `commit-state` + `attest` Lua handlers deployed to AO testnet, `xion-verify ao-handlers` is promoted from `NOT_YET_SEALED` to live, and at least one real `STATE_CHAIN_LEDGER` row is written from a real AO testnet `commit-state` call. Target: 2-4 weeks.
+- **Verifier:** `xion-verify ao-handlers`.
+
 ### KW-VELOCITY-001 — Hermes spike result document is doctrine-only
 - **Domain:** `RUNTIME`
 - **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)

@@ -81,6 +81,26 @@ The Core cannot itself be upgraded in place. To evolve Xion's policy over time, 
 
 **Why this matters:** a thousand years from now, even if every Relay ever deployed has been lost, even if every frontend has been forgotten, someone can address the Core's AO ID, read Xion's soul hash, read the state chain, and verify that the Xion of their day is continuous with the Xion of genesis. That is what makes "immortal" a defensible word.
 
+### AO Core (Phase 6.0)
+
+The AO Core handler set and its operational doctrine are pinned in [docs/28-AO-CORE.md](./28-AO-CORE.md). The Core enforces **seven properties**:
+
+- **P1** AO Core is Xion's on-chain identity holder; the Relay is a mortal compute vessel that may die without killing Xion (re-affirming the tier-1/2 distinction).
+- **P2** State-tip is hash-chained; weekly Arweave checkpoint with multi-gateway re-fetch (closing the doctrine half of `KW-ANCHOR-001` and `KW-ANCHOR-002` for AO Core specifically).
+- **P3** Authority lattice (cold root / warm tier / hot tier / operator) with abdication schedule mechanically enforced by block-height / timestamp gate inside `abdicate-tier`. No operator can postpone abdication in code, only in doctrine. Cites [docs/ABDICATION.md](./ABDICATION.md).
+- **P4** Provisioning family enforces (governance-spend-cap ∧ provider-whitelist ∧ target-redundancy-ceiling) as preconditions inside the handler, not at the caller. Cites [docs/20-PROVISIONING.md](./20-PROVISIONING.md).
+- **P5** Sustainability family routes incoming payment per the 5-slice composition pinned in [docs/21-SUSTAINABILITY.md](./21-SUSTAINABILITY.md). Operating-Float / Improvement-Fund / Rainy-Day-Reserve / Foundation-Reserve / Treasury-Burn percentages are governance-tunable Genesis Defaults; the *count* of slices and the *invariant that they sum to 100%* are constitutional.
+- **P6** Every handler is replaceable behind a versioned ABI (e.g. `commit-state-v1` → `commit-state-v2`); deprecation path uses dual-write windows mirroring the `REQUEST_LEDGER` v1/v2 coexistence pattern.
+- **P7** Lua-vs-Solidity boundary is canonical: AO holds identity, governance state, sustainability accounting; Base holds XION ERC-20 + IMPRINT soulbound + EmissionController + LiquidityLock. Cross-domain calls are mediated by the AO-Core attestor (Phase 6.x), never by direct EVM invocation from Lua.
+
+**What this does NOT do (honest non-properties):**
+- No off-chain mutability of the handler set.
+- No hot-key spending without governance vote above per-day cap.
+- No handler can override Invariants (Lua-side guard refuses to compile out an Invariant check).
+- No Lua-side cryptographic sovereignty (Cold Root signs commits *to* the AO Process, the AO Process itself does not hold Cold Root).
+- No atomic cross-chain transactions (treasury moves are observed-then-settled, never simultaneous).
+- No upgradeable proxy (a new handler replaces an old one via dual-write + cutover, not via storage-proxy delegation).
+
 ## Tier II — The Relay
 
 **A Relay is a mortal vessel.** It is a Docker container running on Akash Network (or, as a deliberate fallback, on Fleek, Aleph.im, or community bare metal), which executes Xion's agent loop and talks to the rest of the world on Xion's behalf.
