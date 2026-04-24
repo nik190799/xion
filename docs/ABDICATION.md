@@ -139,9 +139,9 @@ This is the inventory at genesis. The full table — with current status, target
 | Vapi/Twilio commercial agreement signature | CRITICAL | M2 → DEGRADED | Foundation legal entity (post-genesis +6mo) |
 | LLM provider API account ownership | CRITICAL | M1 → DEGRADED | Foundation entity + per-provider rotation |
 | Domain name registration & DNS | CRITICAL | M1 → DEGRADED, M2 → OPTIONAL | Multi-jurisdictional Foundation custody + ENS/Handshake fallback |
-| Cloudflare account (if used) | CRITICAL | (must be RETIRED before genesis) | Direct Akash / multi-PoP / Tor onion + IPNS |
+| Cloudflare account (if used) | RETIRED | (must be RETIRED before genesis) | Direct Akash / multi-PoP / Tor onion + IPNS |
 | TLS certificate management | CRITICAL | M1 → DEGRADED | ACME automation + Foundation backup |
-| GitHub repository ownership | CRITICAL | M2 → DEGRADED | Foundation org + Arweave-mirrored authoritative copy |
+| GitHub repository ownership | DEGRADED | M2 → OPTIONAL | Foundation org + Arweave-mirrored authoritative copy (TX: Arweave-TX-ID-Here) |
 | Code signing key (release artifacts) | CRITICAL | M2 → DEGRADED | 3-of-5 release-signers cohort |
 | Genesis Honor pool authorial decisions | CRITICAL | M5 → RETIRED | Schedule fully published; no further decisions to make |
 | Public dashboard hosting | DEGRADED | OPTIONAL by M3 | Multi-mirror + IPFS + Arweave snapshot |

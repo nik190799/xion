@@ -42,12 +42,23 @@ def _static_checks(repo_root: Path) -> list[str]:
 @click.option("--bus-audit", is_flag=True, help="Run specialist bus-traffic audit (stub).")
 @click.option("--forget-sim", is_flag=True, help="Simulate /forget propagation (stub).")
 @click.option("--identity", is_flag=True, help="Identity-hash agreement only (stub).")
-def cognition(strict: bool, bus_audit: bool, forget_sim: bool, identity: bool) -> None:
+@click.option("--disjoint-check", is_flag=True, help="Assert no cross-imports between sibling plugins.")
+def cognition(strict: bool, bus_audit: bool, forget_sim: bool, identity: bool, disjoint_check: bool) -> None:
     try:
         repo_root = find_repo_root()
     except RepoRootNotFound as exc:
         click.echo(f"cognition: FAIL: {exc}", err=True)
         sys.exit(FAIL)
+
+    if disjoint_check:
+        from xion_verify.commands.cognition_disjoint import check_disjoint
+        errors = check_disjoint(repo_root)
+        if errors:
+            for err in errors:
+                click.echo(f"cognition --disjoint-check: FAIL: {err}", err=True)
+            sys.exit(FAIL)
+        click.echo("cognition --disjoint-check: OK (no cross-imports detected)")
+        sys.exit(OK)
 
     if strict:
         click.echo("cognition: NOT_YET_SEALED — Relay metrics endpoints not wired (D2)")

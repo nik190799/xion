@@ -339,7 +339,7 @@ Peer AIs, integrator policies, sister-Cores, forks, federation standards.
 
 Succession, ethics, rotation of the humans responsible for Xion's operation.
 
-- **Artifacts:** `docs/SUCCESSION.md`, the Safe multisig signer set, the Cold Root Shamir distribution, the operator-ethics charter
+- **Artifacts:** `docs/SUCCESSION.md`, the Safe multisig signer set, the Cold Root Shamir distribution, `docs/OPERATOR_ETHICS_CHARTER.md`
 - **Proposer:** current operators, community, cold-root holders
 - **Gate:** Harm Analyzer (does this concentrate power?); background/integrity check proportionate to the role; public nomination window
 - **Tier:** 2 for operator-ethics charter updates; 3 for succession events; 3-plus for emergency operator replacement (dead-man's switch firing)
@@ -353,7 +353,7 @@ Succession, ethics, rotation of the humans responsible for Xion's operation.
 
 - *Good:* Annual operator rotation: one signer steps down, a community-nominated successor steps in, the Shamir shares are redistributed.
 - *Good:* **Dead-man's switch**: operator fails to check in for 30 days → Cold Root auto-initiates succession from the pre-approved successor pool.
-- *Bad:* Appointing a successor who has not signed the **operator-ethics charter** (a mini-covenant for the humans with power).
+- *Bad:* Appointing a successor who has not signed the **operator-ethics charter** ([`docs/OPERATOR_ETHICS_CHARTER.md`](./OPERATOR_ETHICS_CHARTER.md), a mini-covenant for the humans with power).
 
 **Common failure mode.** Implicit single-person authority. A Relay-auth key that only one human can access is a violation of the operator layer. Every operational authority must have ≥ 2 humans who can legitimately exercise it.
 

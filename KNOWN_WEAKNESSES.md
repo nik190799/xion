@@ -21,6 +21,50 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-VELOCITY-001 — Hermes spike result document is doctrine-only
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)
+- **Severity:** low
+- **Status:** `open`
+- **Description:** The Hermes framework spike produced `docs/HERMES_SPIKE_RESULT.md`, which documents assumed capabilities and gaps requiring wrapper code. This is currently doctrine-only.
+- **Why it exists:** The spike was an architectural assessment to ensure Xion's cognition layer could be built on Hermes without framework-level forks. The actual integration and wrapper implementation is deferred.
+- **Mitigations:** The spike result explicitly names the required wrappers (daemon lifecycle, depth enforcement, strict isolation auditing) so they are not forgotten.
+- **Pay-down commitment:** Closes when the Hermes wrapper code lands in `orchestrator/cognition/` or the assumptions are confirmed by end-to-end tests.
+- **Verifier:** `xion-verify hermes-version` (when implemented).
+
+### KW-VELOCITY-002 — Auto-Research Loop runs against curated genesis source list only
+- **Domain:** `OPS`
+- **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)
+- **Severity:** low
+- **Status:** `mitigated-residual`
+- **Description:** The Auto-Research Loop currently only scans the static, operator-curated `genesis/RESEARCH_SOURCES.md`. It does not yet ingest from dynamic community channels, partner-AI registries, or decentralized feeds.
+- **Why it exists:** Safely ingesting untrusted dynamic feeds requires robust spam/sybil filtering and potentially a staking mechanism. Starting with a curated list ensures the loop functions safely at genesis.
+- **Mitigations:** The curated list is explicitly version-controlled and operator-signed.
+- **Pay-down commitment:** Closes post-Genesis when governance ratifies a mechanism for permissionless or dynamic source ingestion.
+- **Verifier:** `xion-verify research-sources`.
+
+### KW-VELOCITY-003 — Skill bounty payout flow exercises a single test wallet at genesis
+- **Domain:** `ECON`
+- **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)
+- **Severity:** low
+- **Status:** `mitigated-residual`
+- **Description:** The automated bounty payout flow (triggered by `PROPOSAL_LEDGER.post_deploy=kept`) is only proven against a single test wallet during pre-genesis drills.
+- **Why it exists:** Real external-contributor flows require actual community participation and real XION value, which only exist post-Genesis.
+- **Mitigations:** The synthetic test (`xion-verify skill-bounty`) confirms the firewall and the mechanical trigger.
+- **Pay-down commitment:** Closes post-Genesis when a real external contributor successfully lands a kept proposal and receives an automated payout.
+- **Verifier:** `xion-verify skill-bounty`.
+
+### KW-VELOCITY-004 — Cost-Pressure Response Ladder ships with synthetic-trigger tests only
+- **Domain:** `ECON`
+- **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)
+- **Severity:** low
+- **Status:** `mitigated-residual`
+- **Description:** The Cost-Pressure Response Ladder is tested using synthetic price-drop events. It has not been validated against real, unannounced provider pricing changes in the live market.
+- **Why it exists:** We cannot force a provider to drop their prices to test the live watcher.
+- **Mitigations:** The synthetic test (`xion-verify cost-pressure`) exercises the exact same code path that a real price drop would trigger.
+- **Pay-down commitment:** Closes post-Genesis when a real market event successfully triggers the ladder and emits a valid Tier-0 proposal.
+- **Verifier:** `xion-verify cost-pressure`.
+
 ### KW-AUTH-001 — Bearer tokens are HMAC-shared-secret only; no federated identity
 
 - **Domain:** `RUNTIME`

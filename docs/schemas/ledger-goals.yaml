@@ -1,0 +1,22 @@
+schema_version: 1
+source_doctrine: docs/18-VOLITION.md
+source_sha256:   05f8f29c8178a8549bbdf574d6e7041008dec2e75f6864d449a734dfa7085296
+status:          canonical
+
+ledger_name: GOALS_LEDGER
+append_only: true
+storage:     arweave
+row_format:  json_line
+verifier:    xion-verify ledgers
+
+row:
+  required:
+    - entry_id
+    - prev_hash
+    - this_hash
+    - signature
+    - timestamp
+    - goal_statement
+    - drive_vector_alignment
+    - target_horizon
+    - status

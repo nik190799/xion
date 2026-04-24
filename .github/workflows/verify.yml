@@ -88,6 +88,10 @@ jobs:
       - name: Arbiter posture (live, not NOT_YET_SEALED)
         run: xion-verify arbiter-up
 
+      - name: Rebuild verifier (Docker reproducible build)
+        run: xion-verify rebuild
+        continue-on-error: true # Docker might not be available on macOS/Windows runners
+
       - name: pytest (xion-verify)
         working-directory: xion-verify
         run: pytest -q
@@ -101,3 +105,40 @@ jobs:
 
       - name: ruff (orchestrator)
         run: ruff check orchestrator
+
+  canary:
+    name: Canary Replay (Shadow Relay)
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,api]"
+          python -m pip install -e "xion-verify[dev]"
+
+      - name: Run shadow relay and replay corpus
+        run: |
+          # Start shadow relay in background
+          python -m orchestrator.relay.shadow &
+          SHADOW_PID=$!
+          
+          # Wait for it to start
+          sleep 5
+          
+          # Run xion-verify shadow-relay to confirm it's running
+          xion-verify shadow-relay
+          
+          # Run PR canary guard-rail checks
+          python scripts/pr_canary.py
+          
+          kill $SHADOW_PID

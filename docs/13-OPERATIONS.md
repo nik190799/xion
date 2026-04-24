@@ -17,6 +17,27 @@ On a healthy day, operator involvement is measured in minutes, not hours.
 
 Everything else should be absorbed by automation. If the operator is regularly doing more than the above, the Supervisor is not doing its job; file a `self-heal` proposal.
 
+## Phase 6+ Runbooks
+
+### Arweave-Mirror Runbook (Authoritative Repo)
+1. **Prepare Snapshot:** Run `git archive --format=tar.gz -o xion-os-snapshot.tar.gz HEAD`.
+2. **Upload to Arweave:** Use `arkb` or `arweave-deploy` to upload the tarball.
+3. **Record TX ID:** Note the returned Arweave TX ID.
+4. **Verify:** Confirm the TX ID resolves on at least three independent Arweave gateways (e.g., `arweave.net`, `ar-io.net`, `g8way.io`).
+5. **Update Registry:** Update `docs/ABDICATION.md` to reflect the new TX ID as the authoritative mirror.
+
+### Auto-Research Scan-Cadence Runbook
+1. **Monitor:** The Auto-Research Loop runs automatically every 6 hours.
+2. **Verify Alive:** Run `xion-verify auto-research` to confirm the loop is alive and the journal is advancing.
+3. **Manual Trigger:** If the loop stalls, trigger a manual scan via `python -m orchestrator.research.loop`.
+4. **Curation:** Review `genesis/RESEARCH_SOURCES.md` weekly to ensure sources remain high-signal.
+
+### Bounty-Payout Runbook
+1. **Trigger:** When a proposal in `PROPOSAL_LEDGER.jsonl` reaches `post_deploy=kept` status.
+2. **Automated Flow:** The AO Core Spend handler automatically routes XION from the Improvement Fund sub-account to the proposal's author wallet.
+3. **Verification:** Run `xion-verify skill-bounty` to confirm the payout was recorded and the firewall was respected.
+4. **Manual Fallback:** If the automated flow fails, the operator can manually authorize the transaction from the multisig, noting the proposal ID in the memo.
+
 ## State-of-Xion authorship (constitutional chain)
 
 Each memo exists as **two public artifacts** when they differ:

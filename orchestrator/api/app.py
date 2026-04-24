@@ -45,7 +45,7 @@ from .admission import admission_dependency
 from .chat import register_chat_route
 from .chat_stream import register_chat_stream_route
 from .lifespan import lifespan
-from .models import DriveResponse, HealthResponse, SensoriumResponse
+from .models import DriveResponse, HealthResponse, SensoriumResponse, VitalsResponse
 from .pricing import register_pricing_route
 from .web_client import (
     WebClientConfig,
@@ -238,6 +238,17 @@ def create_app(deps: AppDeps) -> FastAPI:
     def get_sensorium() -> dict[str, Any]:
         state = _require_snapshot(app)
         return state.to_dict()
+
+    @app.get(
+        "/vitals",
+        response_model=VitalsResponse,
+        summary="Eight-domain vital signs readout (Phase 6+)",
+        dependencies=[Depends(admission_dependency)],
+    )
+    def get_vitals() -> dict[str, Any]:
+        from orchestrator.vitals import get_composite_vitals
+        domains = get_composite_vitals()
+        return {"domains": [d.__dict__ for d in domains]}
 
     register_pricing_route(app)
     register_chat_route(app)

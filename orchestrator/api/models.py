@@ -210,6 +210,39 @@ class SensoriumResponse(BaseModel):
     as_of_utc_ns: int = Field(ge=0)
 
 
+# ----------------------------------------------------------------- /vitals
+
+
+class VitalDomainResponse(BaseModel):
+    """One of the eight vital domains from docs/22-VITAL-SIGNS.md."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str = Field(description="The domain name (e.g. 'Financial Vitality').")
+    band: Literal["healthy", "warning", "critical", "not_yet_sealed"] = Field(
+        description="Current health band or not_yet_sealed for unwired domains."
+    )
+    reading: float | str | None = Field(
+        description="The raw reading value, if applicable."
+    )
+    methodology_sha256: str = Field(
+        description="SHA256 of the frozen methodology doc for this domain."
+    )
+    subjective: bool = Field(
+        description="Whether this domain is subjective (requires >=3 independent corroborating sources before critical)."
+    )
+
+
+class VitalsResponse(BaseModel):
+    """Phase 6+ response body for GET /vitals."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    domains: list[VitalDomainResponse] = Field(
+        description="The eight vital domains."
+    )
+
+
 # ------------------------------------------------------------------ /chat
 #
 # Phase 5g-i. Doctrine anchor: ``docs/04-ARCHITECTURE.md`` § "The Chat
@@ -893,4 +926,6 @@ __all__ = [
     "StreamDoneEvent",
     "StreamErrorEvent",
     "UsageEnvelope",
+    "VitalDomainResponse",
+    "VitalsResponse",
 ]

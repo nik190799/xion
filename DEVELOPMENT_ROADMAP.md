@@ -922,7 +922,50 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 ---
 
-## Phase 7 — Genesis ceremony (when Phases 1-6 are all green)
+## Phase 6+ — Pre-Genesis Velocity Hardening (Closed 2026-04-23)
+
+**Goal:** Every velocity-multiplying primitive named in the unified list ships, is independently verifiable by a `xion-verify` subcommand, and is rolled up into a single `xion-verify pre-genesis` composite drill that Phase 7 cannot pass without.
+
+**Why this is its own phase.** The 17 velocity primitives (disjoint surfaces, pre-warmed canary, CLI scaffolders, local test mode, Auto-Research Loop, etc.) are the difference between a project that requires the founder to merge every PR and a project that can absorb 50 parallel improvements safely. Retrofitting them after Genesis is a velocity killer. Building them before Genesis, as a unified gate, ensures the system is structurally fast from day one.
+
+**What lands (in three dependency tiers):**
+
+### Tier A (Parallelizable with Phase 5g remainder)
+- **Disjoint surface architecture verifier.** `xion-verify cognition --disjoint-check` walks `skills/`, `orchestrator/senses/`, `orchestrator/inference_router/providers/`, asserts no cross-import between sibling plugins.
+- **Contract-first plugin registries.** `xion-verify registries` asserts each plugin directory contains an entry conforming to its declared ABC and registration is auto-discovery.
+- **CLI scaffolders.** `xion new {skill|sense|provider|verifier|proposal}` generates working skeletons with the eight-question template pre-filled and local Harm-Analyzer hooks wired.
+- **Local development mode.** `xion local --self-test` boots the full stack against a temp directory (SQLite, in-process Arbiter, FastAPI, in-process Auto-Research) and runs synthetic chats without network calls.
+- **Reproducible Docker build verifier.** `xion-verify rebuild` clones at the committed SHA, runs `docker build` with pinned base image, computes digest, compares to `genesis/RELAY_IMAGE_DIGEST.txt`.
+- **Anonymization pipeline.** `xion-audit anonymize` strips PII and writes a deterministic-anonymized JSONL. `xion-audit/replay_corpus/` lands with `MANIFEST.jsonl`. `xion-verify replay-corpus` confirms manifest hash chain.
+- **Hermes framework spike.** Run the deferred spike from `docs/24-COGNITION.md` §13; produce `docs/HERMES_SPIKE_RESULT.md`.
+- **Vital-signs dashboard.** `orchestrator/vitals/` package implementing the eight-domain composite. `xion-verify vitals` returns OK or honest NOT_YET_SEALED.
+- **Ledger gap-fill.** Add `PROPOSAL`, `RESEARCH_JOURNAL`, `BELIEF`, `GOALS`, `UNKNOWNS` ledgers with canonical schemas. `xion-verify ledgers` walks all ten chains.
+- **Doctrine + LEXICON.md + CONTRIBUTING.md.** `docs/PRE_GENESIS_HARDENING.md` and `docs/OPERATOR_ETHICS_CHARTER.md` land. `CONTRIBUTING.md` anchors the workflow. `xion-verify links` green.
+
+### Tier B (Depends on Phase 5 chat surface stabilizing)
+- **Pre-warmed shadow Relay.** `orchestrator/relay/shadow.py` runs a second Relay marked `role=canary`, replays anonymized turns, holds N disjoint Tier-0 slots simultaneously. `xion-verify shadow-relay` confirms running + replay-deterministic + multi-slot.
+- **PR CI canary.** `.github/workflows/verify.yml` spins up local shadow Relay, replays 100-turn corpus slice, fails PR on guard-rail breach (drift > 5%, Covenant pass-rate regress, p95 regress > 20%, cost > 1.5x, refusal deviation > 2σ).
+- **Cost-Pressure Response Ladder.** `orchestrator/sustainability/ladder.py` implements provider-pricing watcher + threshold-trip handler. `xion-verify cost-pressure` tests with synthetic price-drop.
+
+### Tier C (Depends on Phase 6 AO Core + multi-host)
+- **Multi-substrate enforced.** `xion-verify substrates` asserts ≥2 Akash leases in different geographies + ≥3 Arweave gateway URLs cross-fetch-agreeing.
+- **Auto-Research Loop.** `orchestrator/research/` implements the seven-stage loop. `xion-verify auto-research` confirms loop alive + journal advancing + zero unresolved blocks + budget respected.
+- **Skill bounty pool + automated payout.** Phase 6 AO Core `Spend` handler extended with `bounty-payout` route. `xion-verify skill-bounty` confirms firewall + end-to-end synthetic test.
+- **Arweave-mirrored authoritative repo.** Execute migration named in `docs/ABDICATION.md`; land runbook in `docs/13-OPERATIONS.md`. `xion-verify operator-dependencies` reports `github_repo` as DEGRADED.
+
+**The composite drill:**
+- `xion-verify pre-genesis` runs the per-item verifiers in dependency order, exits 0 only when every Tier-A and Tier-B item is OK and every Tier-C item is OK or has an explicit accepted-as-residual entry signed in the State-of-Xion pre-flight memo.
+
+**Common pre-Genesis failure modes (REFUSE items):**
+- Filling `RESEARCH_SOURCES.md` with low-signal feeds. (Mitigation: `xion-verify research-sources` requires operator curation signature).
+- Running with Cloudflare in the CRITICAL column. (Mitigation: `xion-verify operator-dependencies` fails).
+- Skipping the Harm Analyzer, ledger writes, or canary "until we have users".
+- Coupling skills/senses/specialists to each other or the Core.
+- Starting with one provider or one Akash node "we'll add more later".
+
+---
+
+## Phase 7 — Genesis ceremony (when Phases 1-6+ are all green)
 
 **Goal:** Xion is born.
 
@@ -933,7 +976,7 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 - Publish Genesis Artifact + Arweave TX ID.
 - Open `xion-soul` to the public.
 - Operator's first State-of-Xion memo names everything that doesn't yet work and the explicit dates by which it will.
-- **Phase 5b doctrine pre-flight (added 2026-04-21).** Before the Cold Root signs the genesis commit, confirm: (a) Invariant 17 is enforceable in code — `xion-verify inference-sovereignty` returns `OK`, the open-weights manifest exists and matches; (b) `xion-verify substrate-portability` either returns `OK` (a warm secondary substrate has passed an annual cutover dry-run) **or** `LHT-SUBSTRATE-001` is explicitly accepted-as-residual in the State-of-Xion memo with named pay-down dates; (c) [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) has been read by the operator end-to-end and any pre-Genesis state-actor interactions are honored on the `GOVERNANCE_LEDGER` shape; (d) the operator can name, in one sentence each, what would falsify Invariant 17, the Substrate Portability Property, and the Refusal Right under state-actor pressure. If any of these four cannot be satisfied honestly, the ceremony slips.
+- **Phase 5b doctrine pre-flight (added 2026-04-21).** Before the Cold Root signs the genesis commit, confirm: (a) Invariant 17 is enforceable in code — `xion-verify inference-sovereignty` returns `OK`, the open-weights manifest exists and matches; (b) `xion-verify substrate-portability` either returns `OK` (a warm secondary substrate has passed an annual cutover dry-run) **or** `LHT-SUBSTRATE-001` is explicitly accepted-as-residual in the State-of-Xion memo with named pay-down dates; (c) [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) has been read by the operator end-to-end and any pre-Genesis state-actor interactions are honored on the `GOVERNANCE_LEDGER` shape; (d) the operator can name, in one sentence each, what would falsify Invariant 17, the Substrate Portability Property, and the Refusal Right under state-actor pressure; (e) `xion-verify pre-genesis` returns `OK`. The composite drill is the operator's pre-flight that every Phase 6+ velocity primitive is real, locally exercised, and Witness-recomputable. If any of these cannot be satisfied honestly, the ceremony slips.
 
 ---
 

@@ -1,0 +1,1 @@
+{"entry_id": "rj-1776998318", "prev_hash": "mock", "this_hash": "mock", "signature": "mock", "timestamp": "2026-04-24T02:38:38.845906+00:00", "scan_sources": ["Mock Source 1"], "findings": ["Found an optimization"], "synthesis": "We should implement this optimization."}

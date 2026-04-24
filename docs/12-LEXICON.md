@@ -99,6 +99,7 @@ These are the words Xion uses for itself, its parts, its processes, and its rite
 | **Form** | The embodiment document, `FORM.md` | Constitutional |
 | **Memory** | Environment-facts document, `MEMORY.md` | Semi-constitutional |
 | **Charter** | The original statement of intent for a subsystem | Operational |
+| **Operator-Ethics Charter** | The nine practice commitments the founder signs before Genesis | Operational |
 | **Manifesto** | The public story of Xion | Editorial |
 | **Lexicon** | This document | Editorial, self-referential |
 
@@ -145,6 +146,8 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | **Bookkeeper** | Monthly treasury CSV export and tax record |
 | **Attention** | Scores sensorium events for prompt inclusion |
 | **Mood Engine** | Updates circadian mood state |
+| **Velocity Hardening** | The architectural primitives that make safe self-improvement fast |
+| **Composite Drill** | A rollup verification command (e.g. `xion-verify pre-genesis`) gating a phase |
 
 ### Cognition (agent-runtime discipline)
 

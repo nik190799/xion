@@ -1,0 +1,2 @@
+{"timestamp": "2026-04-24T02:38:38.842907+00:00", "title": "Cost-Pressure: Route to gpt-4 due to price drop", "description": "openai gpt-4 input price dropped to 10.0 CPM.", "tier": 0, "status": "proposed", "source": "cost-pressure-ladder"}
+{"proposal_id": "prop-1776998318", "timestamp": "2026-04-24T02:38:38.846906+00:00", "title": "Optimization", "description": "Implement optimization", "tier": 0, "status": "proposed", "source": "auto-research"}
