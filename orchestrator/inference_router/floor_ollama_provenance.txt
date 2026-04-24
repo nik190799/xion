@@ -4,7 +4,7 @@ XION DEPLOYMENT — FIRST REAL OPEN-WEIGHTS FLOOR PROVENANCE RECORD
 Document type: provenance-record (not a content-addressed model blob)
 Invariant anchor: Invariant 17 — Inference Sovereignty Floor
 Manifest anchor: orchestrator/inference_router/open_weights_manifest.json
-Strengthening path: KNOWN_WEAKNESSES.md § KW-FLOOR-001
+Strengthening path: KNOWN_WEAKNESSES.md § KW-INFERENCE-001
 
 ---
 
@@ -23,11 +23,14 @@ What this file is NOT
 This file does NOT content-address the model weights themselves. It
 does not claim that the operator has pulled a specific byte-identical
 GGUF blob. That stronger pin — the one Invariant 17 clause 2(iii)
-envisions via representative-sample sentinels for large-file
-open-weights artifacts — is tracked in `KNOWN_WEAKNESSES.md` under
-`KW-FLOOR-001` and queued as a dedicated phase of work that also
-upgrades `xion-verify inference-sovereignty` to support large-file
-representative-sample verification.
+envisions via the full-hash branch for upstream open-weights
+artifacts — landed alongside this file in Phase 5g-viii as the
+`gemma4-e4b-it-q4-k-m-gguf` `model-blob` entry in the same manifest.
+This `provenance-record` entry stays in place because it pins a
+distinct property (the operator's runtime declaration about which
+daemon serves the floor); the two entries are companions, not
+replacements. The strengthening history is tracked in
+`KNOWN_WEAKNESSES.md` under `KW-INFERENCE-001`.
 
 Why ship a provenance-record pin today
 
@@ -48,8 +51,10 @@ provenance-record format is the smallest honest mechanism that:
      distinguish provenance-records from real content-addressed
      model pins without reading prose.
   4. Leaves the path to the stronger pin explicit in
-     `KNOWN_WEAKNESSES.md` § `KW-FLOOR-001` rather than declaring
-     victory prematurely.
+     `KNOWN_WEAKNESSES.md` § `KW-INFERENCE-001` rather than declaring
+     victory prematurely. (Phase 5g-viii closes that residual by
+     adding a sibling `model-blob` entry; this provenance-record
+     entry remains the runtime-daemon-declaration anchor.)
 
 Runtime configuration this declaration covers
 
@@ -66,24 +71,42 @@ health check requires:
     in that response — i.e. the operator has pulled it locally.
 
 The configured floor model is operator-chosen, open-weights, and
-locally health-checkable. Genesis Default is `gemma3:4b` per
-`docs/26-INFERENCE-POLICY.md` § "The floor-model choice (Gemma 3 4B)".
+locally health-checkable. Genesis Default is `gemma4:e4b-it-q4_K_M`
+per `docs/26-INFERENCE-POLICY.md` § "The floor-model choice
+(Gemma 4 E4B-it)" (rotated 2026-04-23 from the Phase-5g-i pin
+`gemma3:4b` as part of Phase 5g-viii; rollback to `gemma3:4b` is one
+env-var). The license posture strengthened in the same rotation:
+`gemma3:4b`'s Custom Gemma TOU is replaced by Gemma 4's Apache 2.0
+license, which satisfies Invariant 17 clause 2(i) without requiring
+a Witness to accept any Google-specific terms.
 
 Trust surface this declaration makes explicit
 
-A Witness reading the manifest sees two entries today:
+A Witness reading the manifest sees three entries as of Phase
+5g-viii:
 
   - `sentinel-llm-v0` — the pre-genesis structural anchor. Proves the
     Router + verifier wiring works end-to-end. Kept in place.
-  - `ollama` (this record) — the first real floor-provider pin. Held
-    by a runtime health check against a local daemon. The manifest
-    pin commits to the declaration, not to the model blob.
+  - `ollama` (this record) — the runtime-daemon-declaration anchor.
+    Held by a runtime health check against a local daemon. The
+    manifest pin commits to the declaration, not to the model blob.
+  - `gemma4-e4b-it-q4-k-m-gguf` — the model-blob pin landed in Phase
+    5g-viii. Content-addresses the upstream Hugging Face GGUF the
+    operator should be running (the full-hash branch of Invariant 17
+    clause 2(iii)). A Witness with internet access and a sha256
+    implementation can independently re-verify the bytes; an operator
+    who has not yet downloaded the artifact resolves to
+    `NOT_YET_SEALED` for that entry only and the rest of the floor
+    verifies normally.
 
-A malicious operator can swap the local Ollama daemon's served
-weights without this file changing on disk. That failure mode is
-named and tracked in `KW-FLOOR-001`. Production deployments should
-treat this record as the first step in the strengthening ladder, not
-the final pin.
+A malicious operator can still swap the local Ollama daemon's
+served weights without *this* file changing on disk. The
+`gemma4-e4b-it-q4-k-m-gguf` model-blob entry closes that gap on the
+Witness side (Witnesses can verify the bytes the operator should be
+running); a runtime gate that refuses bootstrap on local-blob
+mismatch remains a future hardening layer Phase 5g-viii deliberately
+does not ship (it would couple Xion's floor to Ollama's internal
+blob layout).
 
 ---
 
@@ -98,11 +121,53 @@ to the repository and pinning its sha256 in
   - The configured floor model is an open-weights model whose license
     permits local self-hosting.
   - The operator accepts responsibility for the integrity of the
-    locally-pulled model bytes until `KW-FLOOR-001` ships the
-    stronger content-addressed pin.
+    locally-pulled model bytes; the `gemma4-e4b-it-q4-k-m-gguf`
+    model-blob entry in the same manifest gives a Witness the means
+    to independently verify those bytes when the operator has set
+    `XION_OPEN_WEIGHTS_GGUF_PATH` per the runbook in
+    `docs/13-OPERATIONS.md` § "First-time GGUF setup".
 
 This declaration is public, append-only (subsequent rotations commit
 a new provenance record with its own sha256 pin, not a silent
 rewrite), and falsifiable by any Witness who re-hashes the file.
+
+---
+
+Strengthening companion + rotation provenance (Phase 5g-viii)
+
+This file was edited in Phase 5g-viii alongside three coupled
+changes:
+
+  1. The companion `model-blob` entry `gemma4-e4b-it-q4-k-m-gguf`
+     was added to `open_weights_manifest.json`, content-addressing
+     the upstream Hugging Face Q4_K_M GGUF for `gemma-4-E4B-it`
+     (sha256 `90ce98129eb3e8cc57e62433d500c97c624b1e3af1fcc85dd3b55
+     ad7e0313e9f`, 5,335,289,824 bytes, mirror
+     `ggml-org/gemma-4-E4B-it-GGUF` at git revision
+     `2714b5519c6c3516b1000e7c5e1eba998dfe1fe8`).
+
+  2. The Genesis Default floor model rotated from `gemma3:4b` to
+     `gemma4:e4b-it-q4_K_M`. The license posture strengthened in
+     the same move (Custom Gemma TOU -> Apache 2.0). The runtime
+     `_DEFAULT_MODEL` constant in
+     `orchestrator/inference_router/providers/ollama.py` advanced
+     to match. Rollback to `gemma3:4b` is one env-var
+     (`XION_OLLAMA_FLOOR_MODEL=gemma3:4b`).
+
+  3. `xion-verify inference-sovereignty` gained per-format dispatch
+     (`_verify_sentinel`, `_verify_provenance_record`,
+     `_verify_model_blob`). Unknown `format` values now fail-closed.
+     Hashing of multi-GB model-blob files is chunked at 4 MiB to
+     keep peak verifier memory bounded. Absent local file at the
+     env-var path resolves to `NOT_YET_SEALED` for the model-blob
+     entry only.
+
+The C0 probe trail behind these decisions is preserved in
+`docs/26-INFERENCE-POLICY.md` § "The floor-model choice (Gemma 4
+E4B-it)" → "Probe-first record (2026-04-23)" so a future Witness
+reading either the manifest or this declaration can reconstruct the
+context — license verification, mirror selection, runtime
+compatibility, canonical Ollama tag, and the deferred-to-operator
+smoke test — without re-running them.
 
 End of provenance record.
