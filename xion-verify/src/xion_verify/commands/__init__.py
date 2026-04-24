@@ -91,4 +91,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "pre-genesis",
     "new",
     "local",
+    "provisioning-roles",
 )

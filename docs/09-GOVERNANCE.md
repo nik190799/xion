@@ -12,7 +12,7 @@ Three principles shape everything in this document:
 
 ## The Actors
 
-Governance is exercised by six kinds of actors. Each has a defined role and a defined scope. *(Machine-readable actor roles land in [docs/schemas/roles.yaml](./schemas/roles.yaml) in Phase 6.2)*
+Governance is exercised by six kinds of actors. Each has a defined role and a defined scope. The machine-readable mirror of this table — actor IDs, scopes, the `proposer:` resolution against [`docs/14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md) levels, and the GitHub identity allowlist used by the `level-discipline` CI gate — lives at [`docs/schemas/roles.yaml`](./schemas/roles.yaml) and is enforced byte-exact by `xion-verify schemas`.
 
 | Actor | Key | Scope |
 |-------|-----|-------|

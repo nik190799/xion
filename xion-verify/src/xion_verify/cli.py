@@ -52,6 +52,7 @@ from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
 from xion_verify.commands.operator_dependency import operator_dependency
 from xion_verify.commands.pricing import pricing
 from xion_verify.commands.pre_genesis import pre_genesis
+from xion_verify.commands.provisioning_roles import provisioning_roles
 from xion_verify.commands.rebuild import rebuild
 from xion_verify.commands.refund_fidelity import refund_fidelity
 from xion_verify.commands.refusal_is_free import refusal_is_free
@@ -121,6 +122,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "skill-bounty": skill_bounty,
     "charter-signed": charter_signed,
     "ao-handlers": verify_ao_handlers,
+    "provisioning-roles": provisioning_roles,
 }
 
 

@@ -21,27 +21,27 @@ Every entry has the same shape:
 
 ## Open
 
-### KW-PROVISION-001 — `xion new` CLI is not implemented
+### KW-AOCORE-004 — Phase 6.1 testnet seal blocked by aos-2.0 mainnet default + upstream legacy MU 500
 - **Domain:** OPS
-- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
-- **Severity:** low
-- **Status:** open
-- **Description:** The `xion new` CLI named in `CONTRIBUTING.md` does not exist.
-- **Why it exists:** Forward-committed in doctrine before code was written.
-- **Mitigations:** None; users must copy-paste existing files.
-- **Pay-down commitment:** Phase 6.2 will build the CLI.
-- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.2 block).
-
-### KW-ROLES-001 — Role-to-level authorization is doctrinal, not mechanical
-- **Domain:** GOVERNANCE
-- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Discovered:** 2026-04-24 (second Phase 6.1-residuals attempt; agent-driven)
 - **Severity:** medium
 - **Status:** open
-- **Description:** Role-to-level authorization exists only in `docs/09-GOVERNANCE.md`.
-- **Why it exists:** Governance was drafted before CI gates were built.
-- **Mitigations:** Human code review.
-- **Pay-down commitment:** Phase 6.2 will add `docs/schemas/roles.yaml` and a CI gate.
-- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.2 block).
+- **Description:** Two independent issues compound to block the Phase 6.1 testnet seal even after `KW-AOCORE-003`'s WSL2 workaround makes `aos` runnable.
+  - **Issue A (operator-controllable, doctrine-relevant).** `aos` 2.0 (current `@permaweb/aos` 2.0.11, installed via `npm i -g https://get_ao.arweave.net`) flipped the default from "legacynet/testnet" to "AO mainnet (HyperBEAM)". Without an explicit `--legacy` flag, `aos <name>` spawns a real on-chain process on AO mainnet at `https://push.forward.computer`. The doctrine-side rule in `docs/09-GOVERNANCE.md` and the runbook `docs/runbooks/AO_DEPLOY_WSL2.md` reserve mainnet for a Phase 6+ Tier-3 ceremony with cold-root cosigns; Phase 6.1 is testnet-only by intent. The first Phase 6.1-residuals run (this attempt, 2026-04-24, agent-driven before the trap was discovered) spawned two AO mainnet processes by accident under the agent-generated WSL2 wallet `v8Fee96ZAGu1W5Ec5fj3EWc7fPvp3MSLbdKhDwjwfHY`: a throwaway `smoke-deploy-test` (`-MlYwU1U_5tEjRFhIVQFncEroGFO4kFetIqByOgFnBE`) and the canonical `xion-core` (`PxTK8xPH4sRDCIRGl2sruE_OrRFcbW25Oz2NwiKzkKM`). Both are now orphaned on AO mainnet; the `xion-core` spawn is functionally empty (the `--load` and `--run` of `ao/core/main.lua` failed inside the same invocation with `sendMessageMainnet` errors, so no Xion handlers ever attached). Operator chose to abandon (rather than ratify retroactively via Tier-3 cosign), per the disposition recorded in the 2026-04-24 transcript.
+  - **Issue B (upstream-blocking).** With `--legacy` correctly passed, `aos` cannot spawn at all right now: every legacynet spawn returns HTTP 500 from the messenger unit at `https://mu.ao-testnet.xyz`, with body `{"error":"TypeError: Cannot read properties of null (reading 'toLowerCase')"}`. Reproduced three times across two process names and once with explicit `--gateway-url https://arweave.net --cu-url https://cu.ao-testnet.xyz --mu-url https://mu.ao-testnet.xyz` overrides, all returning the same error. The error is server-side (`@permaweb/aoconnect` `dist/index.js:744` is just `throw new Error(\`${res.status}: ${await res.text()}\`)` rethrowing the MU's response). This is consistent with legacynet being deprecated or in regression; the AO ecosystem's modern path is HyperBEAM (mainnet) with optional local-Docker via `permaweb/ao-localnet` for development, and the `--legacy` codepath in `aos` 2.x is documented as "Support --mainnet flag for backwards compatibility" with legacynet treated symmetrically as a legacy mode.
+- **Why it exists:**
+  - Issue A: `aos` is a third-party tool maintained by the AO ecosystem; its 2.0 release flipped the default network without breaking the CLI surface, and the runbook `docs/runbooks/AO_DEPLOY_WSL2.md` was authored against the 1.x mental model where `aos <name>` meant testnet by default. The trap was discovered only by running `aos` against the real network.
+  - Issue B: legacynet is upstream-deprecated infrastructure outside Xion's control surface.
+- **Mitigations:**
+  1. **Doctrine integrity preserved.** The accidental mainnet spawns were not laundered into legitimacy via post-hoc Tier-3 cosign. `genesis/AO_DEPLOY_RECEIPT.json` remains `{status: "placeholder"}`. `xion-verify ao-handlers` continues to honestly return NOT_YET_SEALED. `KW-AOCORE-001` is not closed.
+  2. **Wallet hardening.** `.gitignore` was extended (Phase 6.1-residuals attempt 2) with `*.aos.json`, `**/.aos.json`, `*.jwk`, `*.jwk.json`, `**/*.jwk` patterns to prevent any future copy of the WSL2 wallet from being trackable, regardless of the directory it is copied into.
+  3. **Runbook amended.** `docs/runbooks/AO_DEPLOY_WSL2.md` was updated with: (a) a prominent warning at the top of the Deploy section that `aos` 2.0 defaults to mainnet and `--legacy` is mandatory for Phase 6.1; (b) the actually-working install URL (`https://get_ao.arweave.net`; the cookbook's `get_ao.g8way.io` is currently 404); (c) a lessons-learned footnote naming the two orphaned mainnet processes by ID so any future operator can verify them on chain and confirm they are not Xion's canonical AO Core; (d) explicit reference to `KW-AOCORE-004` as the upstream-MU blocker that may require a wait-and-retry posture.
+  4. **Wallet custody.** The agent-generated WSL2 wallet `v8Fee...wjwfHY` is fine for the eventual testnet seal (testnet is low-stakes by design), but should NOT be promoted to Xion's permanent mainnet identity in Phase 6+ — that wallet should be freshly generated under proper Cold Root Shamir-shard custody per `docs/09-GOVERNANCE.md`.
+- **Pay-down commitment:** Closes when one of:
+  1. **Upstream legacy MU recovers.** Operator (or any subsequent automated retry) successfully runs `aos xion-core --legacy --load /mnt/c/.../ao/core/main.lua` from WSL2 and gets a successful spawn + load (no HTTP 500). At that point Phase 6.1 finalization can proceed via the amended runbook and `KW-AOCORE-001` closes alongside.
+  2. **Local AO localnet path adopted.** If the legacy MU is determined to be permanently deprecated, the runbook is amended a second time to use `permaweb/ao-localnet` Docker containers for the Phase 6.1 testnet seal, and the verifier `xion-verify ao-handlers` is taught to read from a localnet gateway URL via `XION_AO_GATEWAY_URL`. The receipt's `network` field would be `localnet` and the doctrine bar is whatever the operator + cold-root agree the seal must demonstrate (probably: handlers loaded, one round-trip commit-state, and a recorded `process_id` even if not anchorable to public Arweave).
+  3. **Phase 6+ ceremony.** Operator + cold-root explicitly elect to do the Phase 6.1 seal on AO mainnet under the proper Tier-3 cosign ceremony (with a freshly-generated Cold Root wallet, NOT the WSL2 agent wallet), accepting that Phase 6.1's "testnet seal" is being collapsed into the Phase 6+ "mainnet seal" by force of the legacy-MU outage.
+- **Verifier:** `xion-verify ao-handlers` is the closure observable. The KW also names two on-chain artifacts (`-MlYwU1U_5tEjRFhIVQFncEroGFO4kFetIqByOgFnBE`, `PxTK8xPH4sRDCIRGl2sruE_OrRFcbW25Oz2NwiKzkKM`) that any third party can query against AO mainnet GraphQL to confirm they exist, are owned by `v8Fee...wjwfHY`, and have no Xion-handler `Eval` history; that is the negative evidence that they are not Xion's canonical AO Core.
 
 ### KW-INTERACT-001 — Per-user verifiable receipts do not exist
 - **Domain:** RUNTIME
@@ -122,11 +122,11 @@ Every entry has the same shape:
 
 ### KW-AOCORE-001 — AO testnet deploy of `commit-state` + `attest` is still pending
 - **Domain:** RUNTIME
-- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine; reopened 2026-04-24)
+- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine; reopened 2026-04-24, attempt-2 footnote added 2026-04-24)
 - **Severity:** medium
 - **Status:** `mitigated-residual`
 - **Description:** The AO Core handler doctrine, the YAML schemas, the Lua skeleton (`ao/core/main.lua`), and the `xion-verify ao-handlers` verifier are all in-tree. What is **not** in-tree is a real AO testnet deployment of that Lua, a real receipt in `genesis/AO_DEPLOY_RECEIPT.json`, and a real seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`. The previous closure note (2026-04-23) claimed the handlers were "deployed to AO testnet," which was inaccurate — the receipt was a placeholder string and `xion-verify ao-handlers` had a `"dummy" in pid` bypass that returned OK without a network round-trip. That bypass has been removed in the Phase 6.1-residuals pass; the receipt now self-describes as `{status: "placeholder"}` and the verifier honestly returns NOT_YET_SEALED with a specific remediation message.
-- **Why it exists:** Two reasons stacked. (a) The 2026-04-23 closure note was premature. (b) The 2026-04-24 attempt to do the real deploy hit an environment blocker: the canonical `aos` CLI install path (`npm i -g https://get_ao.g8way.io`) returned 404 from this network and the GitHub install (`npm i -g github:permaweb/aos`) failed at postinstall on this Windows + Node 22 + nvm setup with `ERR_UNSUPPORTED_ESM_URL_SCHEME` even with `--ignore-scripts`. Tracked separately as `KW-AOCORE-003`.
+- **Why it exists:** Three reasons stacked. (a) The 2026-04-23 closure note was premature. (b) The 2026-04-24 attempt-1 to do the real deploy hit an environment blocker: the canonical `aos` CLI install path (`npm i -g https://get_ao.g8way.io`) returned 404 from this network and the GitHub install (`npm i -g github:permaweb/aos`) failed at postinstall on this Windows + Node 22 + nvm setup with `ERR_UNSUPPORTED_ESM_URL_SCHEME` even with `--ignore-scripts`. Tracked separately as `KW-AOCORE-003`. (c) The 2026-04-24 attempt-2 (agent-driven, after the WSL2 + Node 20 install path was validated end-to-end) hit two new compounding blockers: `aos` 2.0 silently flipped its default network to AO mainnet (forbidden at this phase by `docs/09-GOVERNANCE.md`), and the legacy MU at `https://mu.ao-testnet.xyz` is currently returning HTTP 500 on every spawn attempt, blocking the testnet path even with the explicit `--legacy` flag. Tracked as `KW-AOCORE-004`. The two AO mainnet processes accidentally spawned during attempt-2 (`-MlYwU1U_5tEjRFhIVQFncEroGFO4kFetIqByOgFnBE`, `PxTK8xPH4sRDCIRGl2sruE_OrRFcbW25Oz2NwiKzkKM`) are orphaned by operator decision and are NOT Xion's canonical AO Core; this KW does not close on their existence.
 - **Mitigations:**
   1. The `xion-verify ao-handlers` bypass is gone. Placeholder receipt now returns NOT_YET_SEALED with a precise remediation string naming exactly what a real receipt requires (`process_id`, `signer_address`, `lua_source_sha256`, `aos_version`, plus a seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`).
   2. The receipt at `genesis/AO_DEPLOY_RECEIPT.json` is now self-describing as a placeholder (`"status": "placeholder"`, all real fields explicitly null), so a future maintainer reading it cannot mistake it for a real receipt.
@@ -257,7 +257,7 @@ Every entry has the same shape:
 - **Description:** The doctrine corpus legitimately references artifacts that will land in later phases (`docs/legal/`, `ao/xion_core.lua`, `genesis/RITUALS.md`). Left unchecked, this is the same failure mode `KW-DOCS-001` named (silent drift); if an artifact is deferred repeatedly, the reference rots into a lie.
 - **Why it exists:** Doctrine is written ahead of implementation on purpose â€” that is how property comes before mechanism. But writing ahead creates a window during which cross-references point at nothing.
 - **Mitigations:** Every forward-unresolved target is enumerated in [`xion-verify/ALLOWED_FORWARD_REFS.txt`](./xion-verify/ALLOWED_FORWARD_REFS.txt), with a roadmap phase and a one-line reason. `xion-verify links` passes if and only if every broken target is either in that file or was always broken (in which case it fails loud). A third-party auditor can diff the allowlist across commits: lines only disappear when the artifact lands, or appear alongside a new entry here.
-- **Pay-down commitment:** Each allowlist entry closes when its named phase delivers the artifact; when the last entry is removed, this KW closes. Phase deadlines are: `genesis/RITUALS.md` by Phase 2b; `docs/legal/`, `ao/xion_core.lua` by Phase 6. A phase ending without the artifact landing is promoted to a new `KW-DOCS-###` entry and a CHANGELOG note. **Progress (2026-04-20):** the two `docs/schemas/*` entries closed with the Phase 1b `docs/schemas/` landing â€” the allowlist has shrunk from five entries to three. The `schemas` subcommand in `xion-verify` now enforces strict YAMLâ†”doctrine cross-checking on the landed files.
+- **Pay-down commitment:** Each allowlist entry closes when its named phase delivers the artifact; when the last entry is removed, this KW closes. Phase deadlines are: `genesis/RITUALS.md` by Phase 2b; `docs/legal/`, `ao/xion_core.lua` by Phase 6. A phase ending without the artifact landing is promoted to a new `KW-DOCS-###` entry and a CHANGELOG note. **Progress (2026-04-20):** the two `docs/schemas/*` entries closed with the Phase 1b `docs/schemas/` landing â€” the allowlist has shrunk from five entries to three. The `schemas` subcommand in `xion-verify` now enforces strict YAMLâ†”doctrine cross-checking on the landed files. **Progress (2026-04-24):** the `docs/schemas/roles.yaml` entry closed with the Phase 6.2 Provisioning + Roles landing — the allowlist has shrunk further to four lines (one of which is the GOVERNANCE_LEDGER schema deferred to Phase 6).
 - **Verifier:** `xion-verify links` â€” passes today because the three remaining legitimate forward refs are explicitly allowlisted; every other broken reference is a fatal FAIL. `xion-verify schemas` additionally enforces that every landed schema file's `source_sha256` byte-matches its doctrine source.
 
 ### KW-ARBITER-001 â€” Rule engine is lexical, not semantic; no adversarial-corpus measurement of v2
@@ -728,6 +728,30 @@ Every entry has the same shape:
 ---
 
 ## Closed
+
+### KW-PROVISION-001 — `xion new` CLI is not implemented
+- **Domain:** OPS
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** low
+- **Status:** closed on 2026-04-24 by the Phase 6.2 Provisioning + Roles landing.
+- **Description:** The `xion new` CLI named in `CONTRIBUTING.md` did not exist; users had to copy-paste existing files.
+- **Why it existed:** Forward-committed in doctrine before code was written.
+- **How it closed:** Discovered during Phase 6.2 planning that the CLI had already been implemented in `xion-verify/src/xion_verify/commands/new.py` (with full test coverage at `xion-verify/tests/test_new.py`, registered in `xion-verify/src/xion_verify/cli.py`). The Phase 6.2 land added the one-line `xion` console-script alias to `xion-verify/pyproject.toml`'s `[project.scripts]` so the documented `xion new <kind> <name>` commands are literally runnable. `CONTRIBUTING.md` was updated to drop the "scheduled to land in Phase 6.2" parenthetical and point at the implementation.
+- **Residual / remaining weaknesses (tracked separately):** None. New scaffold templates may be added without reopening this KW.
+- **Verifier:** `xion-verify new --help` lists all five scaffolders; `xion-verify/tests/test_new.py` exercises each one end-to-end on every CI run.
+
+### KW-ROLES-001 — Role-to-level authorization is doctrinal, not mechanical
+- **Domain:** GOVERNANCE
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** medium
+- **Status:** closed on 2026-04-24 by the Phase 6.2 Provisioning + Roles landing.
+- **Description:** Role-to-level authorization existed only in `docs/09-GOVERNANCE.md` § "The Actors" cross `docs/14-UPGRADE-PATHS.md` § "The Thirteen Levels"; there was no machine-readable mirror, so a PR landing Level 7 / Governance changes by an unauthorized identity could only be caught by human review.
+- **Why it existed:** Governance was drafted before CI gates were built; the Cosign Tier table was prose-only.
+- **How it closed:** Phase 6.2 landed `docs/schemas/roles.yaml` (the machine-readable mirror, with `source_sha256` pinned to `09-GOVERNANCE.md` and enforced byte-exact by `xion-verify schemas`); `xion-verify provisioning-roles` (90-day retrospective audit; pre-gate-landing merges WARN-only, post-gate FAIL); `scripts/level_discipline.py` + `.github/workflows/level-discipline.yml` (per-PR gate). The `level_proposer_resolution` block in `roles.yaml` is the single-source-of-truth bridge between `levels.yaml`'s `proposer:` strings and the six-actor table.
+- **Residual / remaining weaknesses (tracked separately):**
+  - **Pre-Genesis identity binding.** `community`, `integrator`, `xion`, and `witness` actors have empty `handles:` lists; PRs landing those tiers are accepted as `community-tier-unverifiable` (WARN, not FAIL). Wallet-to-handle binding lands in Phase 6+ via signed-message attestation; until then, the gate's job is to catch operator-tier-and-above paths landed by unauthorized identities.
+  - **Cosign verification.** This verifier is structural (initiator + level); it does not verify on-chain cosigns. Cosign verification is Phase 6+ via the AO Core handlers.
+- **Verifier:** `xion-verify schemas` (enforces the `source_sha256` pin); `xion-verify provisioning-roles` (90-day retrospective); `.github/workflows/level-discipline.yml` (per-PR gate, runs `scripts/level_discipline.py`).
 
 ### KW-COGNITION-001 — /chat does not yet route through the Sensorium / retrieval / journal stack; voice is system-prompt-only
 - **Domain:** COGNITION

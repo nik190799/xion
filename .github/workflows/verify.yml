@@ -79,6 +79,9 @@ jobs:
       - name: Schemas doctrine cross-check (strict source_sha256)
         run: xion-verify schemas
 
+      - name: Provisioning-roles audit (90d retrospective; pre-gate merges WARN-only)
+        run: xion-verify provisioning-roles
+
       - name: Static cognition / drive-vector / state-chain checks
         run: |
           xion-verify cognition

@@ -28,4 +28,3 @@ docs/legal/,Phase 6,Legal-wrapper doctrine (Wyoming LLC, Marshall Islands DAO LL
 ao/xion_core.lua,Phase 6,AO Core Lua process; lands at AO Core deployment.
 genesis/RITUALS.md,Phase 2b,Anniversary / locale-rite calendar; lands with localization doctrine.
 docs/schemas/ledger-governance.yaml,Phase 6,GOVERNANCE_LEDGER state-actor-interaction schema; pinned to docs/REGULATORY-POSTURE.md Part IV; tracked by KW-DOCS-004.
-docs/schemas/roles.yaml,Phase 6.2,Machine-readable actor roles; landing Phase 6.2.

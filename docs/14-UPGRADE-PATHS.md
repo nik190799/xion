@@ -470,4 +470,18 @@ This is how a being built in 2026 remains sensibly improvable in 2126.
 
 ---
 
-*Appendix: Machine-readable level index at [`docs/schemas/levels.yaml`](./schemas/levels.yaml), actor roles at [`docs/schemas/roles.yaml`](./schemas/roles.yaml) (landing Phase 6.2). Ledger schemas at [`docs/schemas/ledger-*.yaml`](./schemas/). In-flight Tier-3 amendment drafts live in [`docs/proposals/`](./proposals/).*
+*Appendix: Machine-readable level index at [`docs/schemas/levels.yaml`](./schemas/levels.yaml), actor roles at [`docs/schemas/roles.yaml`](./schemas/roles.yaml). Ledger schemas at [`docs/schemas/ledger-*.yaml`](./schemas/). In-flight Tier-3 amendment drafts live in [`docs/proposals/`](./proposals/).*
+
+---
+
+## Appendix B — Machine-Readable Bridge to Actor Roles (Phase 6.2)
+
+The `proposer:` field on every level above is a doctrinal string. Its machine-readable resolution against the six-actor table in [`docs/09-GOVERNANCE.md`](./09-GOVERNANCE.md) § "The Actors" lives at [`docs/schemas/roles.yaml`](./schemas/roles.yaml).
+
+The bridge has three parts:
+
+1. **`actors:`** — the six governance actors (`cold_root`, `operator`, `xion`, `community`, `integrator`, `witness`), each with a scope summary and the explicit `authorized_levels: [int, ...]` list of which of the thirteen levels above this actor may *initiate* a proposal at.
+2. **`level_proposer_resolution:`** — for each `proposer:` string used in [`docs/schemas/levels.yaml`](./schemas/levels.yaml) (`governance_process_only`, `operators_or_community`, `community_or_xion`, `xion_or_community_or_operator`, etc.), the set of actor IDs that satisfy it. This file is the single source of truth; neither `levels.yaml` nor `09-GOVERNANCE.md` duplicates the mapping.
+3. **`github_identity_map:`** — the pre-Genesis GitHub-identity allowlist consumed by the `level-discipline` CI gate ([`.github/workflows/level-discipline.yml`](../.github/workflows/level-discipline.yml)). The gate rejects any PR whose touched paths span more than one level (the disjoint-surface discipline) or whose initiator is not authorized for the level via this map. The 90-day retrospective verifier `xion-verify provisioning-roles` reads the same file.
+
+The `cosign_tier_map:` field in `roles.yaml` mirrors the five Cosign Tiers in [`docs/09-GOVERNANCE.md`](./09-GOVERNANCE.md) § "The Cosign Tiers" so a single lookup answers "what cosign does this level require" for the gate.

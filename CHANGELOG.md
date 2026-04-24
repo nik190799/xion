@@ -10,6 +10,37 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+## [Phase 6.1-residuals attempt-2 + hardening] — 2026-04-24
+
+### Added
+- **`KW-AOCORE-004`** opened in [`KNOWN_WEAKNESSES.md`](KNOWN_WEAKNESSES.md). Compound blocker on the Phase 6.1 testnet seal: (Issue A) `aos` 2.0 silently flipped its default network to AO mainnet (HyperBEAM), trapping any operator who follows the 1.x mental model into spawning on mainnet without `--legacy`; (Issue B) the legacy MU at `https://mu.ao-testnet.xyz` is upstream-broken, returning HTTP 500 with a `null toLowerCase` server-side error on every spawn. Reproduced three times across two process names + once with explicit `--gateway-url`/`--cu-url`/`--mu-url` overrides. The KW names two AO mainnet processes (`-MlYwU1U_5tEjRFhIVQFncEroGFO4kFetIqByOgFnBE`, `PxTK8xPH4sRDCIRGl2sruE_OrRFcbW25Oz2NwiKzkKM`) accidentally spawned during the agent-driven 2026-04-24 attempt as orphans (operator-elected disposition: abandon, do not ratify retroactively).
+- **`KW-AOCORE-001` attempt-2 footnote** added cross-referencing `KW-AOCORE-004` and naming both orphaned process IDs so any future auditor can verify on AO mainnet GraphQL that they have no Xion-handler `Eval` history (negative evidence that they are not Xion's canonical AO Core).
+
+### Changed
+- **[`docs/runbooks/AO_DEPLOY_WSL2.md`](docs/runbooks/AO_DEPLOY_WSL2.md)** amended with: (a) §3 install URL fixed (cookbook's `get_ao.g8way.io` is currently 404; live mirror is `get_ao.arweave.net`); (b) new §3a "Critical (aos 2.0+)" warning that `aos` defaults to mainnet without `--legacy`; (c) `--legacy` added to every spawn invocation in §5; (d) explicit upstream-MU-500 escalation paths (wait / `permaweb/ao-localnet` Docker / Phase 6+ ceremony with cold-root cosign — never silent mainnet); (e) three new failure modes (legacy 500, generic "Error occurred" with `DEBUG=1` recovery, accidental-mainnet-spawn recovery); (f) "Lessons learned (2026-04-24 attempt-2)" section naming both orphaned process IDs by the wallet that signed them.
+- **`.gitignore`** extended with `*.aos.json`, `**/.aos.json`, `*.jwk`, `*.jwk.json`, `**/*.jwk` patterns. The existing `**/wallet*.json` line did not match the literal name `.aos.json`; verified that `genesis/.aos.json`, `wallet.jwk.json`, and `arweave-keyfile-x.jwk` are all auto-blocked from accidental commit regardless of which directory the file is copied into.
+
+### Not changed (deliberately)
+- [`genesis/AO_DEPLOY_RECEIPT.json`](genesis/AO_DEPLOY_RECEIPT.json) remains `{status: "placeholder"}`. [`KW-AOCORE-001`](KNOWN_WEAKNESSES.md) and [`KW-AOCORE-003`](KNOWN_WEAKNESSES.md) remain open. `xion-verify ao-handlers` continues to honestly return `NOT_YET_SEALED`. The accidental mainnet spawns were not laundered into legitimacy via post-hoc Tier-3 cosign per [`docs/09-GOVERNANCE.md`](docs/09-GOVERNANCE.md). [`DEVELOPMENT_ROADMAP.md`](DEVELOPMENT_ROADMAP.md) Phase 6.1 status remains `partial-closed 2026-04-24`.
+
+## [Phase 6.2] — 2026-04-24
+
+### Added
+- **Provisioning + Roles closure.** `docs/schemas/roles.yaml` lands as the machine-readable mirror of `docs/09-GOVERNANCE.md` § "The Actors" cross `docs/14-UPGRADE-PATHS.md` § "The Thirteen Levels". Three load-bearing blocks: `actors:` (six governance actors with `authorized_levels`), `level_proposer_resolution:` (single-source-of-truth bridge from `levels.yaml` `proposer:` strings to actor IDs), `cosign_tier_map:` (mirror of the five Cosign Tiers). `source_sha256` enforced byte-exact by `xion-verify schemas`.
+- **`xion-verify provisioning-roles`** — 90-day retrospective audit asserting every merge in the window respected (a) the disjoint-surface discipline (one level touched per PR) and (b) initiator authorization. Pre-gate-landing merges are WARN-only by default; `--strict` for forensic mode. Tests at `xion-verify/tests/test_provisioning_roles.py`.
+- **`scripts/level_discipline.py` + `.github/workflows/level-discipline.yml`** — per-PR companion gate. Stdlib + PyYAML; reads the same `roles.yaml` + `levels.yaml`; computes `git diff BASE_REF HEAD_REF`. Bootstrap mode: if `roles.yaml` doesn't exist at BASE_REF, the gate emits a NOTE and passes (gates apply forward, not retroactively).
+- **`xion` console-script alias** added to `xion-verify/pyproject.toml` `[project.scripts]` so the documented `xion new <kind> <name>` commands in `CONTRIBUTING.md` are literally runnable after `pip install -e .`. The `xion new {skill|sense|provider|verifier|proposal}` scaffolders themselves were already implemented in `xion-verify/src/xion_verify/commands/new.py` (discovered during planning).
+- **Doctrine cross-refs.** `docs/14-UPGRADE-PATHS.md` Appendix B names `roles.yaml` as the bridge to the Actors table. `docs/09-GOVERNANCE.md` § "The Actors" updated to point at `roles.yaml` and name `xion-verify schemas` as the byte-exact enforcer. `CONTRIBUTING.md` dropped the "scheduled to land in Phase 6.2" parenthetical.
+- **CI wiring.** `xion-verify provisioning-roles` runs inside `verify.yml`. `level-discipline.yml` is a separate workflow so a governance failure has its own legible failure mode in the GitHub UI.
+
+### Changed
+- **`docs/schemas/levels.yaml`** and **`docs/schemas/ledger-amendment.yaml`** `source_sha256` updated to track the doctrinal edits to their source files (the parenthetical drop in `09-GOVERNANCE.md`, the appendix add in `14-UPGRADE-PATHS.md`). Both still pass `xion-verify schemas`.
+- **`xion-verify/ALLOWED_FORWARD_REFS.txt`** shrunk by one line (`docs/schemas/roles.yaml`); `KW-DOCS-003` "Progress (2026-04-24)" note appended.
+
+### Fixed
+- **KW-PROVISION-001 closed:** `xion new` CLI is verifiably runnable via the `xion` alias; the `xion new --help` enumerates all five scaffolders; `xion-verify/tests/test_new.py` exercises each on every CI run.
+- **KW-ROLES-001 closed:** Role-to-level authorization is now mechanical (`docs/schemas/roles.yaml` + `xion-verify provisioning-roles` + `level-discipline.yml`). Honest residuals (community / integrator / xion / witness handle lists empty pre-Genesis; cosign verification deferred to Phase 6+) named explicitly in the close paragraph.
+
 ## [Phase 5g-i.1] — 2026-04-23
 
 ### Added

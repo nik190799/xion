@@ -42,6 +42,12 @@ dev = [
 
 [project.scripts]
 xion-verify = "xion_verify.cli:main"
+# `xion` is a one-line ergonomic alias for `xion-verify`. CONTRIBUTING.md and
+# the contributor flow describe scaffolders as `xion new <kind> <name>`; this
+# alias is what makes that documentation true. Both binaries dispatch to the
+# same Click root group and share the same subcommand surface, so any work
+# done via `xion ...` is identical to `xion-verify ...`.
+xion = "xion_verify.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/xion-os"
