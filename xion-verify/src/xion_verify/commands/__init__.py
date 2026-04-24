@@ -21,6 +21,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "invariants",
     "soul",
     "soul-prompt",
+    "voice-property",
     "form",
     "memory",
     "resurrect",

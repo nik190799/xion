@@ -69,6 +69,7 @@ from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.substrates import substrates
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
 from xion_verify.commands.vitals import vitals
+from xion_verify.commands.voice_property import voice_property
 from xion_verify.commands.web_client import web_client
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.exit_codes import name as exit_code_name
@@ -78,6 +79,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "invariants": invariants,
     "soul": soul,
     "soul-prompt": soul_prompt,
+    "voice-property": voice_property,
     "form": form,
     "memory": memory,
     "resurrect": resurrect,

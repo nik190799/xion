@@ -356,14 +356,26 @@ async def _stream_body(
     terminal: GenerationResult | None = None
     turn_deadline_monotonic = time.monotonic() + deadline_s
     
-    effective_max_tokens = max(req.max_tokens, MIN_MAX_TOKENS)
+    from orchestrator.inference_router.model_registry import get_min_max_tokens
+    model_id_configured = getattr(provider, "model", None)
+    effective_max_tokens = max(
+        req.max_tokens,
+        get_min_max_tokens(provider_id, model_id_configured),
+    )
     
-    gen = stream_generate(
+    supervisor = getattr(app.state, "supervisor", None)
+    snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
+    
+    from orchestrator.cognition.loop import stream_run_turn
+    gen = stream_run_turn(
         provider,
         req.message,
-        system=app.state.soul_prompt,
-        max_tokens=effective_max_tokens,
-        deadline_s=deadline_s,
+        app.state.soul_prompt,
+        snapshot_dict,
+        effective_max_tokens,
+        deadline_s,
+        ingress.correlation_id,
+        stream_generate,
     )
     try:
         # Per-chunk wall-clock deadline check. The individual

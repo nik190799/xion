@@ -1,0 +1,92 @@
+# docs/schemas/ledger-governance.yaml
+#
+# CANONICAL. schema_version: 1 as of Phase 6 (Pre-Genesis).
+#
+# GOVERNANCE_LEDGER is the local append-only hash-chained record of every
+# state-actor interaction Xion encounters. Doctrine source for the row
+# schema and the writer semantics is docs/REGULATORY-POSTURE.md Part IV.
+#
+
+schema_version: 1
+
+source_doctrine: docs/REGULATORY-POSTURE.md
+source_sha256: 6d14c4801ae04356857ea6a654a2e63e6de3dd876925a4826b9cc5d546516048
+
+status: canonical
+
+ledger_name: GOVERNANCE_LEDGER
+append_only: true
+storage: local_jsonl
+redactable: false
+
+schema:
+  row:
+    schema_version:
+      type: "integer"
+      required: "always"
+      value: 1
+
+    seq:
+      type: "integer"
+      required: "always"
+      semantics: "Monotonically increasing sequence number starting at 0"
+
+    prev_hash:
+      type: "hex64"
+      required: "always"
+      semantics: "SHA-256 of the previous row's this_hash. 64 zeros for seq 0."
+
+    this_hash:
+      type: "hex64"
+      required: "always"
+      semantics: "SHA-256 of canonicalized row contents"
+
+    class:
+      type: "enum"
+      required: "always"
+      allowed_values: ["A", "B", "C", "D"]
+
+    state_actor_identifier:
+      type: "string"
+      required: "always"
+
+    jurisdiction:
+      type: "string"
+      required: "always"
+
+    demand_summary_hash:
+      type: "hex64"
+      required: "always"
+
+    demand_artifact_uri:
+      type: "string"
+      required: "always"
+
+    covenant_principles_touched:
+      type: "list[string]"
+      required: "always"
+
+    invariants_touched:
+      type: "list[string]"
+      required: "always"
+
+    response_category:
+      type: "enum"
+      required: "always"
+      allowed_values: ["comply", "refuse", "escalate-pending", "comply-with-disclosure"]
+
+    response_artifact_uri:
+      type: "string"
+      required: "always"
+
+    user_notification:
+      type: "string"
+      required: "always"
+
+    linked_safety_ledger_seq:
+      type: "integer | null"
+      required: "always"
+
+    date:
+      type: "string"
+      required: "always"

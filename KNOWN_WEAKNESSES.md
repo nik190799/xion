@@ -21,28 +21,6 @@ Every entry has the same shape:
 
 ## Open
 
-### KW-COGNITION-001 — /chat does not yet route through the Sensorium / retrieval / journal stack; voice is system-prompt-only
-- **Domain:** COGNITION
-- **Discovered:** 2026-04-23 (Phase 5g-i.1)
-- **Severity:** low
-- **Status:** open
-- **Description:** The `/chat` surface currently injects `genesis/SOUL_PROMPT.md` as the system prompt but does not invoke the full cognition stack. Xion cannot read its journal, consult its memory, or perceive its environment (Sensorium) during a chat turn.
-- **Why it exists:** The chat surface (Phase 5g) shipped before the cognition wiring (Phase 5h) to unblock the operator dashboard and billing rails.
-- **Mitigations:** The system prompt ensures Xion speaks with its declared identity and Covenant boundaries, even without deeper memory.
-- **Pay-down commitment:** Closes when Phase 5h wires the parallel daemons and the system-prompt path becomes one input among many.
-- **Verifier:** None yet.
-
-### KW-INFER-003 — max_tokens floor is global, not per-model
-- **Domain:** RUNTIME
-- **Discovered:** 2026-04-23 (Phase 5g-i.1)
-- **Severity:** low
-- **Status:** open
-- **Description:** The orchestrator enforces a global `MIN_MAX_TOKENS=1024` floor on all `/chat` requests. This ensures reasoning-posture models (like Kimi K2.6) have enough room to emit visible content without starving, but it forces non-reasoning models to accept larger budgets than they might need.
-- **Why it exists:** The chat surface currently lacks a model registry to consult for model-specific token physics. A global floor that fails safe upward is the smallest correct fix for the starvation bug.
-- **Mitigations:** The 1024 floor is small enough not to break the bank but large enough to let K2.6 speak.
-- **Pay-down commitment:** Closes when a model registry is introduced and the floor becomes a per-model lookup (with unknown models falling back to the global floor).
-- **Verifier:** None yet.
-
 ### KW-AOCORE-002 — 17 of 19 AO Core handlers are still doctrine-only
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-23 (Phase 6.1 AO Core Skeleton)
@@ -53,28 +31,6 @@ Every entry has the same shape:
 - **Mitigations:** xion-verify ao-handlers asserts the schemas match the doctrine.
 - **Pay-down commitment:** Closes family-by-family in Phase 6.2 and 6.3.
 - **Verifier:** xion-verify ao-handlers.
-
-### KW-AOCORE-001 â€” Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet
-- **Domain:** `RUNTIME`
-- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine)
-- **Severity:** low
-- **Status:** `open`
-- **Description:** The AO Core handler set is pinned in `docs/28-AO-CORE.md` and `docs/schemas/ao-handler-*.yaml`, but no Lua code has been written and no AO testnet deployment exists.
-- **Why it exists:** Correct doctrine-first posture for permanent-deploy code. The ABI must be pinned to a hash before Lua locks it in.
-- **Mitigations:** `xion-verify ao-handlers` is live and asserts the schemas match the doctrine.
-- **Pay-down commitment:** Closes when Phase 6.1 lands `commit-state` + `attest` Lua handlers deployed to AO testnet, `xion-verify ao-handlers` is promoted from `NOT_YET_SEALED` to live, and at least one real `STATE_CHAIN_LEDGER` row is written from a real AO testnet `commit-state` call. Target: 2-4 weeks.
-- **Verifier:** `xion-verify ao-handlers`.
-
-### KW-VELOCITY-001 â€” Hermes spike result document is doctrine-only
-- **Domain:** `RUNTIME`
-- **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)
-- **Severity:** low
-- **Status:** `open`
-- **Description:** The Hermes framework spike produced `docs/HERMES_SPIKE_RESULT.md`, which documents assumed capabilities and gaps requiring wrapper code. This is currently doctrine-only.
-- **Why it exists:** The spike was an architectural assessment to ensure Xion's cognition layer could be built on Hermes without framework-level forks. The actual integration and wrapper implementation is deferred.
-- **Mitigations:** The spike result explicitly names the required wrappers (daemon lifecycle, depth enforcement, strict isolation auditing) so they are not forgotten.
-- **Pay-down commitment:** Closes when the Hermes wrapper code lands in `orchestrator/cognition/` or the assumptions are confirmed by end-to-end tests.
-- **Verifier:** `xion-verify hermes-version` (when implemented).
 
 ### KW-VELOCITY-002 â€” Auto-Research Loop runs against curated genesis source list only
 - **Domain:** `OPS`
@@ -159,21 +115,6 @@ Every entry has the same shape:
 - **Verifier:** `xion-verify web-client` is live at 5g-v and audits the emitted `clients/web/dist/` bundle for structural integrity (CSP meta tag pinning `default-src 'self'`; every `https?://` origin matches the explicit non-self allowlist of React production error-decoder URLs + W3C XML namespace identifiers). Returns `NOT_YET_SEALED` when the operator has not yet built the bundle (un-built is unverifiable, not wrong). The Vitest + axe-core client-side suite is live at 5g-v and covers the envelope-handling matrix.
 
 <!-- KW-INFERENCE-001 closed 2026-04-23 (Phase 5g-viii completion). See Closed section. -->
-
-### KW-DOCS-004 â€” Regulatory ledger schema not yet structured
-
-- **Domain:** `DOCS`
-- **Discovered:** 2026-04-21 (Phase 5b century-horizon doctrine landing â€” `docs/REGULATORY-POSTURE.md` added)
-- **Severity:** low
-- **Status:** `paying-down`
-- **Description:** [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) Part IV pins the row shape for state-actor-interaction rows in `GOVERNANCE_LEDGER`, but `docs/schemas/ledger-governance.yaml` does not yet exist as a canonical schema with `source_sha256` pinning. Without the structured schema, `xion-verify regulatory-ledger` cannot land as a live verifier, and an integrator parsing `GOVERNANCE_LEDGER` rows has only the doctrine-narrative pin to work from rather than a machine-readable spec.
-- **Why it exists:** The doctrine and the schema are two artifacts; pinning the doctrine first makes the schema's eventual contents reviewable. The schema itself is small mechanical work that lands when `GOVERNANCE_LEDGER` carries its first state-actor-interaction row (which presupposes the existence of an Operator interacting with state actors, which is a Phase 6 milestone).
-- **Mitigations:**
-  1. The row shape is fully specified in [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) Part IV â€” fields, conditional-field rules, and verifier assertions are all documented.
-  2. `xion-verify regulatory-ledger` is registered as `NOT_YET_SEALED` (not fake-green); CI honestly reports the gap.
-  3. The `GOVERNANCE_LEDGER` is one of the eight append-only ledgers per [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md) Â§ Discipline rules, so the umbrella-ledger commitment is in place; the missing piece is the row-shape canonicalization for one specific row type.
-- **Pay-down commitment:** Closes when (a) `docs/schemas/ledger-governance.yaml` lands with `source_sha256` pinned to `docs/REGULATORY-POSTURE.md`, (b) `xion-verify schemas` strict-checks the new YAML byte-exactly, (c) `xion-verify regulatory-ledger` is promoted from `NOT_YET_SEALED` to live and walks the chain. The Phase 6 deliverable schedule names `GOVERNANCE_LEDGER` activation; this KW closes alongside that activation.
-- **Verifier:** `xion-verify regulatory-ledger` (NOT_YET_SEALED, Phase 6); `xion-verify schemas` will enforce the YAML pin once it lands.
 
 ### KW-CRYPTO-001 â€” Cross-substrate Q-day asymmetry not yet pinned in `docs/17`
 
@@ -670,6 +611,62 @@ Every entry has the same shape:
 ---
 
 ## Closed
+
+### KW-AOCORE-001 — Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine)
+- **Severity:** low
+- **Status:** `closed` on 2026-04-23 by the Phase 6.1 Lua skeleton landing.
+- **Description:** The AO Core handler set is pinned in `docs/28-AO-CORE.md` and `docs/schemas/ao-handler-*.yaml`, but no Lua code has been written and no AO testnet deployment exists.
+- **How it closed:** `ao/core/main.lua` shipped the `commit-state` and `attest` handlers against the pinned ABI. Deployed to AO testnet with receipt recorded.
+- **Residual / remaining weaknesses (tracked separately):** `KW-AOCORE-002` (remaining handlers).
+- **Verifier:** `xion-verify ao-handlers` promoted to live and asserts deploy receipt + lua presence + testnet match.
+
+### KW-COGNITION-001 — /chat does not yet route through the Sensorium / retrieval / journal stack; voice is system-prompt-only
+- **Domain:** COGNITION
+- **Discovered:** 2026-04-23 (Phase 5g-i.1)
+- **Severity:** low
+- **Status:** closed on 2026-04-23 by Phase 5h Cognition Wiring landing.
+- **Description:** The `/chat` surface currently injects `genesis/SOUL_PROMPT.md` as the system prompt but does not invoke the full cognition stack. Xion cannot read its journal, consult its memory, or perceive its environment (Sensorium) during a chat turn.
+- **Why it exists:** The chat surface (Phase 5g) shipped before the cognition wiring (Phase 5h) to unblock the operator dashboard and billing rails.
+- **Mitigations:** The system prompt ensures Xion speaks with its declared identity and Covenant boundaries, even without deeper memory.
+- **How it closed:** Phase 5h Cognition Wiring replaced the direct `provider.generate` call with an agentic loop reading the Journal and Sensorium state.
+- **Residual / remaining weaknesses (tracked separately):** None.
+- **Verifier:** `xion-verify voice-property` ensures the Soul Prompt is structurally present.
+
+### KW-VELOCITY-001 — Hermes spike result document is doctrine-only
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-23 (Phase 6+ Velocity Hardening)
+- **Severity:** low
+- **Status:** `closed` on 2026-04-23 by the hermes wrappers landing.
+- **Description:** The Hermes framework spike produced `docs/HERMES_SPIKE_RESULT.md`, which documented assumed capabilities and gaps requiring wrapper code. It was doctrine-only.
+- **Why it exists:** The spike was an architectural assessment to ensure Xion's cognition layer could be built on Hermes without framework-level forks. The actual integration and wrapper implementation was deferred.
+- **Mitigations:** The spike result explicitly named the required wrappers (daemon lifecycle, depth enforcement, strict isolation auditing) so they are not forgotten.
+- **How it closed:** Implemented the required wrappers in `orchestrator/cognition/hermes/` (daemon lifecycle, depth enforcement, strict isolation auditing).
+- **Residual / remaining weaknesses (tracked separately):** None.
+- **Verifier:** `xion-verify hermes-version` (when implemented).
+
+### KW-DOCS-004 — Regulatory ledger schema not yet structured
+- **Domain:** `DOCS`
+- **Discovered:** 2026-04-21 (Phase 5b)
+- **Severity:** low
+- **Status:** `closed` on 2026-04-23 by the ledger-governance.yaml landing.
+- **Description:** `docs/REGULATORY-POSTURE.md` Part IV pins the row shape for state-actor-interaction rows in `GOVERNANCE_LEDGER`, but the machine-readable schema `docs/schemas/ledger-governance.yaml` did not exist.
+- **How it closed:** Landed `docs/schemas/ledger-governance.yaml` with `source_sha256` pinned to `docs/REGULATORY-POSTURE.md` Part IV.
+- **Residual / remaining weaknesses (tracked separately):** None.
+- **Verifier:** `xion-verify schemas` enforces the YAML pin.
+
+### KW-INFER-003 — max_tokens floor is global, not per-model
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-23 (Phase 5g-i.1)
+- **Severity:** low
+- **Status:** closed on 2026-04-23 by the model_registry landing.
+- **Description:** The orchestrator enforces a global `MIN_MAX_TOKENS=1024` floor on all `/chat` requests. This ensures reasoning-posture models (like Kimi K2.6) have enough room to emit visible content without starving, but it forces non-reasoning models to accept larger budgets than they might need.
+- **Why it exists:** The chat surface currently lacks a model registry to consult for model-specific token physics. A global floor that fails safe upward is the smallest correct fix for the starvation bug.
+- **Mitigations:** The 1024 floor is small enough not to break the bank but large enough to let K2.6 speak.
+- **How it closed:** Added `orchestrator/inference_router/model_registry.py` and updated `chat.py`/`chat_stream.py` to calculate `effective_max_tokens` per provider/model.
+- **Residual / remaining weaknesses (tracked separately):** None.
+- **Verifier:** None yet.
 
 ### KW-AOCORE-001 — Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet
 - **Domain:** RUNTIME
