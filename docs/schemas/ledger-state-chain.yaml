@@ -1,0 +1,43 @@
+schema_name: STATE_CHAIN_LEDGER
+schema_version: 1
+status: canonical
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256: 71e2e0b7c13e99d3fdb1f8b892a263fbd684a1d57acd04f16730ee02e460a771
+description: Off-chain mirror of the AO Core state-chain tip. Append-only.
+fields:
+  - name: correlation_id
+    type: hex32
+    required: true
+    description: Unique identifier for this state transition.
+  - name: height
+    type: uint64
+    required: true
+    description: The new state-tip height.
+  - name: state_root_sha256
+    type: hex64
+    required: true
+    description: The new state root hash.
+  - name: prev_state_root_sha256
+    type: hex64
+    required: true
+    description: The previous state root hash.
+  - name: ao_process_id
+    type: string
+    required: true
+    description: The AO Process ID that accepted the commit.
+  - name: ao_message_id
+    type: string
+    required: true
+    description: The AO message ID of the successful commit-state call.
+  - name: committed_by
+    type: hex40
+    required: true
+    description: The address of the authorized signer who committed the state.
+  - name: committed_at_unix
+    type: uint64
+    required: true
+    description: Unix timestamp of the commit.
+  - name: prev_row_sha256
+    type: hex64
+    required: true
+    description: Hash of the previous ledger row (hash chain).

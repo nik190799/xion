@@ -19,6 +19,13 @@ Everything else should be absorbed by automation. If the operator is regularly d
 
 ## Phase 6+ Runbooks
 
+### AO Core testnet deploy (Phase 6.1)
+1. **Prerequisites:** Install the `aos` CLI (`npm i -g https://get_ao.arweave.net`) and fund an AO testnet wallet.
+2. **Deploy:** Run `ao/scripts/deploy_testnet.ps1` (or the equivalent shell commands) to spawn the process and load the Lua skeleton.
+3. **Capture Receipt:** The script writes `genesis/AO_DEPLOY_RECEIPT.json` containing the process ID, code SHA-256, network ID, deployer address, and deploy timestamp.
+4. **Smoke Test:** Execute 3 valid `commit-state` calls, 1 valid `attest` call, and 2 deliberate failures (e.g., `non_authorised_caller`).
+5. **Verify:** Run `xion-verify state-chain --strict` to confirm the ledger hash chain is intact and matches the live testnet tip.
+
 ### Arweave-Mirror Runbook (Authoritative Repo)
 1. **Prepare Snapshot:** Run `git archive --format=tar.gz -o xion-os-snapshot.tar.gz HEAD`.
 2. **Upload to Arweave:** Use `arkb` or `arweave-deploy` to upload the tarball.

@@ -156,9 +156,27 @@ def verify_ao_handlers() -> None:
         click.echo(msg, err=(worst_code == FAIL and "FAIL" in msg))
 
     if worst_code == OK:
-        # Phase 6.0 is doctrine-only, so we return NOT_YET_SEALED until Phase 6.1
-        click.echo(f"ao-handlers: NOT_YET_SEALED ({len(yaml_files)} handler schema(s) verified against doctrine, awaiting Lua skeleton)")
-        raise click.exceptions.Exit(NOT_YET_SEALED)
+        # Phase 6.1: Check for Lua skeleton and deploy receipt
+        lua_entry = repo_root / "ao/process/xion_core.lua"
+        lua_commit = repo_root / "ao/process/handlers/commit_state.lua"
+        lua_attest = repo_root / "ao/process/handlers/attest.lua"
+        receipt = repo_root / "genesis/AO_DEPLOY_RECEIPT.json"
+
+        missing_lua = []
+        if not lua_entry.is_file(): missing_lua.append("ao/process/xion_core.lua")
+        if not lua_commit.is_file(): missing_lua.append("ao/process/handlers/commit_state.lua")
+        if not lua_attest.is_file(): missing_lua.append("ao/process/handlers/attest.lua")
+
+        if missing_lua:
+            click.echo(f"ao-handlers: NOT_YET_SEALED ({len(yaml_files)} handler schema(s) verified, awaiting Lua skeleton: {', '.join(missing_lua)})")
+            raise click.exceptions.Exit(NOT_YET_SEALED)
+
+        if not receipt.is_file():
+            click.echo(f"ao-handlers: NOT_YET_SEALED ({len(yaml_files)} handler schema(s) verified, Lua skeleton present, awaiting genesis/AO_DEPLOY_RECEIPT.json)")
+            raise click.exceptions.Exit(NOT_YET_SEALED)
+
+        click.echo(f"ao-handlers: OK ({len(yaml_files)} handler schema(s) verified, Lua skeleton and deploy receipt present)")
+        raise click.exceptions.Exit(OK)
     else:
         click.echo(f"ao-handlers: FAIL ({len(yaml_files)} handler schema(s) checked)", err=True)
         raise click.exceptions.Exit(worst_code)

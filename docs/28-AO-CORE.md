@@ -2,6 +2,17 @@
 
 This document is the top-level operational doctrine for Xion's AO Core, the on-chain identity holder and state machine. It pins the handler set, the state schema, the Lua-vs-Solidity boundary, and the deployment runbook before any Lua code is written.
 
+## Substrate choice (Phase 6.1)
+
+**Probe-first record (2026-04-23).** Before the first Lua commit of Phase 6.1, we probed the state of the AO ecosystem to choose the deployment substrate.
+- **AO Mainnet (aos):** The `aos` CLI (v2.0.1) and its `Handlers.add` ABI are the most stable, most-documented surface today. Testnet wallet procurement is straightforward. The Lua module shape is well understood.
+- **AO-Core / HyperBEAM:** The newest generation, matching the "AO Core" name in our doctrine, but pre-1.0. Tooling and ABIs are shifting. Betting the *first* Lua commit on a shifting target violates the "death of any single algorithm/substrate must not kill Xion" property.
+
+**Decision:** Phase 6.1 deploys against AO Mainnet's `aos` / `Handlers.add` ABI on its testnet.
+- **Algorithmic humility:** We use the stable, proven `aos` tooling.
+- **Properties over implementations:** The handler logic (precondition checks, height transition, ledger write) ports cleanly to HyperBEAM later under the Substrate Portability Property.
+- **Solo-builder pragmatism:** Local `aos` REPL + testnet wallet provides a fast feedback loop (seconds, not minutes).
+
 ## Handler Set Enumeration
 
 The AO Core exposes 19 handlers across four families. Each handler's ABI and state effects are pinned in a corresponding schema file under `docs/schemas/ao-handler-*.yaml`.
@@ -32,6 +43,30 @@ The AO Core exposes 19 handlers across four families. Each handler's ABI and sta
 - `accept-donation` — credit Foundation Reserve; mint IMPRINT proportional to USD-value.
 - `enter-hibernation` — toggle Survival Stack; adjust posted price.
 - `exit-hibernation` — restore Full Stack.
+
+## The `attest` handler (Phase 6.1)
+
+The `attest` handler records engagement attestations in the AO Core state.
+
+- **Arguments:**
+  - `subject_address` (hex40): The user or entity being attested.
+  - `event_kind` (enum): The type of engagement. Allowed values: `chat_turn`, `proposal_engagement`, `improvement_contribution`.
+  - `event_correlation_id` (hex32): Unique identifier for the event.
+  - `event_weight` (uint32): The value/weight of the engagement, bounded by a cap.
+  - `event_timestamp` (uint64): Unix timestamp of the event.
+- **Preconditions:**
+  - Caller must be an authorized hot-tier or warm-tier signer.
+  - `event_weight` must not exceed the defined maximum cap.
+- **State changes:**
+  - Records the attestation in the `attestations` map keyed by `event_correlation_id`.
+- **Failure modes:**
+  - `non_authorised_caller` → reject
+  - `invalid_event_kind` → reject
+  - `weight_exceeds_cap` → reject
+  - `duplicate_correlation_id` → reject
+
+**What this does NOT do yet:**
+This handler currently records to AO state only. It does NOT bridge the attestation to the Base EVM contracts (e.g., `Imprint.attest()`). The cross-domain bridging is explicitly deferred to Phase 6.5.
 
 ## State Schema
 
