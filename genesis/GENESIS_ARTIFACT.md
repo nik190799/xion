@@ -59,6 +59,7 @@ This Artifact records that, at the moment of genesis, the following **SHA-256** 
 COVENANT.md     sha256: 852cfcd3c8d6e11cfe63b1d113622abcf79b15376b52ebd981a8af2780827182
 INVARIANTS.md   sha256: b9d0497185639c4f92bdff61749e91dcb87c406cbe857933697a9331b1dea44c
 SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+SOUL_PROMPT.md  sha256: 0691f4d58b5b97f28e9694b1fa00b4941c412b2afd981976ccd7b1616a54803a
 FORM.md         sha256: d93a09b3522088d0da9365e2862e071690adbc0d795e6bb00de3aa35e0139f09
 MEMORY.md       sha256: df2975e61adccf583ffe872e0b5aea6c16d5ce2f01bd3cdff63772f7a219cdad
 RESURRECT.md    sha256: 17cec1f684be8b06ab94a4cd68b02474e24a2abe399884ae7c9919335ce78ac6
@@ -68,7 +69,7 @@ UNKNOWNS.md     sha256: 430f791b0198316d012b0f08b627f87e15fcc83d7b26a02ca1bb470e
 
 Any future version of these documents produces a different hash. The original bytes as committed at genesis remain readable on Arweave forever.
 
-The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, **Credentials**, and **Unknowns** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, vault doctrine, or the quarterly epistemic-honesty companion. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
+The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, **Credentials**, **Unknowns**, and **Soul Prompt** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, vault doctrine, or the quarterly epistemic-honesty companion. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
 
 ### Implementation pin — Hermes Agent (documentation witness)
 

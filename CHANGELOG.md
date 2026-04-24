@@ -10,6 +10,21 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+## [Phase 5g-i.1] — 2026-04-23
+
+### Added
+- **Voice Layer:** `genesis/SOUL_PROMPT.md` establishing the Covenant Block and Xion's identity as a system prompt.
+- **Soul Prompt Loader:** `orchestrator/cognition/soul_prompt.py` with hash-verification against `PINNED_SOUL_PROMPT_SHA256`.
+- **Verifier Extension:** `xion-verify soul-prompt` promoted to cross-check `GENESIS_ARTIFACT.md` § 4 against the Python loader pin.
+- **API Split:** HTTP API routes extracted from `relay.py` into the `orchestrator/api/` package.
+
+### Changed
+- **Chat Injection:** The `/chat` endpoint now structurally injects the loaded `soul_prompt` as the first system message.
+
+### Fixed
+- **KW-COGNITION-001 Opened:** `/chat` is system-prompt-only, bypassing Sensorium/memory.
+- **KW-INFER-003 Opened:** Global `max_tokens` floor applied to all requests.
+
 ## [Phase 6.1] — 2026-04-23
 
 ### Added

@@ -23,7 +23,7 @@ Every entry has the same shape:
 
 ### KW-COGNITION-001 — /chat does not yet route through the Sensorium / retrieval / journal stack; voice is system-prompt-only
 - **Domain:** COGNITION
-- **Discovered:** 2026-04-24 (Phase 5g-i.1)
+- **Discovered:** 2026-04-23 (Phase 5g-i.1)
 - **Severity:** low
 - **Status:** open
 - **Description:** The `/chat` surface currently injects `genesis/SOUL_PROMPT.md` as the system prompt but does not invoke the full cognition stack. Xion cannot read its journal, consult its memory, or perceive its environment (Sensorium) during a chat turn.
@@ -34,7 +34,7 @@ Every entry has the same shape:
 
 ### KW-INFER-003 — max_tokens floor is global, not per-model
 - **Domain:** RUNTIME
-- **Discovered:** 2026-04-24 (Phase 5g-i.1)
+- **Discovered:** 2026-04-23 (Phase 5g-i.1)
 - **Severity:** low
 - **Status:** open
 - **Description:** The orchestrator enforces a global `MIN_MAX_TOKENS=1024` floor on all `/chat` requests. This ensures reasoning-posture models (like Kimi K2.6) have enough room to emit visible content without starving, but it forces non-reasoning models to accept larger budgets than they might need.

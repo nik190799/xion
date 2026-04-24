@@ -58,6 +58,33 @@ def soul_prompt() -> None:
     if "## Covenant Block" not in content:
         click.echo("soul-prompt: FAIL: genesis/SOUL_PROMPT.md does not declare the Covenant Block.", err=True)
         sys.exit(FAIL)
+        
+    genesis_artifact = repo_root / "genesis" / "GENESIS_ARTIFACT.md"
+    if genesis_artifact.is_file():
+        artifact_content = genesis_artifact.read_text(encoding="utf-8")
+        artifact_hash = None
+        for line in artifact_content.splitlines():
+            if line.startswith("SOUL_PROMPT.md"):
+                parts = line.split("sha256:")
+                if len(parts) == 2:
+                    artifact_hash = parts[1].strip()
+                break
+        
+        if artifact_hash is None:
+            click.echo("soul-prompt: FAIL: genesis/GENESIS_ARTIFACT.md does not contain a SOUL_PROMPT.md sha256 row.", err=True)
+            sys.exit(FAIL)
+            
+        if artifact_hash != expected_hash:
+            click.echo(
+                f"soul-prompt: FAIL: genesis/GENESIS_ARTIFACT.md hash mismatch\n"
+                f"  artifact: {artifact_hash}\n"
+                f"  pinned:   {expected_hash}",
+                err=True,
+            )
+            sys.exit(FAIL)
+    else:
+        click.echo("soul-prompt: FAIL: genesis/GENESIS_ARTIFACT.md not found.", err=True)
+        sys.exit(FAIL)
     
     click.echo("soul-prompt: OK (SOUL_PROMPT.md sha256 matches pin and declares Covenant Block)")
     sys.exit(OK)
