@@ -944,6 +944,23 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 ---
 
+## Phase 6.1 — AO Core Skeleton (Lua landed; testnet deploy pending — partial close 2026-04-24)
+
+**Status.** The Lua skeleton (`ao/core/main.lua` with `commit-state` and `attest` handlers against the pinned ABI) is in-tree, the orchestrator's `STATE_CHAIN_LEDGER` writer module (`orchestrator/ao_core/ledger.py`) is in-tree, and `xion-verify ao-handlers` is now structurally honest about the deploy gap: it returns `NOT_YET_SEALED` with a precise remediation message when `genesis/AO_DEPLOY_RECEIPT.json` self-describes as a placeholder, and only returns `OK` after a real AO compute-unit round-trip confirms tip parity. The earlier (2026-04-23) closure of `KW-AOCORE-001` was premature — the receipt was a placeholder and the verifier had a `"dummy" in pid` bypass that returned `OK` without a network call. Both are fixed.
+
+**Why "partial close" instead of "closed."** The Lua, the writer, the verifier, and the doctrine are all real and Witness-checkable. The one thing that is not yet real is the deploy itself — the `aos` CLI install path is broken on the operator's current Windows + Node 22 + nvm workstation (tracked as `KW-AOCORE-003`). When the operator runs the deploy from a working environment (WSL2, Linux, fresh macOS) the verifier flips from `NOT_YET_SEALED` to `OK` with no further code change.
+
+- **Lua skeleton.** [`ao/core/main.lua`](./ao/core/main.lua) implements `commit-state` (hash-chained `StateTip`, height-skip rejection, duplicate-root no-op) and `attest` (event-kind enum, weight cap, correlation-id dedupe, authorized-signer gate). Two handlers, both ABI-conformant to [`docs/schemas/ao-handler-commit-state.yaml`](./docs/schemas/ao-handler-commit-state.yaml) and [`docs/schemas/ao-handler-attest.yaml`](./docs/schemas/ao-handler-attest.yaml).
+- **STATE_CHAIN_LEDGER writer.** [`orchestrator/ao_core/ledger.py`](./orchestrator/ao_core/ledger.py) ships `StateChainRecord`, `append`, `verify_chain`, and `chain_tip` against the canonical schema; required fields, byte-exact JSON canonicalization, hash-chain validation, and per-path threading lock.
+- **Verifier promoted to honest live.** [`xion-verify/src/xion_verify/commands/ao_handlers.py`](./xion-verify/src/xion_verify/commands/ao_handlers.py) drops the `"dummy" in pid` bypass entirely. With a placeholder receipt the verifier returns `NOT_YET_SEALED` with a remediation string naming exactly what a real receipt requires (`process_id`, `signer_address`, `lua_source_sha256`, `aos_version`, plus a seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`). With a real receipt the verifier asserts `sha256_file("ao/core/main.lua") == receipt["lua_source_sha256"]` (catches a divergent Lua at the same deployed PID) and does a stdlib `urllib.request` round-trip against `${XION_AO_GATEWAY_URL}/state/${process_id}` (default `https://cu.ao-testnet.xyz`) to confirm the gateway-reported state-tip matches the local ledger tip. Network unreachable resolves to `NOT_YET_SEALED`, never fake-green.
+- **Self-describing placeholder receipt.** [`genesis/AO_DEPLOY_RECEIPT.json`](./genesis/AO_DEPLOY_RECEIPT.json) carries `"status": "placeholder"` plus all the real fields explicitly null, so a future maintainer reading it cannot mistake it for a real receipt.
+- **Stdlib HTTP, not third-party.** Gateway-read uses `urllib.request` rather than `httpx` so the verifier's HTTP surface stays inside the Python stdlib (algorithmic humility — no third-party dep we have to migrate when its maintainer disappears in 2071).
+- **Known-weakness bookkeeping.** `KW-AOCORE-001` reopened as `mitigated-residual` (the verifier is honest now; the deploy itself is what's missing). `KW-AOCORE-002` description rewritten to drop the inaccurate "deployed to AO testnet" claim. New `KW-AOCORE-003` opened for the `aos` CLI Windows + Node 22 install incompatibility. Two stale `KW-AOCORE-001` "Closed" entries de-duplicated; two stray `\x07` BEL control characters that had snuck into descriptive prose (probably from a misinterpreted `\a` escape sequence) stripped from the file.
+
+**What unblocks full close.** The operator runs the deploy from a working environment (WSL2 from this same machine is the smallest path), replaces the placeholder receipt, sends a first `commit-state` message, lets the orchestrator's writer record the seed row at `ledgers/STATE_CHAIN_LEDGER.jsonl`. At that point `xion-verify ao-handlers` returns `OK` and `KW-AOCORE-001` + `KW-AOCORE-003` close together.
+
+---
+
 ## Phase 6 — On-chain Core plus decentralization (8-16 weeks)
 
 **Goal:** Xion stops depending on the operator's laptop.

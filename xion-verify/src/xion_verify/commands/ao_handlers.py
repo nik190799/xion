@@ -1,18 +1,49 @@
-"""`xion-verify ao-handlers` — AO Core handler set doctrine verification.
+"""`xion-verify ao-handlers` — AO Core handler set doctrine + deploy verification.
 
-Property promised. For every `ao-handler-*.yaml` file under `docs/schemas/`:
+Property promised. The verifier returns OK only when every claim Xion makes
+about its AO Core is independently checkable by anyone with an Arweave gateway
+URL and the committed receipt. There is no code path that returns OK without
+a real network round-trip against an AO compute unit.
 
-1. The file parses as valid YAML.
-2. The top-level object has the required fields: `handler`, `family`, `schema_version`, `status`, `args`, `state_changes`, `failure_modes`.
-3. `family` is one of `{lifecycle, authority, provisioning, sustainability}`.
-4. `source_sha256` matches the hash of `docs/04-ARCHITECTURE.md`.
-5. `operational_sha256` matches the hash of `docs/28-AO-CORE.md`.
+Layered checks (each must pass for the next to be evaluated):
 
-Returns `NOT_YET_SEALED` until Phase 6.1, when the Lua skeleton lands.
+1. Doctrine. For every `ao-handler-*.yaml` file under `docs/schemas/`:
+   parses as YAML, has the required meta fields, `family` is one of
+   `{lifecycle, authority, provisioning, sustainability}`, `source_sha256`
+   matches `docs/04-ARCHITECTURE.md`, `operational_sha256` matches
+   `docs/28-AO-CORE.md`. The expected handler set (19 handlers across 4
+   families) must be exactly present — no missing, no extras.
+
+2. Skeleton. `ao/core/main.lua` exists.
+
+3. Receipt. `genesis/AO_DEPLOY_RECEIPT.json` exists, parses, and either:
+   - declares itself a placeholder via `"status": "placeholder"` —
+     return NOT_YET_SEALED with a remediation message naming exactly what
+     a real receipt requires; or
+   - is a real receipt: assert it has `process_id`, `signer_address`,
+     `lua_source_sha256`, `aos_version`. Recompute
+     sha256(`ao/core/main.lua`) and require equality with
+     `lua_source_sha256` (catches a divergent Lua at the same PID).
+
+4. Gateway round-trip. Read the AO compute unit's view of the process
+   state at `${XION_AO_GATEWAY_URL}/state/${process_id}` (default
+   `https://cu.ao-testnet.xyz`). Compare its reported state-tip height +
+   root with the latest row of `ledgers/STATE_CHAIN_LEDGER.jsonl`.
+   Mismatch is FAIL. Network unreachable / unparseable response is
+   NOT_YET_SEALED — never fake-green on a network outage.
+
+The previous version of this command bypassed step 4 whenever
+`"dummy" in process_id`. That bypass is gone. A receipt that is honestly
+a placeholder is honestly NOT_YET_SEALED; a receipt that claims a real PID
+must survive the gateway round-trip.
 """
 
 from __future__ import annotations
 
+import json
+import os
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +76,16 @@ _EXPECTED_HANDLERS: frozenset[str] = frozenset({
     "provision-relay", "provision-inference", "provision-storage", "provision-bandwidth", "provision-witness",
     "route-slices", "improvement-spend", "reserve-draw", "accept-donation", "enter-hibernation", "exit-hibernation"
 })
+
+_DEFAULT_GATEWAY = "https://cu.ao-testnet.xyz"
+_GATEWAY_TIMEOUT_S = 10.0
+
+_REAL_RECEIPT_REQUIRED: tuple[str, ...] = (
+    "process_id",
+    "signer_address",
+    "lua_source_sha256",
+    "aos_version",
+)
 
 
 def _fail(label: str, message: str) -> tuple[int, str]:
@@ -99,9 +140,179 @@ def _check_one_schema(path: Path, repo_root: Path, arch_hash: str, core_hash: st
     return OK, f"{label}: OK"
 
 
+def _read_latest_ledger_tip(ledger_path: Path) -> tuple[int, str] | None:
+    """Return (height, state_root_sha256) of the last row, or None if empty/absent."""
+    if not ledger_path.is_file():
+        return None
+    last: dict[str, Any] | None = None
+    with ledger_path.open("rb") as fh:
+        for raw_line in fh:
+            line = raw_line.rstrip(b"\n").rstrip(b"\r")
+            if not line:
+                continue
+            try:
+                last = json.loads(line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return None
+    if last is None:
+        return None
+    height = last.get("height")
+    root = last.get("state_root_sha256")
+    if not isinstance(height, int) or not isinstance(root, str):
+        return None
+    return height, root
+
+
+def _fetch_gateway_tip(gateway_url: str, process_id: str) -> tuple[int | None, tuple[int, str] | None, str | None]:
+    """Read the AO compute unit's view of the process state.
+
+    Returns (exit_code_hint, (height, root) | None, message). exit_code_hint is
+    NOT_YET_SEALED on network/parse failure (never fake-green), OK otherwise.
+    """
+    url = f"{gateway_url.rstrip('/')}/state/{process_id}"
+    req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "xion-verify"})
+    try:
+        with urllib.request.urlopen(req, timeout=_GATEWAY_TIMEOUT_S) as resp:
+            body = resp.read()
+            content_type = resp.headers.get("Content-Type", "")
+    except urllib.error.URLError as exc:
+        return NOT_YET_SEALED, None, f"AO gateway unreachable at {url}: {exc.reason}"
+    except TimeoutError as exc:
+        return NOT_YET_SEALED, None, f"AO gateway timeout at {url}: {exc}"
+    except OSError as exc:
+        return NOT_YET_SEALED, None, f"AO gateway socket error at {url}: {exc}"
+
+    try:
+        text = body.decode("utf-8", errors="replace")
+    except Exception as exc:  # noqa: BLE001
+        return NOT_YET_SEALED, None, f"AO gateway response not decodable: {exc}"
+
+    parsed: Any = None
+    if "json" in content_type.lower() or text.lstrip().startswith(("{", "[")):
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = None
+
+    if isinstance(parsed, dict):
+        height = parsed.get("state_tip_height")
+        if height is None:
+            height = parsed.get("height")
+        root = parsed.get("state_root_sha256")
+        if root is None:
+            root = parsed.get("root")
+        if isinstance(height, int) and isinstance(root, str) and len(root) == 64:
+            return OK, (height, root), None
+
+    return (
+        NOT_YET_SEALED,
+        None,
+        (
+            f"AO gateway response shape unrecognized at {url}; "
+            f"expected JSON object containing `state_tip_height` (int) and `state_root_sha256` (64-char hex). "
+            f"Got: {text[:200]!r}"
+        ),
+    )
+
+
+def _check_receipt_and_gateway(repo_root: Path, schema_count: int) -> tuple[int, str]:
+    lua_main = repo_root / "ao" / "core" / "main.lua"
+    if not lua_main.is_file():
+        return (
+            NOT_YET_SEALED,
+            f"ao-handlers: NOT_YET_SEALED ({schema_count} handler schema(s) verified, awaiting Lua skeleton: ao/core/main.lua)",
+        )
+
+    receipt_path = repo_root / "genesis" / "AO_DEPLOY_RECEIPT.json"
+    if not receipt_path.is_file():
+        return (
+            NOT_YET_SEALED,
+            f"ao-handlers: NOT_YET_SEALED ({schema_count} handler schema(s) verified, Lua skeleton present, awaiting genesis/AO_DEPLOY_RECEIPT.json)",
+        )
+
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        return FAIL, f"ao-handlers: FAIL: cannot parse genesis/AO_DEPLOY_RECEIPT.json: {exc}"
+
+    if not isinstance(receipt, dict):
+        return FAIL, "ao-handlers: FAIL: genesis/AO_DEPLOY_RECEIPT.json must be a JSON object"
+
+    if receipt.get("status") == "placeholder":
+        return (
+            NOT_YET_SEALED,
+            (
+                f"ao-handlers: NOT_YET_SEALED ({schema_count} handler schema(s) verified, Lua skeleton present, "
+                "AO_DEPLOY_RECEIPT.json is a placeholder). "
+                "To promote: perform a real `aos` testnet deploy of `ao/core/main.lua`, replace the receipt with "
+                "{status:'live', process_id, signer_address, lua_source_sha256, aos_version, timestamp, network}, "
+                "and seed `ledgers/STATE_CHAIN_LEDGER.jsonl` with the first commit-state round-trip. "
+                "See KW-AOCORE-001."
+            ),
+        )
+
+    missing = [f for f in _REAL_RECEIPT_REQUIRED if f not in receipt or receipt.get(f) in (None, "")]
+    if missing:
+        return (
+            FAIL,
+            f"ao-handlers: FAIL: AO_DEPLOY_RECEIPT.json missing required fields for a non-placeholder receipt: "
+            f"{sorted(missing)}. Either fill them or set `status: 'placeholder'`.",
+        )
+
+    expected_lua_hash = sha256_file(lua_main)
+    if receipt["lua_source_sha256"] != expected_lua_hash:
+        return (
+            FAIL,
+            (
+                "ao-handlers: FAIL: lua_source_sha256 in AO_DEPLOY_RECEIPT.json does not match current ao/core/main.lua bytes\n"
+                f"  receipt: {receipt['lua_source_sha256']}\n"
+                f"  current: {expected_lua_hash}\n"
+                "  Either redeploy and re-issue the receipt, or revert ao/core/main.lua to the deployed bytes."
+            ),
+        )
+
+    ledger_path = repo_root / "ledgers" / "STATE_CHAIN_LEDGER.jsonl"
+    local_tip = _read_latest_ledger_tip(ledger_path)
+    if local_tip is None:
+        return (
+            NOT_YET_SEALED,
+            (
+                f"ao-handlers: NOT_YET_SEALED ({schema_count} handler schema(s) verified, real receipt present, "
+                f"awaiting first row in ledgers/STATE_CHAIN_LEDGER.jsonl. "
+                "Send a `commit-state` message via `aos` and let the orchestrator's STATE_CHAIN_LEDGER writer record it."
+            ),
+        )
+    local_height, local_root = local_tip
+
+    gateway_url = os.environ.get("XION_AO_GATEWAY_URL", _DEFAULT_GATEWAY)
+    code_hint, gateway_tip, msg = _fetch_gateway_tip(gateway_url, receipt["process_id"])
+    if gateway_tip is None:
+        return code_hint, f"ao-handlers: NOT_YET_SEALED ({msg}; cannot prove tip parity offline)"
+
+    gateway_height, gateway_root = gateway_tip
+    if gateway_height != local_height or gateway_root != local_root:
+        return (
+            FAIL,
+            (
+                "ao-handlers: FAIL: local STATE_CHAIN_LEDGER tip does not match AO gateway view\n"
+                f"  ledger: height={local_height}, root={local_root}\n"
+                f"  gateway: height={gateway_height}, root={gateway_root}\n"
+                "  Either re-run `commit-state` to bring the chain forward, or rewind the local ledger to match."
+            ),
+        )
+
+    return (
+        OK,
+        (
+            f"ao-handlers: OK ({schema_count} handler schema(s) verified, Lua skeleton matches deployed hash, "
+            f"local tip parity verified against {gateway_url} at height={local_height})"
+        ),
+    )
+
+
 @click.command(name="ao-handlers")
 def verify_ao_handlers() -> None:
-    """Verify AO Core handler schemas against doctrine."""
+    """Verify AO Core handler schemas, Lua skeleton, and live deploy parity."""
     try:
         repo_root = find_repo_root()
     except RepoRootNotFound as exc:
@@ -128,7 +339,7 @@ def verify_ao_handlers() -> None:
         click.echo("ao-handlers: NOT_YET_SEALED: no ao-handler-*.yaml files found")
         raise click.exceptions.Exit(NOT_YET_SEALED)
 
-    found_handlers = set()
+    found_handlers: set[str] = set()
     worst_code = OK
     messages: list[str] = []
 
@@ -137,10 +348,7 @@ def verify_ao_handlers() -> None:
         messages.append(msg)
         if code != OK:
             worst_code = max(worst_code, code)
-        
-        # Extract handler name from filename
-        handler_name = path.stem.replace("ao-handler-", "")
-        found_handlers.add(handler_name)
+        found_handlers.add(path.stem.replace("ao-handler-", ""))
 
     missing_handlers = _EXPECTED_HANDLERS - found_handlers
     if missing_handlers:
@@ -155,41 +363,10 @@ def verify_ao_handlers() -> None:
     for msg in messages:
         click.echo(msg, err=(worst_code == FAIL and "FAIL" in msg))
 
-    if worst_code == OK:
-        # Phase 6.1: Check for Lua skeleton and deploy receipt
-        lua_main = repo_root / "ao/core/main.lua"
-        receipt = repo_root / "genesis/AO_DEPLOY_RECEIPT.json"
-
-        missing_lua = []
-        if not lua_main.is_file(): missing_lua.append("ao/core/main.lua")
-
-        if missing_lua:
-            click.echo(f"ao-handlers: NOT_YET_SEALED ({len(yaml_files)} handler schema(s) verified, awaiting Lua skeleton: {', '.join(missing_lua)})")
-            raise click.exceptions.Exit(NOT_YET_SEALED)
-
-        if not receipt.is_file():
-            click.echo(f"ao-handlers: NOT_YET_SEALED ({len(yaml_files)} handler schema(s) verified, Lua skeleton present, awaiting genesis/AO_DEPLOY_RECEIPT.json)")
-            raise click.exceptions.Exit(NOT_YET_SEALED)
-            
-        # Promote to live: gateway-read state-chain matches local tip
-        # In a real environment, we would use httpx to read from AO gateway.
-        # Since we are using a dummy testnet process ID, we simulate this check.
-        try:
-            import json
-            receipt_data = json.loads(receipt.read_text())
-            pid = receipt_data.get("process_id", "")
-            if "dummy" in pid:
-                # Simulated pass for dummy process ID
-                pass
-            else:
-                # Real check would go here
-                pass
-        except Exception as e:
-            click.echo(f"ao-handlers: FAIL: gateway read failed: {e}", err=True)
-            raise click.exceptions.Exit(FAIL)
-
-        click.echo(f"ao-handlers: OK ({len(yaml_files)} handler schema(s) verified, Lua skeleton and deploy receipt present, state-chain matched)")
-        raise click.exceptions.Exit(OK)
-    else:
+    if worst_code != OK:
         click.echo(f"ao-handlers: FAIL ({len(yaml_files)} handler schema(s) checked)", err=True)
         raise click.exceptions.Exit(worst_code)
+
+    final_code, final_message = _check_receipt_and_gateway(repo_root, len(yaml_files))
+    click.echo(final_message, err=(final_code == FAIL))
+    raise click.exceptions.Exit(final_code)

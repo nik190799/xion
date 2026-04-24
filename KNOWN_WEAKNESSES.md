@@ -26,11 +26,40 @@ Every entry has the same shape:
 - **Discovered:** 2026-04-23 (Phase 6.1 AO Core Skeleton)
 - **Severity:** low
 - **Status:** open
-- **Description:** Only commit-state and ttest have Lua implementations deployed to AO testnet. The other 17 handlers (treasury, provisioning, sustainability, authority) are still doctrine-only.
+- **Description:** Only `commit-state` and `attest` have Lua implementations in `ao/core/main.lua`. The other 17 handlers (treasury, provisioning, sustainability, authority) are still doctrine-only. (The deploy of `commit-state` + `attest` to a real AO testnet process is itself still pending; see KW-AOCORE-001.)
 - **Why it exists:** Phase 6 is sliced into sub-phases. Phase 6.1 shipped the skeleton and the state-chain loop; the rest follow in 6.2 and 6.3.
 - **Mitigations:** xion-verify ao-handlers asserts the schemas match the doctrine.
 - **Pay-down commitment:** Closes family-by-family in Phase 6.2 and 6.3.
 - **Verifier:** xion-verify ao-handlers.
+
+### KW-AOCORE-001 — AO testnet deploy of `commit-state` + `attest` is still pending
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine; reopened 2026-04-24)
+- **Severity:** medium
+- **Status:** `mitigated-residual`
+- **Description:** The AO Core handler doctrine, the YAML schemas, the Lua skeleton (`ao/core/main.lua`), and the `xion-verify ao-handlers` verifier are all in-tree. What is **not** in-tree is a real AO testnet deployment of that Lua, a real receipt in `genesis/AO_DEPLOY_RECEIPT.json`, and a real seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`. The previous closure note (2026-04-23) claimed the handlers were "deployed to AO testnet," which was inaccurate — the receipt was a placeholder string and `xion-verify ao-handlers` had a `"dummy" in pid` bypass that returned OK without a network round-trip. That bypass has been removed in the Phase 6.1-residuals pass; the receipt now self-describes as `{status: "placeholder"}` and the verifier honestly returns NOT_YET_SEALED with a specific remediation message.
+- **Why it exists:** Two reasons stacked. (a) The 2026-04-23 closure note was premature. (b) The 2026-04-24 attempt to do the real deploy hit an environment blocker: the canonical `aos` CLI install path (`npm i -g https://get_ao.g8way.io`) returned 404 from this network and the GitHub install (`npm i -g github:permaweb/aos`) failed at postinstall on this Windows + Node 22 + nvm setup with `ERR_UNSUPPORTED_ESM_URL_SCHEME` even with `--ignore-scripts`. Tracked separately as `KW-AOCORE-003`.
+- **Mitigations:**
+  1. The `xion-verify ao-handlers` bypass is gone. Placeholder receipt now returns NOT_YET_SEALED with a precise remediation string naming exactly what a real receipt requires (`process_id`, `signer_address`, `lua_source_sha256`, `aos_version`, plus a seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`).
+  2. The receipt at `genesis/AO_DEPLOY_RECEIPT.json` is now self-describing as a placeholder (`"status": "placeholder"`, all real fields explicitly null), so a future maintainer reading it cannot mistake it for a real receipt.
+  3. The verifier asserts `lua_source_sha256` against the current bytes of `ao/core/main.lua` once a real receipt lands, so a divergent Lua at the same deployed PID is caught.
+  4. Gateway-read uses stdlib `urllib.request` (not a third-party HTTP dep), with the gateway URL overridable via `XION_AO_GATEWAY_URL` (default `https://cu.ao-testnet.xyz`). Network failure resolves to NOT_YET_SEALED, never fake-green.
+- **Pay-down commitment:** Closes when the operator does the deploy on a working environment (a Linux box, a fresh macOS install, or a WSL2 shell where `aos` runs), replaces the placeholder receipt with the real one, sends a first `commit-state` message, and the orchestrator's STATE_CHAIN_LEDGER writer records the seed row. At that point `xion-verify ao-handlers` flips from NOT_YET_SEALED to OK without any verifier-code change.
+- **Verifier:** `xion-verify ao-handlers` (live; honest NOT_YET_SEALED on placeholder, OK only on real round-trip).
+
+### KW-AOCORE-003 — `aos` CLI install path is broken on this Windows + Node 22 + nvm setup
+- **Domain:** OPS
+- **Discovered:** 2026-04-24 (Phase 6.1-residuals attempt)
+- **Severity:** low (operator-environment-specific; does not affect any committed artifact's correctness)
+- **Status:** open
+- **Description:** Three install paths for the AO `aos` CLI were attempted on the current operator workstation (Windows 10 build 22631, Node 22.22.2 via nvm-for-windows, npm 10.9.7) and all three failed: (a) `npm i -g https://get_ao.g8way.io` returned 404; (b) `npm i -g github:permaweb/aos` failed at the keccak postinstall script with `ENOENT spawn cmd.exe`; (c) `npm i -g @permaweb/aos --ignore-scripts` succeeded but the resulting `aos` binary crashes immediately with `ERR_UNSUPPORTED_ESM_URL_SCHEME` (Node 22's strict ESM resolver vs the package's Windows-absolute-path import). The blocker is in the `aos` package or its interaction with this Node version on Windows; it is not a missing dep we can install.
+- **Why it exists:** `aos` is a third-party tool maintained by the AO ecosystem; its Windows + Node-22 compatibility is outside Xion's control surface.
+- **Mitigations:**
+  1. The Phase 6.1-residuals verifier change makes the install blocker observable: `xion-verify ao-handlers` returns NOT_YET_SEALED with a remediation message naming exactly what a real receipt requires.
+  2. The `xion-verify state-chain` verifier already returns NOT_YET_SEALED on an absent `ledgers/STATE_CHAIN_LEDGER.jsonl`, so no downstream verifier silently green-lights the missing deploy.
+  3. The Lua handlers (`ao/core/main.lua`) are independently parseable by the Lua-2-line probe in any Lua 5.3 REPL, so doctrine review does not depend on having `aos` installed.
+- **Pay-down commitment:** Closes when (a) the operator runs the deploy from a working environment (WSL2, Linux box, fresh macOS, or a Node 18 LTS sidecar where `aos` is known to work), or (b) the AO ecosystem ships a Node-22-compatible Windows install path. Whichever happens first.
+- **Verifier:** `xion-verify ao-handlers` (the closure of this KW is observable as that verifier flipping from NOT_YET_SEALED to OK).
 
 ### KW-VELOCITY-002 â€” Auto-Research Loop runs against curated genesis source list only
 - **Domain:** `OPS`
@@ -612,16 +641,6 @@ Every entry has the same shape:
 
 ## Closed
 
-### KW-AOCORE-001 — Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet
-- **Domain:** `RUNTIME`
-- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine)
-- **Severity:** low
-- **Status:** `closed` on 2026-04-23 by the Phase 6.1 Lua skeleton landing.
-- **Description:** The AO Core handler set is pinned in `docs/28-AO-CORE.md` and `docs/schemas/ao-handler-*.yaml`, but no Lua code has been written and no AO testnet deployment exists.
-- **How it closed:** `ao/core/main.lua` shipped the `commit-state` and `attest` handlers against the pinned ABI. Deployed to AO testnet with receipt recorded.
-- **Residual / remaining weaknesses (tracked separately):** `KW-AOCORE-002` (remaining handlers).
-- **Verifier:** `xion-verify ao-handlers` promoted to live and asserts deploy receipt + lua presence + testnet match.
-
 ### KW-COGNITION-001 — /chat does not yet route through the Sensorium / retrieval / journal stack; voice is system-prompt-only
 - **Domain:** COGNITION
 - **Discovered:** 2026-04-23 (Phase 5g-i.1)
@@ -667,14 +686,6 @@ Every entry has the same shape:
 - **How it closed:** Added `orchestrator/inference_router/model_registry.py` and updated `chat.py`/`chat_stream.py` to calculate `effective_max_tokens` per provider/model.
 - **Residual / remaining weaknesses (tracked separately):** None.
 - **Verifier:** None yet.
-
-### KW-AOCORE-001 — Phase 6.0 is doctrine-only; no Lua code, no AO testnet deploy yet
-- **Domain:** RUNTIME
-- **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine)
-- **Severity:** low
-- **Status:** closed
-- **Description:** The AO Core handler set is pinned in docs/28-AO-CORE.md and docs/schemas/ao-handler-*.yaml, but no Lua code has been written and no AO testnet deployment exists.
-- **Closed:** 2026-04-23 (Phase 6.1 AO Core Skeleton). commit-state and ttest Lua handlers deployed to AO testnet; xion-verify ao-handlers promoted to live; STATE_CHAIN_LEDGER writer implemented. 17 handlers remain doctrine-only (tracked in KW-AOCORE-002).
 
 *(Entries move here with a closure date and the artifact (commit hash, PR, deploy tx, or doctrine version) that closed them.)*
 

@@ -104,7 +104,7 @@ _UNSEALED = (
              "Phase 6"),
     StubSpec("regulatory-ledger",
              "Walk the GOVERNANCE_LEDGER state-actor-interaction rows; verify hash chain and row shape (docs/REGULATORY-POSTURE.md Part IV).",
-             "ledger-governance.yaml schema not yet landed and GOVERNANCE_LEDGER carries no state-actor rows yet (KW-DOCS-004).",
+             "GOVERNANCE_LEDGER carries no state-actor rows yet (schema is landed at docs/schemas/ledger-governance.yaml; promotes when the first row exists).",
              "Phase 6"),
 )
 

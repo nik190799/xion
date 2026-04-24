@@ -1,5 +1,10 @@
 {
+    "status": "placeholder",
     "process_id": "ao_testnet_dummy_pid_1234567890",
     "timestamp": 1682300000,
-    "network": "testnet"
+    "network": "testnet",
+    "signer_address": null,
+    "lua_source_sha256": null,
+    "aos_version": null,
+    "note": "PLACEHOLDER — no real AO testnet deployment has been performed. xion-verify ao-handlers reads `status` and returns NOT_YET_SEALED until this file is replaced by a real receipt produced by a successful `aos` deploy. See KW-AOCORE-001 and KW-AOCORE-003."
 }
