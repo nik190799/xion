@@ -11,8 +11,9 @@ Layered checks (each must pass for the next to be evaluated):
    parses as YAML, has the required meta fields, `family` is one of
    `{lifecycle, authority, provisioning, sustainability}`, `source_sha256`
    matches `docs/04-ARCHITECTURE.md`, `operational_sha256` matches
-   `docs/28-AO-CORE.md`. The expected handler set (19 handlers across 4
-   families) must be exactly present — no missing, no extras.
+   `docs/28-AO-CORE.md`. The expected handler set (20 handlers across 4
+   families: 19 from Phase 6.0, plus `anchor-interaction-batch` from Phase
+   6.3) must be exactly present — no missing, no extras.
 
 2. Skeleton. `ao/core/main.lua` exists.
 
@@ -21,16 +22,22 @@ Layered checks (each must pass for the next to be evaluated):
      return NOT_YET_SEALED with a remediation message naming exactly what
      a real receipt requires; or
    - is a real receipt: assert it has `process_id`, `signer_address`,
-     `lua_source_sha256`, `aos_version`. Recompute
-     sha256(`ao/core/main.lua`) and require equality with
+     `lua_source_sha256`, `aos_version`, and `substrate` (Phase 6.1.b).
+     `substrate` MUST be one of `{legacynet, localnet}`; any other value
+     (notably `mainnet`) FAILs at this phase per docs/09-GOVERNANCE.md.
+     Recompute sha256(`ao/core/main.lua`) and require equality with
      `lua_source_sha256` (catches a divergent Lua at the same PID).
 
 4. Gateway round-trip. Read the AO compute unit's view of the process
    state at `${XION_AO_GATEWAY_URL}/state/${process_id}` (default
-   `https://cu.ao-testnet.xyz`). Compare its reported state-tip height +
-   root with the latest row of `ledgers/STATE_CHAIN_LEDGER.jsonl`.
-   Mismatch is FAIL. Network unreachable / unparseable response is
-   NOT_YET_SEALED — never fake-green on a network outage.
+   `https://cu.ao-testnet.xyz` — operator sets it to
+   `http://localhost:4004` for the localnet substrate per
+   `infra/ao-localnet/`). Compare its reported state-tip height + root
+   with the latest row of `ledgers/STATE_CHAIN_LEDGER.jsonl`. Mismatch is
+   FAIL. Network unreachable / unparseable response is NOT_YET_SEALED —
+   never fake-green on a network outage. The OK message includes the
+   substrate name so a third-party reviewer can see which CU witnessed
+   the seal.
 
 The previous version of this command bypassed step 4 whenever
 `"dummy" in process_id`. That bypass is gone. A receipt that is honestly
@@ -71,10 +78,15 @@ _REQUIRED_META: tuple[str, ...] = (
 _ALLOWED_FAMILIES: frozenset[str] = frozenset({"lifecycle", "authority", "provisioning", "sustainability"})
 
 _EXPECTED_HANDLERS: frozenset[str] = frozenset({
+    # Phase 6.0 lifecycle (7) — including anchor-interaction-batch added in Phase 6.3.
     "commit-state", "attest", "treasury-spend", "registry-update", "spend", "slash-imprint",
+    "anchor-interaction-batch",
+    # Phase 6.0 authority (2)
     "rotate-authority", "abdicate-tier",
+    # Phase 6.0 provisioning (5)
     "provision-relay", "provision-inference", "provision-storage", "provision-bandwidth", "provision-witness",
-    "route-slices", "improvement-spend", "reserve-draw", "accept-donation", "enter-hibernation", "exit-hibernation"
+    # Phase 6.0 sustainability (6)
+    "route-slices", "improvement-spend", "reserve-draw", "accept-donation", "enter-hibernation", "exit-hibernation",
 })
 
 _DEFAULT_GATEWAY = "https://cu.ao-testnet.xyz"
@@ -85,7 +97,13 @@ _REAL_RECEIPT_REQUIRED: tuple[str, ...] = (
     "signer_address",
     "lua_source_sha256",
     "aos_version",
+    "substrate",
 )
+
+# Phase 6.1.b allowlist. `mainnet` is intentionally excluded at this phase per
+# `docs/09-GOVERNANCE.md` (Tier-3 cosign ceremony obligation). A receipt that
+# declares any other value FAILs immediately.
+_ALLOWED_SUBSTRATES: frozenset[str] = frozenset({"legacynet", "localnet"})
 
 
 def _fail(label: str, message: str) -> tuple[int, str]:
@@ -259,6 +277,18 @@ def _check_receipt_and_gateway(repo_root: Path, schema_count: int) -> tuple[int,
             f"{sorted(missing)}. Either fill them or set `status: 'placeholder'`.",
         )
 
+    substrate = receipt["substrate"]
+    if substrate not in _ALLOWED_SUBSTRATES:
+        return (
+            FAIL,
+            (
+                f"ao-handlers: FAIL: AO_DEPLOY_RECEIPT.json `substrate` field has invalid value {substrate!r}. "
+                f"Allowed at Phase 6.1: {sorted(_ALLOWED_SUBSTRATES)}. "
+                "`mainnet` is forbidden at this phase per docs/09-GOVERNANCE.md (Tier-3 cosign ceremony obligation; "
+                "see docs/28-AO-CORE.md § 'Substrate amendment (Phase 6.1.b)')."
+            ),
+        )
+
     expected_lua_hash = sha256_file(lua_main)
     if receipt["lua_source_sha256"] != expected_lua_hash:
         return (
@@ -305,7 +335,7 @@ def _check_receipt_and_gateway(repo_root: Path, schema_count: int) -> tuple[int,
         OK,
         (
             f"ao-handlers: OK ({schema_count} handler schema(s) verified, Lua skeleton matches deployed hash, "
-            f"local tip parity verified against {gateway_url} at height={local_height})"
+            f"substrate={substrate}, local tip parity verified against {gateway_url} at height={local_height})"
         ),
     )
 

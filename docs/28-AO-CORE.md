@@ -13,6 +13,29 @@ This document is the top-level operational doctrine for Xion's AO Core, the on-c
 - **Properties over implementations:** The handler logic (precondition checks, height transition, ledger write) ports cleanly to HyperBEAM later under the Substrate Portability Property.
 - **Solo-builder pragmatism:** Local `aos` REPL + testnet wallet provides a fast feedback loop (seconds, not minutes).
 
+## Substrate amendment (Phase 6.1.b, 2026-04-24)
+
+**Why this amendment exists.** Between the original Phase 6.1 substrate decision (2026-04-23, above) and the first agent-driven attempt to land the testnet seal (2026-04-24), the AO ecosystem's legacy testnet messenger unit at `https://mu.ao-testnet.xyz` began returning HTTP 500 on every spawn attempt — reproduced multiple times across two process names, with explicit gateway/CU/MU URL overrides, all returning `{"error":"TypeError: Cannot read properties of null (reading 'toLowerCase')"}` server-side. The same attempt also discovered that `aos` 2.0 silently flipped its default network to AO mainnet, which is forbidden at this phase by `docs/09-GOVERNANCE.md`. Both blockers are tracked together as `KW-AOCORE-004` in `KNOWN_WEAKNESSES.md`. Three closure paths were named there; this amendment records the doctrine change required to execute path #2 (adopt a Xion-local AO substrate) without violating the Phase 6.1 testnet-only rule.
+
+**What is now permissible for the Phase 6.1 seal.** A Phase 6.1 deploy may target either of these substrates:
+
+1. **Upstream legacynet** — the AO-ecosystem-operated testnet (gateway `https://cu.ao-testnet.xyz`, MU `https://mu.ao-testnet.xyz`). Receipt records `substrate: "legacynet"`. This is the original [`docs/runbooks/AO_DEPLOY_WSL2.md`](runbooks/AO_DEPLOY_WSL2.md) path, retained as an option for whenever upstream recovers.
+2. **Xion-local AO substrate** — the [`infra/ao-localnet/`](../infra/ao-localnet/) Docker stack, a thin wrapper around the upstream `permaweb/ao-localnet` Docker Compose stack pinned to a known commit SHA. Receipt records `substrate: "localnet"`. Operator path is [`docs/runbooks/AO_DEPLOY_LOCALNET.md`](runbooks/AO_DEPLOY_LOCALNET.md).
+
+Mainnet (`substrate: "mainnet"`) remains forbidden at Phase 6.1 by `docs/09-GOVERNANCE.md` — that requires a Phase 6+ Tier-3 ceremony with cold-root cosigns, on a freshly-generated Cold Root wallet, NOT any operator-side wallet. The verifier `xion-verify ao-handlers` enforces this allowlist at the receipt layer (any receipt declaring `substrate: "mainnet"` returns FAIL at this phase).
+
+**What "the seal is valid" means for the localnet path.** The Phase 6.1 testnet-seal bar — equally for both substrates above — is:
+
+1. The 19-handler doctrine is loaded into the AO process (verifier already checks this against the `docs/schemas/ao-handler-*.yaml` set).
+2. One round-trip `commit-state` message is accepted by the deployed Lua, advancing `StateTip` from `height=0` to `height=1` with the empty-bytes root.
+3. The orchestrator's `STATE_CHAIN_LEDGER` writer records the seed row.
+4. `xion-verify ao-handlers` reads `XION_AO_GATEWAY_URL` (defaulting to `https://cu.ao-testnet.xyz` for legacynet; the operator sets it to `http://localhost:4004` for localnet) and confirms tip parity between the local ledger row and the substrate's CU.
+5. The receipt at `genesis/AO_DEPLOY_RECEIPT.json` records `substrate`, `process_id`, `signer_address`, `lua_source_sha256`, `aos_version`, and (for localnet receipts) the upstream pin used to bring the substrate up so a third-party operator can reproduce the bring-up byte-for-byte.
+
+**What this amendment explicitly does NOT promote.** Public-Arweave durability, multi-CU/multi-MU redundancy, mainnet-grade signer custody, and the cross-domain bridging to Base EVM are NOT requirements of the Phase 6.1 seal under either substrate. They are Phase 6+ obligations and remain tracked as separate residuals (`KW-AOCORE-002` for the unbuilt 17 handlers; the mainnet-ceremony obligation is handled in `docs/09-GOVERNANCE.md`).
+
+**Substrate Portability Property restated.** The handler Lua is identical across substrates — the same `ao/core/main.lua` loads on both legacynet and localnet, and would load on mainnet at Phase 6+ with no source change. The substrate field in the receipt records *which* CU was witness to the seal, not what the seal was. This preserves the doctrine's "death of any single algorithm/substrate must not kill Xion" property: if either substrate is unavailable later, the other can witness future seals using the same handler bytes.
+
 ## Handler Set Enumeration
 
 The AO Core exposes 19 handlers across four families. Each handler's ABI and state effects are pinned in a corresponding schema file under `docs/schemas/ao-handler-*.yaml`.

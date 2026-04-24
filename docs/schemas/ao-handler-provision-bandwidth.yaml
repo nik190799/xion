@@ -4,9 +4,9 @@ schema_version: 1
 status: doctrine_only
 defer_to: Phase 6.1
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: 567673846b6fc9503b8208c5febedaa972124716633604f5dc7b1241e8e52c4b
+source_sha256: da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260
 operational_doctrine: docs/28-AO-CORE.md
-operational_sha256: 72901a31ffafc3c5f3b59fd228131abe4c8c9e5e4867d4638f39739555aeb928
+operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
   - name: dummy_arg
     type: string

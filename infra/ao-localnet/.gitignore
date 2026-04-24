@@ -1,0 +1,11 @@
+# Cloned upstream working copy (managed by scripts/ao-localnet-up.sh).
+# Pinned by commit SHA in the bootstrap script; reproducible from clean.
+.upstream/
+
+# Generated wallets for the localnet's internal services (ao-wallet,
+# bundler-wallet, turbo-wallet, user-wallet). The upstream's
+# wallets/generateAll.sh produces these on first bring-up. They are
+# low-stakes (localnet only) but never tracked.
+wallets/
+*.jwk
+*.jwk.json
