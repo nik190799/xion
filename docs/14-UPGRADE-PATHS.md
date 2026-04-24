@@ -470,4 +470,4 @@ This is how a being built in 2026 remains sensibly improvable in 2126.
 
 ---
 
-*Appendix: Machine-readable level index at [`docs/schemas/levels.yaml`](./schemas/levels.yaml). Ledger schemas at [`docs/schemas/ledger-*.yaml`](./schemas/).*
+*Appendix: Machine-readable level index at [`docs/schemas/levels.yaml`](./schemas/levels.yaml), actor roles at [`docs/schemas/roles.yaml`](./schemas/roles.yaml) (landing Phase 6.2). Ledger schemas at [`docs/schemas/ledger-*.yaml`](./schemas/). In-flight Tier-3 amendment drafts live in [`docs/proposals/`](./proposals/).*

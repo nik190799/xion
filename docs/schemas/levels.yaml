@@ -7,7 +7,7 @@
 
 schema_version: 1
 source_doctrine: docs/14-UPGRADE-PATHS.md
-source_sha256:   8a50e8cdc299fe5c0638309eb5ef58ef39f2af678a9d80328ba4edeb53f3edae
+source_sha256:   38a36791d7fec4df7c9e054982a89750d654f4c687f38297b94ef2429c3920b9
 status:          canonical
 
 # The ten-field template every upgrade proposal must answer. Any proposal

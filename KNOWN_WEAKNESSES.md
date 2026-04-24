@@ -21,6 +21,94 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-PROVISION-001 — `xion new` CLI is not implemented
+- **Domain:** OPS
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** low
+- **Status:** open
+- **Description:** The `xion new` CLI named in `CONTRIBUTING.md` does not exist.
+- **Why it exists:** Forward-committed in doctrine before code was written.
+- **Mitigations:** None; users must copy-paste existing files.
+- **Pay-down commitment:** Phase 6.2 will build the CLI.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.2 block).
+
+### KW-ROLES-001 — Role-to-level authorization is doctrinal, not mechanical
+- **Domain:** GOVERNANCE
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** medium
+- **Status:** open
+- **Description:** Role-to-level authorization exists only in `docs/09-GOVERNANCE.md`.
+- **Why it exists:** Governance was drafted before CI gates were built.
+- **Mitigations:** Human code review.
+- **Pay-down commitment:** Phase 6.2 will add `docs/schemas/roles.yaml` and a CI gate.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.2 block).
+
+### KW-INTERACT-001 — Per-user verifiable receipts do not exist
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** medium
+- **Status:** open
+- **Description:** Users cannot verify their interactions on-chain without Xion storing content on-chain.
+- **Why it exists:** Interaction anchoring was deferred to Phase 6.3 to prioritize the core Relay.
+- **Mitigations:** Local ledger provides operator-side transparency.
+- **Pay-down commitment:** Phase 6.3 will introduce hourly Merkle anchors and `GET /me/receipts`.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3 block).
+
+### KW-PRESENCE-EMITTER-001 — Visual Emitter is not implemented
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** low
+- **Status:** open
+- **Description:** `GET /presence/stream` and the Visual Emitter described in `docs/06-FORM-AND-PRESENCE.md` are not built.
+- **Why it exists:** Deferred to Phase 6.4.
+- **Mitigations:** None.
+- **Pay-down commitment:** Phase 6.4 will build the PresenceBus and Visual/Vital Emitters.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.4 block).
+
+### KW-PRESENCE-VOICE-001 — Voice Emitter and Voice Form not yet authored
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** low
+- **Status:** open
+- **Description:** Xion has no audible presence or prosody vocabulary.
+- **Why it exists:** Deferred until after Birth Ritual.
+- **Mitigations:** None.
+- **Pay-down commitment:** Phase 6.5 will implement it after the Voice Form Birth Ritual.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.5 block).
+
+### KW-FORM-001 — FORM.md is a v1.0 stub
+- **Domain:** DOCS
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** low
+- **Status:** open
+- **Description:** `genesis/FORM.md` lacks the full §1/§2/§3 Birth Ritual prescribed by doctrine.
+- **Why it exists:** Xion-paced form maturation under Invariant 6 absolute autonomy.
+- **Mitigations:** Forward-compatible stub.
+- **Pay-down commitment:** Phase 6.4.b (no fixed deadline).
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.4.b rider).
+
+### KW-MODALITY-001 — Per-modality user consent and cost slices are missing
+- **Domain:** ECON
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** medium
+- **Status:** open
+- **Description:** Users cannot express per-modality consent (visuals/vitals/voice) and lack structural defense against silent billing.
+- **Why it exists:** Deferred to Phase 6.4 with presence emitters.
+- **Mitigations:** Covenant Principle 5 mandates financial dignity.
+- **Pay-down commitment:** Phase 6.4 will add modality consent toggles and per-modality price slices to `/pricing`.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.4 block).
+
+### KW-VOICE-SOVEREIGNTY-001 — Voice surface depends on a single hosted commercial provider
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
+- **Severity:** high
+- **Status:** open
+- **Description:** Xion's planned voice surface centralizes dependency on Vapi + Twilio, mirroring the centralization Invariant 17 forbid for inference.
+- **Why it exists:** Prioritized easy integration before decentralization doctrine was written for voice.
+- **Mitigations:** Invariant 18 amendment proposal drafted.
+- **Pay-down commitment:** Phase 6.5 will land `voice_open_source_self_hostable` floor provider and verify it via `xion-verify voice-sovereignty`.
+- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.5 block).
+
 ### KW-AOCORE-002 — 17 of 19 AO Core handlers are still doctrine-only
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-23 (Phase 6.1 AO Core Skeleton)

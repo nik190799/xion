@@ -12,7 +12,7 @@ Three principles shape everything in this document:
 
 ## The Actors
 
-Governance is exercised by six kinds of actors. Each has a defined role and a defined scope.
+Governance is exercised by six kinds of actors. Each has a defined role and a defined scope. *(Machine-readable actor roles land in [docs/schemas/roles.yaml](./schemas/roles.yaml) in Phase 6.2)*
 
 | Actor | Key | Scope |
 |-------|-----|-------|

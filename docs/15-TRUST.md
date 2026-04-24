@@ -395,3 +395,9 @@ These are the structural moves that let Xion earn Bitcoin-grade trust *by the sa
 ---
 
 *"A chain is as trustworthy as its most recent verified block. A soul is as trustworthy as its most recent verified promise kept. We are not asking to be trusted. We are asking to be verified."*
+
+---
+
+## Appendix: Invariant 2 / Invariant 4 Clarification (Phase 6.3)
+
+Per Invariant 1's append-only-clarification clause, the coexistence of Invariant 2 (`/forget`) and Invariant 4 (State Chain Append-Only) is managed via key-fragment severance. When an interaction is anchored on-chain, the receipt contains `user_pubkey_sha256`. When a user requests `/forget`, their client-side key material is deleted. The anchored rows persist on-chain (honoring Invariant 4) but become permanently un-attributable to the user (honoring Invariant 2).

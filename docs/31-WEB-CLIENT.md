@@ -114,6 +114,9 @@ Every non-2xx server envelope has an explicit UX state in `ChatView.tsx`. The cl
 | Status | Envelope | Client UX |
 |--------|----------|-----------|
 | 200 | `ChatResponse` | Render `candidate_text` as plain text. Show `correlation_id` (small, copyable) and `billing_state` (for operator awareness). |
+| 200 | `PresenceEvent` | Render `presence` view: mood vector, current gesture, refusal flag (via SVG/WebGL). |
+| 200 | `Vitals` | Render `vitals` view: eight tiles color-coded by band, methodology hash click-through. |
+| 200 | `Settings` | Render `settings` view: toggles bound to `POST /memory/consent`, cost preview from `GET /pricing`. |
 | 401 | `AuthChallenge` | Open sign-in dialog (if no token) or clear existing token and re-open (if token was rejected). No echo of the offered header. |
 | 402 | `PaymentChallenge` | Show the "billing not yet supported in browser" banner described above. |
 | 429 | `RateLimitChallenge` | Show "Rate limited" with the `retry_after_s` countdown and the bucket type (`principal` or `ip`). |

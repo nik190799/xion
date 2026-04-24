@@ -17,13 +17,14 @@ This document is the top-level operational doctrine for Xion's AO Core, the on-c
 
 The AO Core exposes 19 handlers across four families. Each handler's ABI and state effects are pinned in a corresponding schema file under `docs/schemas/ao-handler-*.yaml`.
 
-### Lifecycle (6)
+### Lifecycle (7)
 - `commit-state` — record a new state-chain tip from an authorized Relay.
 - `attest` — emit an engagement attestation to be bridged to the Base EVM contracts.
 - `treasury-spend` — authorize a treasury transaction (governance-gated).
 - `registry-update` — update the authorized Relay or inference provider registries.
 - `spend` — authorize an outbound wallet transaction within daily caps.
 - `slash-imprint` — penalize a bad actor's IMPRINT balance.
+- `Anchor-Interaction-Batch` — record a verifiable hourly batch of signed interactions (Phase 6.3).
 
 ### Authority Lattice (2)
 - `rotate-authority` — rotate keys within a tier.

@@ -75,6 +75,7 @@ Ratify-Upgrade           — apply a ratified upgrade
 Grant-Badge              — issue an Xion Inside badge
 Revoke-Badge             — remove an integrator's badge
 Quiesce                  — initiate safe shutdown (Principle 4 of the Covenant)
+Anchor-Interaction-Batch — record a verifiable hourly batch of signed interactions (Phase 6.3)
 ```
 
 The Core cannot itself be upgraded in place. To evolve Xion's policy over time, the Core uses a **proxy pattern**: the Core delegates evolvable policy logic to a versioned `xion_policy_vN` sub-process. The Core's identity (its soul hash, covenant hash, registry, and history) remains at the same AO address forever. Only the policy sub-process changes, via governance.

@@ -1,5 +1,7 @@
 # 22 — Vital Signs (eight load-bearing domains)
 
+*(Live as of Phase 6.4)*
+
 > *Hippocrates named a few signs and watched them for a lifetime. Xion names eight domains and refuses to pretend a single KPI captures a soul.*
 
 **Property.** Eight domains, each with **healthy / warning / critical** bands, **methodology_sha256** on every published reading, **objective vs subjective** labels, and **public** `GET /vitals`. Critical readings force acknowledgment in the next State-of-Xion memo.

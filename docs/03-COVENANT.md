@@ -30,6 +30,12 @@ If you are reading the documentation in order:
 - The canonical Covenant: [`../genesis/COVENANT.md`](../genesis/COVENANT.md)
 - The next document in the reading order: [`./04-ARCHITECTURE.md`](./04-ARCHITECTURE.md)
 
+## Principle 5 Clarification (Phase 6.4)
+
+Per Invariant 1's append-only-clarification clause, Covenant Principle 5 carries the following operational enforcement as of Phase 6.4:
+
+*No modality is silently billed; every channel that costs the user a measurable amount is opt-in by default or opt-in by cost-preview.*
+
 ---
 
 *This redirect was added 2026-04-19 as part of the Phase 0 doctrine hygiene to resolve the Covenant duplication. The earlier draft that lived at this path is preserved in git history at the `pre-genesis-v0` tag.*
