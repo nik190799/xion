@@ -31,10 +31,12 @@ def _build() -> click.Group:
     from xion_audit.corpus_info import corpus_info
     from xion_audit.measure import measure
     from xion_audit.replay import replay
+    from xion_audit.anonymize import anonymize
 
     root.add_command(corpus_info, name="corpus-info")
     root.add_command(measure, name="measure")
     root.add_command(replay, name="replay")
+    root.add_command(anonymize, name="anonymize")
     return root
 
 

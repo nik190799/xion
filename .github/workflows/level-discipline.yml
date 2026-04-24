@@ -1,0 +1,48 @@
+name: level-discipline
+
+# Per-PR governance gate. Asserts every PR satisfies the disjoint-surface
+# discipline (one level touched per PR, per docs/14-UPGRADE-PATHS.md) and
+# the initiator-authorization property (PR_AUTHOR is in the
+# github_identity_map for an actor whose authorized_levels includes the
+# resolved level, per docs/schemas/roles.yaml).
+#
+# This is a SEPARATE workflow from .github/workflows/verify.yml so that a
+# governance failure has its own legible failure mode in the GitHub UI. A
+# verifier failure (xion-verify links broke, schemas drift) is a doctrine
+# hygiene problem; a level-discipline failure is a governance problem. They
+# are deliberately not conflated.
+#
+# The companion 90-day retrospective verifier (xion-verify
+# provisioning-roles) runs inside verify.yml and audits historical merges;
+# this gate audits the SINGLE in-flight PR.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  level-discipline:
+    name: level-discipline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history; we git-diff base..head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install PyYAML (only dependency)
+        run: python -m pip install --upgrade pip pyyaml
+
+      - name: Resolve PR scope and gate
+        run: python scripts/level_discipline.py
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha }}

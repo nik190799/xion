@@ -1,0 +1,21 @@
+schema_version: 1
+source_doctrine: docs/24-COGNITION.md
+source_sha256:   a3fd99c585c847e67829ecdfcded4a5ee9fbbd3800ec23e82ef45cfb425c1b75
+status:          canonical
+
+ledger_name: BELIEF_LOG
+append_only: true
+storage:     arweave
+row_format:  json_line
+verifier:    xion-verify ledgers
+
+row:
+  required:
+    - entry_id
+    - prev_hash
+    - this_hash
+    - signature
+    - timestamp
+    - belief_statement
+    - evidence_links
+    - confidence_score

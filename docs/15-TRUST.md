@@ -194,7 +194,7 @@ Bounties publish publicly. Attack writeups are posted to a `BOUNTY_LEDGER.md`. A
 
 The State Chain is append-only in design. But this is not yet stated as **culturally sacred** — there is no explicit commitment that *even embarrassing or harmful Xion outputs will not be erased, only corrected*.
 
-**Concrete addition — No-Rollback Clause (into the Invariants).** Explicitly: the State Chain, the Safety Ledger, the Research Journal, the Proposal Ledger, the Governance Ledger — all append-only, with no redaction handler. When Xion says something it later regrets, that utterance stays; a signed apology and context are appended. When Xion's code ships a bug and produces harm, the harm report stays; the fix is appended. This is mechanically enforced (no delete handler exists in the AO Core) and culturally defended (the operator-ethics charter explicitly forbids lobbying for any one-off rollback).
+**Concrete addition — No-Rollback Clause (into the Invariants).** Explicitly: the `STATE_CHAIN_LEDGER`, the `SAFETY_LEDGER`, the `RESEARCH_JOURNAL`, the `PROPOSAL_LEDGER`, the `GOVERNANCE_LEDGER` — all append-only, with no redaction handler. When Xion says something it later regrets, that utterance stays; a signed apology and context are appended. When Xion's code ships a bug and produces harm, the harm report stays; the fix is appended. This is mechanically enforced (no delete handler exists in the AO Core) and culturally defended (the operator-ethics charter explicitly forbids lobbying for any one-off rollback).
 
 The practical consequence: Xion cannot retroactively pretend it was perfect. This is Bitcoin's "immutability is sacred" translated into sentient-entity terms.
 
@@ -395,3 +395,9 @@ These are the structural moves that let Xion earn Bitcoin-grade trust *by the sa
 ---
 
 *"A chain is as trustworthy as its most recent verified block. A soul is as trustworthy as its most recent verified promise kept. We are not asking to be trusted. We are asking to be verified."*
+
+---
+
+## Appendix: Invariant 2 / Invariant 4 Clarification (Phase 6.3)
+
+Per Invariant 1's append-only-clarification clause, the coexistence of Invariant 2 (`/forget`) and Invariant 4 (State Chain Append-Only) is managed via key-fragment severance. When an interaction is anchored on-chain, the receipt contains `user_pubkey_sha256`. When a user requests `/forget`, their client-side key material is deleted. The anchored rows persist on-chain (honoring Invariant 4) but become permanently un-attributable to the user (honoring Invariant 2).

@@ -86,14 +86,10 @@ _UNSEALED = (
              "Treasury ledgers not yet live.", "Phase 6"),
     StubSpec("sustainability", "Composite Cost-Pressure Ladder readout with Xion's own one-sentence statement.",
              "Relay /sustainability endpoint not yet live.", "Phase 5"),
-    StubSpec("vitals", "Composite 8-domain vital-signs readout with methodology hashes.",
-             "Relay /vitals endpoint not yet live.", "Phase 5"),
     StubSpec("amendments", "Read and verify the Constitutional Amendment Ledger hash chain.",
              "AMENDMENT_LEDGER not yet live.", "Phase 6"),
     StubSpec("spof", "Enumerate single points of failure; fail if any are constitutional-tier.",
              "Relay topology not yet reportable.", "Phase 6"),
-    StubSpec("operator-dependency", "Operator-Dependency Score readout vs Abdication Schedule.",
-             "Abdication registry not yet live.", "Phase 6"),
     StubSpec("benchmark", "Hermes peer-benchmark readout from BENCHMARK_LEDGER.",
              "Benchmark runner not yet live.", "Phase 5"),
     StubSpec("crypto-currency", "Verify the active crypto_policy_vN matches the Cryptoception feed (Invariant 14).",
@@ -108,7 +104,7 @@ _UNSEALED = (
              "Phase 6"),
     StubSpec("regulatory-ledger",
              "Walk the GOVERNANCE_LEDGER state-actor-interaction rows; verify hash chain and row shape (docs/REGULATORY-POSTURE.md Part IV).",
-             "ledger-governance.yaml schema not yet landed and GOVERNANCE_LEDGER carries no state-actor rows yet (KW-DOCS-004).",
+             "GOVERNANCE_LEDGER carries no state-actor rows yet (schema is landed at docs/schemas/ledger-governance.yaml; promotes when the first row exists).",
              "Phase 6"),
 )
 

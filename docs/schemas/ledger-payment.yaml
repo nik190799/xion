@@ -56,7 +56,7 @@
 schema_version: 1
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256:   1d60bf0218e6244eea850e345e2f89ec5a36ac36cfe29d0a3db5f89ebc9c2d96
+source_sha256:   da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260
 
 operational_doctrine: docs/29-BILLING-X402.md
 
@@ -94,6 +94,8 @@ row:
 
   optional_fields:
     - stream_id              # hex32; present iff row originated on POST /chat/stream (Phase 5g-ii)
+    - user_proof_commit      # hex64 | null; passthrough-only in Phase 6.3
+    - user_proof_algorithm   # string | null; passthrough-only in Phase 6.3
 
   conditional_fields:
     posture:

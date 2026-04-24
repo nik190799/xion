@@ -1,0 +1,21 @@
+schema_version: 1
+source_doctrine: docs/08-AUTO-RESEARCH.md
+source_sha256:   02ad50a5f04291d9cd7e8dc099968ac0bd2485606ba9e46b83e59e4c3887a43b
+status:          canonical
+
+ledger_name: RESEARCH_JOURNAL
+append_only: true
+storage:     arweave
+row_format:  json_line
+verifier:    xion-verify ledgers
+
+row:
+  required:
+    - entry_id
+    - prev_hash
+    - this_hash
+    - signature
+    - timestamp
+    - scan_sources
+    - findings
+    - synthesis

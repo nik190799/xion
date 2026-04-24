@@ -67,6 +67,7 @@ from orchestrator.inference_router.provider import (
 
 from .chat import _gate_commitment, _principle_to_int
 from .models import (
+    MIN_MAX_TOKENS,
     ChatRequest,
     ChatResponse,
     NoFloorEnvelope,
@@ -354,12 +355,27 @@ async def _stream_body(
     seq = 0
     terminal: GenerationResult | None = None
     turn_deadline_monotonic = time.monotonic() + deadline_s
-    gen = stream_generate(
+    
+    from orchestrator.inference_router.model_registry import get_min_max_tokens
+    model_id_configured = getattr(provider, "model", None)
+    effective_max_tokens = max(
+        req.max_tokens,
+        get_min_max_tokens(provider_id, model_id_configured),
+    )
+    
+    supervisor = getattr(app.state, "supervisor", None)
+    snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
+    
+    from orchestrator.cognition.loop import stream_run_turn
+    gen = stream_run_turn(
         provider,
         req.message,
-        system=None,
-        max_tokens=req.max_tokens,
-        deadline_s=deadline_s,
+        app.state.soul_prompt,
+        snapshot_dict,
+        effective_max_tokens,
+        deadline_s,
+        ingress.correlation_id,
+        stream_generate,
     )
     try:
         # Per-chunk wall-clock deadline check. The individual

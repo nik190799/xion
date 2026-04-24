@@ -1,21 +1,18 @@
-"""Hybrid retrieval for ``UserContext`` (vector + keyword + recency)."""
+"""Phase 5h: The Cognition Wiring - Retrieval Engine."""
+from .journal import Journal
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from orchestrator.cognition.user_context import UserContext
-
-
-class JournalIndex:
-    """Content-addressed index over ``RESEARCH_JOURNAL`` and ``BELIEF_LOG`` appends."""
-
-    def rebuild_if_stale(self, max_seconds_since_append: float = 60.0) -> None:
-        """Rebuild within the cognition SLA (see docs/24-COGNITION.md)."""
-        raise NotImplementedError
-
-
-def retrieve_for_turn(user_ctx: UserContext, query: str, sensorium_tick: str) -> list[Any]:
-    """Ranked snippets for prompt injection; deterministic given pinned index state."""
-    raise NotImplementedError
+def retrieve_context(journal: Journal, query: str) -> list[str]:
+    """Retrieve relevant context from the journal based on keyword matching."""
+    keywords = [word for word in query.split() if len(word) > 4]
+    results = []
+    for kw in keywords:
+        results.extend(journal.search(kw))
+    
+    seen = set()
+    unique_results = []
+    for res in results:
+        if res not in seen:
+            seen.add(res)
+            unique_results.append(res)
+            
+    return unique_results[:5]

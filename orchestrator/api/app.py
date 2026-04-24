@@ -45,7 +45,8 @@ from .admission import admission_dependency
 from .chat import register_chat_route
 from .chat_stream import register_chat_stream_route
 from .lifespan import lifespan
-from .models import DriveResponse, HealthResponse, SensoriumResponse
+from .me import router as me_router
+from .models import DriveResponse, HealthResponse, SensoriumResponse, VitalsResponse
 from .pricing import register_pricing_route
 from .web_client import (
     WebClientConfig,
@@ -187,6 +188,7 @@ def create_app(deps: AppDeps) -> FastAPI:
     app.state.deps = deps
     app.state.volition = Volition()
     app.state.chat_deadline_s = deps.chat_deadline_s
+    app.state.soul_prompt = ""
 
     # Phase 5g-iv admission ordering. ``admission_dependency`` runs
     # 401 → 429 in front of every route below; routes do not need to
@@ -239,9 +241,21 @@ def create_app(deps: AppDeps) -> FastAPI:
         state = _require_snapshot(app)
         return state.to_dict()
 
+    @app.get(
+        "/vitals",
+        response_model=VitalsResponse,
+        summary="Eight-domain vital signs readout (Phase 6+)",
+        dependencies=[Depends(admission_dependency)],
+    )
+    def get_vitals() -> dict[str, Any]:
+        from orchestrator.vitals import get_composite_vitals
+        domains = get_composite_vitals()
+        return {"domains": [d.__dict__ for d in domains]}
+
     register_pricing_route(app)
     register_chat_route(app)
     register_chat_stream_route(app)
+    app.include_router(me_router)
 
     # --- Phase 5g-v: optional web-client mount ---------------------
     # Registered last so /app/* cannot shadow any admission-gated API

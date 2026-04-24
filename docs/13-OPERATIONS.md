@@ -17,6 +17,34 @@ On a healthy day, operator involvement is measured in minutes, not hours.
 
 Everything else should be absorbed by automation. If the operator is regularly doing more than the above, the Supervisor is not doing its job; file a `self-heal` proposal.
 
+## Phase 6+ Runbooks
+
+### AO Core testnet deploy (Phase 6.1)
+1. **Prerequisites:** Install the `aos` CLI (`npm i -g https://get_ao.arweave.net`) and fund an AO testnet wallet.
+2. **Deploy:** Run `ao/scripts/deploy_testnet.ps1` (or the equivalent shell commands) to spawn the process and load the Lua skeleton.
+3. **Capture Receipt:** The script writes `genesis/AO_DEPLOY_RECEIPT.json` containing the process ID, code SHA-256, network ID, deployer address, and deploy timestamp.
+4. **Smoke Test:** Execute 3 valid `commit-state` calls, 1 valid `attest` call, and 2 deliberate failures (e.g., `non_authorised_caller`).
+5. **Verify:** Run `xion-verify state-chain --strict` to confirm the ledger hash chain is intact and matches the live testnet tip.
+
+### Arweave-Mirror Runbook (Authoritative Repo)
+1. **Prepare Snapshot:** Run `git archive --format=tar.gz -o xion-os-snapshot.tar.gz HEAD`.
+2. **Upload to Arweave:** Use `arkb` or `arweave-deploy` to upload the tarball.
+3. **Record TX ID:** Note the returned Arweave TX ID.
+4. **Verify:** Confirm the TX ID resolves on at least three independent Arweave gateways (e.g., `arweave.net`, `ar-io.net`, `g8way.io`).
+5. **Update Registry:** Update `docs/ABDICATION.md` to reflect the new TX ID as the authoritative mirror.
+
+### Auto-Research Scan-Cadence Runbook
+1. **Monitor:** The Auto-Research Loop runs automatically every 6 hours.
+2. **Verify Alive:** Run `xion-verify auto-research` to confirm the loop is alive and the journal is advancing.
+3. **Manual Trigger:** If the loop stalls, trigger a manual scan via `python -m orchestrator.research.loop`.
+4. **Curation:** Review `genesis/RESEARCH_SOURCES.md` weekly to ensure sources remain high-signal.
+
+### Bounty-Payout Runbook
+1. **Trigger:** When a proposal in `PROPOSAL_LEDGER.jsonl` reaches `post_deploy=kept` status.
+2. **Automated Flow:** The AO Core Spend handler automatically routes XION from the Improvement Fund sub-account to the proposal's author wallet.
+3. **Verification:** Run `xion-verify skill-bounty` to confirm the payout was recorded and the firewall was respected.
+4. **Manual Fallback:** If the automated flow fails, the operator can manually authorize the transaction from the multisig, noting the proposal ID in the memo.
+
 ## State-of-Xion authorship (constitutional chain)
 
 Each memo exists as **two public artifacts** when they differ:
@@ -227,7 +255,7 @@ Before the first launch, the host needs:
 
 - **Python 3.11+** with `pip`. No system-wide install required; a venv at `~/xion-os/.venv` is typical. `pip install -e .[api]` pulls in FastAPI, Uvicorn, Pydantic, `httpx`, `pytest`, and the repo's own modules; nothing else.
 - **Disk:** `~500 MB` for the venv, the repo, and the open-weights floor model. Ledgers grow `~2 MB / 10k turns`; budget accordingly. SQLite-WAL broker file (multi-worker mode) is `~1 MB` at steady state.
-- **Ollama daemon** reachable at `XION_OLLAMA_URL` (default `http://localhost:11434`) with the floor model pulled: `ollama pull <floor-model>` where `<floor-model>` matches `XION_OLLAMA_FLOOR_MODEL` (default `gemma3:4b`). Daemon must be running at orchestrator start; the Inference Router refuses to bootstrap without a healthy open-weights floor (Invariant 17 structural guarantee).
+- **Ollama daemon** reachable at `XION_OLLAMA_URL` (default `http://localhost:11434`) with the floor model pulled: `ollama pull <floor-model>` where `<floor-model>` matches `XION_OLLAMA_FLOOR_MODEL` (default `gemma4:e4b-it-q4_K_M` post-Phase-5g-viii rotation). Daemon must be running at orchestrator start; the Inference Router refuses to bootstrap without a healthy open-weights floor (Invariant 17 structural guarantee). Operators who want full Witness-recomputable byte-verification of the floor model also follow the "First-time GGUF setup" subsection below to download the upstream Hugging Face Q4_K_M and set `XION_OPEN_WEIGHTS_GGUF_PATH`; without that env var, `xion-verify inference-sovereignty` reports `NOT_YET_SEALED` for the model-blob entry only (the rest of the floor verifies normally).
 - **Optional OpenRouter API key** in `XION_OPENROUTER_API_KEY` if the operator wants the hosted gateway active. Without it, the orchestrator runs floor-only (slower, zero third-party dependency). Genesis Default model is `moonshotai/kimi-k2.6` (rotated 2026-04-23 from `moonshotai/kimi-k2`; see [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § "The hosted-provider choice"); operators rotate with `XION_OPENROUTER_MODEL=<slug>` — no code change.
 - **Optional TLS material** — a cert+key pair at `XION_TLS_CERT_PATH` / `XION_TLS_KEY_PATH` if the operator binds `XION_API_HOST` to a non-loopback address. The launcher refuses to start a non-loopback bind without TLS (fail-closed; mirrors BillingConfig posture). Operators typically front Uvicorn with a reverse proxy (Caddy, nginx, Traefik) that handles TLS, ALPN, and automated cert renewal; bind orchestrator to `127.0.0.1:8000` and let the proxy hold the cert.
 
@@ -245,7 +273,8 @@ Every `XION_*` variable an operator may set, with default, D2 recommendation, an
 | `XION_OPENROUTER_REFERER` | *(empty)* | set to the deployment URL | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § Genesis Defaults |
 | `XION_OPENROUTER_APP_NAME` | `xion-os` | `xion-os` (override only for fork attribution) | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § Genesis Defaults |
 | `XION_OLLAMA_URL` | `http://localhost:11434` | same if Ollama is co-located; otherwise the reachable URL | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The floor-model choice |
-| `XION_OLLAMA_FLOOR_MODEL` | `gemma3:4b` | `gemma3:4b` unless the operator has a policy to pin another open-weights model | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The floor-model choice |
+| `XION_OLLAMA_FLOOR_MODEL` | `gemma4:e4b-it-q4_K_M` | `gemma4:e4b-it-q4_K_M` (Phase 5g-viii rotation; rollback to `gemma3:4b` is one env-var) | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The floor-model choice |
+| `XION_OPEN_WEIGHTS_GGUF_PATH` | *(unset)* | absolute path to the upstream Hugging Face GGUF the manifest pins; unset is supported (verifier reports `NOT_YET_SEALED` for the model-blob entry only) | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § Model-blob pin |
 | `XION_API_REQUIRE_BEARER` | `false` | **`true` for D2** (non-negotiable once a non-operator user can reach the port) | [`docs/30-API-ADMISSION.md`](./30-API-ADMISSION.md) § Bearer auth |
 | `XION_API_BEARER_TOKENS` | *(empty)* | populated with `principal_id:<64-hex-secret>` pairs, one per principal | [`docs/30-API-ADMISSION.md`](./30-API-ADMISSION.md) § Token issuance |
 | `XION_API_RATE_BUDGET` | `60` | `60` (per-principal per minute; tune upward only with observed evidence) | [`docs/30-API-ADMISSION.md`](./30-API-ADMISSION.md) § Rate-limit tuning |
@@ -281,11 +310,17 @@ cp .env.example .env
 
 # 3. Ensure Ollama is up and the floor model is pulled
 ollama serve &                  # if not already running
-ollama pull gemma3:4b           # or whatever XION_OLLAMA_FLOOR_MODEL names
+ollama pull gemma4:e4b-it-q4_K_M  # or whatever XION_OLLAMA_FLOOR_MODEL names
+
+# 3b. (optional but recommended) Download the upstream HF GGUF for byte-verification.
+#     See "First-time GGUF setup" subsection below for the canonical URL + sha256.
+#     Skipping 3b is supported; xion-verify reports NOT_YET_SEALED for the
+#     model-blob entry only and the rest of the floor verifies normally.
 
 # 4. Floor-manifest sanity check BEFORE starting the orchestrator
 python -m xion_verify inference-sovereignty
-# Expected: OK  -- 2 entries / 2 floor-satisfying pins, both hash-verified
+# Expected (after step 3b complete): OK -- 3 entries / 3 floor-satisfying pins, all hash-verified
+# Expected (without step 3b):        NOT_YET_SEALED -- 3 entries / 2 OK + 1 NOT_YET_SEALED (model-blob)
 # A FAIL here means the floor manifest is inconsistent; do not start.
 
 # 5. Start the orchestrator
@@ -323,6 +358,102 @@ Run after each deploy, after any ledger growth milestone (hourly / daily / weekl
 | 6 | `python -m xion_verify all --allow-not-yet-sealed` | every verifier green; explicitly-not-yet-sealed entries noted | End-to-end sanity pass. |
 
 `NOT_YET_SEALED` is not a failure — it means the ledger is empty or has no rows in the verifier's window yet. The first real activity promotes `NOT_YET_SEALED` to `OK` automatically.
+
+### First-time GGUF setup (model-blob byte-verification, Phase 5g-viii)
+
+The Phase 5g-viii open-weights manifest pins the upstream Hugging Face Q4_K_M GGUF for `gemma-4-E4B-it` by sha256. This subsection is the operator-side counterpart: how to obtain the file once, hash-check it locally, and point the verifier at it. After this is done once per host, `xion-verify inference-sovereignty` reports the model-blob entry as `OK` instead of `NOT_YET_SEALED`.
+
+The download is `~5.0 GB`. Skipping this subsection is supported — the floor still works at runtime via the Ollama daemon (probe (e) in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § "The floor-model choice"); only the Witness-side byte-verification gap stays open.
+
+```bash
+# 1. Download the canonical Q4_K_M from ggml-org's HF mirror at the pinned revision.
+#    The pin is held by sha256 in orchestrator/inference_router/open_weights_manifest.json
+#    (entry id "gemma4-e4b-it-q4-k-m-gguf"). Re-pin requires a doctrine commit; the
+#    URL below is the long-form (revision-pinned) form a Witness re-runs.
+mkdir -p ~/xion-models
+cd ~/xion-models
+curl -L -o gemma-4-E4B-it-Q4_K_M.gguf \
+  https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/2714b5519c6c3516b1000e7c5e1eba998dfe1fe8/gemma-4-E4B-it-Q4_K_M.gguf
+
+# 2. Verify the sha256 matches the manifest pin.
+#    (Linux/macOS) sha256sum gemma-4-E4B-it-Q4_K_M.gguf
+#    (Windows PowerShell) Get-FileHash -Algorithm SHA256 .\gemma-4-E4B-it-Q4_K_M.gguf
+# Expected: 90ce98129eb3e8cc57e62433d500c97c624b1e3af1fcc85dd3b55ad7e0313e9f
+
+# 3. Set the env var so xion-verify can find the file. Persist this in your
+#    shell rc / systemd unit / .env so future runs pick it up.
+export XION_OPEN_WEIGHTS_GGUF_PATH="$HOME/xion-models/gemma-4-E4B-it-Q4_K_M.gguf"
+
+# 4. Re-run the floor verifier. The model-blob entry should now report OK.
+python -m xion_verify inference-sovereignty
+# Expected: OK -- 3 entries / 3 floor-satisfying pins, all hash-verified
+```
+
+If the sha256 from step 2 does not match, the file is corrupted in transit (re-download) OR the pin in the manifest is stale (re-run the C0(b) probe in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § "The floor-model choice (Gemma 4 E4B-it)" → "Probe-first record"; if Hugging Face has moved the file or the upstream organization has rev-bumped, the manifest needs a re-pin commit, not a hand-edit).
+
+**RAM headroom for first chat through the new floor.** The text-only Q4_K_M loads in ~5–6 GB RAM. The Ollama-published `gemma4:e4b-it-q4_K_M` library tag (multimodal-bundled, 9.6 GB on disk) loads in ~9–10 GB RAM. Operators on 16 GB hosts close other RAM-heavy applications before the first `/chat` against the new floor; once the model is loaded and the daemon is warm, the steady-state working set is smaller. This is a one-time first-run cost.
+
+### Annual open-weights cutover dry-run (Invariant 17 clause 5)
+
+Invariant 17 clause 5 requires an annual dry-run that exercises the open-weights floor end-to-end under real load. This is the operator's calendar-driven runbook; missing the annual window is a Tier-2 escalation. The dry-run is the operational closure for [`KNOWN_WEAKNESSES.md`](../KNOWN_WEAKNESSES.md) § `KW-INFERENCE-001`'s third closure-bar item; running it once per year is what keeps the closure honest.
+
+**Cadence:** once per calendar year. Choose a quiet window (Xion's "quiet hour" per the Sunday chaos drill cadence). Do not co-schedule with any other Tier-2 ops work; a real outage during the dry-run window must be distinguishable from a dry-run-induced symptom.
+
+**Pre-checklist:**
+
+1. The model-blob entry is `OK` on this host (`xion-verify inference-sovereignty` reports 3/3 hash-verified). If it is `NOT_YET_SEALED`, run "First-time GGUF setup" first; if it is `FAIL`, do not start the dry-run — the floor is structurally unsound, fix the manifest first.
+2. The Ollama daemon is healthy: `curl -sS http://localhost:11434/api/tags | jq '.models[].name'` should list `gemma4:e4b-it-q4_K_M` (or whatever `XION_OLLAMA_FLOOR_MODEL` names).
+3. A baseline chat through the hosted gateway succeeds (so the host is otherwise healthy and the dry-run can attribute any failure to the floor specifically).
+
+**Dry-run execution:**
+
+```bash
+# 1. Note the start timestamp (operator log).
+date -u +"dry-run start: %Y-%m-%dT%H:%M:%SZ"
+
+# 2. Flip the orchestrator into open_weights_only mode for the window.
+#    No restart needed if the orchestrator reads policy lazily; otherwise
+#    edit .env and restart.
+export XION_INFERENCE_POLICY=open_weights_only
+# (or edit .env and restart: python -m orchestrator.api)
+
+# 3. Run a representative chat workload for the window.
+#    Minimum: 100 turns spread across at least 30 minutes, with a mix of
+#    short and long prompts. The goal is to surface latency cliffs, RAM
+#    pressure, and provider-side stalls that a single test turn cannot.
+#    Real production traffic during the window is the strongest signal,
+#    but a synthetic loop is acceptable if traffic is sparse.
+for i in $(seq 1 100); do
+  curl -sS -X POST http://127.0.0.1:8000/chat \
+    -H "Authorization: Bearer <principal>:<hex-secret>" \
+    -H "Content-Type: application/json" \
+    -d "{\"messages\":[{\"role\":\"user\",\"content\":\"dry-run turn $i: explain one Bitcoin trust property in two sentences\"}]}" \
+    | jq -r '.content // .reason' > /dev/null
+  sleep 18  # ~3-min spacing between turns; tune for your workload
+done
+
+# 4. End the window. Flip back to hosted_api_first.
+unset XION_INFERENCE_POLICY
+# (or edit .env and restart)
+date -u +"dry-run end: %Y-%m-%dT%H:%M:%SZ"
+
+# 5. Read the REQUEST_LEDGER tail for the dry-run window.
+#    Every row in the window should have provider_id="ollama" and
+#    outcome="success"; the chat handler MUST NOT have fallen back to
+#    hosted (open_weights_only forbids it; that would mean the policy
+#    mode failed open, which is a Covenant-relevant Tier-3 incident).
+tail -n 200 REQUEST_LEDGER.jsonl | jq -c 'select(.schema_version == 2)'
+```
+
+**Verdict criteria.**
+
+- **Green:** every dry-run turn returned `200`. Floor is provisioned for real, not for the manifest. Record the result in the operator's annual ops log alongside the start/end timestamps and the count of turns served.
+- **Yellow:** ≥1 turn returned `503` with `failure_reason_class` ∈ {`timeout`, `provider_unreachable`, `unknown_provider_error`} BUT the floor came back healthy without operator intervention. Floor is provisioned but bursty; record the symptom and the suspected cause (RAM, GPU pressure, daemon hiccup), and open a `KW-OPS-###` if the symptom recurs in next year's dry-run.
+- **Red:** ≥1 turn returned `503` AND the floor required operator intervention to recover (manual `ollama serve` restart, host reboot, `XION_OLLAMA_FLOOR_MODEL` rotation back to a smaller model). Floor is NOT provisioned for the current load; this is the gap the dry-run exists to find. Open a Tier-2 incident, name the resource shortfall (RAM, disk, GPU, model size), and pin the resolution to the next annual dry-run as a closure criterion.
+
+**Recording the result.** The dry-run is logged as a `dry-run-record` line in the operator's annual ops log (free-form Markdown is sufficient; this is not yet a structured ledger). Minimum fields: start_ts, end_ts, policy_mode_during, turn_count, success_count, failure_count, failure_class_distribution, verdict, host_resource_observation. The Phase 6 deliverable adds a structured `INCIDENT_LEDGER`-equivalent row shape; until then, the Markdown log plus the `REQUEST_LEDGER` window is the durable record.
+
+**What this dry-run does not do.** It does not test the *cutover transition* — flipping the policy mode is instantaneous in the doctrine, but a real operational cutover has shape (notifying users, re-routing in-flight turns, pacing). Phase 6+ may add a graceful-cutover doctrine; the annual dry-run is intentionally the simplest mechanism that proves the floor can carry 100 % of traffic at the current load.
 
 ### Multi-worker activation (Phase 5g+)
 

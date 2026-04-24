@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Open-weights floor manifest for Invariant 17. The sentinel entry is a byte-stable structural stand-in proving the floor wiring; the ollama entry is the first real provider pin, held by a content-addressed provenance record rather than a model-content sha. Strengthening the provider pins to content-addressed model weights is tracked in KNOWN_WEAKNESSES.md § KW-FLOOR-001.",
+  "description": "Open-weights floor manifest for Invariant 17. Three pin formats are accepted, dispatched per-format by xion-verify inference-sovereignty: 'sentinel' (byte-stable structural stand-in proving the floor wiring), 'provenance-record' (content-addressed operator declaration about the runtime daemon), and 'model-blob' (content-addressed hash of an upstream model artifact, the Invariant 17 clause 2(iii) full-hash branch). The model-blob entry's local-file path is supplied by the operator at runtime via the env var named in 'model_blob_env_var'; absent path resolves to NOT_YET_SEALED for that entry only. Strengthening history is tracked in KNOWN_WEAKNESSES.md § KW-INFERENCE-001.",
   "open_weights": [
     {
       "id": "sentinel-llm-v0",
@@ -17,8 +17,25 @@
       "license_spdx": "Apache-2.0",
       "format": "provenance-record",
       "sentinel_path": "orchestrator/inference_router/floor_ollama_provenance.txt",
-      "sha256": "c2c78dcd6aa0e9cd445d66ea923aafc8e0f2c9837e32d980da9a17f694188cc9",
-      "notes": "First real open-weights floor pin. The sha256 content-addresses the operator's provenance record, NOT the model weights themselves. Runtime floor is held by OllamaGenerativeProvider(provider_id='ollama') against a local Ollama daemon; health() checks daemon reachability plus presence of XION_OLLAMA_FLOOR_MODEL in GET /api/tags. Strengthening to a content-addressed model-blob pin (per Invariant 17 clause 2(iii) large-file representative-sample sentinels) is tracked in KNOWN_WEAKNESSES.md § KW-FLOOR-001."
+      "sha256": "f63fe6207b0d0412a6c70650246efdf25d6971d9103358622c3dca8853d147be",
+      "notes": "First real open-weights floor pin. The sha256 content-addresses the operator's provenance record, NOT the model weights themselves. Runtime floor is held by OllamaGenerativeProvider(provider_id='ollama') against a local Ollama daemon; health() checks daemon reachability plus presence of XION_OLLAMA_FLOOR_MODEL in GET /api/tags. The next-tier strengthening to a content-addressed model-blob pin (per Invariant 17 clause 2(iii) full-hash branch) is the gemma4-e4b-it-q4-k-m-gguf entry below. Companion strengthening history: KNOWN_WEAKNESSES.md § KW-INFERENCE-001."
+    },
+    {
+      "id": "gemma4-e4b-it-q4-k-m-gguf",
+      "category": "open_weights_self_hostable",
+      "license_spdx": "Apache-2.0",
+      "format": "model-blob",
+      "model_blob_env_var": "XION_OPEN_WEIGHTS_GGUF_PATH",
+      "sha256": "90ce98129eb3e8cc57e62433d500c97c624b1e3af1fcc85dd3b55ad7e0313e9f",
+      "size_bytes": 5335289824,
+      "retrieval_hints": [
+        {
+          "kind": "https",
+          "url": "https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/2714b5519c6c3516b1000e7c5e1eba998dfe1fe8/gemma-4-E4B-it-Q4_K_M.gguf",
+          "sha256": "90ce98129eb3e8cc57e62433d500c97c624b1e3af1fcc85dd3b55ad7e0313e9f"
+        }
+      ],
+      "notes": "Upstream Hugging Face GGUF pin for the Gemma 4 E4B-it Q4_K_M quant (Genesis Default floor model post-Phase 5g-viii rotation). The pin is held against the ggml-org organization's mirror (the GGUF/llama.cpp authors) at a specific git revision so a Witness on any host can curl-and-sha256 the same bytes the manifest claims. Operators download once (~5.0 GB), set XION_OPEN_WEIGHTS_GGUF_PATH to the absolute path of the downloaded file, and run xion-verify inference-sovereignty to promote this entry from NOT_YET_SEALED to OK. Operators who want the runtime daemon to serve the byte-verified blob directly run `ollama create gemma4:e4b-it-pinned -f Modelfile` against the same file and set XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-pinned (the Ollama-published gemma4:e4b-it-q4_K_M tag is the multimodal-bundled variant — different bytes — and intentionally not pinned here; see docs/26-INFERENCE-POLICY.md § \"The floor-model choice (Gemma 4 E4B-it)\"). Closes the third closure-bar item for KW-INFERENCE-001 per Invariant 17 clause 2(iii) full-hash branch."
     }
   ],
   "hosted_api_registry": [

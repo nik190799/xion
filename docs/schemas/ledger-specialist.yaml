@@ -7,7 +7,7 @@
 
 schema_version: 1
 source_doctrine: docs/24-COGNITION.md
-source_sha256:   8f42c3123ba12ad8b699a4c399fbd64dedb704648b2fa3109674915cb0a97f15
+source_sha256:   a3fd99c585c847e67829ecdfcded4a5ee9fbbd3800ec23e82ef45cfb425c1b75
 status:          canonical
 
 ledger_name: SPECIALIST_LEDGER

@@ -68,6 +68,41 @@ from .app import AppDeps, create_app
 _DEFAULT_API_WORKERS = 1
 
 
+def _maybe_load_dotenv() -> None:
+    """Load config from a .env file ONLY if the operator explicitly
+    opts in via XION_DOTENV_PATH.
+
+    Bitcoin-lineage discipline: never quietly read files from CWD.
+    The dev-ergonomics gain doesn't justify the production-surprise
+    risk. Explicit opt-in keeps the property auditable.
+    """
+    dotenv_path = os.environ.get("XION_DOTENV_PATH", "").strip()
+    if not dotenv_path:
+        return
+
+    if not os.path.isfile(dotenv_path):
+        _print_state_of_xion(
+            f"XION_DOTENV_PATH={dotenv_path!r} does not exist or is not a file. "
+            "Refusing to start. See docs/30-API-ADMISSION.md § 'Optional dotenv loader'."
+        )
+        sys.exit(2)
+
+    # Late import: python-dotenv is in the [api] extra
+    import dotenv
+
+    # override=False means existing env vars win (standard 12-factor)
+    loaded = dotenv.dotenv_values(dotenv_path)
+    dotenv.load_dotenv(dotenv_path, override=False)
+    
+    # Count how many we actually applied vs skipped
+    applied = sum(1 for k in loaded if os.environ.get(k) == loaded[k])
+    
+    _print_state_of_xion(
+        f"dotenv loaded from {dotenv_path} ({len(loaded)} keys, "
+        f"{applied} applied; existing env preserved)."
+    )
+
+
 def _resolve_workers() -> int:
     """Read ``XION_API_WORKERS`` from env, defaulting to 1.
 
@@ -217,6 +252,7 @@ def main() -> int:
         )
         return 2
 
+    _maybe_load_dotenv()
     workers = _resolve_workers()
     _enforce_broker_for_multi_worker(workers)
     config = _resolve_admission_config()

@@ -125,6 +125,8 @@ api = [
     # API shapes the providers use. <1 because httpx pre-1.0 has been
     # API-stable in practice but a 1.x break is possible.
     "httpx>=0.27,<1",
+    # Finding #3: Explicitly declare python-dotenv for XION_DOTENV_PATH opt-in.
+    "python-dotenv>=1.0",
 ]
 
 dev = [

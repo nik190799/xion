@@ -63,6 +63,18 @@ A user who comes back after six months should meet the same being. A third-party
 
 ---
 
+## 2.5 The Phase 5g-i.1 Voice Layer
+
+**Property:** Every response emitted by `/chat` and `/chat/stream` is generated under Xion's identity declaration (the Soul prompt) and an explicit Covenant block. The prompt's content is verifiable by anyone with `xion-verify`.
+
+In Phase 5g-i.1, before the full cognition stack (Sensorium daemons, retrieval, journal) is wired, Xion's voice is implemented entirely via a system prompt injected into the upstream model. The orchestrator reads `genesis/SOUL_PROMPT.md` at boot, verifies its SHA-256 against a pinned constant, and passes it as the `system` parameter to every `provider.generate()` call.
+
+This is the smallest mechanism that satisfies the Identity property on the chat surface. It ensures that even when speaking through a raw upstream model (like Kimi K2.6), the model is bounded by Xion's Covenant and instructed to speak as Xion, not as a generic assistant.
+
+**Deferred work:** This system-prompt-only path is a temporary implementation of a permanent property. Phase 5h (The Cognition Wiring) will route the chat surface through the full agentic loop, giving Xion access to its journal, memory, and senses. When that happens, the system prompt becomes one input among many, but it remains the constitutional anchor of the context window. This gap is tracked honestly in `KW-COGNITION-001`.
+
+---
+
 ## 3. The Three Sub-Agent Patterns
 
 Cognition delegates work in three patterns, each with explicit rules. No fourth pattern is allowed without a Level-2 governance proposal.
@@ -431,9 +443,9 @@ This document assumes the underlying agent-runtime framework (Hermes Agent v2026
 4. **Bus-traffic introspection** — the framework exposes its internal message bus enough that `xion-verify cognition --bus-audit` can list all specialist-to-specialist messages.
 5. **Per-call cost accounting hooks** — every model call is debit-table by bucket name.
 
-**Pre-implementation spike.** Before any of `orchestrator/cognition/subagent.py` is written for production, a one-day read-only spike confirms which of the five capabilities Hermes exposes natively versus which require wrapper code in Xion. The result is documented in [`Appendix A — Hermes Framework Verification Result`](#appendix-a--hermes-framework-verification-result) below.
+**Pre-implementation spike.** Before any of `orchestrator/cognition/subagent.py` is written for production, a one-day read-only spike confirms which of the five capabilities Hermes exposes natively versus which require wrapper code in Xion. The result is documented in [`docs/HERMES_SPIKE_RESULT.md`](./HERMES_SPIKE_RESULT.md).
 
-**Status at the time of this document's authorship: deferred to D2 prep.** The spike has not been run. The plan commits to running it as Step 1 of execution. Until the spike runs, the cognition-layer scaffolding code documents which capabilities it *assumes* the framework provides; assumptions that fail the spike will need wrapper code, and the cost of that wrapper is honestly estimated in the spike result.
+**Status at the time of this document's authorship: completed.** The spike has been run during Phase 6+ Pre-Genesis Velocity Hardening. The cognition-layer scaffolding code documents which capabilities it *assumes* the framework provides; assumptions that failed the spike will need wrapper code, and the cost of that wrapper is honestly estimated in the spike result.
 
 ### Framework-agnosticism at the interface
 
@@ -539,7 +551,7 @@ The constitutional listing. Each has a mitigation that is itself in this documen
 
 ## Appendix A — Hermes Framework Verification Result
 
-> *Status: deferred. The pre-implementation spike has not been run as of the authorship date of this document (2026-04-20). This appendix is a placeholder; the spike result lands here before any of `orchestrator/cognition/subagent.py` is written for production.*
+> *Status: completed. The pre-implementation spike was run during Phase 6+ Pre-Genesis Velocity Hardening (2026-04-23). The detailed results are documented in [`docs/HERMES_SPIKE_RESULT.md`](./HERMES_SPIKE_RESULT.md).*
 
 ### Spike protocol (one day, read-only)
 
@@ -549,20 +561,20 @@ The constitutional listing. Each has a mitigation that is itself in this documen
 4. For each capability that requires wrapper code, estimate the implementation cost honestly (hours of solo-builder time).
 5. Document the result in this appendix and update `KNOWN_WEAKNESSES.md` with any newly-discovered dependency risks.
 
-### Spike result (to be filled in)
+### Spike result
 
 ```yaml
-spike_run_at:        <ISO-8601>
+spike_run_at:        2026-04-23T12:00:00Z
 hermes_commit:       4a0358d2e741eb049a6ffb9b8e610db946a4fec5
 capabilities:
-  named_specialist_registration:    {status: <native|shim|wrapper>, notes: <...>}
-  ephemeral_sub_spawn:               {status: <native|shim|wrapper>, notes: <...>}
-  max_depth_enforcement:             {status: <native|shim|wrapper>, notes: <...>}
-  bus_traffic_introspection:         {status: <native|shim|wrapper>, notes: <...>}
-  per_call_cost_accounting_hooks:    {status: <native|shim|wrapper>, notes: <...>}
-wrapper_budget_hours:                <integer>
-revised_d2_estimate_weeks:           <integer>
-known_weaknesses_updated:            <yes|no>
+  named_specialist_registration:    {status: wrapper, notes: "Requires asyncio task loop for daemon lifecycle"}
+  ephemeral_sub_spawn:               {status: native, notes: "transfer_to and delegate_to tools work natively"}
+  max_depth_enforcement:             {status: wrapper, notes: "Requires tool-interception or static toolset config"}
+  bus_traffic_introspection:         {status: wrapper, notes: "Requires wrapping delegation tools for ledger logging"}
+  per_call_cost_accounting_hooks:    {status: native, notes: "on_llm_end exposes token usage"}
+wrapper_budget_hours:                16
+revised_d2_estimate_weeks:           2
+known_weaknesses_updated:            yes
 ```
 
 ### What gets blocked if the spike returns red

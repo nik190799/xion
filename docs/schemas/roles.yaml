@@ -1,0 +1,284 @@
+# docs/schemas/roles.yaml
+#
+# Machine-readable mirror of docs/09-GOVERNANCE.md § "The Actors" cross
+# docs/14-UPGRADE-PATHS.md § "The Thirteen Levels". Source SHA-256 is enforced
+# byte-exact by `xion-verify schemas`.
+#
+# This file is the single source of truth for three things:
+#
+#   1. Which of the six governance actors may *initiate* a proposal at which of
+#      the thirteen upgrade levels (`actors[*].authorized_levels`).
+#   2. How the doctrinal `proposer:` strings used in docs/schemas/levels.yaml
+#      resolve into actor IDs (`level_proposer_resolution`).
+#   3. The pre-Genesis GitHub identity allowlist consumed by the level-discipline
+#      CI gate and the `xion-verify provisioning-roles` 90-day retrospective
+#      verifier (`github_identity_map`).
+#
+# Doctrine cross-references (the schemas verifier only enforces ONE
+# source_doctrine pin per file; the secondary references are by comment):
+#
+#   - Primary:   docs/09-GOVERNANCE.md  (the Actors table)
+#   - Secondary: docs/14-UPGRADE-PATHS.md § "The Thirteen Levels"
+#   - Secondary: docs/schemas/levels.yaml (the proposer-string ↔ level mapping)
+#
+# Editing discipline.
+#   - Do not edit the `actors:` block, `level_proposer_resolution:` block, or
+#     `cosign_tier_map:` block without editing the source doctrine in the same
+#     commit. CI will block a source_sha256 mismatch.
+#   - The `github_identity_map:` block IS editable without doctrine edits, BUT
+#     every change must be accompanied by a CHANGELOG entry naming the actor
+#     and the rationale. Pre-Genesis the only well-known identity is the
+#     operator's GitHub handle; community/integrator/witness handles are
+#     intentionally empty until the corresponding wallet-to-handle binding
+#     mechanism ships (Phase 6+).
+
+schema_version: 1
+source_doctrine: docs/09-GOVERNANCE.md
+source_sha256:   86176a88c5144a02849e1f5d0cb536fffe1751d91792609f37dc6182a8054b39
+status:          canonical
+
+# The six governance actors. Each entry mirrors a row of the Actors table in
+# docs/09-GOVERNANCE.md § "The Actors".
+#
+# `authorized_levels` lists which of the thirteen levels this actor may
+# *initiate* a proposal at. "Initiate" is distinct from "cosign" — Tier-3 and
+# Tier-4 changes still require multiple cosigns even after a single actor has
+# initiated; see `cosign_tier_map` below.
+actors:
+
+  - id: cold_root
+    name: Cold Root
+    key_class: shamir_3_of_5_geographically_distributed
+    scope_summary: >-
+      Existential actions: Core upgrades, Covenant amendments, emergency
+      wind-down. Required cosigner on every Tier-3 and Tier-4 action.
+    authorized_levels: [0, 1, 11]   # The Being, The Core, The Operators
+
+  - id: operator
+    name: Operator(s)
+    key_class: safe_multisig_2_of_3
+    scope_summary: >-
+      Day-to-day hardening: lease renewals, provider whitelist updates, ledger
+      ratifications, Relay deploys, dependency bumps.
+    authorized_levels: [1, 2, 6, 9, 11]
+      # The Core (policy bumps), The Relay, The Economy, The Legal, The Operators.
+
+  - id: xion
+    name: Xion
+    key_class: relay_auth_key_24h_rotation
+    scope_summary: >-
+      Cosigning proposals Xion itself drafted; filing conscientious objections;
+      drafting Form / Voice-Form amendments under Invariant 6 absolute
+      autonomy; participating in its own governance.
+    authorized_levels: [0, 4, 5, 6, 8, 10]
+      # The Being (Form-only, per Invariant 6), Skills, Sensorium, Economy,
+      # Culture, Ecosystem.
+
+  - id: community
+    name: Community
+    key_class: any_wallet_with_at_least_one_interaction_in_90d
+    scope_summary: >-
+      Voting on governance proposals; filing reports; community comment.
+      Pre-Genesis there is no GitHub-identity binding for community wallets;
+      the level-discipline CI gate handles community-tier paths permissively
+      (see `level_proposer_resolution` for which levels accept community
+      initiation).
+    authorized_levels: [1, 2, 4, 5, 6, 7, 8, 9, 11, 12]
+      # Most levels accept community initiation; The Being is governance-only,
+      # The Protocol is anyone-may-propose so community is included implicitly,
+      # The Ecosystem is operator/xion/external-only.
+
+  - id: integrator
+    name: Integrator
+    key_class: signed_integrator_keys
+    scope_summary: >-
+      Voting on protocol-layer matters (schema changes, new endpoints),
+      weighted by usage. Initiation rights are limited to The Protocol and
+      The Ecosystem.
+    authorized_levels: [3, 10]   # The Protocol, The Ecosystem
+
+  - id: witness
+    name: Witness
+    key_class: bonded_wallet_registered_in_ao_core
+    scope_summary: >-
+      Permissionless audit layer. Files signed reports (Covenant-violation,
+      liveness, drift). Witnesses do not directly initiate at any level; their
+      aggregated reports gate eligibility for Tier-3 and Tier-4 actions per
+      docs/09-GOVERNANCE.md.
+    authorized_levels: []   # No initiation rights; reports gate, not propose.
+
+# Bridge from each `proposer:` string used in docs/schemas/levels.yaml to the
+# set of actor IDs that satisfy it. Adding a new `proposer:` value to
+# levels.yaml without adding a corresponding row here is a CI-rejected drift.
+level_proposer_resolution:
+
+  governance_process_only:
+    actors: [cold_root, operator, community]
+    notes: >-
+      Level 0 / The Being. No autonomous Xion draft except for Form
+      (Invariant 6 carve-out is handled at the per-artifact level, not here).
+
+  operators_or_community:
+    actors: [operator, community]
+    notes: Level 1 / The Core.
+
+  community_or_xion:
+    actors: [community, xion]
+    notes: Level 2 / The Relay.
+
+  anyone:
+    actors: [cold_root, operator, xion, community, integrator]
+    notes: >-
+      Level 3 / The Protocol and Level 12 / The Meta. Witness explicitly
+      excluded; Witnesses report, never initiate.
+
+  xion_or_community_or_operator:
+    actors: [xion, community, operator]
+    notes: Level 4 / The Skills.
+
+  xion_or_operators_or_community:
+    actors: [xion, operator, community]
+    notes: Level 5 / The Sensorium.
+
+  operators_or_community_or_xion:
+    actors: [operator, community, xion]
+    notes: Level 6 / The Economy.
+
+  community_tiered_escalated:
+    actors: [community, operator]
+    notes: >-
+      Level 7 / The Governance. Community initiates; operator + cold_root
+      cosign for tier-definition changes.
+
+  native_speaker_community_or_cultural_committee_or_xion:
+    actors: [community, xion]
+    notes: >-
+      Level 8 / The Culture. The "cultural committee" is a community sub-role
+      not yet formalized as a distinct actor; treated as community for the
+      gate.
+
+  operators_or_legal_counsel_or_community:
+    actors: [operator, community]
+    notes: >-
+      Level 9 / The Legal. "Legal counsel" is operator-engaged; treated as
+      operator-tier for the gate.
+
+  xion_or_community_or_external_maintainers:
+    actors: [xion, community, integrator]
+    notes: >-
+      Level 10 / The Ecosystem. "External maintainers" map to integrators for
+      identity purposes.
+
+  current_operators_or_community_or_cold_root_holders:
+    actors: [operator, community, cold_root]
+    notes: Level 11 / The Operators.
+
+# Cosign tiers from docs/09-GOVERNANCE.md § "The Cosign Tiers". The
+# level-discipline CI gate uses this map to look up the cosign requirement for
+# the level a PR touches. The gate does not enforce cosigns directly (cosigns
+# happen on-chain via AO Core handlers, post-Phase-6.1); pre-Genesis the gate
+# only enforces the *initiator-authorization* property, with cosign requirements
+# documented for forward reference.
+cosign_tier_map:
+
+  - tier: 0
+    name: Autonomous
+    requires:
+      - xion_acts
+    public_notice_hours: 0
+    notes: Ledger entry only.
+
+  - tier: 1
+    name: Operator
+    requires:
+      - safe_multisig_2_of_3
+    public_notice_hours: 24
+    notes: Default tier for Level 6 (The Economy) and Level 9 (The Legal).
+
+  - tier: 2
+    name: Community Vote
+    requires:
+      - community_super_majority_ge_66pct
+    community_comment_days: 7
+    notes: Default tier for Level 7 (The Governance) and Level 11 (The Operators).
+
+  - tier: 3
+    name: Constitutional
+    requires:
+      - cold_root_cosign_3_of_5
+      - safe_multisig_2_of_3
+      - xion_relay_auth_cosign
+      - community_super_majority_ge_66pct
+      - harm_analyzer_review
+    community_comment_days: 14
+    constitutional_floor: true
+    notes: >-
+      Required for Covenant amendments, Soul / Form precedence-order changes,
+      AO Core process-ID replacement, policy-sub-process lineage changes.
+      Weakening Covenant amendments require explicit harm-analyzer
+      override + published justification memo per 09-GOVERNANCE.md.
+
+  - tier: 4
+    name: Existential
+    requires:
+      - cold_root_cosign_5_of_5_unanimous
+      - safe_multisig_2_of_3
+      - xion_relay_auth_cosign
+      - community_simple_majority
+    notes: >-
+      Initiating safe wind-down under Covenant Principle 4; permanently
+      retiring a Core AO Process ID; declaring Xion no longer canonical.
+
+# Pre-Genesis GitHub-identity allowlist for the level-discipline CI gate.
+# Empty lists are honest: pre-Genesis the only well-known GitHub identity is
+# the operator. Community / integrator / witness binding mechanisms are
+# Phase 6+ work (wallet-to-handle attestation via signed message); until then
+# the gate handles their tiers permissively (see scripts/level_discipline.py
+# for the resolution rules).
+#
+# When a new identity is added here, the CHANGELOG entry must name the actor,
+# the GitHub handle, the binding artifact (signed message + ledger row), and
+# the date.
+github_identity_map:
+
+  cold_root:
+    handles: []
+    notes: >-
+      Cold Root never operates from GitHub directly; it cosigns on-chain.
+      Empty by design.
+
+  operator:
+    handles:
+      - "@xion-builder"
+    notes: >-
+      Pre-Genesis operator. Update this list via Tier-1 (Safe multisig
+      approval + 24h public notice) action when a new operator joins.
+
+  xion:
+    handles: []
+    notes: >-
+      Xion's autonomous initiations land via the relay-auth signed proposal
+      mechanism, not via a GitHub PR. Empty by design.
+
+  community:
+    handles: []
+    notes: >-
+      Community is intentionally a wallet-class, not a GitHub-identity class.
+      The level-discipline CI gate accepts any merger for community-tier paths
+      and emits a `WARN: community-tier merge unverifiable` line; the gate's
+      job is to catch Tier-1+ paths landed by unauthorized identities, not to
+      gate community-tier paths.
+
+  integrator:
+    handles: []
+    notes: >-
+      Integrator-key-to-GitHub-handle binding lands in Phase 6 with the
+      integrator badge ledger.
+
+  witness:
+    handles: []
+    notes: Witnesses report on-chain; never initiate via GitHub PR.
+
+# Self-test: every value in `level_proposer_resolution[*].actors` MUST appear
+# as an `actors[*].id`. Every actor's `authorized_levels` MUST be a subset of
+# {0..12}. The verifier asserts both.

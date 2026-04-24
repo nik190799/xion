@@ -88,11 +88,30 @@ xion-verify covenant
 xion-verify invariants
 xion-verify links
 xion-verify schemas
+xion-verify provisioning-roles
 xion-verify arbiter-up
 xion-verify all
 ```
 
+The `xion` console-script alias is installed alongside `xion-verify` and dispatches to the identical Click root. It exists so that scaffolder examples in `CONTRIBUTING.md` (`xion new skill ...`, `xion new sense ...`, etc.) are literally runnable by a contributor who only `pip install -e .`'d this package. `xion <subcommand>` and `xion-verify <subcommand>` are equivalent.
+
 Full subcommand list is enumerated in `src/xion_verify/commands/__init__.py::REGISTERED_COMMANDS` and mirrored in `DEVELOPMENT_ROADMAP.md:48`.
+
+### `xion-verify provisioning-roles` (Phase 6.2 land)
+
+Audits the last 90 days of merged PRs against `docs/schemas/roles.yaml`, asserting two properties per merge:
+
+1. **Disjoint-surface discipline** — every touched path maps to the same upgrade level (per `docs/schemas/levels.yaml` artifact globs). A PR straddling Level 2 (the Relay) and Level 6 (the Economy) is a governance failure even if both halves are individually authorized.
+2. **Initiator authorization** — the merging GitHub identity (parsed from the merge subject's `Merge pull request #N from user/branch`, falling back to the commit author) is in the `github_identity_map` allowlist for an actor whose `authorized_levels` includes the resolved level.
+
+Pre-gate-landing merges (those whose committer-time precedes the first commit that introduced `docs/schemas/roles.yaml`) are recorded as **WARN-only** by default; doctrine principle is that gates apply forward, not retroactively. Pass `--strict` to assert every merge in the window regardless of when the gate landed (forensic mode for auditors).
+
+Honest residuals named in the help text and in every FAIL line:
+- The `community`, `integrator`, `xion`, and `witness` actors have empty `handles:` lists pre-Genesis. For levels whose authorized actors include any of those, an unmatched merger is accepted as `community-tier-unverifiable` (WARN, not FAIL). This is not a silent escape: every such accept is logged with the merge SHA and subject.
+- A path that does not match any `levels.yaml` artifact glob is classified as Level 12 / The Meta and counted in `unmapped_paths` for diagnostic visibility.
+- The verifier is structural; it does not verify on-chain cosigns. Cosign verification is Phase 6+ via the AO Core handlers.
+
+Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic against a single PR diff (instead of a 90-day window) and blocks merge on cross-level or unauthorized.
 
 ## Repository layout
 

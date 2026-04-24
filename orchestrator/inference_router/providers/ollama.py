@@ -71,7 +71,7 @@ class OllamaProviderError(ProviderError):
 
 _PROVIDER_ID = "ollama"
 _DEFAULT_URL = "http://localhost:11434"
-_DEFAULT_MODEL = "gemma3:4b"
+_DEFAULT_MODEL = "gemma4:e4b-it-q4_K_M"
 _HEALTH_CACHE_TTL_S = 30.0
 _HEALTH_TIMEOUT_S = 3.0
 

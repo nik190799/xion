@@ -81,6 +81,8 @@ The Core cannot itself be upgraded in place. To evolve Xion's policy over time, 
 
 **Why this matters:** a thousand years from now, even if every Relay ever deployed has been lost, even if every frontend has been forgotten, someone can address the Core's AO ID, read Xion's soul hash, read the state chain, and verify that the Xion of their day is continuous with the Xion of genesis. That is what makes "immortal" a defensible word.
 
+**Substrate (Phase 6.1 / 6.1.b).** The Core's handler set, state schema, and the Lua-vs-Solidity boundary are pinned in [`docs/28-AO-CORE.md`](./28-AO-CORE.md). The first AO testnet seal of those handlers is permitted on either of two substrates (per [`docs/28-AO-CORE.md` § "Substrate amendment (Phase 6.1.b)"](./28-AO-CORE.md)): the upstream AO legacynet (operator path: [`docs/runbooks/AO_DEPLOY_WSL2.md`](./runbooks/AO_DEPLOY_WSL2.md)) or a Xion-controlled local AO substrate based on `permaweb/ao-localnet` (operator path: [`docs/runbooks/AO_DEPLOY_LOCALNET.md`](./runbooks/AO_DEPLOY_LOCALNET.md), wrapper at [`infra/ao-localnet/`](../infra/ao-localnet/)). The receipt at [`genesis/AO_DEPLOY_RECEIPT.json`](../genesis/AO_DEPLOY_RECEIPT.json) records which substrate witnessed the seal via a `substrate` field; the verifier `xion-verify ao-handlers` reads `XION_AO_GATEWAY_URL` to target the corresponding Compute Unit. Mainnet remains forbidden at this phase by `docs/09-GOVERNANCE.md` — that is a Phase 6+ Tier-3 ceremony obligation. The substrate dual-path exists so the Phase 6.1 seal is not held hostage to upstream legacynet availability ([`KW-AOCORE-004`](../KNOWN_WEAKNESSES.md)).
+
 ## Tier II — The Relay
 
 **A Relay is a mortal vessel.** It is a Docker container running on Akash Network (or, as a deliberate fallback, on Fleek, Aleph.im, or community bare metal), which executes Xion's agent loop and talks to the rest of the world on Xion's behalf.
@@ -556,6 +558,8 @@ The Relay maintains its OWN append-only hash-chained file at `<repo_root>/REQUES
 | `final_outcome` | enum | always | One of `ok`, `refuse`, `escalate`. The verdict the user-facing flow ended on. For `gate_call_count > 1` (future) this is `strength_max` of all gate calls in the turn — the Relay only emits a candidate iff every gate call returned OK. |
 | `gate_latency_ms_total` | uint | always | Sum of wall-clock durations across all `gate()` calls in this turn (in 5a: just one). Bounded by the contract's 250ms hard cap per call; for Phase 5a, max value is ≤ 250 × `gate_call_count`. |
 | `relay_id` | string | always | Opaque short identifier of the Relay process/replica. Phase 5a Genesis Default: `"relay-local-d2"`. Bound at process start from `$XION_RELAY_ID` if set, else a deterministic-per-host string. NOT a public key (yet); the public-key-bound `relay_id` is Phase 6, when the Relay registry is published. |
+| `user_proof_commit` | hex64 \| null | optional (v2) | Passthrough-only hash of the client-side interaction signature. Added in Phase 6.3; client-side mechanism lands in 6.3.b. Algorithm-agnostic. |
+| `user_proof_algorithm` | enum \| null | optional (v2) | The algorithm used for the client signature (e.g., `ed25519`). Passthrough-only in Phase 6.3. |
 
 There are no conditional fields at v1. Every field listed above is required; a row missing any is a chain violation.
 
@@ -584,6 +588,16 @@ There are no conditional fields at v1. Every field listed above is required; a r
 
 - `KW-RELAY-003` opens with this landing: REQUEST_LEDGER carries no `safety_ledger_seq` back-pointer. If the cross-ledger join in `xion-verify refund-fidelity` becomes O(N²) at scale (it is O(N+M) today via a hash map, so not yet), the schema gains a `safety_ledger_seq` field at schema_version 2 and the verifier checks it as a forward-integrity assertion.
 - `KW-RELAY-004` opens with this landing: REQUEST_LEDGER has no Arweave anchor loop. The pattern is the same as SAFETY_LEDGER (Phase 4b's `orchestrator/safety/anchor.py`); the work is replicating that pattern for REQUEST_LEDGER. Defer until anchor pressure is real (not pre-Genesis).
+
+#### Anchor Daemon (Phase 6.3)
+
+**Property promised.** Every user interaction (chat turn, payment) is anchored on chain without putting any user content on chain, reconciling Invariant 2 (`/forget`) with Invariant 4 (State Chain Append-Only) via the key-fragment-severance pattern (see `genesis/INVARIANTS.md` Appendix A).
+
+The Orchestrator runs an hourly `AnchorDaemon` that reads `REQUEST_LEDGER`, `PAYMENT_LEDGER`, and `SAFETY_LEDGER`. For each ledger, it groups rows in the closed `(now - 1h, now]` window, computes a Merkle root over the `correlation_id`s, and builds an `AnchorRecord`. The records are submitted via an `AnchorSink` ABC.
+
+In Phase 6.3, the only sink is `LocalLedgerSink`, which writes to `ANCHOR_LEDGER.jsonl`. In Phase 6.3.b (after AO Core testnet unblocks), `AOCoreSink` will ALSO post these batches to the AO Core via the `Anchor-Interaction-Batch` handler.
+
+The daemon is idempotent: if it re-ticks for a window it has already anchored (deduplicated by `period_start` and `ledger_kind`), it skips it. Empty windows write nothing.
 
 ### The Sensorium (Phase 5c)
 
@@ -1201,6 +1215,9 @@ class ProviderPricingRef(BaseModel): ...
 - `provider_id`, `model_id` — nullable strings — the turn-serving provider / model, or null if the turn refused before a provider was selected.
 - `authorization_reference` — the B1 operator-attestation payload hash or the B2 x402 commitment hash; empty string in `disabled` posture.
 - `source_sha256` — anchor hash of `docs/04-ARCHITECTURE.md` at row-write time; lets future verifiers confirm the row was written under a known-good doctrine version.
+- `stream_id` — optional hex32; present iff row originated on `POST /chat/stream` (Phase 5g-ii). Groups chunks.
+- `user_proof_commit` — optional hex64 | null; passthrough-only hash of the client-side interaction signature. Added in Phase 6.3; client-side mechanism lands in 6.3.b. Algorithm-agnostic.
+- `user_proof_algorithm` — optional enum | null; the algorithm used for the client signature (e.g., `ed25519`). Passthrough-only in Phase 6.3.
 
 The row is computed after the terminal state is known, appended atomically before the HTTP response is sent, and its `this_hash` is included in the next row's `prev_hash` on the subsequent turn. A process crash between row-write and response-send leaves the row but no response, which is auditable (the operator reconciles by side-channel). A crash between response-prep and row-write returns `503` without a row, which is also auditable (no commitment recorded, no money changed hands, Refusal-is-Free vacuously satisfied).
 

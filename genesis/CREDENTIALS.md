@@ -41,3 +41,7 @@ Individually encrypted entries: per-LLM-provider keys (usage caps), per-Akash de
 ## Recovery cross-link
 
 See [`RESURRECT.md`](./RESURRECT.md) step **Vault unseal** for ordering when standing up a fresh Relay after total loss.
+
+## Testnet — non-constitutional
+
+testnet_process_id: "ao_testnet_dummy_pid_1234567890"

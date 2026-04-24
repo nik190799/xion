@@ -93,6 +93,21 @@ deployment-state/
 # ----- AO / Arweave -----
 .ao-cache/
 .arweave-cache/
+# `aos` CLI auto-creates a wallet JWK at ~/.aos.json on first spawn. That JWK
+# is the SOLE controller of every AO process the wallet has ever owned
+# (including, as of Phase 6.1, the canonical `xion-core` process). It must
+# never appear inside the repo, regardless of which directory it is copied
+# into. The `**/wallet*.json` line above does NOT cover the literal name
+# `.aos.json`, so it is enumerated explicitly here.
+.aos.json
+**/.aos.json
+*.aos.json
+# Defense-in-depth: any file whose name contains "jwk" is treated as a key.
+# Arweave wallets are always JWKs; this catches `arweave-keyfile-*.json`,
+# `wallet.jwk.json`, and similar.
+*.jwk
+*.jwk.json
+**/*.jwk
 
 # ----- IDE and editor scratch -----
 .vscode/

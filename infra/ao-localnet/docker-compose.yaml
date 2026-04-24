@@ -1,0 +1,47 @@
+# Xion AO Localnet — thin wrapper around upstream permaweb/ao-localnet.
+#
+# This file is a wrapper. The actual stack definition (services, builds, env
+# files, configs, healthchecks, port maps) lives in the upstream repository
+# `permaweb/ao-localnet` at the commit pinned in `scripts/ao-localnet-up.sh`
+# (env: XION_AO_LOCALNET_COMMIT).
+#
+# Compose's `include:` directive (Compose v2.20+, August 2023) merges the
+# upstream compose file in, with all paths inside the included file resolved
+# relative to its own directory — so `build: ./services/cu` in the upstream
+# resolves correctly under `.upstream/services/cu`.
+#
+# Why a thin wrapper instead of vendoring the upstream:
+# - The upstream is ~30 service files + Dockerfiles + scripts. Vendoring
+#   couples Xion's release cadence to the AO-ecosystem's experimental
+#   localnet repo.
+# - The upstream is itself low-churn (last commit 2024-04-10 as of pin time)
+#   and explicitly self-described as "experimental, no Tier 1 support".
+#   Pinning to a commit SHA is the only reproducible pin available; no
+#   `permaweb/ao-localnet:<tag>` images exist on Docker Hub.
+# - The wrapper makes the dependency boundary explicit: Xion owns the pin,
+#   the upstream owns the implementation. Operator can override the pin via
+#   `XION_AO_LOCALNET_COMMIT` to test newer / forked versions (e.g. the
+#   `weavedb/ao-localnet@hotfix` community fork) without editing this file.
+#
+# Operator workflow:
+#   1. Run `scripts/ao-localnet-up.sh` (clones upstream into `.upstream/`,
+#      generates wallets, runs `docker compose up -d --wait`, polls).
+#   2. After bring-up, the AO Compute Unit (`cu`) is at http://localhost:4004
+#      and is what `xion-verify ao-handlers` should target via
+#      `XION_AO_GATEWAY_URL=http://localhost:4004`.
+#   3. Tear down with `docker compose -f infra/ao-localnet/docker-compose.yaml down -v`.
+#
+# Doctrine cross-references:
+#   - docs/28-AO-CORE.md § "Substrate amendment (Phase 6.1.b)"
+#   - docs/runbooks/AO_DEPLOY_LOCALNET.md
+#   - KNOWN_WEAKNESSES.md § KW-AOCORE-004 (closure path #2)
+#
+# WARNING: This wrapper requires the upstream to be cloned first (the
+# `.upstream/docker-compose.yml` path below resolves only after
+# `ao-localnet-up.sh` clones). Running `docker compose up` directly on this
+# file before clone WILL fail with "no such file" on the include path; that
+# is intentional — it forces operators through the bootstrap script that
+# pins the upstream commit.
+
+include:
+  - path: ./.upstream/docker-compose.yml

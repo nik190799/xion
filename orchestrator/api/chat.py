@@ -67,6 +67,7 @@ from orchestrator.relay.ledger import (
 )
 
 from .models import (
+    MIN_MAX_TOKENS,
     ChatRequest,
     ChatResponse,
     NoFloorEnvelope,
@@ -247,21 +248,36 @@ def register_chat_route(app: FastAPI) -> None:
         result: "GenerationResult | None" = None
         provider_id: str | None = None
 
+        from orchestrator.inference_router.model_registry import get_min_max_tokens
+
         for attempt_index, provider in enumerate(ordered):
             provider_id = (
                 getattr(provider, "provider_id", None) or type(provider).__name__
+            )
+            model_id_configured = getattr(provider, "model", None)
+            effective_max_tokens = max(
+                req.max_tokens,
+                get_min_max_tokens(provider_id, model_id_configured),
             )
             last_provider_id = provider_id
 
             attempt_started_ns = time.time_ns()
             try:
+                from orchestrator.cognition.loop import run_turn
+                
+                supervisor = getattr(app.state, "supervisor", None)
+                snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
+                
                 result = await asyncio.wait_for(
                     asyncio.to_thread(
-                        _invoke_generate,
+                        run_turn,
                         provider,
                         req.message,
-                        req.max_tokens,
+                        app.state.soul_prompt,
+                        snapshot_dict,
+                        effective_max_tokens,
                         deadline_s,
+                        ingress.correlation_id,
                     ),
                     timeout=deadline_s,
                 )
@@ -616,13 +632,14 @@ def _sha256_text(text: str) -> str:
 def _invoke_generate(
     provider: "GenerativeProvider",
     prompt: str,
+    system: str | None,
     max_tokens: int,
     deadline_s: float,
 ) -> object:
     """Adapter so ``asyncio.to_thread`` receives a plain callable."""
     return provider.generate(
         prompt,
-        system=None,
+        system=system,
         max_tokens=max_tokens,
         deadline_s=deadline_s,
     )

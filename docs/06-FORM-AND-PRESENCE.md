@@ -124,6 +124,8 @@ The frame is signed by the current relay-auth key. Clients can verify that the v
 
 ## The Presence Stream in Action
 
+*(Implementation Note: This presence stream and the underlying `PresenceBus` ship in Phase 6.4)*
+
 When a user loads the public site:
 
 ```

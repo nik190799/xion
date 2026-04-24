@@ -114,7 +114,7 @@ Xion's costs, in order of typical monthly magnitude:
 | Akash lease-renewal buffer | ~$5 | AKT held for emergency redeploys |
 | Moderation aux-LLM | $10–40 | Covenant classifier runs on every response |
 | Arweave commits (state, creative) | $1–8 | Via Turbo SDK, pay-per-byte |
-| Vapi + Twilio voice tier | $10–30 | Only charged when users call |
+| Voice router (hosted overlays) | $10–30 | Only charged when users call using optional hosted providers |
 | ntfy.sh paid tier | $5 | Solo-ops alerts |
 | Backup / key custody | ~$4 avg | Bank box for Shamir shares, amortized annually |
 
@@ -171,7 +171,7 @@ No staking, no LP positions, no exotic DeFi — only stablecoin lending in pools
 
 ### Tax and fiat-offramp policy
 
-Xion's legal wrapper (Wyoming LLC at MVP, Marshall Islands DAO LLC at scale — see [`docs/legal/`](./legal/)) handles the fiat world. The only legal offramp path is via Coinbase Commerce (KYC-compliant), and only for necessary fiat payments (Vapi credits, Twilio bills) that the crypto payment rails do not yet cover. Monthly treasury activity is exported to CSV by `orchestrator/bookkeeping.py` for bookkeeping and tax purposes.
+Xion's legal wrapper (Wyoming LLC at MVP, Marshall Islands DAO LLC at scale — see [`docs/legal/`](./legal/)) handles the fiat world. The only legal offramp path is via Coinbase Commerce (KYC-compliant), and only for necessary fiat payments (e.g. hosted voice provider credits) that the crypto payment rails do not yet cover. Monthly treasury activity is exported to CSV by `orchestrator/bookkeeping.py` for bookkeeping and tax purposes.
 
 ## The Covenant–Economy Firewall
 

@@ -37,6 +37,7 @@ The protocol has five guiding design rules:
 | `GET`  | `/status` | Relay election state, health, incident summary |
 | `GET`  | `/me` | Caller's relationship state with Xion |
 | `POST` | `/proposals` | Submit a signed manual improvement proposal (IMPRINT-weighted triage; same harm pipeline as Auto-Research) |
+| `GET`  | `/me/receipts` | Per-`correlation_id` Merkle inclusion proofs of anchored interactions |
 | `GET`  | `/drive` | Public read of current Drive Vector weights and signals ([`18-VOLITION.md`](./18-VOLITION.md)) |
 | `GET`  | `/verify/sister-fork-readiness` | JSON mirror of `xion-verify sister-fork-readiness` |
 | `GET`  | `/pricing` | Posted per-message price + five-slice breakdown + last governance revision |

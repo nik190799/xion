@@ -1,0 +1,19 @@
+handler: provision-storage
+family: provisioning
+schema_version: 1
+status: doctrine_only
+defer_to: Phase 6.1
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256: da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260
+operational_doctrine: docs/28-AO-CORE.md
+operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
+args:
+  - name: dummy_arg
+    type: string
+    required: true
+preconditions:
+  - dummy precondition
+state_changes:
+  - dummy state change
+failure_modes:
+  - dummy failure mode

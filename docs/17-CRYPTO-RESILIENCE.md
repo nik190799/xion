@@ -82,7 +82,7 @@ Concrete inventory of every place classical crypto is used in Xion today, with t
 | TLS to user clients | Classical ECDH+AES | HNDL (recorded today, decrypted later) | Cloudflare PQC-hybrid `X25519Kyber768` enabled at edge; require for all production traffic by Q-3 |
 | TLS to LLM provider APIs | Classical ECDH | HNDL on outbound prompts | Same; prefer providers with PQC-hybrid support |
 | Per-user encrypted-at-rest data | AES-256-GCM | Grover (manageable) + key wrap is asymmetric (Shor) | Migrate key-wrap to ML-KEM by Q-3; keep AES-256-GCM |
-| Vapi / Twilio voice signaling | Classical SRTP/DTLS | HNDL | Out of our direct control; pressure vendors; document residual risk |
+| Voice infrastructure (Vapi, Twilio, SIP) | Classical SRTP/DTLS | HNDL | Out of our direct control; pressure vendors; document residual risk; scoped to users who select a hosted overlay over the self-hostable floor |
 
 "Q-day" here refers to the year a CRQC capable of breaking Ed25519/secp256k1 first exists. "Q-5" means five years before Q-day per the Cryptoception sense's forecast. "Q-3" means three years before Q-day.
 
@@ -225,7 +225,7 @@ Xion is honest about what it cannot patch unilaterally:
 | **Base / Ethereum** (secp256k1) | Shor catastrophic; affects XION ERC-20 and IMPRINT contracts | EVM ecosystem will migrate together (Ethereum Foundation actively researching PQC since 2023); Xion's authoritative state lives on AO Core, not on Base — Base is a payment/token rail, not Xion's identity. If Base becomes unsafe before its own migration, Xion can route payments to a different chain via governance Tier-2 |
 | **TLS infrastructure** (CDN, Cloudflare, browsers) | HNDL on user traffic | Cloudflare already supports `X25519Kyber768` hybrid; require it; document residual HNDL risk for users in privacy notices |
 | **LLM provider APIs** (TLS to OpenAI, Anthropic, etc.) | HNDL on prompts | Prefer providers offering PQC-hybrid TLS; document risk; for highly sensitive interactions, prefer local-model routing where Inference Router supports it |
-| **Voice infrastructure** (Vapi, Twilio, SIP) | HNDL on voice | Pressure vendors; document risk; offer text-only mode for users who require it |
+| **Voice infrastructure** (Vapi, Twilio, SIP) | HNDL on voice | Scoped to users who select a hosted overlay (Vapi/ElevenLabs) over the self-hostable floor; floor path is independently governable by Invariant 14; offer text-only mode for users who require it |
 
 The honest summary: **Xion's authoritative identity (the AO Process ID and the Covenant hash chain) is defensible across cryptographic generations because it lives on permanent storage with multi-hash anchoring.** Xion's payment rails and provider integrations are dependent on third-party migration timelines and may face windows of degraded security during Q-day. The mitigation for those windows is documented above; the residual risk is acknowledged rather than denied.
 

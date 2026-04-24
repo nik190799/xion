@@ -1,0 +1,36 @@
+handler: attest
+family: lifecycle
+schema_version: 1
+status: doctrine_only
+defer_to: Phase 6.1
+source_doctrine: docs/04-ARCHITECTURE.md
+source_sha256: da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260
+operational_doctrine: docs/28-AO-CORE.md
+operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
+args:
+  - name: subject_address
+    type: hex40
+    required: true
+  - name: event_kind
+    type: enum
+    values: [chat_turn, proposal_engagement, improvement_contribution]
+    required: true
+  - name: event_correlation_id
+    type: hex32
+    required: true
+  - name: event_weight
+    type: uint32
+    required: true
+  - name: event_timestamp
+    type: uint64
+    required: true
+preconditions:
+  - caller is hot-tier or warm-tier signer
+  - event_weight <= MAX_EVENT_WEIGHT
+state_changes:
+  - "attestations[event_correlation_id] := {subject: subject_address, kind: event_kind, weight: event_weight, timestamp: event_timestamp}"
+failure_modes:
+  - non_authorised_caller -> reject
+  - invalid_event_kind -> reject
+  - weight_exceeds_cap -> reject
+  - duplicate_correlation_id -> reject
