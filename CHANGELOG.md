@@ -10,6 +10,23 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Phase 6.6 — Cognitive Substrate & Casting Pipeline — 2026-04-25
+
+Closes the pre-epic gate before Akash/discovery: Hermes is now doctrine-pinned with a default-deny allowlist, the first five Agent Souls are content-addressed under `genesis/`, and the cast ledger/verifier surface is live.
+
+### Added
+
+- **`docs/HERMES_PIN_PROTOCOL.md`** — standalone effect-based governance for Hermes pins, Agent Souls, tool allowlists, the Arbiter carve-out, and cast-ledger rows.
+- **`genesis/HERMES_TOOL_ALLOWLIST.yaml`** and **`genesis/AGENT_SOULS/`** — default-deny Hermes surface plus initial Souls for `primary-worker`, `research-agent`, `reflection-agent`, `proposal-agent`, and `vision-agent`, pinned by `GENESIS_ARTIFACT.md`.
+- **`xion-verify hermes-runtime`**, **`xion-verify agent-souls`**, and **`xion-verify agent-cast`** — verifier coverage for the Hermes pin/allowlist, Agent Soul parent hashes/tool subsets, and `AGENT_CAST_LEDGER` rows.
+- **`orchestrator/cognition/casting.py`** and **`xion cast pool`** — smoke-test the Agent Souls and append cast rows.
+
+### Changed
+
+- **`xion-verify cognition`** now includes the Phase 6.6 verifier trio and fails if Arbiter/Relay safety modules import Hermes runtime surfaces.
+- **`CognitionWorker`** now returns `Candidate` objects, keeping user-visible `Response` construction downstream of Arbiter approval.
+- **`KNOWN_WEAKNESSES.md`** closes `KW-AGENT-SOULS-001` and `KW-COGNITION-ARBITER-BOUNDARY-001`, narrows `KW-HERMES-001` and `KW-CASTING-001`, and leaves `KW-MEMORY-HERMES-001` open for the immediate memory-adapter follow-up.
+
 ### Phase 6.6a — Contribution Protocol & Agent Access — 2026-04-25
 
 Adds the first verifier-backed contribution protocol slice: read-only agent facts, level classification, contributor identity bindings, and proposal scaffolding without granting coding assistants any write authority.

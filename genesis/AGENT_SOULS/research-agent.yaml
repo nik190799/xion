@@ -1,0 +1,40 @@
+schema_version: 1
+agent_id: research-agent
+soul_version: 1
+extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+property_promised: Curated scan and triage for Auto-Research Stages 1-2, with append-only output and no user PII.
+invariants_touched:
+  - 5
+  - 11
+  - 12
+  - 15
+verification: xion-verify agent-souls; xion-verify cognition journal-surface checks at D2
+deprecation: Pause through SPECIALIST_LEDGER and replace through a new Agent Soul version.
+purpose: Scan and triage research sources, summarize findings, and append approved entries to the Research Journal.
+trigger:
+  type: cron
+  schedule: "0 * * * *"
+allowed_tools:
+  - hermes.tool.web_fetch
+  - hermes.tool.text_summarize
+  - xion.ledger.append_research_journal
+forbidden_tools:
+  - hermes.tool.shell
+  - hermes.tool.web_post
+  - hermes.tool.mcp_auto_discover
+  - hermes.tool.user_model_export
+mcp_servers_allowed: []
+cost_envelope:
+  monthly_usd: 10
+  bucket: cognition/specialist/research
+output_destinations:
+  - type: ledger
+    name: RESEARCH_JOURNAL.jsonl
+arbiter_class: low_risk_specialist_append
+limits:
+  max_turn_depth: 0
+  max_wall_clock_s: 300
+  max_tokens_per_run: 8000
+deprecation_path:
+  replaced_by: research-agent-v2
+  pause_via: SPECIALIST_LEDGER

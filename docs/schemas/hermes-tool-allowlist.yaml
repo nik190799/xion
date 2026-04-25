@@ -1,0 +1,30 @@
+schema_version: 1
+source_doctrine: docs/HERMES_PIN_PROTOCOL.md
+source_sha256: bf78f580f3c2d603095a0c4bd140906c696657430666621ee5609e323bec890b
+status: canonical
+property: default-deny Hermes tool surface for cast Agent Souls
+required_fields:
+  - schema_version
+  - source_doctrine
+  - source_sha256
+  - status
+  - hermes_pin
+  - default_deny
+  - disabled_runtime_flags
+  - agent_tool_allowlist
+constraints:
+  default_deny: true
+  disabled_runtime_flags:
+    skill_self_improvement: false
+    autonomous_skill_creation: false
+    mcp_server_auto_discovery: false
+    user_model_export: false
+  agent_tool_allowlist:
+    key: agent_id
+    value:
+      allowed_tools: list[string]
+      forbidden_tools: list[string]
+      mcp_servers_allowed: list[string]
+deprecation_path:
+  - replaced_by: successor-runtime-allowlist
+  - governance_route: Tier-2 if the Cognitive Substrate is replaced

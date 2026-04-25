@@ -1,0 +1,13 @@
+# Agent Souls manifest (Phase 6.6)
+#
+# manifest_payload_sha256 is SHA-256 over the byte concatenation of the sorted
+# files below, excluding this MANIFEST.txt file.
+
+manifest_payload_sha256: b9544d8af50da8e89dc9c221b8ecfda2f3a6e1c682abe524eb106903240c1f6d
+
+genesis/AGENT_SOULS/_SCHEMA.md sha256: b79fe45288ec2aca1ea336801c858f93ee7c73d1bbca305b1975643962890de2
+genesis/AGENT_SOULS/primary-worker.yaml sha256: f47baf54562a879482cc1106efd88744c57253a2ea288e94c63d95c00396a654
+genesis/AGENT_SOULS/proposal-agent.yaml sha256: b62ac81142a4de674ce90eaafaf8f98cc11d704d54c7ce0c618ac73374a8e5cd
+genesis/AGENT_SOULS/reflection-agent.yaml sha256: 4f5fd6263c27a6dc0471f18a1782bb84ab38d4d89eda3e292f8a7b930d0c722d
+genesis/AGENT_SOULS/research-agent.yaml sha256: f2bd8aa852c8d645ff8196ba2409f38f0df6bef066d873535168b7ba41c4d152
+genesis/AGENT_SOULS/vision-agent.yaml sha256: 053872b0568694a4c90afd0e7e1c57026fc94415cec7751f64f0e34dc38ff945

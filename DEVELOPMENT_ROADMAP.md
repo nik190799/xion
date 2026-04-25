@@ -1079,6 +1079,8 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 ## Phase 6.6 — Cognitive Substrate & Casting Pipeline
 
+**Status.** Closed 2026-04-25. `docs/HERMES_PIN_PROTOCOL.md`, `genesis/HERMES_TOOL_ALLOWLIST.yaml`, `genesis/AGENT_SOULS/`, `ledgers/AGENT_CAST_LEDGER.jsonl`, `xion cast pool`, and `xion-verify hermes-runtime` / `agent-souls` / `agent-cast` are live. `KW-HERMES-001` remains a mitigated residual for the installable Hermes lockfile pin; `KW-MEMORY-HERMES-001` remains open for the immediate `/forget` adapter follow-up.
+
 **Goal.** Every agentic faculty inside Xion runs through the same rotatable Cognitive Substrate (Hermes at Genesis era) without letting Hermes become Xion's identity. Xion's durable agent definitions live as content-addressed **Agent Souls**; Hermes is the replaceable substrate those Souls are cast into. This phase makes the D2 statement "Hermes Agent serving conversations through the Inference Router" true for the primary worker and for the named specialists, while preserving the future replacement path for a better runtime.
 
 **Why now.** The Hermes spike and wrapper code from Phase 6+ proved the runtime can be wrapped, but the pin, tool surface, and per-agent purpose layer are not yet promoted into verifiable artifacts. Deploying Macro Phase 6 Epic B before this phase would put a Relay on Akash that still depends on cognition scaffolding rather than a cast, audited agent pool.

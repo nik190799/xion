@@ -1,9 +1,8 @@
 """`xion-verify cognition` — cognition-layer property suite (docs/24-COGNITION.md §11).
 
-Today this subcommand is a pre-D2 stub: it statically confirms the cognition
-doctrine exists and declares the live-endpoint checks `NOT_YET_SEALED`. When
-the Relay ships in Phase 5 with cognition metrics endpoints, this command
-becomes the enforcer of Invariant 6's cognition-layer mechanism row.
+Pre-D2, live endpoint checks remain stubbed, but Phase 6.6 makes the
+Cognitive Substrate contract machine-checkable: Hermes pin posture, Agent
+Souls, cast ledger shape, and the Arbiter/Hermes boundary are verified here.
 
 Exit contract:
   - default mode: exit 0 (static doctrine checks pass) or 1 (doctrine drift)
@@ -25,12 +24,35 @@ _REQUIRED_DOCTRINE: tuple[tuple[str, str], ...] = (
     ("genesis/UNKNOWNS.md", "UNKNOWNS companion"),
 )
 
+_ARBITER_BOUNDARY_GLOBS: tuple[str, ...] = (
+    "orchestrator/safety/**/*.py",
+    "orchestrator/relay/**/*.py",
+)
+_FORBIDDEN_ARBITER_IMPORTS: tuple[str, ...] = (
+    "orchestrator.cognition.hermes",
+    "cognition.hermes",
+)
+
 
 def _static_checks(repo_root: Path) -> list[str]:
     errors: list[str] = []
     for rel, label in _REQUIRED_DOCTRINE:
         if not (repo_root / rel).is_file():
             errors.append(f"{label} missing at {rel}")
+    return errors
+
+
+def _arbiter_boundary_errors(repo_root: Path) -> list[str]:
+    errors: list[str] = []
+    paths: set[Path] = set()
+    for pattern in _ARBITER_BOUNDARY_GLOBS:
+        paths.update(p for p in repo_root.glob(pattern) if p.is_file())
+    for path in sorted(paths):
+        rel = path.relative_to(repo_root).as_posix()
+        text = path.read_text(encoding="utf-8")
+        for forbidden in _FORBIDDEN_ARBITER_IMPORTS:
+            if forbidden in text:
+                errors.append(f"{rel}: forbidden Arbiter/Hermes boundary import {forbidden!r}")
     return errors
 
 
@@ -65,12 +87,29 @@ def cognition(strict: bool, bus_audit: bool, forget_sim: bool, identity: bool, d
         sys.exit(NOT_YET_SEALED)
 
     errs = _static_checks(repo_root)
+    notes: list[str] = []
+    if not errs:
+        from xion_verify.commands.agent_cast import check_agent_cast
+        from xion_verify.commands.agent_souls import check_agent_souls
+        from xion_verify.commands.hermes_runtime import check_hermes_runtime
+
+        hermes_errors, hermes_notes = check_hermes_runtime(repo_root)
+        soul_errors, _ = check_agent_souls(repo_root)
+        cast_errors, cast_notes, _ = check_agent_cast(repo_root)
+        errs.extend(hermes_errors)
+        errs.extend(soul_errors)
+        errs.extend(cast_errors)
+        errs.extend(_arbiter_boundary_errors(repo_root))
+        notes.extend(hermes_notes)
+        notes.extend(cast_notes)
     if errs:
-        for e in errs:
+        for e in dict.fromkeys(errs):
             click.echo(f"cognition: FAIL: {e}", err=True)
         sys.exit(FAIL)
 
-    click.echo("cognition: OK (static doctrine checks pass; §11 property suite is pre-D2)")
+    click.echo("cognition: OK (static doctrine, Hermes runtime, Agent Souls, cast ledger, Arbiter boundary verified)")
+    for note in dict.fromkeys(notes):
+        click.echo(f"cognition: {note}")
     if bus_audit or forget_sim or identity:
         click.echo("cognition: requested sub-check is stub-only until D2")
     sys.exit(OK)

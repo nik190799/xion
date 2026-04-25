@@ -25,10 +25,13 @@ from xion_verify.commands.ao_handlers import verify_ao_handlers
 from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.auto_research import auto_research
+from xion_verify.commands.cast import cast_cmd
 from xion_verify.commands.charter_signed import charter_signed
 from xion_verify.commands.chat_streaming_fidelity import chat_streaming_fidelity
 from xion_verify.commands.cognition import cognition
 from xion_verify.commands.cognition_disjoint import cognition_disjoint
+from xion_verify.commands.agent_cast import agent_cast
+from xion_verify.commands.agent_souls import agent_souls
 from xion_verify.commands.constitutional import (
     covenant,
     credentials,
@@ -43,6 +46,7 @@ from xion_verify.commands.cost_pressure import cost_pressure
 from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
+from xion_verify.commands.hermes_runtime import hermes_runtime
 from xion_verify.commands.identity_bindings import identity_bindings
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.interaction_anchor import cli as interaction_anchor
@@ -100,6 +104,9 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "links": links,
     "schemas": schemas,
     "cognition": cognition,
+    "hermes-runtime": hermes_runtime,
+    "agent-souls": agent_souls,
+    "agent-cast": agent_cast,
     "cognition-disjoint": cognition_disjoint,
     "registries": registries,
     "rebuild": rebuild,
@@ -126,6 +133,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "vitals": vitals,
     "new": new_cmd,
     "local": local_cmd,
+    "cast": cast_cmd,
     "operator-dependency": operator_dependency,
     "research-sources": research_sources,
     "pre-genesis": pre_genesis,

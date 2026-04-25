@@ -1,0 +1,40 @@
+schema_version: 1
+source_doctrine: docs/HERMES_PIN_PROTOCOL.md
+source_sha256: bf78f580f3c2d603095a0c4bd140906c696657430666621ee5609e323bec890b
+status: canonical
+property: per-faculty Agent Soul contract
+required_fields:
+  - agent_id
+  - soul_version
+  - extends_soul_hash
+  - purpose
+  - trigger
+  - allowed_tools
+  - forbidden_tools
+  - mcp_servers_allowed
+  - cost_envelope
+  - output_destinations
+  - arbiter_class
+  - limits
+  - deprecation_path
+field_shapes:
+  agent_id: kebab-case string
+  soul_version: positive integer
+  extends_soul_hash: 64-character hex SHA-256 of genesis/SOUL.md
+  trigger: mapping
+  allowed_tools: list[string]
+  forbidden_tools: list[string]
+  mcp_servers_allowed: list[string]
+  cost_envelope: mapping
+  output_destinations: list[mapping]
+  limits:
+    max_turn_depth: integer
+    max_wall_clock_s: integer
+    max_tokens_per_run: integer
+constraints:
+  - allowed_tools must be a subset of genesis/HERMES_TOOL_ALLOWLIST.yaml for the same agent_id
+  - agent_id must not be arbiter
+  - output_destinations must respect docs/24-COGNITION.md specialist destination rules
+deprecation_path:
+  - replaced_by: next Agent Soul version with a new content hash
+  - dual_cast_window: optional shadow cast-pool drill before promotion

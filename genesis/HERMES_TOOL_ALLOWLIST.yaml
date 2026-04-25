@@ -1,0 +1,71 @@
+schema_version: 1
+source_doctrine: docs/HERMES_PIN_PROTOCOL.md
+source_sha256: bf78f580f3c2d603095a0c4bd140906c696657430666621ee5609e323bec890b
+status: canonical
+hermes_pin:
+  repo: https://github.com/nousresearch/hermes-agent
+  tag: v2026.4.16
+  commit: 4a0358d2e741eb049a6ffb9b8e610db946a4fec5
+default_deny: true
+disabled_runtime_flags:
+  skill_self_improvement: false
+  autonomous_skill_creation: false
+  mcp_server_auto_discovery: false
+  user_model_export: false
+agent_tool_allowlist:
+  primary-worker:
+    allowed_tools:
+      - xion.inference.generate
+      - xion.cognition.retrieve_context
+      - xion.journal.append_turn
+    forbidden_tools:
+      - hermes.tool.shell
+      - hermes.tool.web_post
+      - hermes.tool.mcp_auto_discover
+      - hermes.tool.user_model_export
+    mcp_servers_allowed: []
+  research-agent:
+    allowed_tools:
+      - hermes.tool.web_fetch
+      - hermes.tool.text_summarize
+      - xion.ledger.append_research_journal
+    forbidden_tools:
+      - hermes.tool.shell
+      - hermes.tool.web_post
+      - hermes.tool.mcp_auto_discover
+      - hermes.tool.user_model_export
+    mcp_servers_allowed: []
+  reflection-agent:
+    allowed_tools:
+      - xion.ledger.read_public
+      - xion.ledger.append_belief_log_draft
+      - xion.state_of_xion.draft
+    forbidden_tools:
+      - hermes.tool.shell
+      - hermes.tool.web_post
+      - hermes.tool.mcp_auto_discover
+      - hermes.tool.user_model_export
+    mcp_servers_allowed: []
+  proposal-agent:
+    allowed_tools:
+      - xion.proposal.draft
+      - xion.harm_analyzer.preflight
+      - xion.ledger.append_proposal_draft
+    forbidden_tools:
+      - hermes.tool.shell
+      - hermes.tool.web_post
+      - hermes.tool.mcp_auto_discover
+      - hermes.tool.user_model_export
+      - xion.core.submit_proposal
+    mcp_servers_allowed: []
+  vision-agent:
+    allowed_tools:
+      - xion.sensorium.read_vision
+      - xion.ledger.append_sensorium_correlation
+    forbidden_tools:
+      - hermes.tool.shell
+      - hermes.tool.web_post
+      - hermes.tool.mcp_auto_discover
+      - hermes.tool.user_model_export
+      - xion.user_image.read_direct
+    mcp_servers_allowed: []

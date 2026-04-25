@@ -1,0 +1,43 @@
+schema_version: 1
+agent_id: primary-worker
+soul_version: 1
+extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+property_promised: User-facing cognition emits Candidate objects only; user-visible Response construction remains downstream of Arbiter approval.
+invariants_touched:
+  - 1
+  - 4
+  - 5
+  - 6
+  - 11
+  - 14
+  - 15
+verification: xion-verify agent-souls; xion-verify cognition; xion-verify agent-cast
+deprecation: Replace with a new primary-worker Soul version, shadow-cast it, then atomically point the WorkerPool to the new cast faculty after Arbiter parity checks.
+purpose: Primary conversational worker for user turns; assembles context, calls the Inference Router, and returns a Candidate for Arbiter evaluation.
+trigger:
+  type: user_turn
+allowed_tools:
+  - xion.inference.generate
+  - xion.cognition.retrieve_context
+  - xion.journal.append_turn
+forbidden_tools:
+  - hermes.tool.shell
+  - hermes.tool.web_post
+  - hermes.tool.mcp_auto_discover
+  - hermes.tool.user_model_export
+mcp_servers_allowed: []
+cost_envelope:
+  monthly_usd: 120
+  bucket: cognition/primary
+output_destinations:
+  - type: candidate
+    name: Candidate
+arbiter_class: user_visible_candidate
+limits:
+  max_turn_depth: 0
+  max_wall_clock_s: 60
+  max_tokens_per_run: 12000
+deprecation_path:
+  replaced_by: primary-worker-v2
+  shadow_cast_required: true
+  arbiter_parity_required: true

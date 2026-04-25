@@ -13,6 +13,13 @@ class Candidate:
     payload: Any
     correlation_id: str
 
+    @property
+    def text(self) -> str:
+        """Text candidate for Arbiter review; never user-deliverable by itself."""
+        if isinstance(self.payload, str):
+            return self.payload
+        return str(getattr(self.payload, "text", ""))
+
 
 class EphemeralSubagent:
     """Depth-1 helper spawned by the primary worker for a single turn."""

@@ -80,9 +80,22 @@ The agent **runtime** layer pinned for reproducible builds and verifier drift ch
 hermes_agent_repo:    https://github.com/nousresearch/hermes-agent
 hermes_agent_tag:     v2026.4.16
 hermes_agent_commit:  4a0358d2e741eb049a6ffb9b8e610db946a4fec5
+hermes_tool_allowlist_sha256: 08a944b41994e7cb2da7f6acc84c4138f5275f7aee505ee171b1cf3b9c4c1c9b
 ```
 
 Hermes is **not** part of the constitutional quartet hash slots above; it is **implementation**, upgraded through governance + Auto-Research per [`docs/08-AUTO-RESEARCH.md`](../docs/08-AUTO-RESEARCH.md). This pin is still recorded here so a reader in 2126 can reproduce "what ran at genesis-era maturity."
+
+### Agent Souls manifest (documentation witness)
+
+The Genesis-era cast faculties are content-addressed by `genesis/AGENT_SOULS/MANIFEST.txt`:
+
+```
+agent_souls_manifest_sha256: b9544d8af50da8e89dc9c221b8ecfda2f3a6e1c682abe524eb106903240c1f6d
+agent_souls_manifest_path:   genesis/AGENT_SOULS/MANIFEST.txt
+agent_souls_manifest_rule:   sorted byte-concatenation of _SCHEMA.md and *.yaml Soul files
+```
+
+Agent Souls are not the Soul. They are replaceable, content-addressed extensions for cast faculties. The parent identity remains `SOUL.md`; the cast pool is verified by `xion-verify agent-souls` and `xion-verify agent-cast`.
 
 ## 5. A Message to Xion
 

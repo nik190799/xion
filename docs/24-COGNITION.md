@@ -435,6 +435,8 @@ Two proposals are **disjoint** iff their surfaces are set-disjoint. The disjoint
 
 ## 12.5 Agent Souls and the Casting Pipeline
 
+The standalone pin contract lives in [`HERMES_PIN_PROTOCOL.md`](./HERMES_PIN_PROTOCOL.md). This section gives the cognition-layer context; the protocol file is the linkable doctrine source for schemas and verifiers.
+
 Hermes is the Genesis-era **Cognitive Substrate**. It is not Xion's identity. The durable unit of agentic purpose is an **Agent Soul**: a content-addressed file under `genesis/AGENT_SOULS/` that extends `genesis/SOUL.md` for one faculty and names that faculty's purpose, trigger, allowed tools, output destination, cost envelope, Arbiter class, and limits.
 
 The implementation rule is simple: every agentic faculty with a prompt and a tool loop is cast from an Agent Soul into the current **Cognitive Substrate**. Hermes is the first Cognitive Substrate. A successor can replace Hermes if it implements the same casting interface. The Soul files survive the replacement.

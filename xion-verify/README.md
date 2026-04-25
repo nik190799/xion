@@ -34,6 +34,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 17. Inference Sovereignty Floor | `xion-verify inference-sovereignty` is live (manifest + per-format pins; see `docs/26-INFERENCE-POLICY.md`). |
 | 18. Voice Sovereignty Floor (proposal; `docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md`) | `xion-verify voice-sovereignty` verifies the `voice_open_source` sentinel pin in `orchestrator/voice_router/voice_open_source_manifest.json`. `xion-verify voice-form` verifies `genesis/VOICE_FORM.md` prosody JSON. Ratification in `genesis/INVARIANTS.md` is governance-gated. |
 | Nervous System v2 (`docs/35-NERVOUS-SYSTEM.md`, Phase 6.4.b) | `xion-verify topography` boots a hermetic app and checks `GET /self` (lineage, vitals domain count, open-weights floor, api_surface). `xion-verify nervous-system` exercises pluggability, receptor failure logging, schema fail-closed drops + `vital.bus_integrity`, reflex dispatch, and dual-publish receptors. |
+| Cognitive Substrate & Casting (`docs/HERMES_PIN_PROTOCOL.md`, Phase 6.6) | `xion-verify hermes-runtime` verifies the Hermes pin, default-deny allowlist, and disabled runtime flags. `xion-verify agent-souls` verifies parent Soul hashes and tool subsets. `xion-verify agent-cast` verifies `AGENT_CAST_LEDGER` rows against the Agent Soul manifest. `xion-verify cognition` includes the Arbiter/Hermes boundary check. |
 | Contribution Protocol (`docs/34-CONTRIBUTION-PROTOCOL.md`, Phase 6.6a) | `xion-verify which-level` classifies proposed paths against the upgrade-level schemas; `xion-verify identity-bindings` verifies Ed25519 contributor wallet-to-GitHub binding rows; `xion-verify mcp-export` emits a read-only facts bundle for MCP wrappers and coding assistants. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
@@ -92,6 +93,11 @@ xion-verify covenant
 xion-verify invariants
 xion-verify links
 xion-verify schemas
+xion-verify hermes-runtime
+xion-verify agent-souls
+xion-verify agent-cast
+xion-verify cognition
+xion cast pool
 xion-verify provisioning-roles
 xion-verify which-level docs/34-CONTRIBUTION-PROTOCOL.md
 xion-verify identity-bindings
@@ -119,6 +125,16 @@ Honest residuals named in the help text and in every FAIL line:
 - The verifier is structural; it does not verify on-chain cosigns. Cosign verification is Phase 6+ via the AO Core handlers.
 
 Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic against a single PR diff (instead of a 90-day window) and blocks merge on cross-level or unauthorized.
+
+### Cognitive Substrate commands (Phase 6.6)
+
+`xion-verify hermes-runtime` verifies `genesis/HERMES_TOOL_ALLOWLIST.yaml`, confirms `default_deny: true`, asserts Hermes self-improvement / autonomous skill creation / MCP auto-discovery / user-model export are disabled, and cross-checks the Hermes commit and allowlist hash in `genesis/GENESIS_ARTIFACT.md`. It reports the installable Hermes dependency pin as `NOT_YET_SEALED` until the runtime is a lockfile dependency.
+
+`xion-verify agent-souls` verifies every `genesis/AGENT_SOULS/*.yaml` file against the current `genesis/SOUL.md` hash and the Hermes tool allowlist. It rejects any `agent_id: arbiter`.
+
+`xion-verify agent-cast` verifies `ledgers/AGENT_CAST_LEDGER.jsonl` rows against the current Agent Soul hashes, parent Soul hash, and Hermes pin. An empty seeded ledger is OK before the first live cast pool.
+
+`xion cast pool` smoke-tests every genesis Agent Soul and appends one cast row per faculty to `ledgers/AGENT_CAST_LEDGER.jsonl`. It does not submit governance actions or grant write authority to any assistant.
 
 ### Contribution Protocol commands (Phase 6.6a)
 
@@ -150,7 +166,11 @@ xion-verify/
       schemas.py                      — strict docs/schemas/*.yaml ↔ doctrine cross-check
       arbiter_up.py                   — Arbiter library + SAFETY_LEDGER verifier
       self_test.py                    — tree-hash vs pinned
-      cognition.py                    — docs/24-COGNITION.md §11 (static only until D2)
+      hermes_runtime.py               — Hermes pin + default-deny allowlist verifier
+      agent_souls.py                  — Agent Soul parser + allowlist subset verifier
+      agent_cast.py                   — AGENT_CAST_LEDGER verifier
+      cast.py                         — xion cast pool operator command
+      cognition.py                    — docs/24-COGNITION.md §11 + Arbiter/Hermes boundary
       drive_vector.py                 — Invariant 15 (static only until D2)
       state_chain.py                  — Invariant 4 (stub until D2)
       not_yet_sealed.py               — factory for NOT_YET_SEALED stubs (shrinks toward genesis)

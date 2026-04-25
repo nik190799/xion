@@ -11,6 +11,7 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 ## Pre-Epic Gate — Phase 6.6 Cognitive Substrate & Casting
 
 - **Goal:** Before the Relay is deployed to Akash, the cognition layer must be cast from content-addressed Agent Souls into a commit-pinned Hermes runtime with a default-deny tool allowlist and live verifier coverage.
+- **Status:** Closed 2026-04-25. The Hermes pin protocol, default-deny allowlist, five initial Agent Souls, Agent Souls manifest, cast ledger, Casting Pipeline command, and `xion-verify hermes-runtime` / `agent-souls` / `agent-cast` are live; the installable Hermes lockfile pin and memory adapter remain explicit residuals in `KNOWN_WEAKNESSES.md`.
 - **Why this gates Epic B:** Akash deployment should carry the same agent pool Xion will run at D2/D3, not a partial scaffold where specialists are prose-defined and the Hermes runtime pin is not machine-checked.
 - **Closure observables:** `genesis/HERMES_TOOL_ALLOWLIST.yaml`, `genesis/AGENT_SOULS/`, `AGENT_CAST_LEDGER.jsonl`, `xion-verify hermes-runtime`, `xion-verify agent-souls`, and `xion-verify agent-cast` are all live or honestly `NOT_YET_SEALED` with precise remediation.
 - **Boundary:** The Arbiter remains outside Hermes; the Casting Pipeline may cast agentic faculties, not the egress gate.

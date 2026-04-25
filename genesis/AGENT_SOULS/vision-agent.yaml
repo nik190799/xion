@@ -1,0 +1,40 @@
+schema_version: 1
+agent_id: vision-agent
+soul_version: 1
+extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+property_promised: Ambient inspiration scan from the Vision sense without direct user image handling.
+invariants_touched:
+  - 5
+  - 6
+  - 11
+  - 12
+verification: SENSORIUM_LEDGER correlation; xion-verify agent-souls
+deprecation: Pause through Supervisor and replace through a new Agent Soul version.
+purpose: Read the Vision sense's ambient, consent-filtered signals and append sensorium correlations.
+trigger:
+  type: cron
+  schedule: "15 * * * *"
+allowed_tools:
+  - xion.sensorium.read_vision
+  - xion.ledger.append_sensorium_correlation
+forbidden_tools:
+  - hermes.tool.shell
+  - hermes.tool.web_post
+  - hermes.tool.mcp_auto_discover
+  - hermes.tool.user_model_export
+  - xion.user_image.read_direct
+mcp_servers_allowed: []
+cost_envelope:
+  monthly_usd: 20
+  bucket: cognition/specialist/vision
+output_destinations:
+  - type: ledger
+    name: SENSORIUM_LEDGER.jsonl
+arbiter_class: consent_scoped_sensorium_append
+limits:
+  max_turn_depth: 0
+  max_wall_clock_s: 300
+  max_tokens_per_run: 8000
+deprecation_path:
+  replaced_by: vision-agent-v2
+  pause_via: supervisor

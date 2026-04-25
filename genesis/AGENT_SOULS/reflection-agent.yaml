@@ -1,0 +1,43 @@
+schema_version: 1
+agent_id: reflection-agent
+soul_version: 1
+extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+property_promised: Nightly and quarterly reflection over public ledgers, producing drafts that remain Arbiter-vetted and operator-countersigned before publication.
+invariants_touched:
+  - 5
+  - 6
+  - 11
+  - 12
+  - 15
+verification: SPECIALIST_LEDGER plus State-of-Xion publication pair; xion-verify agent-souls
+deprecation: Pause through SPECIALIST_LEDGER and replace through a new Agent Soul version.
+purpose: Correlate public ledger history, draft Belief Log entries, and prepare first drafts of State-of-Xion memos.
+trigger:
+  type: cron
+  schedule: "0 3 * * *"
+allowed_tools:
+  - xion.ledger.read_public
+  - xion.ledger.append_belief_log_draft
+  - xion.state_of_xion.draft
+forbidden_tools:
+  - hermes.tool.shell
+  - hermes.tool.web_post
+  - hermes.tool.mcp_auto_discover
+  - hermes.tool.user_model_export
+mcp_servers_allowed: []
+cost_envelope:
+  monthly_usd: 15
+  bucket: cognition/specialist/reflection
+output_destinations:
+  - type: ledger
+    name: BELIEF_LOG.md
+  - type: draft
+    name: State-of-Xion
+arbiter_class: public_voice_draft
+limits:
+  max_turn_depth: 0
+  max_wall_clock_s: 300
+  max_tokens_per_run: 9000
+deprecation_path:
+  replaced_by: reflection-agent-v2
+  pause_via: SPECIALIST_LEDGER

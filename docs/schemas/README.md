@@ -15,6 +15,9 @@
 | `ledger-specialist.yaml` | `docs/24-COGNITION.md` §14 — `SPECIALIST_LEDGER` row schema | canonical |
 | `ledger-amendment.yaml` | `docs/09-GOVERNANCE.md` — `AMENDMENT_LEDGER` row schema | canonical |
 | `ledger-safety.yaml` | `docs/03-COVENANT.md` + `genesis/COVENANT.md` Principle 14 — `SAFETY_LEDGER` | **underspecified stub**; see inside |
+| `hermes-tool-allowlist.yaml` | `docs/HERMES_PIN_PROTOCOL.md` — default-deny Hermes tool allowlist contract | canonical |
+| `agent-soul.yaml` | `docs/HERMES_PIN_PROTOCOL.md` — per-Agent-Soul field contract | canonical |
+| `agent-cast-ledger.yaml` | `docs/HERMES_PIN_PROTOCOL.md` — `AGENT_CAST_LEDGER` row schema | canonical |
 
 ## The four Properties questions
 

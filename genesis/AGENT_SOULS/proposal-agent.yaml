@@ -1,0 +1,41 @@
+schema_version: 1
+agent_id: proposal-agent
+soul_version: 1
+extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+property_promised: Draft self-improvement proposals without submitting them, signing them, or bypassing the Harm Analyzer.
+invariants_touched:
+  - 5
+  - 6
+  - 11
+  - 15
+verification: xion-verify agent-souls; proposal schema lint; Harm Analyzer preflight remains mandatory.
+deprecation: Archive old prompt versions on Arweave and replace through a new Agent Soul version.
+purpose: Draft PROPOSAL artifacts for Auto-Research Loop Stage 3 and prepare rollback/verifier TODO text.
+trigger:
+  type: auto_research_stage
+  stage: 3
+allowed_tools:
+  - xion.proposal.draft
+  - xion.harm_analyzer.preflight
+  - xion.ledger.append_proposal_draft
+forbidden_tools:
+  - hermes.tool.shell
+  - hermes.tool.web_post
+  - hermes.tool.mcp_auto_discover
+  - hermes.tool.user_model_export
+  - xion.core.submit_proposal
+mcp_servers_allowed: []
+cost_envelope:
+  monthly_usd: 10
+  bucket: cognition/specialist/proposal
+output_destinations:
+  - type: draft
+    name: PROPOSAL.md
+arbiter_class: self_improvement_draft
+limits:
+  max_turn_depth: 0
+  max_wall_clock_s: 300
+  max_tokens_per_run: 10000
+deprecation_path:
+  replaced_by: proposal-agent-v2
+  archive_old_prompts: true
