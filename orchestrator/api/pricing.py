@@ -290,9 +290,10 @@ def load_pricing_config_from_env(
         _GENESIS_DEFAULT_POSTED_PRICE_MICRO_XION,
     )
     modality_costs = {
-        "visual": _read_int_env("XION_MODALITY_COST_VISUAL", 0),
-        "vitals": _read_int_env("XION_MODALITY_COST_VITALS", 0),
-        "voice": _read_int_env("XION_MODALITY_COST_VOICE", 0),
+        "stream_visual": _read_int_env("XION_PRICE_VISUAL_MICRO_XION", 0),
+        "stream_vitals": _read_int_env("XION_PRICE_VITALS_MICRO_XION", 0),
+        "stream_voice": _read_int_env("XION_PRICE_VOICE_MICRO_XION", 0),
+        "stream_memory": _read_int_env("XION_PRICE_MEMORY_MICRO_XION", 0),
     }
     if now_utc_ns is None:
         now_utc_ns = time.time_ns()

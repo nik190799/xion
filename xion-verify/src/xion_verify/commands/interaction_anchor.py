@@ -101,6 +101,7 @@ def verify_interaction_anchor(
             pass
 
     import os
+    import json
     gateway_url = os.environ.get("XION_AO_GATEWAY_URL", "https://cu.ao-testnet.xyz")
     
     ao_confirmed = 0

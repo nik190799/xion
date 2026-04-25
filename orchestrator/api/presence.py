@@ -34,9 +34,9 @@ def get_presence_state(
     """Return the current presence capabilities. Not a stream."""
     consent = _get_consent(principal_id)
     return {
-        "visual_active": consent.visual,
-        "vitals_active": consent.vitals,
-        "voice_active": consent.voice,
+        "visual_active": consent.stream_visual,
+        "vitals_active": consent.stream_vitals,
+        "voice_active": consent.stream_voice,
     }
 
 @router.get("/presence/stream")
@@ -51,11 +51,11 @@ async def get_presence_stream(
     presence_bus = req.app.state.presence_bus
 
     # Server MUST NOT compose frames for off channels
-    serve_visual = consent.visual and bool(visual)
-    serve_vitals = consent.vitals and bool(vitals)
+    serve_visual = consent.stream_visual and bool(visual)
+    serve_vitals = consent.stream_vitals and bool(vitals)
 
     async def _multiplexer():
-        queue: asyncio.Queue[str] = asyncio.Queue(maxsize=100)
+        queue: asyncio.Queue[str] = asyncio.Queue(maxsize=8)
         tasks = []
 
         async def _run_stream(stream_func):
@@ -78,11 +78,8 @@ async def get_presence_stream(
             while True:
                 # Wait for next payload from any active stream
                 if not serve_visual and not serve_vitals:
-                    # Nothing to serve, just sleep and keep connection open?
-                    # Or close it. We'll just yield a ping occasionally.
-                    await asyncio.sleep(10)
-                    yield "event: ping\ndata: {}\n\n"
-                    continue
+                    yield "event: closed\ndata: {}\n\n"
+                    break
 
                 payload = await queue.get()
                 # SSE format

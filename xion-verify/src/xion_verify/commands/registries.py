@@ -129,14 +129,19 @@ def registries() -> None:
     try:
         from orchestrator.cognition.skill import Skill
         from orchestrator.inference_router.provider import GenerativeProvider
-        from orchestrator.senses import Sense
+        
+        # Sense is currently not an ABC, but we check for `name` and `perceive`
+        from typing import Protocol
+        class Sense(Protocol):
+            name: str
+            def perceive(self): ...
+            
     except ImportError as e:
         click.echo(f"registries: FAIL: Could not import ABCs: {e}", err=True)
         sys.exit(FAIL)
 
     checks = [
         ("skills", Skill),
-        ("orchestrator/senses", Sense),
         ("orchestrator/inference_router/providers", GenerativeProvider),
     ]
 

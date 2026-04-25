@@ -17,10 +17,10 @@ router = APIRouter()
 class ModalityConsent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     
-    visual: bool = True
-    vitals: bool = True
-    voice: bool = True
-    memory: bool = True
+    stream_visual: bool = False
+    stream_vitals: bool = False
+    stream_voice: bool = False
+    stream_memory: bool = True
 
 @router.get("/memory/consent")
 def get_consent(

@@ -154,6 +154,8 @@ class Supervisor:
         # reading on the state.
         self._baseline_drift_ns = self._clock_ns() - self._monotonic_ns()
 
+        self._presence_bus = presence_bus
+
         # Degraded-since bookkeeping, stored as wall-clock UTC ns so the
         # Phase-5e state machine (KW-SUPERVISOR-001) can serialise it
         # into rows and logs without a monotonic-to-UTC conversion. Phase

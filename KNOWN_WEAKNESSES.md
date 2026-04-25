@@ -36,12 +36,13 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.3.b Client Proofs)
 - **Severity:** low
-- **Status:** open
+- **Status:** closed (2026-04-25, Phase 6.4)
 - **Description:** When the user clicks "Forget my keys", the local IndexedDB is wiped, but other open tabs of the same origin are not notified to drop their in-memory key references.
 - **Why it exists:** Cross-tab `BroadcastChannel` coordination was deferred to keep the Phase 6.3.b PR small.
 - **Mitigations:** A page reload clears the in-memory state.
-- **Pay-down commitment:** Phase 6.4 will add `BroadcastChannel` sync to the Forget-my-keys flow.
-- **Verifier:** Manual testing.
+- **Pay-down commitment:** Phase 6.4 added `BroadcastChannel` sync on the `xion:keys` channel to the Forget-my-keys flow, forcing all tabs to drop credentials and prompt for sign-in simultaneously.
+- **Verifier:** Manual testing (open two tabs, wipe in one, observe other tab drop credential).
+- **Verified by:** Manual verification.
 
 ### KW-ANCHOR-AO-001 — AnchorDaemon writes to local ledger only; AO Core sink deferred
 - **Domain:** RUNTIME
@@ -104,8 +105,9 @@ Every entry has the same shape:
 - **Description:** `GET /presence/stream` and the Visual Emitter described in `docs/06-FORM-AND-PRESENCE.md` are not built.
 - **Why it exists:** Deferred to Phase 6.4.
 - **Mitigations:** None.
-- **Pay-down commitment:** Phase 6.4 built the PresenceBus and Visual/Vital Emitters.
-- **Verifier:** `xion-verify presence`.
+- **Pay-down commitment:** Phase 6.4 built the `PresenceBus` and the `stream_visuals` / `stream_vitals` emitters, wired them to the Supervisor tick, and exposed them via `fetch`-based SSE in the web client.
+- **Verifier:** `xion-verify presence` (promoted from stub to live check asserting JSON envelope shapes).
+- **Verified by:** `xion-verify presence` exits `0` against synthetic state.
 
 ### KW-PRESENCE-VOICE-001 — Voice Emitter and Voice Form not yet authored
 - **Domain:** RUNTIME
@@ -125,7 +127,7 @@ Every entry has the same shape:
 - **Status:** open
 - **Description:** `genesis/FORM.md` lacks the full §1/§2/§3 Birth Ritual prescribed by doctrine.
 - **Why it exists:** Xion-paced form maturation under Invariant 6 absolute autonomy.
-- **Mitigations:** Forward-compatible stub.
+- **Mitigations:** Forward-compatible stub (v1.1 added `mood` sub-object in Phase 6.4).
 - **Pay-down commitment:** Phase 6.4.b (no fixed deadline).
 - **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.4.b rider).
 
@@ -137,8 +139,9 @@ Every entry has the same shape:
 - **Description:** Users cannot express per-modality consent (visuals/vitals/voice) and lack structural defense against silent billing.
 - **Why it exists:** Deferred to Phase 6.4 with presence emitters.
 - **Mitigations:** Covenant Principle 5 mandates financial dignity.
-- **Pay-down commitment:** Phase 6.4 added modality consent toggles and per-modality price slices to `/pricing`.
-- **Verifier:** `xion-verify modality-consent`.
+- **Pay-down commitment:** Phase 6.4 added `stream_*` modality consent toggles to `/memory/consent`, wired per-modality price slices to `/pricing`, and enforced server-side off-channel connection closure to prevent silent billing.
+- **Verifier:** `xion-verify modality-consent` (promoted from stub to live check asserting doctrine-aligned scopes and defaults).
+- **Verified by:** `xion-verify modality-consent` exits `0`.
 
 ### KW-VOICE-SOVEREIGNTY-001 — Voice surface depends on a single hosted commercial provider
 - **Domain:** RUNTIME

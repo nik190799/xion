@@ -124,7 +124,8 @@ The frame is signed by the current relay-auth key. Clients can verify that the v
 
 ## The Presence Stream in Action
 
-*(Implementation Note: This presence stream and the underlying `PresenceBus` ship in Phase 6.4)*
+### Status: live (Phase 6.4)
+The presence stream and the underlying `PresenceBus` are live. The `xion-verify presence` command asserts that the visual and vitals emitters yield well-formed envelopes at runtime.
 
 When a user loads the public site:
 

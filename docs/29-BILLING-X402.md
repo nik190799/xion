@@ -135,6 +135,7 @@ Reads `/pricing` from the running Relay (or a pinned pricing-config snapshot at 
 2. **Governance-Default compliance.** Each slice lies within the Genesis-Default band pinned in [`docs/07-ECONOMY.md`](./07-ECONOMY.md) § "Five-slice posted price" (or, if the operator has ratified an amendment, within the amended band — the verifier reads `governance_revision_id` and looks up the historical band).
 3. **Freshness.** `last_reviewed_utc` is within the governance cadence window (Genesis Default: 90 days). Stale pricing FAILs.
 4. **Non-negative prices.** `per_message_price_XION ≥ 0`. (Zero is legal; negative is a schema violation.)
+5. **Modality costs.** `modality_costs` must contain all four `stream_*` keys with non-negative integer values.
 
 Exit codes: `0` OK, `1` FAIL, `2` `NOT_YET_SEALED` (endpoint not reachable and no snapshot present).
 

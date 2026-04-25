@@ -114,9 +114,9 @@ Every non-2xx server envelope has an explicit UX state in `ChatView.tsx`. The cl
 | Status | Envelope | Client UX |
 |--------|----------|-----------|
 | 200 | `ChatResponse` | Render `candidate_text` as plain text. Show `correlation_id` (small, copyable) and `billing_state` (for operator awareness). |
-| 200 | `PresenceEvent` | Render `presence` view: mood vector, current gesture, refusal flag (via SVG/WebGL). |
-| 200 | `Vitals` | Render `vitals` view: eight tiles color-coded by band, methodology hash click-through. |
-| 200 | `Settings` | Render `settings` view: toggles bound to `POST /memory/consent`, cost preview from `GET /pricing`. |
+| 200 | `PresenceEvent` | Render `PresenceView`: mood vector, current gesture, refusal flag (via SVG/WebGL). Subscribes via `fetch`+`getReader` to `/presence/stream`. |
+| 200 | `Vitals` | Render `VitalsView`: eight tiles color-coded by band, methodology hash click-through. Subscribes via `fetch`+`getReader` to `/presence/stream`. |
+| 200 | `Settings` | Render `SettingsView`: toggles bound to `POST /memory/consent`, cost preview from `GET /pricing`, and a per-session override panel. |
 | 401 | `AuthChallenge` | Open sign-in dialog (if no token) or clear existing token and re-open (if token was rejected). No echo of the offered header. |
 | 402 | `PaymentChallenge` | Show the "billing not yet supported in browser" banner described above. |
 | 429 | `RateLimitChallenge` | Show "Rate limited" with the `retry_after_s` countdown and the bucket type (`principal` or `ip`). |
@@ -125,6 +125,12 @@ Every non-2xx server envelope has an explicit UX state in `ChatView.tsx`. The cl
 | 4xx/5xx other | generic `ApiError` | Show the raw HTTP status and `correlation_id` if present. |
 
 The `ChatView` progress indicator + 30 s deadline countdown (`KW-CLIENT-002` mitigation) fires the moment the request is issued and resolves on any of the above envelopes. A timeout before any envelope arrives surfaces as "Request timed out (30 s)" with a retry affordance.
+
+## Cross-tab Key Sync (Phase 6.4)
+
+When an operator clicks "Forget my keys" in `SettingsView`, the local `IndexedDB` is cleared. To ensure other open tabs do not continue using the wiped credential in-memory, `lib/crypto.ts` broadcasts a `{ type: "forgotten" }` message over a `BroadcastChannel` named `xion:keys`. 
+
+The `BearerProvider` listens on this channel; upon receiving the message, it immediately drops its in-memory credential and forces a re-render, returning the operator to the sign-in screen across all tabs simultaneously. This closes `KW-PROOF-002`.
 
 ## Streaming chat (Phase 5g-ii)
 

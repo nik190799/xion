@@ -8,6 +8,9 @@
 const DB_NAME = 'xion_crypto_db';
 const STORE_NAME = 'keys';
 
+// Phase 6.4: Cross-tab key wipe sync
+const keyChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('xion:keys') : null;
+
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -77,7 +80,10 @@ export async function forgetKeys(): Promise<void> {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const clearReq = store.clear();
-    clearReq.onsuccess = () => resolve();
+    clearReq.onsuccess = () => {
+      keyChannel?.postMessage({ type: 'forgotten' });
+      resolve();
+    };
     clearReq.onerror = (err) => reject(err);
   });
 }

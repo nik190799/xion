@@ -14,6 +14,16 @@
 
 ---
 
+## Sealed-as-of Phase 6.4
+
+The following three domains are structurally sealed and actively computed by the Vitals Emitter (`orchestrator/senses/vitals_emitter.py`). The remaining five domains return an honest `not_yet_sealed` status until their underlying metrics are wired in future phases.
+
+1. **Financial Vitality** (Methodology Hash: `72b90e6e6e0b0d70912407959866a67febb7b575e41a26f440069e55f0baf0aa`)
+2. **Substrate Vitality** (Methodology Hash: `da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260`)
+3. **Constitutional Integrity** (Methodology Hash: `e2ee3bc6a9b22f977b28faa75681ab9be082fc6fe6a49f2073421557debe1c3d`)
+
+---
+
 ## Methodology hash convention
 
 Each reading ships as:

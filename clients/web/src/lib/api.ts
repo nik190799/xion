@@ -358,28 +358,119 @@ export async function* streamChat(
   }
 }
 
-function _parseSseRecord(record: string): StreamEvent | null {
+function _parseSseRecord(record: string): any | null {
   const trimmed = record.trim();
   if (trimmed.length === 0) return null;
   // Accept multi-line records but the server only ever emits one
   // "data:" line per record; concatenate any continuation lines
   // defensively per SSE spec.
   const lines = trimmed.split("\n");
+  let eventType = "message";
   const dataLines: string[] = [];
   for (const line of lines) {
-    if (line.startsWith("data:")) {
+    if (line.startsWith("event:")) {
+      eventType = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
       dataLines.push(line.slice(5).replace(/^ /, ""));
     }
-    // ``event:``, ``id:``, and ``retry:`` lines are ignored per
-    // docs/32-CHAT-STREAMING.md § "SSE wire format" (the server
-    // never emits them).
   }
+  
+  if (eventType === "closed") {
+    return { kind: "closed" };
+  }
+  
   if (dataLines.length === 0) return null;
   const payload = dataLines.join("\n");
   try {
-    return JSON.parse(payload) as StreamEvent;
+    return JSON.parse(payload);
   } catch {
     return null;
+  }
+}
+
+export interface PresenceStreamRequest {
+  credential: BearerCredential | null;
+  visual: boolean;
+  vitals: boolean;
+  signal?: AbortSignal;
+}
+
+export async function* subscribePresenceStream(
+  req: PresenceStreamRequest,
+): AsyncIterable<any> {
+  const controller = new AbortController();
+  if (req.signal) {
+    if (req.signal.aborted) {
+      controller.abort();
+    } else {
+      req.signal.addEventListener("abort", () => controller.abort(), {
+        once: true,
+      });
+    }
+  }
+
+  try {
+    const visualParam = req.visual ? "1" : "0";
+    const vitalsParam = req.vitals ? "1" : "0";
+    const response = await fetch(`/presence/stream?visual=${visualParam}&vitals=${vitalsParam}`, {
+      method: "GET",
+      headers: {
+        ...buildAuthorizationHeader(req.credential),
+        Accept: "text/event-stream",
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await parseJson(response);
+      throw new ApiErrorException(classifyNon2xx(response.status, body));
+    }
+    if (!response.body) {
+      throw new ApiErrorException({
+        kind: "network",
+        status: 0,
+        message: "streaming response body missing",
+      });
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sepIndex: number;
+      while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+        const record = buffer.slice(0, sepIndex);
+        buffer = buffer.slice(sepIndex + 2);
+        const parsed = _parseSseRecord(record);
+        if (parsed !== null) {
+          if (parsed.kind === "closed") {
+            return; // Clean exit
+          }
+          yield parsed;
+        }
+      }
+    }
+    if (buffer.trim().length > 0) {
+      const parsed = _parseSseRecord(buffer);
+      if (parsed !== null && parsed.kind !== "closed") {
+        yield parsed;
+      }
+    }
+  } catch (err) {
+    if (err instanceof ApiErrorException) {
+      throw err;
+    }
+    if (controller.signal.aborted) {
+      return; // Clean exit on abort
+    }
+    throw new ApiErrorException({
+      kind: "network",
+      status: 0,
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

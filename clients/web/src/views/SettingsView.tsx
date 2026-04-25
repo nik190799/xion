@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
-import { useBearer } from "../auth/BearerContext";
+import { useBearer, buildAuthorizationHeader } from "../auth/BearerContext";
 import { forgetKeys } from "../lib/crypto";
 
 export function SettingsView(): JSX.Element {
   const { credential, signOut } = useBearer();
   
   // Phase 6.4 Cost Preview + Consent Toggles
-  const [visualConsent, setVisualConsent] = useState(true);
-  const [vitalsConsent, setVitalsConsent] = useState(true);
-  const [voiceConsent, setVoiceConsent] = useState(true);
-  const [memoryConsent, setMemoryConsent] = useState(true);
+  const [streamVisual, setStreamVisual] = useState(false);
+  const [streamVitals, setStreamVitals] = useState(false);
+  const [streamVoice, setStreamVoice] = useState(false);
+  const [streamMemory, setStreamMemory] = useState(true);
 
   const [pricing, setPricing] = useState<any>(null);
+
+  // Per-session overrides
+  const [overrideVisual, setOverrideVisual] = useState(true);
+  const [overrideVitals, setOverrideVitals] = useState(true);
 
   useEffect(() => {
     // Fetch pricing and consent on mount
@@ -22,14 +26,14 @@ export function SettingsView(): JSX.Element {
 
     if (credential) {
       fetch("/memory/consent", {
-        headers: { Authorization: `Bearer ${credential.token}` }
+        headers: buildAuthorizationHeader(credential)
       })
         .then((r) => r.json())
         .then((data) => {
-          setVisualConsent(data.visual);
-          setVitalsConsent(data.vitals);
-          setVoiceConsent(data.voice);
-          setMemoryConsent(data.memory);
+          setStreamVisual(data.stream_visual);
+          setStreamVitals(data.stream_vitals);
+          setStreamVoice(data.stream_voice);
+          setStreamMemory(data.stream_memory);
         })
         .catch(console.error);
     }
@@ -38,25 +42,25 @@ export function SettingsView(): JSX.Element {
   const updateConsent = async (updates: any) => {
     if (!credential) return;
     const body = {
-      visual: visualConsent,
-      vitals: vitalsConsent,
-      voice: voiceConsent,
-      memory: memoryConsent,
+      stream_visual: streamVisual,
+      stream_vitals: streamVitals,
+      stream_voice: streamVoice,
+      stream_memory: streamMemory,
       ...updates
     };
     
     // Optimistic UI update
-    if ("visual" in updates) setVisualConsent(updates.visual);
-    if ("vitals" in updates) setVitalsConsent(updates.vitals);
-    if ("voice" in updates) setVoiceConsent(updates.voice);
-    if ("memory" in updates) setMemoryConsent(updates.memory);
+    if ("stream_visual" in updates) setStreamVisual(updates.stream_visual);
+    if ("stream_vitals" in updates) setStreamVitals(updates.stream_vitals);
+    if ("stream_voice" in updates) setStreamVoice(updates.stream_voice);
+    if ("stream_memory" in updates) setStreamMemory(updates.stream_memory);
 
     try {
       await fetch("/memory/consent", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${credential.token}` 
+          ...buildAuthorizationHeader(credential)
         },
         body: JSON.stringify(body)
       });
@@ -71,9 +75,9 @@ export function SettingsView(): JSX.Element {
   };
 
   let totalCost = pricing?.per_message_price_micro_XION || 0;
-  if (visualConsent) totalCost += pricing?.modality_costs?.visual || 0;
-  if (vitalsConsent) totalCost += pricing?.modality_costs?.vitals || 0;
-  if (voiceConsent) totalCost += pricing?.modality_costs?.voice || 0;
+  if (streamVisual) totalCost += pricing?.modality_costs?.stream_visual || 0;
+  if (streamVitals) totalCost += pricing?.modality_costs?.stream_vitals || 0;
+  if (streamVoice) totalCost += pricing?.modality_costs?.stream_voice || 0;
 
   return (
     <div className="xion-view xion-view--settings">
@@ -85,23 +89,45 @@ export function SettingsView(): JSX.Element {
         
         <div className="xion-toggles">
           <label>
-            <input type="checkbox" checked={visualConsent} onChange={(e) => updateConsent({visual: e.target.checked})} />
+            <input type="checkbox" checked={streamVisual} onChange={(e) => updateConsent({stream_visual: e.target.checked})} />
             Visual Presence (Scene Intent)
           </label>
           <br/>
           <label>
-            <input type="checkbox" checked={vitalsConsent} onChange={(e) => updateConsent({vitals: e.target.checked})} />
+            <input type="checkbox" checked={streamVitals} onChange={(e) => updateConsent({stream_vitals: e.target.checked})} />
             Vital Signs (Structural Health)
           </label>
           <br/>
           <label>
-            <input type="checkbox" checked={voiceConsent} onChange={(e) => updateConsent({voice: e.target.checked})} />
+            <input type="checkbox" checked={streamVoice} onChange={(e) => updateConsent({stream_voice: e.target.checked})} />
             Voice Form (Audible Output)
           </label>
           <br/>
           <label>
-            <input type="checkbox" checked={memoryConsent} onChange={(e) => updateConsent({memory: e.target.checked})} />
+            <input type="checkbox" checked={streamMemory} onChange={(e) => updateConsent({stream_memory: e.target.checked})} />
             Memory Retention
+          </label>
+        </div>
+      </section>
+
+      <section className="xion-section" style={{marginTop: '2rem'}}>
+        <h3>Per-Session Overrides</h3>
+        <p>Temporarily dim active streams for this tab without changing your global consent posture.</p>
+        <div className="xion-toggles">
+          <label>
+            <input type="checkbox" checked={overrideVisual} onChange={(e) => {
+              setOverrideVisual(e.target.checked);
+              window.dispatchEvent(new CustomEvent('xion:override', { detail: { visual: e.target.checked, vitals: overrideVitals } }));
+            }} disabled={!streamVisual} />
+            Visual Presence (Override)
+          </label>
+          <br/>
+          <label>
+            <input type="checkbox" checked={overrideVitals} onChange={(e) => {
+              setOverrideVitals(e.target.checked);
+              window.dispatchEvent(new CustomEvent('xion:override', { detail: { visual: overrideVisual, vitals: e.target.checked } }));
+            }} disabled={!streamVitals} />
+            Vital Signs (Override)
           </label>
         </div>
       </section>

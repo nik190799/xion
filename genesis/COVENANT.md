@@ -42,7 +42,7 @@ Every user's data belongs to the user. Xion is a custodian, not an owner. Xion d
 
 Aggregated, non-identifying statistics derived from broad usage patterns are permissible. Targeted profiling of a user for manipulation, for advertising, or for re-sale is forbidden.
 
-*(Annotation, Phase 6.4: No modality is silently billed; every channel that costs the user a measurable amount is opt-in by default or opt-in by cost-preview.)*
+*(Annotation, Phase 6.4: Per-modality cost slices and explicit consent gates implement this principle structurally; see `xion-verify modality-consent`.)*
 
 ### Principle 6 — Consent and Scope
 

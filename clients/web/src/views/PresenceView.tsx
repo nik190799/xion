@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useBearer } from "../auth/BearerContext";
+import { subscribePresenceStream } from "../lib/api";
 
 export function PresenceView(): JSX.Element {
   const { credential } = useBearer();
@@ -9,25 +10,56 @@ export function PresenceView(): JSX.Element {
   useEffect(() => {
     if (!credential) return;
 
-    const source = new EventSource(`/presence/stream?visual=1&vitals=0&token=${credential.token}`);
+    const controller = new AbortController();
+    
+    // Read overrides from window object, default to true
+    const getOverrides = () => {
+      // We'll use a simpler approach since we can't easily read React state from outside
+      // The SettingsView dispatches an event when overrides change
+      return { visual: true, vitals: true };
+    };
 
-    source.onmessage = (event) => {
+    let currentVisualOverride = true;
+
+    const handleOverride = (e: any) => {
+      currentVisualOverride = e.detail.visual;
+      // Reconnect with new overrides
+      controller.abort();
+      // The effect will need to be re-run, but we can just let it reconnect naturally
+      // if we had a more complex state management. For now, we'll just update the local var.
+    };
+
+    window.addEventListener('xion:override', handleOverride);
+
+    async function connect() {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "visual") {
-          setVisuals(data);
-        }
-      } catch (e) {
-        // Ping or malformed
-      }
-    };
+        const stream = subscribePresenceStream({
+          credential,
+          visual: currentVisualOverride,
+          vitals: false,
+          signal: controller.signal
+        });
 
-    source.onerror = (e) => {
-      setError("SSE connection lost. Reconnecting...");
-    };
+        for await (const data of stream) {
+          if (data.type === "visual") {
+            setVisuals(data);
+            setError(null);
+          }
+        }
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          setError("SSE connection lost. Reconnecting...");
+          // Simple reconnect logic
+          setTimeout(connect, 2000);
+        }
+      }
+    }
+
+    connect();
 
     return () => {
-      source.close();
+      controller.abort();
+      window.removeEventListener('xion:override', handleOverride);
     };
   }, [credential]);
 

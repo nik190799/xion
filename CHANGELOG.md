@@ -10,6 +10,35 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+## [Phase 6.4] — 2026-04-25
+
+Phase 6.4 repairs the half-shipped Presence and Modality Consent surface. It aligns the API and web client to doctrine, fixes show-stopping bugs in the orchestrator lifespan and SSE connections, implements cross-tab key synchronization, and promotes three verifiers from stubs to live checks. This makes good on the prematurely-declared closures of `KW-PRESENCE-EMITTER-001`, `KW-MODALITY-001`, and `KW-PROOF-002`.
+
+### Added
+- **`self._presence_bus` assignment** in `Supervisor.__init__` so the bus is actually published to on every tick.
+- **Per-modality cost slices** (`stream_visual`, `stream_vitals`, `stream_voice`, `stream_memory`) loaded from environment variables and exposed in `GET /pricing`.
+- **Per-session override panel** in the web client's `SettingsView` to temporarily dim active streams for the current tab without changing persisted consent.
+- **Cross-tab key wipe sync** via `BroadcastChannel("xion:keys")` in `clients/web/src/lib/crypto.ts`, forcing all open tabs to drop their in-memory credentials when "Forget my keys" is clicked.
+
+### Changed
+- **`lifespan.py` indentation fixed**: Un-indented module-level imports that were nested under a previous import block, resolving a `SyntaxError` that prevented the orchestrator from booting.
+- **`ModalityConsent` fields renamed**: `visual`, `vitals`, `voice`, `memory` renamed to `stream_visual`, `stream_vitals`, `stream_voice`, `stream_memory` to match `docs/11-PROTOCOL-SPEC.md` doctrine. Defaults flipped to `False` for exteroceptive streams (warm presence requires explicit consent).
+- **Server-side modality gating tightened**: `GET /presence/stream` now emits a single `event: closed` and terminates the connection if both visual and vitals streams are inactive, structurally preventing silent billing for off channels. Multiplexer queue `maxsize` reduced from 100 to 8 to prevent stale presence frames.
+- **Web client SSE switched to `fetch`**: `PresenceView` and `VitalsView` now use a `fetch` + `getReader()` pattern instead of `EventSource` so they can send the required `Authorization: Bearer` header, fixing the 401 Unauthorized errors caused by the previous `?token=` query parameter approach.
+- **Web client `credential.token` bug fixed**: Replaced invalid `credential.token` reads with `buildAuthorizationHeader(credential)` which correctly uses `secretHex`.
+- **`xion-verify presence`**: Promoted from stub to live check. Asserts that `stream_visuals` and `stream_vitals` emitters yield well-formed JSON envelopes.
+- **`xion-verify modality-consent`**: Promoted from stub to live check. Asserts the four `stream_*` scopes, `extra='forbid'`, warm defaults, and `ConsentStore` round-trip.
+- **`xion-verify vitals`**: Updated to delegate to the live `_compute_vitals()` for the three sealed domains (Financial, Substrate, Constitutional Integrity), returning an honest `NOT_YET_SEALED` for the composite while reporting real bands for the sealed domains.
+- **Documentation aligned**: Updated `06-FORM-AND-PRESENCE.md`, `11-PROTOCOL-SPEC.md`, `22-VITAL-SIGNS.md`, `29-BILLING-X402.md`, `31-WEB-CLIENT.md`, `genesis/COVENANT.md`, and `genesis/FORM.md` (promoted to v1.1 with `mood` sub-object) to reflect the Phase 6.4 reality.
+
+### Removed
+- **Duplicate `presence_router` include** in `orchestrator/api/app.py`.
+
+### Closed
+- **`KW-PRESENCE-EMITTER-001`**: Visual/Vitals emitters are now implemented, wired to the Supervisor, and verified by `xion-verify presence`.
+- **`KW-MODALITY-001`**: Per-modality consent and cost slices are implemented, with server-side off-channel closure structurally defending against silent billing. Verified by `xion-verify modality-consent`.
+- **`KW-PROOF-002`**: IndexedDB wiping logic now coordinates across tabs via `BroadcastChannel`.
+
 ## [Phase 6.3.b] — 2026-04-25
 
 The Phase 6.3.b iteration lands two deferred tasks: AO Core interaction anchoring and client-side proof generation, closing the respective KWs.

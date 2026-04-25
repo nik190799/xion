@@ -78,6 +78,7 @@ def test_pricing_config_rejects_unbalanced_split() -> None:
             improvement_slice=0.08,
             reserve_slice=0.05,
             small_buffer=0.03,
+            modality_costs={},
             last_reviewed_utc_ns=1_000_000_000,
             governance_revision_id="test",
         )
@@ -93,6 +94,7 @@ def test_pricing_config_rejects_negative_slice() -> None:
             improvement_slice=0.08,
             reserve_slice=0.05,
             small_buffer=0.03,
+            modality_costs={},
             last_reviewed_utc_ns=1_000_000_000,
             governance_revision_id="test",
         )
@@ -109,6 +111,7 @@ def test_pricing_config_rejects_negative_price() -> None:
             improvement_slice=0.08,
             reserve_slice=0.05,
             small_buffer=0.03,
+            modality_costs={},
             last_reviewed_utc_ns=1_000_000_000,
             governance_revision_id="test",
         )
@@ -123,6 +126,7 @@ def test_pricing_config_rejects_empty_revision_id() -> None:
             improvement_slice=0.08,
             reserve_slice=0.05,
             small_buffer=0.03,
+            modality_costs={},
             last_reviewed_utc_ns=1_000_000_000,
             governance_revision_id="",
         )
@@ -139,6 +143,7 @@ def test_pricing_config_accepts_zero_price() -> None:
         improvement_slice=0.08,
         reserve_slice=0.05,
         small_buffer=0.03,
+        modality_costs={},
         last_reviewed_utc_ns=1_000_000_000,
         governance_revision_id="promo-v1",
     )
@@ -195,6 +200,12 @@ def _hermetic_cfg() -> PricingConfig:
         improvement_slice=0.08,
         reserve_slice=0.05,
         small_buffer=0.03,
+        modality_costs={
+            "stream_visual": 0,
+            "stream_vitals": 0,
+            "stream_voice": 0,
+            "stream_memory": 0,
+        },
         last_reviewed_utc_ns=1_700_000_000_000_000_000,
         governance_revision_id="genesis-default-v1",
     )

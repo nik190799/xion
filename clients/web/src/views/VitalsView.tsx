@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useBearer } from "../auth/BearerContext";
+import { subscribePresenceStream } from "../lib/api";
 
 export function VitalsView(): JSX.Element {
   const { credential } = useBearer();
@@ -9,22 +10,43 @@ export function VitalsView(): JSX.Element {
   useEffect(() => {
     if (!credential) return;
 
-    // We can fetch initial state or just use the stream
-    const source = new EventSource(`/presence/stream?visual=0&vitals=1&token=${credential.token}`);
+    const controller = new AbortController();
+    
+    let currentVitalsOverride = true;
 
-    source.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "vitals") {
-          setVitals(data.vitals);
-        }
-      } catch (e) {
-        // Ping
-      }
+    const handleOverride = (e: any) => {
+      currentVitalsOverride = e.detail.vitals;
+      controller.abort();
     };
 
+    window.addEventListener('xion:override', handleOverride);
+
+    async function connect() {
+      try {
+        const stream = subscribePresenceStream({
+          credential,
+          visual: false,
+          vitals: currentVitalsOverride,
+          signal: controller.signal
+        });
+
+        for await (const data of stream) {
+          if (data.type === "vitals") {
+            setVitals(data.vitals);
+          }
+        }
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          setTimeout(connect, 2000);
+        }
+      }
+    }
+
+    connect();
+
     return () => {
-      source.close();
+      controller.abort();
+      window.removeEventListener('xion:override', handleOverride);
     };
   }, [credential]);
 

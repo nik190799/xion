@@ -121,6 +121,20 @@ export function BearerProvider({ children }: { children: ReactNode }): JSX.Eleme
 
   useEffect(() => {
     setCredential(loadFromStorage());
+
+    // Phase 6.4: Listen for cross-tab key wipe events
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('xion:keys');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'forgotten') {
+          // Another tab wiped the keys; we must drop our credential
+          // so the operator is forced to sign in again and generate new keys.
+          setCredential(null);
+          clearStorage();
+        }
+      };
+      return () => channel.close();
+    }
   }, []);
 
   const signIn = useCallback((pasted: string): string | null => {

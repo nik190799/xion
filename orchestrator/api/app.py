@@ -260,7 +260,6 @@ def create_app(deps: AppDeps) -> FastAPI:
     app.include_router(me_router)
     app.include_router(memory_router)
     app.include_router(presence_router)
-    app.include_router(presence_router)
 
     # --- Phase 5g-v: optional web-client mount ---------------------
     # Registered last so /app/* cannot shadow any admission-gated API

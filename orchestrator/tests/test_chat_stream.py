@@ -217,6 +217,12 @@ def _pricing() -> PricingConfig:
         improvement_slice=0.08,
         reserve_slice=0.05,
         small_buffer=0.03,
+        modality_costs={
+            "stream_visual": 0,
+            "stream_vitals": 0,
+            "stream_voice": 0,
+            "stream_memory": 0,
+        },
         last_reviewed_utc_ns=1_700_000_000_000_000_000,
         governance_revision_id="genesis-default-v1",
     )

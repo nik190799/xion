@@ -37,7 +37,12 @@ def test_check_module_conforms_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         "    def perceive(self): pass\n"
     )
     
-    from orchestrator.senses import Sense
+    from typing import Protocol
+
+    class Sense(Protocol):
+        name: str
+        def perceive(self): ...
+
     errors = _check_module_conforms("my_plugin", Sense)
     assert not errors
 
@@ -50,7 +55,12 @@ def test_check_module_conforms_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         "    pass\n"
     )
     
-    from orchestrator.senses import Sense
+    from typing import Protocol
+
+    class Sense(Protocol):
+        name: str
+        def perceive(self): ...
+
     errors = _check_module_conforms("bad_plugin", Sense)
     assert len(errors) == 1
     assert "does not export any class conforming to Sense" in errors[0]
@@ -68,7 +78,12 @@ def test_check_module_conforms_with_all(tmp_path: Path, monkeypatch: pytest.Monk
         "    def perceive(self): pass\n"
     )
     
-    from orchestrator.senses import Sense
+    from typing import Protocol
+
+    class Sense(Protocol):
+        name: str
+        def perceive(self): ...
+
     errors = _check_module_conforms("all_plugin", Sense)
     assert not errors
 

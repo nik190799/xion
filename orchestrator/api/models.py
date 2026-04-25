@@ -609,7 +609,7 @@ class PricingResponse(BaseModel):
     )
     modality_costs: dict[str, int] = Field(
         default_factory=dict,
-        description="Phase 6.4: Extra cost (in micro_XION) added per-modality (visual, vitals, voice).",
+        description="Phase 6.4: Extra cost (in micro_XION) added per-modality (stream_visual, stream_vitals, stream_voice, stream_memory).",
     )
     last_reviewed_utc_ns: int = Field(
         ge=0,

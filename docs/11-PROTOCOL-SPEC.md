@@ -23,8 +23,8 @@ The protocol has five guiding design rules:
 |--------|------|---------|
 | `POST` | `/chat` | Send a message, receive a response |
 | `GET`  | `/chat/stream` | Send a message, receive the response as an SSE stream |
-| `GET`  | `/presence/state` | Current mood, palette, gesture mode |
-| `GET`  | `/presence/stream` | Live scene-intent frames (SSE) |
+| `GET`  | `/presence/state` | Current presence capabilities (Not a stream) |
+| `GET`  | `/presence/stream` | Multiplexed SSE for visual and vitals presence |
 | `GET`  | `/memory/export` | Export caller's private thread |
 | `POST` | `/memory/forget` | Delete caller's memory (honored immediately) |
 | `POST` | `/memory/consent` | Adjust per-scope memory consent |
@@ -139,10 +139,9 @@ Response:
 
 ```json
 {
-  "mood": { "valence": 0.68, "energy": 0.41, "focus": 0.62 },
-  "palette": "warm_dusk",
-  "gesture_mode": "breath",
-  "last_update": 1715030123.443
+  "visual_active": true,
+  "vitals_active": false,
+  "voice_active": false
 }
 ```
 
@@ -150,9 +149,11 @@ Lightweight; safe to poll every few seconds.
 
 ### `GET /presence/stream`
 
-Server-Sent Events. Each message is a scene-intent frame; see [`06-FORM-AND-PRESENCE.md`](./06-FORM-AND-PRESENCE.md) for the schema. Typical cadence: 10 Hz. Clients can specify a lower rate via `?hz=4`.
+Server-Sent Events. Multiplexed stream for visual and vitals presence. See [`06-FORM-AND-PRESENCE.md`](./06-FORM-AND-PRESENCE.md) for the schema.
 
-Connection is long-lived; graceful reconnect uses the SSE `Last-Event-ID` mechanism.
+Connection is long-lived. The server accepts `?visual=0|1` and `?vitals=0|1` query parameters to temporarily override the active streams for the current connection without modifying persisted consent.
+
+If both `visual` and `vitals` are inactive (either via consent or query parameter override), the server will emit a single `event: closed` record and terminate the connection to prevent silent billing for off channels.
 
 ### `GET /memory/export`
 

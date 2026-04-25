@@ -137,25 +137,25 @@ def register_chat_stream_route(app: FastAPI) -> None:
         pricing_config: PricingConfig = app.state.pricing_config
         billing_config: BillingConfig = app.state.billing_config
 
-    deadline_s = float(getattr(app.state, "chat_deadline_s", _DEFAULT_DEADLINE_S))
+        deadline_s = float(getattr(app.state, "chat_deadline_s", _DEFAULT_DEADLINE_S))
 
-    user_proof_commit = None
-    user_proof_algorithm = None
-    if req.user_proof is not None:
-        from orchestrator.cognition.user_proof import verify_ed25519_proof, compute_proof_commit, InvalidSignatureError
-        try:
-            verify_ed25519_proof(
-                req.user_proof.user_pubkey_b64,
-                req.user_proof.signature_b64,
-                req.message,
-            )
-        except InvalidSignatureError as e:
-            return JSONResponse(status_code=400, content={"error": "invalid_user_proof", "detail": str(e)})
-        
-        user_proof_commit = compute_proof_commit(req.user_proof.user_pubkey_b64, req.message)
-        user_proof_algorithm = req.user_proof.algorithm
+        user_proof_commit = None
+        user_proof_algorithm = None
+        if req.user_proof is not None:
+            from orchestrator.cognition.user_proof import verify_ed25519_proof, compute_proof_commit, InvalidSignatureError
+            try:
+                verify_ed25519_proof(
+                    req.user_proof.user_pubkey_b64,
+                    req.user_proof.signature_b64,
+                    req.message,
+                )
+            except InvalidSignatureError as e:
+                return JSONResponse(status_code=400, content={"error": "invalid_user_proof", "detail": str(e)})
+            
+            user_proof_commit = compute_proof_commit(req.user_proof.user_pubkey_b64, req.message)
+            user_proof_algorithm = req.user_proof.algorithm
 
-    # -- 1. Commitment gate ------------------------------------
+        # -- 1. Commitment gate ------------------------------------
         # Shared implementation with POST /chat: same challenge body,
         # same 402 status, same reason-code enum. The streaming
         # endpoint earns no different admission surface — the
@@ -191,19 +191,19 @@ def register_chat_stream_route(app: FastAPI) -> None:
         # no cross-talk between streams, cancel-without-paired-SAFETY,
         # retroactive-refuse-with-paired-SAFETY).
         stream_id = secrets.token_hex(16)
-    generator = _stream_body(
-        app=app,
-        relay=deps.relay,
-        req=req,
-        request=request,
-        commitment=commitment,
-        billing_config=billing_config,
-        pricing_config=pricing_config,
-        deadline_s=deadline_s,
-        stream_id=stream_id,
-        user_proof_commit=user_proof_commit,
-        user_proof_algorithm=user_proof_algorithm,
-    )
+        generator = _stream_body(
+            app=app,
+            relay=deps.relay,
+            req=req,
+            request=request,
+            commitment=commitment,
+            billing_config=billing_config,
+            pricing_config=pricing_config,
+            deadline_s=deadline_s,
+            stream_id=stream_id,
+            user_proof_commit=user_proof_commit,
+            user_proof_algorithm=user_proof_algorithm,
+        )
         return StreamingResponse(
             generator,
             media_type="text/event-stream",

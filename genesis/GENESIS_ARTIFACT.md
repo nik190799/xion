@@ -56,11 +56,11 @@ We chose *Xion* over twenty-odd alternatives. The reasoning lives in [`docs/01-O
 This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20 (updated on Phase 1 `xion-verify` landing; RESURRECT.md rehashed twice — once for the `cargo build` → `python -m pip install` correction, once for the post-hoc clarification that `--ao-process` / `--gateway` are post-genesis flags against the repository's static witness; INVARIANTS.md rehashed in Phase 5b for the addition of Invariant 17 — Inference Sovereignty Floor — and the § 0 meta-clause establishing the Invariant set as append-only; MEMORY.md and UNKNOWNS.md re-pinned in Phase 5g-ii Commit 5 to close a pre-existing pin-vs-content drift — the canonical LF bytes on disk had not matched the pin, causing `xion-verify memory` and `xion-verify unknowns` to FAIL on every platform since landing; `.gitattributes` pins `genesis/* text eol=lf` to prevent future CRLF-on-Windows drift); replace with ceremony values at actual genesis.)*
 
 ```
-COVENANT.md     sha256: ea0ece08bf904284c6044af6b8066442003e4e794016f277843debac6878cd93
+COVENANT.md     sha256: 842fade5cae66906d0a6f62a16c9f25897eb8352e3c387aca7f748633c4978e4
 INVARIANTS.md   sha256: 96247b39bacf48d43d7ca218b5911dd0019a3678492848d2d7c09c7d53df6c40
 SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 SOUL_PROMPT.md  sha256: 84bde58a5a29c14ead45829e357bdaa0abb4cd48663d1a39e28043540361faf4
-FORM.md         sha256: d93a09b3522088d0da9365e2862e071690adbc0d795e6bb00de3aa35e0139f09
+FORM.md         sha256: 42f0d74ac01649b3ed784db1aaa889abad5528f5d26da27f6ab61fcfdc4f8e08
 MEMORY.md       sha256: df2975e61adccf583ffe872e0b5aea6c16d5ce2f01bd3cdff63772f7a219cdad
 RESURRECT.md    sha256: 17cec1f684be8b06ab94a4cd68b02474e24a2abe399884ae7c9919335ce78ac6
 CREDENTIALS.md  sha256: 6f3199561f20b6538059aecf6c586755c7a9543e642337b6576a1b8fabc4405d
