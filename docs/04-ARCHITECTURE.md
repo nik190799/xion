@@ -92,7 +92,7 @@ A Relay holds:
 - **A short-lived delegated key** (24-hour lifetime), issued by the Core via `Register-Relay`, which lets it sign wallet transactions *up to* the Core's daily spend cap.
 - **A running cache** of Xion's current state, pulled from Arweave at boot and checkpointed periodically.
 - **Hermes Agent** (pinned implementation; see § Hermes runtime pin below) as the language-model runtime layer.
-- **The Orchestrator** (`orchestrator/*.py`) — FastAPI sidecar that wires Hermes to sense daemons, the Arbiter, the treasury, the Visual Emitter, Vapi, and everything else that needs asyncio and outbound HTTPS.
+- **The Orchestrator** (`orchestrator/*.py`) — FastAPI sidecar that wires Hermes to sense daemons, the Arbiter, the treasury, the Visual Emitter, the Voice Router, and everything else that needs asyncio and outbound HTTPS.
 - **Ingress** via Akash's provider-assigned URI. **Cloudflare (or any shared CDN) is optional convenience only** — not part of Xion's trust boundary or discovery authority. Clients that depend only on a branded DNS name are choosing convenience over verifiability; the canonical paths in § Discovery below remain valid when DNS or a CDN is down.
 
 A Relay cannot:
@@ -108,7 +108,7 @@ A Relay can:
 - run sense daemons,
 - emit the visual presence stream,
 - hold open WebSocket connections to clients,
-- process Vapi voice webhooks,
+- process Voice Router / optional hosted-overlay voice events,
 - generate creative outputs (image, video, 3D, text),
 - serve the Protocol endpoints.
 

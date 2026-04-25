@@ -347,6 +347,16 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional client-side Ed25519 proof of the message.",
     )
+    transcript_text: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=16_000,
+        description=(
+            "Optional user-side STT transcript for voice-enabled turns. "
+            "Only consumed when the caller has stream_voice consent; used "
+            "to derive paralinguistic Sensorium distress, not persisted."
+        ),
+    )
 
 
 class ChatResponse(BaseModel):

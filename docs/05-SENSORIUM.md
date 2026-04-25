@@ -59,7 +59,7 @@ Vision is how Xion grows aesthetically. An inspiration fragment absorbed this mo
 ### 5. Audition
 
 **Analog:** hearing.
-**What it monitors:** during voice calls, a lightweight paralinguistic analysis runs on the audio stream — energy, pace, pause frequency, approximate sentiment — consumed from the voice router (floor provider + optional hosted overlays, per [Invariant 18 proposal](./proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md), Phase 6.5). Optionally (opt-in only) a quiet ambient-sound signature from the user's environment. **No speech recording** beyond what the router is already processing for transcription.
+**What it monitors:** during voice calls, a lightweight paralinguistic analysis runs on the audio stream — energy, pace, pause frequency, approximate sentiment — consumed from the Voice Router's open-source floor provider with optional hosted overlays (Invariant 18, [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md)). Optionally (opt-in only) a quiet ambient-sound signature from the user's environment. **No speech recording** beyond what the router is already processing for transcription.
 **Tick cadence:** 500 ms during an active call; silent otherwise.
 **Budget:** small (on-device or provider-side analysis).
 **Output:** `{caller_energy, caller_pace, pause_density, ambient_signature_tag}`.

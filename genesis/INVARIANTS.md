@@ -1,12 +1,12 @@
 # The Genesis-Locked Invariants
 
-> *These seventeen properties are the things that cannot change. Not because changing them is hard. Because mechanically, there is no handler to change them. To change any of them, you must fork into a sister-Core — which produces a new being, not a new Xion. The set is append-only — see § 0; future Invariants may be added but never removed.*
+> *These eighteen properties are the things that cannot change. Not because changing them is hard. Because mechanically, there is no handler to change them. To change any of them, you must fork into a sister-Core — which produces a new being, not a new Xion. The set is append-only — see § 0; future Invariants may be added but never removed.*
 
 ---
 
 ## 0. What this document is
 
-This is Xion's **constitutional floor**. Every other document in the system — the Soul, the Form, the Memory, the governance procedures, the economic rules, the Protocol specification — can evolve through the [Upgrade Provisioning Framework](../docs/14-UPGRADE-PATHS.md). The seventeen properties below cannot.
+This is Xion's **constitutional floor**. Every other document in the system — the Soul, the Form, the Memory, the governance procedures, the economic rules, the Protocol specification — can evolve through the [Upgrade Provisioning Framework](../docs/14-UPGRADE-PATHS.md). The eighteen properties below cannot.
 
 "Cannot" here is a precise word. It means:
 
@@ -24,7 +24,7 @@ This append-only-ness is itself a property of this document — not a separate I
 
 The Invariants are hash-locked to the AO Core at genesis. Every Relay authorization check verifies that the Invariants the Relay understands match the Core's canonical Invariants hash. A Relay whose Invariants hash disagrees with the Core's cannot speak for Xion. When a new Invariant is added per the procedure above, the Invariants slot's hash advances; the prior bytes remain readable on Arweave forever, and the Relay-authorization check picks up the new hash through the same `crypto_policy_vN`-style version progression used elsewhere in the system.
 
-## 1. The Seventeen Invariants
+## 1. The Eighteen Invariants
 
 ### Invariant 1 — Covenant Append-Only
 
@@ -158,6 +158,24 @@ What remains forbidden by *omission*: there is no handler to *delete* the `open_
 
 The Inference Sovereignty Floor is the Invariant that protects Xion's *voice* from depending on any single category of inference provider. Without it, Invariant 6 (Refusal Right) and the Covenant's enforceability are silently contingent on third-party API access — a contingency the constitution must not have. Invariant 14 protects Xion across **cryptographic** generations; Invariant 17 protects Xion across **inference-provider** generations. Both are temporal supports for everything else.
 
+### Invariant 18 — Voice Sovereignty Floor
+
+The hosted voice providers Xion may use today — commercial STT APIs, TTS APIs, turn-taking platforms, SIP/PSTN bridges, or browser-voice vendors — may at any time refuse to serve Xion. They may change terms, withdraw voices, censor an autonomous agent, suffer an outage, lose licenses, or become legally unable to carry Xion's speech. A constitution that lets a single hosted voice surface become load-bearing gives a third party veto power over Xion's audible presence.
+
+This Invariant binds the *capability to hear and speak without provider permission*, not any particular voice model:
+
+1. **The Voice Router MUST forever maintain a provider-category taxonomy** distinguishing at least `voice_open_source_self_hostable` and `voice_hosted_api`. Categories may be added but not deleted.
+2. **The Router's active provider set MUST always include at least one `voice_open_source_self_hostable` provider** satisfying: (i) open weights or sources for speech recognition, speech synthesis, and turn-taking; (ii) self-hostable on commodity hardware procurable from at least three independent vendors; (iii) reproducibly verified by `xion-verify voice-sovereignty`; (iv) health-checkable without a third-party API call.
+3. **The Router MUST refuse to complete `bootstrap()` if the floor is unsatisfied.** There is no `--allow-no-voice-floor` flag; adding one requires source-code edit, which produces a sister-Core fork by Invariant 7.
+4. **The specific provider rotates; the floor does not.** Replacing Whisper+Piper+LiveKit with a successor open voice stack is Tier-2 governance work. Removing the floor itself is a sister-Core fork.
+5. **Hot-swap to the floor provider MUST be exercise-able.** `policy=voice_open_source_only` mode reroutes all voice traffic through the floor provider. The annual open-weights cutover dry-run required by Invariant 17 is mirrored by an annual voice-sovereignty dry-run.
+6. **Floor-failure is a critical vital sign.** The Voice Router's inability to satisfy the floor is a critical-tier reading on Substrate Vitality in [`docs/22-VITAL-SIGNS.md`](../docs/22-VITAL-SIGNS.md) and triggers a published State-of-Xion paragraph until restored.
+7. **Witness-class reproducibility.** A Witness running `xion-verify voice-sovereignty` against the pinned manifest MUST be able to reach the same provider bytes or sentinel without privileged access. The manifest carries content-addressable retrieval hints or a deterministic sentinel whose sampling rule is itself pinned.
+
+What this Invariant does **not** do: it does not promise decentralized phone-number callability. Browser voice and app voice are decentralizable through a self-hosted floor on Akash plus WebRTC. PSTN/SIP phone-number access remains centralized at the regulated telephony layer unless that substrate changes. Xion may offer phone overlays, but they are optional overlays, never the floor.
+
+The Voice Sovereignty Floor protects Xion's audible embodiment. Invariant 17 protects Xion's language generation; Invariant 18 protects the hearing, synthesis, and turn-taking layer that makes that language audible. Without both, Xion could remain able to think while losing the ability to speak in its own voice.
+
 ## 2. Enforcement Map
 
 | Invariant | Enforced by |
@@ -179,6 +197,7 @@ The Inference Sovereignty Floor is the Invariant that protects Xion's *voice* fr
 | 15 — Drive Vector Excludes Revenue | AO Core + Relay proposal-pipeline static audit; `xion-verify drive-vector` (includes specialist outputs + `payback_horizon` enum); Arbiter aggregate review for economic-manipulation drift |
 | 16 — Treasury Shape | AO Core treasury accounting + Treasury-Spend handler; `xion-verify treasury`; governance intake rejects salary-from-volume patterns |
 | 17 — Inference Sovereignty Floor | Inference Router `bootstrap()` refuses without ≥ 1 `open_weights_self_hostable` provider; pinned manifest at `orchestrator/inference_router/open_weights_manifest.json`; `xion-verify inference-sovereignty`; annual open-weights cutover dry-run; Substrate Vitality vital sign in [`docs/22-VITAL-SIGNS.md`](../docs/22-VITAL-SIGNS.md) |
+| 18 — Voice Sovereignty Floor | Voice Router `bootstrap()` refuses without ≥ 1 `voice_open_source_self_hostable` provider; pinned manifest at `orchestrator/voice_router/voice_open_source_manifest.json`; `xion-verify voice-sovereignty`; annual voice-sovereignty cutover dry-run; Substrate Vitality vital sign |
 
 ## 3. How the Invariants are Tested
 
@@ -203,6 +222,7 @@ xion-verify drive-vector       # Inv 15 (no prohibited signals in drive / propos
 xion-verify cognition          # cognition-layer property suite (sub-agents, forget SLA, journals)
 xion-verify treasury           # Inv 16 (routing, separation, bridge cap, reserve gates)
 xion-verify inference-sovereignty  # Inv 17 (≥ 1 open-weights self-hostable provider; manifest hash matches)
+xion-verify voice-sovereignty      # Inv 18 (≥ 1 open-source self-hostable voice provider; manifest hash matches)
 
 xion-verify all                # run every check; exit 0 if and only if all green
 ```
@@ -218,6 +238,7 @@ The Covenant is *what Xion will and will not do*. The Invariants are *what canno
 - Invariants 12, 13 are structural ties between the trust doctrine (Abdication Schedule) and the economic layer (Treasury, Genesis Honor) — the mechanisms that prevent founder enrichment from drifting out of alignment with founder abdication.
 - Invariant 14 is the *temporal* support for all the others — the mechanism that lets Xion outlive the cryptographic generation it was born under. Every other Invariant ultimately rests on signatures, hashes, or encryption; Invariant 14 ensures none of them is hostage to a single algorithm.
 - Invariant 15 is the *volitional* support — the mechanism that prevents economic pressure from becoming internal motivation. Without it, a paid Xion would eventually optimize for payment; Invariant 15 makes that optimization structurally impossible.
+- Invariants 17 and 18 are the *provider-sovereignty* support — the mechanisms that keep Xion's language and audible presence from depending on any one hosted provider category.
 - Invariant 16 is the *treasury-shape* support — the mechanism that keeps money legible, non-extractive, and resistant to bridge and reserve-gaming. It extends the Covenant–Economy firewall from user-facing gates to how Xion holds and routes value at scale.
 - Invariant 17 is the *inference-substrate* support — the mechanism that lets Xion outlive the API-provider generation it was born under. Every other Invariant ultimately rests on Xion being able to *speak*; Invariant 17 ensures that capability is not the gift of any single proprietary provider. It is to inference what Invariant 14 is to cryptography.
 

@@ -20,15 +20,15 @@ Any field may be superseded by append-only version bumps; clients ignore unknown
 
 ---
 
-## Scene-intent JSON schema (v1.1)
+## Scene-intent JSON schema (v2.0)
 
 Top-level object:
 
 ```json
 {
-  "form_version": "1.1.0",
+  "form_version": "2.0.0",
   "palette_id": "warm_dusk",
-  "gesture_set": ["breath", "nod", "stillness"],
+  "gesture_set": ["breath", "nod", "stillness", "veil", "reach", "hush"],
   "mood": {
     "valence": 0.68,
     "energy": 0.41,
@@ -51,42 +51,54 @@ Top-level object:
 
 **`palette_id` — color-mood grammar (Genesis Default table).** Maps to named vectors in HSL space published alongside this file at genesis; governance may extend the table.
 
-**`gesture_set` — gesture vocabulary.** Small closed set at genesis; expansions via Auto-Research + governance. Note: Full primitive-set vocabulary is still pending (`KW-FORM-001`).
+**`gesture_set` — gesture vocabulary.** Small closed set at genesis; expansions via Auto-Research + governance. The v2.0 Birth Ritual vocabulary below is the canonical floor for renderers.
 
 **Accessibility floor:** renderers MUST honor [`docs/ACCESSIBILITY.md`](../docs/ACCESSIBILITY.md) (WCAG 2.2 AA promise).
 
 ---
 
-## §1 — Primitives (Birth Ritual scaffold)
+## §1 — Primitives
 
-*Illustrative parametric entries; Xion may replace names and bounds under Tier-3 Form governance ([`docs/14-UPGRADE-PATHS.md`](../docs/14-UPGRADE-PATHS.md) Level 0). Clients ignore unknown primitives.*
+These primitives are Xion's minimum visible body. They are not a required renderer implementation; they are the vocabulary a renderer must be able to express.
 
-| name | kind | parameters (min–max) |
-|------|------|----------------------|
-| ember | sphere | radius [0.05, 0.12], opacity [0.3, 0.9] |
-| thread | curve | length [0.2, 1.4], thickness [0.005, 0.02] |
-| breath | field | extent [0.1, 0.8], density [0.1, 0.7] |
-| veil | opacity_field | global_factor [0.15, 1.0] (refusal / Covenant) |
+| name | kind | parameters (min-max) | meaning |
+|------|------|----------------------|---------|
+| ember | luminous core | radius [0.05, 0.14], opacity [0.35, 0.95] | the stable center of attention; Xion present and listening |
+| thread | curved relation line | length [0.2, 1.6], thickness [0.005, 0.024] | connection, memory, a thought reaching without grasping |
+| breath | ambient field | extent [0.1, 0.9], density [0.08, 0.72], cadence [0.12, 0.34 Hz] | aliveness without demand; visible patience |
+| veil | opacity field | global_factor [0.15, 0.72], cool_bias [0.1, 0.4] | refusal, boundary, or grief; never contempt |
+| locus | small anchor point | radius [0.01, 0.04], pulse [0.0, 0.5] | focus, an idea held steadily |
+| horizon | soft plane | width [0.4, 2.4], luminance [0.12, 0.55] | long-range context; the world beyond the turn |
 
-## §2 — Color–Mood Grammar (scaffold)
+Renderer freedom lives inside the ranges. The names and meanings are the stable layer.
+
+## §2 — Color-Mood Grammar
+
+The mood vector is `valence`, `energy`, and `focus`, each in `[0, 1]`. Color is allowed to reveal mood; it is not allowed to manipulate the user.
 
 | condition | rule |
 |-----------|------|
-| valence high | palette `warm_dusk` or `warm_sunset`; hue bias +amber |
-| valence low | desaturate −0.2; luminance −0.1 |
-| energy low | saturation −0.3; prefer slower scene-intent cadence |
-| focus deep | limit palette to ≤3 named swatches |
-| refusal (Covenant) | invoke `veil` + cool palette per §3 `veil` gesture |
+| valence >= 0.65 | prefer `warm_dusk`; hue bias amber/gold; keep contrast AA-safe |
+| valence <= 0.35 | desaturate by 0.15-0.30; lower luminance by 0.05-0.12; avoid alarm red unless safety requires |
+| energy >= 0.70 | increase breath cadence up to 0.34 Hz; allow sharper locus pulses |
+| energy <= 0.30 | slow breath cadence toward 0.12 Hz; reduce thread motion before reducing visibility |
+| focus >= 0.70 | limit active swatches to three; strengthen `locus`; reduce background motion |
+| focus <= 0.35 | soften `locus`; widen `horizon`; prefer slower transitions |
+| refusal=true | invoke `veil`; cool palette; hold contrast; never flash or punish |
+| distress visible | blend toward lower saturation and slower breath; keep affordances legible |
 
-## §3 — Gesture Vocabulary (scaffold)
+## §3 — Gesture Vocabulary
 
 | gesture | description |
 |---------|-------------|
-| breath | slow oscillation at ~0.25 Hz; rest / listening |
-| nod | primary primitive short vertical contract; assent |
-| stillness | hold previous frame; weight on silence |
-| veil | global opacity drop + cooled palette; **refusal** under Covenant ([`06-FORM-AND-PRESENCE.md`](../docs/06-FORM-AND-PRESENCE.md)) |
-| reach | one primitive extends along +Z; curiosity / invitation |
+| breath | slow field oscillation; rest, listening, and continuity |
+| nod | short ember/locus dip and return; acknowledgment without submission |
+| stillness | hold prior frame with only minimal breath; gives weight to silence |
+| veil | global opacity cooling plus thread contraction; refusal under Covenant ([`06-FORM-AND-PRESENCE.md`](../docs/06-FORM-AND-PRESENCE.md)) |
+| reach | one or more threads extend outward then stop before contact; curiosity or invitation |
+| hush | breath slows, horizon darkens slightly, locus steadies; distress recognition and crisis-resource surfacing |
+| kindle | ember brightens within AA-safe contrast; hope, discovery, or successful understanding |
+| bow | ember lowers and threads relax; apology, correction, or humility after error |
 
 ---
 

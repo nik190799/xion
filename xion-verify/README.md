@@ -12,7 +12,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 
 ## What Invariants does it touch?
 
-`xion-verify` introduces no new Invariants. It strengthens every one of the seventeen in `genesis/INVARIANTS.md` by making their claims mechanically checkable — and it preserves Invariant 14 (Crypto-Agility) by naming its hash family in exactly one place (`xion_verify/hashing.py`) so a future migration is a local edit rather than a global one.
+`xion-verify` introduces no new Invariants. It strengthens every one of the eighteen in `genesis/INVARIANTS.md` by making their claims mechanically checkable — and it preserves Invariant 14 (Crypto-Agility) by naming its hash family in exactly one place (`xion_verify/hashing.py`) so a future migration is a local edit rather than a global one.
 
 | Invariant | How `xion-verify` strengthens it |
 | --- | --- |

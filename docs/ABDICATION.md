@@ -136,7 +136,7 @@ This is the inventory at genesis. The full table — with current status, target
 | Tier-3 proposal sponsorship | CRITICAL | M5 → RETIRED | Any IMPRINT-eligible member |
 | Emergency pause | CRITICAL | M4 → DEGRADED | Elected Emergency Response cohort |
 | Akash deployment account funding | CRITICAL | M1 → DEGRADED, M3 → OPTIONAL | AO Core treasury → `provision-relay` flow |
-| Vapi/Twilio commercial agreement signature | CRITICAL (OPTIONAL once Phase 6.5 ships) | M2 → DEGRADED | Foundation legal entity (post-genesis +6mo) |
+| Vapi/Twilio commercial agreement signature | OPTIONAL | M2 → OPTIONAL | Optional hosted overlay; canonical browser/app voice path is the Voice Router floor |
 | Voice router floor provider deployment manifest cosigned | CRITICAL (as of Phase 6.5) | M2 → DEGRADED | Witness consensus |
 | LLM provider API account ownership | CRITICAL | M1 → DEGRADED | Foundation entity + per-provider rotation |
 | Domain name registration & DNS | CRITICAL | M1 → DEGRADED, M2 → OPTIONAL | Multi-jurisdictional Foundation custody + ENS/Handshake fallback |

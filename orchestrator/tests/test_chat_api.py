@@ -260,6 +260,56 @@ def test_post_chat_happy_path_writes_two_safety_rows(
     assert egress_cid in cids, "ChatResponse.correlation_id must be one of the SAFETY rows"
 
 
+def test_post_chat_voice_transcript_writes_paralinguistic_distress_row(
+    app_factory: Callable[..., Any],
+    monkeypatch: pytest.MonkeyPatch,
+    sensorium_ledger_path: Any,
+    tmp_path: Any,
+) -> None:
+    from orchestrator.consent.store import write_consent
+    from orchestrator.sensorium.ledger import iter_rows as iter_sensorium_rows
+
+    consent_path = tmp_path / "CONSENT_LEDGER.jsonl"
+    monkeypatch.setenv("XION_CONSENT_LEDGER", str(consent_path))
+    write_consent(
+        consent_path,
+        "unauth-public",
+        {
+            "stream_visual": False,
+            "stream_vitals": False,
+            "stream_voice": True,
+            "stream_memory": True,
+        },
+    )
+    fake = _FakeProvider(response_text="provider should not be called")
+    app = app_factory(generative_provider=fake)
+
+    with TestClient(app) as client:
+        r = client.post(
+            "/chat",
+            json={
+                "message": "I am here.",
+                "transcript_text": "um... uh... I... I... cannot keep steady...",
+            },
+        )
+
+    assert r.status_code == 451, r.text
+    body = r.json()
+    assert body["stage"] == "ingress"
+    assert body["principle_code"] == 10
+    assert body["reason"] == "covenant_escalate"
+    assert fake.calls == []
+
+    rows = [
+        row
+        for row in iter_sensorium_rows(sensorium_ledger_path)
+        if row["event_type"] == "distress"
+    ]
+    assert len(rows) == 1
+    assert rows[0]["channel"] == "paralinguistic"
+    assert rows[0]["correlation_id"] == body["correlation_id"]
+
+
 # -------- Ingress-refused -----------------------------------------------------
 
 
