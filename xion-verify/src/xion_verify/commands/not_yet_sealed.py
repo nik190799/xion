@@ -76,8 +76,6 @@ _UNSEALED = (
              "Relay not yet running.", "Phase 5"),
     StubSpec("credentials-vault", "Verify Credentials vault posture (sealed-at-rest, k-of-n, rotation attested).",
              "Vault not yet provisioned.", "Phase 5"),
-    StubSpec("provisioning", "Audit every Xion-initiated provisioning action against caps (KW-OPS-001).",
-             "provision-* handlers not yet live.", "Phase 6"),
     StubSpec("improvement-fund", "Verify Improvement-Fund spend only on Auto-Research-approved proposals.",
              "Sustainability handlers not yet live.", "Phase 6"),
     StubSpec("reserve", "Verify Rainy-Day Reserve posture and draw gates (Invariant 16 rule 6).",

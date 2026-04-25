@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -76,6 +77,7 @@ _REQUIRED_META: tuple[str, ...] = (
     "operational_sha256",
 )
 _ALLOWED_FAMILIES: frozenset[str] = frozenset({"lifecycle", "authority", "provisioning", "sustainability"})
+_ALLOWED_STATUSES: frozenset[str] = frozenset({"canonical", "doctrine_only", "underspecified"})
 
 _EXPECTED_HANDLERS: frozenset[str] = frozenset({
     # Phase 6.0 lifecycle (7) — including anchor-interaction-batch added in Phase 6.3.
@@ -139,6 +141,25 @@ def _check_one_schema(path: Path, repo_root: Path, arch_hash: str, core_hash: st
             f"family must be one of {sorted(_ALLOWED_FAMILIES)}; got {family!r}",
         )
 
+    status = data["status"]
+    if status not in _ALLOWED_STATUSES:
+        return _fail(
+            label,
+            f"status must be one of {sorted(_ALLOWED_STATUSES)}; got {status!r}",
+        )
+
+    if data["handler"] != path.stem.replace("ao-handler-", ""):
+        return _fail(
+            label,
+            f"handler field {data['handler']!r} does not match filename {path.name!r}",
+        )
+
+    args = data["args"]
+    if isinstance(args, list):
+        arg_names = {arg.get("name") for arg in args if isinstance(arg, dict)}
+        if "dummy_arg" in arg_names:
+            return _fail(label, "schema still contains placeholder dummy_arg")
+
     if data["source_sha256"] != arch_hash:
         return _fail(
             label,
@@ -156,6 +177,25 @@ def _check_one_schema(path: Path, repo_root: Path, arch_hash: str, core_hash: st
         )
 
     return OK, f"{label}: OK"
+
+
+def _read_schema_status(path: Path) -> str | None:
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    status = data.get("status")
+    return status if isinstance(status, str) else None
+
+
+def _registered_lua_handlers(lua_path: Path) -> set[str]:
+    try:
+        source = lua_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return set()
+    return set(re.findall(r'Handlers\.add\(\s*"([^"]+)"', source))
 
 
 def _read_latest_ledger_tip(ledger_path: Path) -> tuple[int, str] | None:
@@ -448,6 +488,7 @@ def verify_ao_handlers() -> None:
         raise click.exceptions.Exit(NOT_YET_SEALED)
 
     found_handlers: set[str] = set()
+    live_handlers: set[str] = set()
     worst_code = OK
     messages: list[str] = []
 
@@ -456,7 +497,10 @@ def verify_ao_handlers() -> None:
         messages.append(msg)
         if code != OK:
             worst_code = max(worst_code, code)
-        found_handlers.add(path.stem.replace("ao-handler-", ""))
+        handler_name = path.stem.replace("ao-handler-", "")
+        found_handlers.add(handler_name)
+        if _read_schema_status(path) == "canonical":
+            live_handlers.add(handler_name)
 
     missing_handlers = _EXPECTED_HANDLERS - found_handlers
     if missing_handlers:
@@ -474,6 +518,18 @@ def verify_ao_handlers() -> None:
     if worst_code != OK:
         click.echo(f"ao-handlers: FAIL ({len(yaml_files)} handler schema(s) checked)", err=True)
         raise click.exceptions.Exit(worst_code)
+
+    lua_main = repo_root / "ao" / "core" / "main.lua"
+    if lua_main.is_file() and live_handlers:
+        registered_handlers = _registered_lua_handlers(lua_main)
+        missing_live = live_handlers - registered_handlers
+        if missing_live:
+            click.echo(
+                "ao-handlers: FAIL: canonical handler schemas missing Lua registrations: "
+                f"{sorted(missing_live)}",
+                err=True,
+            )
+            raise click.exceptions.Exit(FAIL)
 
     final_code, final_message = _check_receipt_and_gateway(repo_root, len(yaml_files))
     click.echo(final_message, err=(final_code == FAIL))

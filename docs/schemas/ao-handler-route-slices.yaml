@@ -1,19 +1,50 @@
 handler: route-slices
 family: sustainability
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: payment_id
+    tag: Payment-Id
     type: string
     required: true
+  - name: gross_amount
+    tag: Gross-Amount
+    type: integer
+    required: true
+  - name: operations_bps
+    tag: Operations-Bps
+    type: integer
+    required: true
+  - name: improvement_bps
+    tag: Improvement-Bps
+    type: integer
+    required: true
+  - name: reserve_bps
+    tag: Reserve-Bps
+    type: integer
+    required: true
+  - name: foundation_bps
+    tag: Foundation-Bps
+    type: integer
+    required: true
+  - name: rewards_bps
+    tag: Rewards-Bps
+    type: integer
+    required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - gross_amount is positive
+  - basis-point slices sum exactly to 10000
+  - payment_id has not been routed before
 state_changes:
-  - dummy state change
+  - SliceRoutes[payment_id] records gross amount, five-slice basis points, and routed_by
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Sustainability-Rejection
+  - missing_args -> reject + emit Sustainability-Rejection
+  - invalid_args -> reject + emit Sustainability-Rejection
+  - slice_total_mismatch -> reject + emit Sustainability-Rejection
+  - duplicate_payment_id -> reject + emit Sustainability-Rejection

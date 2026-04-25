@@ -1,19 +1,46 @@
 handler: rotate-authority
 family: authority
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: tier
+    tag: Tier
     type: string
     required: true
+    allowed: [hot, warm, cold, witness]
+  - name: old_address
+    tag: Old-Address
+    type: address
+    required: true
+  - name: new_address
+    tag: New-Address
+    type: address
+    required: true
+  - name: rotation_nonce
+    tag: Rotation-Nonce
+    type: string
+    required: true
+  - name: effective_unix
+    tag: Effective-Unix
+    type: integer
+    required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - old_address is currently authorized
+  - old_address and new_address differ
+  - rotation_nonce has not been used before
 state_changes:
-  - dummy state change
+  - AuthorizedSigners[old_address] is cleared
+  - AuthorizedSigners[new_address] is set true
+  - AuthorityRotations[rotation_nonce] records tier, old_address, new_address, effective_unix, rotated_by
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Authority-Rejection
+  - missing_args -> reject + emit Authority-Rejection
+  - invalid_args -> reject + emit Authority-Rejection
+  - no_rotation -> reject + emit Authority-Rejection
+  - old_authority_unknown -> reject + emit Authority-Rejection
+  - duplicate_rotation_nonce -> reject + emit Authority-Rejection

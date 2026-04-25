@@ -1,19 +1,42 @@
 handler: spend
 family: lifecycle
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: spend_id
+    tag: Spend-Id
     type: string
     required: true
+  - name: amount
+    tag: Amount
+    type: integer
+    required: true
+  - name: asset
+    tag: Asset
+    type: string
+    required: true
+  - name: recipient
+    tag: Recipient
+    type: address
+    required: true
+  - name: daily_cap
+    tag: Daily-Cap
+    type: integer
+    required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - amount and daily_cap are positive
+  - amount is less than or equal to daily_cap
+  - spend_id has not been used before
 state_changes:
-  - dummy state change
+  - OutboundSpends[spend_id] records amount, asset, recipient, daily_cap, and approved_by
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Spend-Rejection
+  - missing_args -> reject + emit Spend-Rejection
+  - invalid_args -> reject + emit Spend-Rejection
+  - daily_cap_exceeded -> reject + emit Spend-Rejection
+  - duplicate_spend_id -> reject + emit Spend-Rejection

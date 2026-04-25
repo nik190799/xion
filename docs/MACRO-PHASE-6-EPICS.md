@@ -4,14 +4,14 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 
 ## Epic A — AO Core handler completion (`KW-AOCORE-002`)
 
-- **Goal:** Land the remaining doctrine-only handlers in [`ao/core/main.lua`](../ao/core/main.lua) on the **same** sealed localnet substrate as `commit-state`, `attest`, and `anchor-interaction-batch`.
-- **Order (suggested):** authority family (`rotate-authority`, `abdicate-tier`) → sustainability family (`route-slices`, `improvement-spend`, …) → provisioning family (`provision-*`) → lifecycle extensions (`treasury-spend`, `registry-update`, `spend`, `slash-imprint`) as doctrine requires.
-- **Verifier:** `xion-verify ao-handlers` remains the gate; each family ships with schema updates under `docs/schemas/ao-handler-*.yaml`.
+- **Status:** Closed 2026-04-25. All 20 handlers now have concrete Lua registrations in [`ao/core/main.lua`](../ao/core/main.lua), concrete schemas under [`docs/schemas/`](../docs/schemas/), and a refreshed localnet receipt in [`genesis/AO_DEPLOY_RECEIPT.json`](../genesis/AO_DEPLOY_RECEIPT.json).
+- **Closed order:** authority family (`rotate-authority`, `abdicate-tier`) → sustainability family (`route-slices`, `improvement-spend`, `reserve-draw`, `accept-donation`, `enter-hibernation`, `exit-hibernation`) → provisioning family (`provision-*`) → lifecycle extensions (`treasury-spend`, `registry-update`, `spend`, `slash-imprint`).
+- **Verifier:** `xion-verify ao-handlers` is the gate and now rejects placeholder `dummy_arg` schemas plus any `status: canonical` schema without a matching Lua `Handlers.add(...)` registration.
 
 ## Epic B — Relay on Akash + discovery
 
 - **Goal:** Multi-host Relay substrate, `xion-verify discovery` green (≥3 paths), registry on Arweave, Cloudflare out of the critical path per doctrine.
-- **Depends on:** provisioning story (Epic A + operator).
+- **Depends on:** operator deployment work now that Epic A's AO provisioning event surface exists.
 
 ## Epic C — Multi-chain treasury
 

@@ -1,19 +1,33 @@
 handler: exit-hibernation
 family: sustainability
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: hibernation_id
+    tag: Hibernation-Id
     type: string
     required: true
+  - name: exit_reason
+    tag: Exit-Reason
+    type: string
+    required: true
+  - name: exited_at_unix
+    tag: Exited-At-Unix
+    type: integer
+    required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - Xion is currently hibernating
+  - exited_at_unix parses as an integer
 state_changes:
-  - dummy state change
+  - HibernationState.active is set false
+  - HibernationEvents[hibernation_id] records an exit event
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Sustainability-Rejection
+  - missing_args -> reject + emit Sustainability-Rejection
+  - invalid_args -> reject + emit Sustainability-Rejection
+  - not_hibernating -> reject + emit Sustainability-Rejection

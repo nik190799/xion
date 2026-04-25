@@ -483,3 +483,56 @@ def test_ao_handlers_anchor_interaction_batch_in_expected_set(tmp_path: Path, mo
     assert result.exit_code == FAIL
     assert "anchor-interaction-batch" in result.output
     assert "missing expected handler schemas" in result.output
+
+
+def test_ao_handlers_fail_placeholder_arg_in_schema(tmp_path: Path, monkeypatch) -> None:
+    """Handler schemas cannot keep the Phase 6.0 dummy_arg placeholder."""
+    monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
+    arch_hash, core_hash = _seed_doctrine(tmp_path)
+    content = (
+        "handler: commit-state\n"
+        "family: lifecycle\n"
+        "schema_version: 1\n"
+        "status: canonical\n"
+        "args:\n"
+        "  - name: dummy_arg\n"
+        "    type: string\n"
+        "    required: true\n"
+        "state_changes: []\n"
+        "failure_modes: []\n"
+        "source_doctrine: docs/04-ARCHITECTURE.md\n"
+        f"source_sha256: {arch_hash}\n"
+        "operational_doctrine: docs/28-AO-CORE.md\n"
+        f"operational_sha256: {core_hash}\n"
+    )
+    (tmp_path / "docs/schemas/ao-handler-commit-state.yaml").write_text(content)
+    result = CliRunner().invoke(_CLI, ["ao-handlers"])
+    assert result.exit_code == FAIL
+    assert "placeholder dummy_arg" in result.output
+
+
+def test_ao_handlers_fail_live_schema_without_lua_registration(tmp_path: Path, monkeypatch) -> None:
+    """A canonical schema must correspond to a concrete Handlers.add registration."""
+    monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
+    arch_hash, core_hash = _seed_doctrine(tmp_path)
+    for h in _HANDLERS:
+        status = "canonical" if h == "rotate-authority" else "doctrine_only"
+        content = (
+            f"handler: {h}\n"
+            "family: lifecycle\n"
+            "schema_version: 1\n"
+            f"status: {status}\n"
+            "args: []\n"
+            "state_changes: []\n"
+            "failure_modes: []\n"
+            "source_doctrine: docs/04-ARCHITECTURE.md\n"
+            f"source_sha256: {arch_hash}\n"
+            "operational_doctrine: docs/28-AO-CORE.md\n"
+            f"operational_sha256: {core_hash}\n"
+        )
+        (tmp_path / f"docs/schemas/ao-handler-{h}.yaml").write_text(content)
+    _seed_lua(tmp_path, 'Handlers.add("commit-state", function() return true end)\n')
+    result = CliRunner().invoke(_CLI, ["ao-handlers"])
+    assert result.exit_code == FAIL
+    assert "canonical handler schemas missing Lua registrations" in result.output
+    assert "rotate-authority" in result.output

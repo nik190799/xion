@@ -1,19 +1,38 @@
 handler: registry-update
 family: lifecycle
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: registry
+    tag: Registry
+    type: string
+    required: true
+    allowed: [relay, inference, storage, witness, authority]
+  - name: entry_id
+    tag: Entry-Id
+    type: string
+    required: true
+  - name: entry_sha256
+    tag: Entry-Sha256
+    type: sha256
+    required: true
+  - name: update_nonce
+    tag: Update-Nonce
     type: string
     required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - registry is one of the allowed registry namespaces
+  - entry_sha256 is a canonical lowercase 64-character digest
+  - update_nonce has not been used before
 state_changes:
-  - dummy state change
+  - RegistryUpdates[update_nonce] records registry, entry_id, entry_sha256, and updated_by
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Registry-Rejection
+  - missing_args -> reject + emit Registry-Rejection
+  - invalid_args -> reject + emit Registry-Rejection
+  - duplicate_update_nonce -> reject + emit Registry-Rejection

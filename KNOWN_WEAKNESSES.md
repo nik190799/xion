@@ -158,12 +158,11 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-23 (Phase 6.1 AO Core Skeleton)
 - **Severity:** low
-- **Status:** open
-- **Description:** Three of twenty handlers (`commit-state`, `attest`, `anchor-interaction-batch`) now have Lua implementations in `ao/core/main.lua` AND are deployed + verified against the localnet substrate (KW-AOCORE-001 + KW-AOCORE-004 closed 2026-04-25, see Phase 6.1.b finalization). The remaining 17 (treasury, provisioning, sustainability, authority) are still doctrine-only and ship family-by-family in Phase 6.2 and 6.3 against this same substrate.
-- **Why it exists:** Phase 6 is sliced into sub-phases. Phase 6.1 shipped the skeleton and the state-chain loop; the rest follow in 6.2 and 6.3.
-- **Mitigations:** xion-verify ao-handlers asserts the schemas match the doctrine.
-- **Pay-down commitment:** Closes family-by-family on the sealed localnet substrate (see `docs/MACRO-PHASE-6-EPICS.md` Epic A); Phases 6.2/6.3 *orchestrator* milestones are already closed.
-- **Verifier:** xion-verify ao-handlers.
+- **Status:** closed (2026-04-25, Macro Phase 6 Epic A)
+- **Description:** This weakness is closed: all 20 AO Core handlers now have concrete Lua registrations in `ao/core/main.lua`, concrete non-placeholder schemas under `docs/schemas/ao-handler-*.yaml`, and a refreshed localnet seal receipt in `genesis/AO_DEPLOY_RECEIPT.json` naming process `24l6f0iiqP6mRA55hzhKfJZZCNYiUsMQTC0YHxFWr8o`.
+- **Why it existed:** Phase 6 was sliced into sub-phases. Phase 6.1 shipped the skeleton and the state-chain loop first; the authority, treasury/lifecycle, provisioning, and sustainability families were left doctrine/schema-only.
+- **How it closed:** Macro Phase 6 Epic A implemented `rotate-authority`, `abdicate-tier`, `treasury-spend`, `registry-update`, `spend`, `slash-imprint`, `provision-{relay,inference,storage,bandwidth,witness}`, `route-slices`, `improvement-spend`, `reserve-draw`, `accept-donation`, `enter-hibernation`, and `exit-hibernation`. `xion-verify ao-handlers` now rejects placeholder `dummy_arg` schemas and any `status: canonical` handler schema without a matching `Handlers.add(...)` registration.
+- **Verifier:** `xion-verify ao-handlers` exits `0` against `XION_AO_GATEWAY_URL=http://localhost:4004` with 20 handler schemas verified, Lua hash `737db38bb7e0959e54f1db89d8b51f6994f04e8da7016418943d44f31bccc752`, and local tip parity at height `1`.
 
 ### KW-AOCORE-001 — AO testnet deploy of `commit-state` + `attest` is still pending
 - **Domain:** RUNTIME

@@ -10,6 +10,27 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Macro Phase 6 Epic A — AO Core handler completion — 2026-04-25
+
+Implements the remaining AO Core handler families on the sealed localnet substrate and closes `KW-AOCORE-002`.
+
+### Added
+
+- **AO Core handler families** — `rotate-authority`, `abdicate-tier`, `treasury-spend`, `registry-update`, `spend`, `slash-imprint`, `provision-{relay,inference,storage,bandwidth,witness}`, `route-slices`, `improvement-spend`, `reserve-draw`, `accept-donation`, `enter-hibernation`, and `exit-hibernation` now have concrete Lua registrations in `ao/core/main.lua`.
+- **Concrete AO handler schemas** — the remaining `docs/schemas/ao-handler-*.yaml` placeholder files now carry explicit tag ABIs, preconditions, state changes, and rejection modes.
+- **Verifier hardening** — `xion-verify ao-handlers` rejects placeholder `dummy_arg` schemas and any `status: canonical` schema without a matching Lua `Handlers.add(...)` registration.
+- **`xion-verify provisioning`** — promoted from `NOT_YET_SEALED` to a live check for the five canonical `provision-*` handler schemas, Lua registrations, and resealed receipt hash.
+- **Seed-script repair** — `scripts/ao-localnet-seed.sh` writes `SCHEDULER` from the parsed `SCHED_ADDR` instead of the misspelled `SCH_ADDR`.
+
+### Changed
+
+- **AO localnet seal refreshed** — `genesis/AO_DEPLOY_RECEIPT.json` now names process `24l6f0iiqP6mRA55hzhKfJZZCNYiUsMQTC0YHxFWr8o`, first commit-state message `i7ZdDjDJB-oV5XV831wSCzGaCAKCWjhC6XJ6u6dwsvQ`, and Lua source hash `737db38bb7e0959e54f1db89d8b51f6994f04e8da7016418943d44f31bccc752`; `ledgers/STATE_CHAIN_LEDGER.jsonl` was reseeded to match.
+
+### Verified
+
+- `python -m pytest xion-verify/tests/test_ao_handlers.py` — 25 passed.
+- `xion-verify ao-handlers` via `scripts/ao-localnet-seal.sh` with `XION_AO_GATEWAY_URL=http://localhost:4004` — OK, 20 handler schemas verified, local tip parity at height 1.
+
 ### Roadmap plan implementation — 2026-04-26
 
 Implements the attached “Next steps from the roadmap phases” plan: roadmap status hygiene (Phase 6.4.c label for Form Maturation vs 6.4.b Nervous), `genesis/VOICE_FORM.md`, `orchestrator/voice_router/` + live `xion-verify voice-sovereignty` / `voice-form`, `orchestrator/senses/audition.py` + `voice_emitter.py`, `xion-verify research-spend` stub restoration, `docs/MACRO-PHASE-6-EPICS.md`, FORM.md §1–§3 scaffold, `GENESIS_ARTIFACT.md` FORM hash re-pin, and weakness bookkeeping (`KW-PRESENCE-VOICE-001` closed; `KW-FORM-001` / `KW-VOICE-SOVEREIGNTY-001` / `KW-ARBITER-004` / `KW-AOCORE-002` text updated).

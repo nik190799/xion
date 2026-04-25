@@ -1,19 +1,37 @@
 handler: slash-imprint
 family: lifecycle
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: slash_id
+    tag: Slash-Id
     type: string
     required: true
+  - name: subject_address
+    tag: Subject-Address
+    type: address
+    required: true
+  - name: amount
+    tag: Amount
+    type: integer
+    required: true
+  - name: evidence_sha256
+    tag: Evidence-Sha256
+    type: sha256
+    required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - amount is positive
+  - evidence_sha256 is a canonical lowercase 64-character digest
+  - slash_id has not been used before
 state_changes:
-  - dummy state change
+  - ImprintSlashes[slash_id] records subject_address, amount, evidence_sha256, and approved_by
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Imprint-Rejection
+  - missing_args -> reject + emit Imprint-Rejection
+  - invalid_args -> reject + emit Imprint-Rejection
+  - duplicate_slash_id -> reject + emit Imprint-Rejection

@@ -1,19 +1,37 @@
 handler: provision-witness
 family: provisioning
 schema_version: 1
-status: doctrine_only
-defer_to: Phase 6.1
+status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
 source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:
-  - name: dummy_arg
+  - name: provision_id
+    tag: Provision-Id
     type: string
     required: true
+  - name: target
+    tag: Target
+    type: string
+    required: true
+  - name: budget_cap
+    tag: Budget-Cap
+    type: integer
+    required: true
+  - name: manifest_sha256
+    tag: Manifest-Sha256
+    type: sha256
+    required: true
 preconditions:
-  - dummy precondition
+  - caller is an authorized signer
+  - budget_cap is positive
+  - manifest_sha256 is a canonical lowercase 64-character digest
+  - provision_id has not been used before
 state_changes:
-  - dummy state change
+  - ProvisioningEvents[provision_id] records kind=witness, target, budget_cap, manifest_sha256, submitted_by
 failure_modes:
-  - dummy failure mode
+  - non_authorised_caller -> reject + emit Provisioning-Rejection
+  - missing_args -> reject + emit Provisioning-Rejection
+  - invalid_args -> reject + emit Provisioning-Rejection
+  - duplicate_provision_id -> reject + emit Provisioning-Rejection
