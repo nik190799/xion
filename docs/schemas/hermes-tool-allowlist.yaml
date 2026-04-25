@@ -1,6 +1,6 @@
 schema_version: 1
 source_doctrine: docs/HERMES_PIN_PROTOCOL.md
-source_sha256: bf78f580f3c2d603095a0c4bd140906c696657430666621ee5609e323bec890b
+source_sha256: a54c25575ea28485ad1bf0d60d65ad7ebcd0b004687feb9e73b0dc9117da6cac
 status: canonical
 property: default-deny Hermes tool surface for cast Agent Souls
 required_fields:

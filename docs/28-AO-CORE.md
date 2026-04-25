@@ -127,7 +127,7 @@ The attestor is now a modular runtime interface under `orchestrator/bridge`. Gen
 
 Phase 6 is sliced into six sub-phases:
 - **6.1 (Skeleton):** `commit-state` + `attest` deployed to AO testnet.
-- **6.2 (Substrate):** Akash migration + Cloudflare decommission.
+- **6.2 (Substrate):** Chutes primary deployment + Cloudflare decommission + laptop-secondary rehearsal.
 - **6.3 (Provisioning):** Multi-host autonomous provisioning.
 - **6.4 (Treasury):** Multi-chain treasury vault deployment.
 - **6.5 (Attestor):** AO-Core attestor wiring to Base EVM.

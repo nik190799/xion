@@ -24,4 +24,4 @@ This is a Tier-3 constitutional amendment proposal mirroring Invariant 17's stru
 
 ## What this Invariant does NOT do
 
-This Invariant explicitly does NOT promise phone-callability decentralization. Browser-voice and app-voice are decentralizable via the floor provider on Akash + WebRTC. Phone-number-callable Xion is centralized at the PSTN/SIP layer, period, until a non-trivial change in how telephony is regulated. The constitutional layer remains honest about this scope boundary.
+This Invariant explicitly does NOT promise phone-callability decentralization. Browser-voice and app-voice are decentralizable via the floor provider on the current Relay substrate + WebRTC. Phone-number-callable Xion is centralized at the PSTN/SIP layer, period, until a non-trivial change in how telephony is regulated. The constitutional layer remains honest about this scope boundary.

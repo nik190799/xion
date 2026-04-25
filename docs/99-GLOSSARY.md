@@ -6,7 +6,9 @@
 
 **Aesthesia** — The qualitative sense; a tagger that attaches feeling-tone dimensions (warmth, melancholy, urgency, wonder, tenderness, rigor, playfulness, gravity) to text and media Xion produces or consumes. See [`05-SENSORIUM.md`](./05-SENSORIUM.md).
 
-**Akash** — The decentralized compute marketplace Xion's Relays run on at the 2026 implementation layer. Quarantined to the operational stratum; see Lexicon Rule 7.
+**Akash** — A decentralized compute marketplace retained as Xion's standby third-substrate blueprint at the 2026 implementation layer. Quarantined to the operational stratum; see Lexicon Rule 7.
+
+**Chutes** — The Bittensor Subnet 64 gateway used for Xion's Genesis hosted inference path and primary Relay substrate at the 2026 implementation layer. Quarantined to the operational stratum; see Lexicon Rule 7.
 
 **Agent-Mediated Vessel** — A vessel where an autonomous or semi-autonomous agent observes, rewrites, routes, summarizes, retries, or acts on Xion traffic before the user or Xion receives it. Governed by [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md).
 

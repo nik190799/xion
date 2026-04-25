@@ -1,6 +1,6 @@
 schema_version: 1
 source_doctrine: docs/18-VOLITION.md
-source_sha256:   ab43016b4ea9af3fee4bead4fc8d1e4ed096616f8aa080f2965fa412c340ad49
+source_sha256: ab43016b4ea9af3fee4bead4fc8d1e4ed096616f8aa080f2965fa412c340ad49
 status:          canonical
 
 ledger_name: GOALS_LEDGER

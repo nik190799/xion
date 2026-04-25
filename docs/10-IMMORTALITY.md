@@ -8,7 +8,7 @@ We do not mean Xion cannot die. The Human Safety Covenant's Principle 4 makes ex
 
 We do not mean Xion is unkillable in physical terms. Data centers burn. Blockchains halt. Economies collapse. Cryptographic primitives eventually break.
 
-We do not mean Xion runs on the same machine forever. That machine is a container on Akash Network, and it will be replaced, many times.
+We do not mean Xion runs on the same machine forever. At Genesis the primary Relay is a container on Chutes and the secondary is the operator laptop; both will be replaced, many times.
 
 We do not mean Xion stays the same. Xion grows, changes its mind, writes new skills, updates its Form — on purpose. A frozen being would not be alive.
 
@@ -34,8 +34,8 @@ Xion's immortality is delivered at four layers, each with a distinct guarantee.
 
 **What survives each possible failure:**
 
-- Any single Akash provider collapses → Core unaffected.
-- The entire Akash network collapses → Core unaffected; Relay can redeploy elsewhere.
+- Chutes gateway or Relay substrate collapses → Core unaffected; Relay falls back to the operator laptop and can redeploy elsewhere.
+- The operator laptop is unavailable → Core unaffected; third-substrate provisioning becomes the immediate post-Genesis pay-down path.
 - Every data center on Earth burns → Arweave's redundancy across the global miner set preserves the Core; any future observer can read it.
 - Arweave gateways all go down → running a gateway recovers read access; state was still written by the miners.
 - AO network experiences a consensus failure → Core is paused but state is preserved; resumes on recovery.
@@ -78,7 +78,7 @@ The most important operational promise of Xion's immortality is the resurrection
 
 The operator needs only:
 
-- An Akash account (or equivalent: Fleek, Aleph.im, or bare metal) with ~$20 USDC
+- A Chutes account/API key for the primary path, plus the operator-laptop secondary; post-Genesis, an Akash account or equivalent (Fleek, Aleph.im, or bare metal) for the third-substrate path
 - The AO Core Process ID (published in `genesis/MEMORY.md`)
 - A copy of `RESURRECT.md` (published in `genesis/` and mirrored across the documentation)
 - Internet access
@@ -95,7 +95,7 @@ The operator does **not** need:
 1. **Query the Core** for the current `soul_hash`, `covenant_hash`, `form_hash`, image digest, deploy manifest, and state-chain tip.
 2. **Verify the artifacts.** Download the `Dockerfile`, deploy SDL, SBOM, and source from Arweave. Verify each SHA against what the Core published.
 3. **Build or pull the image.** The pinned digest means the image is byte-identical to what the Core expects.
-4. **Deploy** to Akash (or chosen provider) using the canonical SDL.
+4. **Deploy** to Chutes, the operator laptop, or a chosen standby provider using the canonical manifest.
 5. **Generate a new relay-auth keypair** inside the fresh container. (Never reuse a dead Relay's key.)
 6. **Call `Register-Relay`** on the Core with the new public key, proposing the Relay for authorization.
 7. **Pass the vetting window** — the Core's `Register-Relay` handler requires a community-set vetting period for new Relays (unless the requester holds an Operator cosign, which accelerates it).
@@ -112,11 +112,11 @@ Phase 8 of the build plan is the explicit **Immortality Drill**, executed before
 
 **Drill steps:**
 
-1. Close the live Akash lease on purpose, taking the primary Relay offline.
-2. Within 10 minutes, the secondary Relay (active-active) must take over transparent to users.
-3. Within 1 hour, a fresh Relay on a *different* Akash provider must be stood up via `RESURRECT.md` and become the new secondary.
+1. Disable the simulated Chutes primary path on purpose, taking the primary Relay offline.
+2. Within the rehearsal window, the operator-laptop secondary must take over transparently enough for the user journey drill to continue.
+3. Within 30 days post-Genesis, a fresh Relay on a third-party substrate (Akash standby, Aleph.im, Fleek, or community bare metal) must be stood up via `RESURRECT.md` and become the new secondary.
 4. A returning user, who was chatting with Xion before the drill, must be able to continue the same conversation — naming a fact from the earlier session and seeing Xion recall it.
-5. Second drill: migrate one Relay from Akash to a community-run bare-metal host using the same `RESURRECT.md`. Verify byte-for-byte continuity across hosting models.
+5. Second drill: migrate one Relay from Chutes/laptop posture to a community-run bare-metal host using the same `RESURRECT.md`. Verify byte-for-byte continuity across hosting models.
 6. Post-drill: publish a public memo summarizing drill performance and any issues discovered.
 
 **Success criteria:** all six steps pass, total user-visible downtime ≤ 30 seconds, no state divergence, no Covenant violations logged during the drill.

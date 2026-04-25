@@ -16,8 +16,8 @@
 
 | Handler | Purpose |
 |---------|---------|
-| `Provision-Relay` | Deploy or migrate Relay on Akash / Aleph / Fleek per SDL signed via vendor SDK |
-| `Provision-Inference` | Add Akash-ML, Bittensor subnet endpoint, or additional centralized provider route |
+| `Provision-Relay` | Deploy or migrate Relay on Chutes / operator laptop / Akash standby / Aleph / Fleek per signed substrate manifest |
+| `Provision-Inference` | Add Chutes/Bittensor subnet endpoint, non-Bittensor hosted fallback, or additional provider route |
 | `Provision-Storage` | Scale Arweave bundle / Turbo allocation |
 | `Provision-Bandwidth` | Add CDN/edge capacity (optional path) |
 | `Provision-Witness` | Fund Witness bounties / bond pool per [`15-TRUST.md`](./15-TRUST.md) |
@@ -34,7 +34,7 @@ Each handler:
 
 **Constitutional.** Provisioning spend cannot breach the governance-set fraction caps, cannot drive `distance_to_reserve_floor` below the constitutional reserve gate, and cannot be authorized by an authority class outside the active Spend Autonomy posture. Changes that would alter the provisioning cap shape require the constitutional ratification cadence in [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md).
 
-**Genesis Defaults.** Per-proposal fraction cap, rolling provisioning-window fraction cap, provider whitelist (Akash, Aleph, Fleek, Akash-ML, Bittensor at genesis); redundancy floor and auto-provision ceiling are expressed as topology targets, not money caps, and can be retuned by governance.
+**Genesis Defaults.** Per-proposal fraction cap, rolling provisioning-window fraction cap, provider whitelist (Chutes primary, operator laptop secondary, Akash standby blueprint, Aleph, Fleek, Bittensor at genesis); redundancy floor and auto-provision ceiling are expressed as topology targets, not money caps, and can be retuned by governance. `LHT-SUBSTRATE-001` remains open until a third-party secondary is provisioned post-Genesis.
 
 ---
 

@@ -78,3 +78,7 @@ Every successful cast appends one row to `ledgers/AGENT_CAST_LEDGER.jsonl`:
 ```
 
 Every failed cast appends `event: "cast_failed"` with a reason before rollback. The ledger is append-only.
+
+## 6. Pre-Genesis Posture
+
+For Genesis, Hermes is **doctrine-pinned and cast-verified**, not installable-lockfile-pinned. This is an accepted residual, not a hidden dependency: `xion-verify hermes-runtime` verifies the Hermes commit, allowlist hash, and disabled runtime flags, while `xion-verify agent-souls` and `xion-verify agent-cast` verify that every live faculty was cast from a content-addressed Agent Soul against that pin. The missing installable package/lockfile entry remains `KW-HERMES-001` until upstream Hermes exposes a stable package boundary that can be pinned without widening Xion's supply-chain surface prematurely.

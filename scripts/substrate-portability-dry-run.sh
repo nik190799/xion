@@ -8,7 +8,25 @@ SECONDARY_ID="${XION_SECONDARY_SUBSTRATE_ID:-secondary-placeholder}"
 
 mkdir -p "$(dirname "$LEDGER_PATH")"
 
-python - "$LEDGER_PATH" "$PRIMARY_TIP" "$SECONDARY_TIP" "$SECONDARY_ID" <<'PY'
+PYTHON_BIN="${PYTHON:-}"
+if [[ -z "$PYTHON_BIN" ]]; then
+  if command -v py.exe >/dev/null 2>&1; then
+    PYTHON_BIN="py.exe -3"
+  elif [[ -x /mnt/c/Windows/py.exe ]]; then
+    PYTHON_BIN="/mnt/c/Windows/py.exe -3"
+  elif command -v py >/dev/null 2>&1; then
+    PYTHON_BIN="py -3"
+  elif command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+  else
+    echo "substrate-portability: no python interpreter found" >&2
+    exit 127
+  fi
+fi
+
+$PYTHON_BIN - "$LEDGER_PATH" "$PRIMARY_TIP" "$SECONDARY_TIP" "$SECONDARY_ID" <<'PY'
 import hashlib
 import json
 import pathlib

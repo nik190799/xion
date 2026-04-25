@@ -109,16 +109,16 @@ Every entry has the same shape:
 - **Pay-down commitment:** Narrow this entry once `github_identity_map` has at least one verified non-operator binding and close it only when contributor identity rows are ledger-backed and included in the 90-day governance retrospective.
 - **Verifier:** `xion-verify identity-bindings`; `xion-verify provisioning-roles`.
 
-### KW-VESSEL-001 — Vessel Compact has schema and stub verifier, but no reference manifest parser exists
+### KW-VESSEL-001 — Vessel Compact reference manifest parser
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
 - **Severity:** medium
-- **Status:** mitigated residual
-- **Description:** `docs/37-VESSELS.md`, its three addenda, and `docs/schemas/vessel-compact.yaml` now define the Vessel Compact surface, and `xion-verify vessel-compact` exists as an honest `NOT_YET_SEALED` stub. There is still no reference vessel manifest parser or real vessel fixture proving that a robot, phone, hardware device, podcast, livestream, XR surface, or future carrier satisfies the Compact.
+- **Status:** closed (2026-04-25, Pre-Genesis hardening)
+- **Description:** `docs/37-VESSELS.md`, its three addenda, and `docs/schemas/vessel-compact.yaml` define the Vessel Compact surface. `xion-verify vessel-compact` now parses `vessels/reference/web-podcast-vessel.yaml` and validates the reference web/podcast Compact instead of returning a `NOT_YET_SEALED` stub.
 - **Why it exists:** The safe order is doctrine first, schema second, reference manifests third, live verifier fourth. Promoting a verifier before any real Compact exists would fake certainty.
-- **Mitigations:** The doctrine explicitly says production vessel claims are not sealed until the verifier is promoted. Existing protocol, presence, voice, consent, interaction-anchor, and schema verifiers continue to cover the underlying surfaces they already own.
-- **Pay-down commitment:** Promote `xion-verify vessel-compact` only after at least one reference Compact manifest and parser exist.
-- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, Phase 6.7 residual).
+- **Mitigations:** The reference verifier is live for the web-podcast vessel. Existing protocol, presence, voice, consent, interaction-anchor, and schema verifiers continue to cover the underlying surfaces they already own.
+- **Pay-down commitment:** Complete for the reference web-podcast Compact. Production media provenance and hardware evidence remain tracked in `KW-VESSEL-002` and later vessel entries.
+- **Verifier:** `xion-verify vessel-compact`.
 
 ### KW-VESSEL-002 — Media provenance for podcasts, livestreams, and edited clips is not yet mechanically verifiable
 - **Domain:** RUNTIME
@@ -226,7 +226,7 @@ Every entry has the same shape:
 - **Status:** mitigated-residual
 - **Description:** `docs/HERMES_PIN_PROTOCOL.md`, `genesis/HERMES_TOOL_ALLOWLIST.yaml`, and `xion-verify hermes-runtime` now make the Hermes commit, default-deny allowlist, and disabled runtime flags mechanically verifiable. The remaining gap is that Hermes is still doctrine-pinned rather than present as an installable dependency/lockfile entry in the root runtime.
 - **Why it exists:** The current repository wraps and gates the cognition substrate before depending on an upstream package shape that may still change. Pulling Hermes into the root lockfile before the package boundary is stable would widen the supply-chain surface prematurely.
-- **Mitigations:** `xion-verify hermes-runtime` verifies the doctrine pin, allowlist hash, and disabled runtime flags; `xion-verify agent-souls` and `xion-verify agent-cast` prevent unallowlisted tools or unpinned cast faculties from entering the pool. The command prints the lockfile dependency pin as `NOT_YET_SEALED` until the package lands.
+- **Mitigations:** `xion-verify hermes-runtime` verifies the doctrine pin, allowlist hash, and disabled runtime flags; `xion-verify agent-souls` and `xion-verify agent-cast` prevent unallowlisted tools or unpinned cast faculties from entering the pool. `docs/HERMES_PIN_PROTOCOL.md` § "Pre-Genesis Posture" names the lockfile gap explicitly so Genesis does not imply an installable pin that does not exist.
 - **Pay-down commitment:** Close once Hermes is an installable dependency pinned in the runtime lockfile and `xion-verify hermes-runtime` compares the installed commit/package artifact against `genesis/GENESIS_ARTIFACT.md`.
 - **Verifier:** `xion-verify hermes-runtime`.
 
@@ -245,11 +245,11 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
 - **Severity:** medium
-- **Status:** mitigated-residual
-- **Description:** `ledgers/AGENT_CAST_LEDGER.jsonl`, `orchestrator/cognition/casting.py`, `xion cast pool`, and `xion-verify agent-cast` now prove cast rows against Agent Soul hash, parent Soul hash, Hermes pin, and tool allowlist. The remaining gap is automatic cast-pool invocation at Relay boot once the D2 Relay path owns live Hermes process lifecycle.
+- **Status:** closed (2026-04-25, Pre-Genesis hardening)
+- **Description:** `ledgers/AGENT_CAST_LEDGER.jsonl`, `orchestrator/cognition/casting.py`, `xion cast pool`, and `xion-verify agent-cast` now prove cast rows against Agent Soul hash, parent Soul hash, Hermes pin, and tool allowlist. The D2 Relay boot path now deterministically seeds the cast ledger when empty and refuses startup when `xion-verify agent-cast` fails.
 - **Why it exists:** The wrapper layer landed before the Casting Pipeline and live cast-pool verifier.
-- **Mitigations:** Manual `xion cast pool` appends append-only rows; `xion-verify agent-cast` rejects rows with wrong hashes, wrong parent Soul, wrong Hermes pin, failed smoke tests, or `agent_id=arbiter`.
-- **Pay-down commitment:** Close once the D2 Relay boot path runs the cast pool automatically and refuses startup on `xion-verify agent-cast` failure.
+- **Mitigations:** Automatic boot casting appends append-only rows; `xion-verify agent-cast` rejects rows with wrong hashes, wrong parent Soul, wrong Hermes pin, failed smoke tests, or `agent_id=arbiter`.
+- **Pay-down commitment:** Complete for D2 boot. Future work may replace the deterministic seed with a live Hermes process pool, but the startup refusal property is sealed.
 - **Verifier:** `xion-verify agent-cast` (Phase 6.6).
 
 ### KW-MEMORY-HERMES-001 — Hermes/Honcho memory needs Xion `/forget` adapter before user memory can rely on it
@@ -1002,18 +1002,18 @@ Every entry has the same shape:
 - **Pay-down commitment:** This weakness is structural to the chosen access model and may not fully close. If governance later ratifies a different model (e.g. Foundation-Reserve-funded continuation for first-time-Sensorium-flagged distress events), this entry closes and a new entry documents the new model's residual risk. Until then, treat as `mitigated-residual` indefinitely.
 - **Verifier:** `xion-verify cutoff-events`, `xion-verify crisis-fidelity`, `xion-verify refund-fidelity`.
 
-### KW-OPS-001 â€” Single-host substrate at first activation; 3-host floor reached by Xion's autonomous provisioning
+### KW-OPS-001 â€” Laptop-secondary substrate at Genesis; 3-host floor reached by Xion's autonomous provisioning
 
 - **Domain:** `OPS`
 - **Discovered:** 2026-04-19 (during the substrate-decentralization design conversation)
 - **Severity:** medium (pre-genesis: not applicable; post-genesis: degrades to low after the autonomous-provisioning capability reaches its 3-host floor)
 - **Status:** `paying-down` (the structural fix is the Self-Provisioning doctrine in `docs/20-PROVISIONING.md` plus the `provision-relay` AO handler in `DEVELOPMENT_ROADMAP.md` Phase 6)
-- **Description:** The first Relay must be operator-deployed (chicken-and-egg: there is no AO Core to autonomously provision until the operator stands up the first instance). Until Xion's `provision-relay` handler reaches the 3-host floor, the substrate is single-host and a single Akash provider outage makes Xion silent.
+- **Description:** The first Relay must be operator-deployed (chicken-and-egg: there is no AO Core to autonomously provision until the operator stands up the first instance). At Genesis the primary Relay substrate is Chutes and the named secondary is the operator laptop. Until Xion's `provision-relay` handler reaches the 3-host floor, the substrate posture is still below the long-term decentralization target and a Chutes outage plus operator-laptop unavailability can make Xion silent.
 - **Why it exists:** Origin point of any decentralized system. Operator-managed multi-host is the slogan version of decentralization; auto-provisioning is the structural version. The structural version requires the AO Core to exist first.
 - **Mitigations:**
-  - Local Lite fallback model on operator laptop catches the silent window in the early hours.
+  - Operator-laptop secondary and Local Lite fallback model catch the silent window in the early hours.
   - Self-Provisioning doctrine (`docs/20-PROVISIONING.md`) gives Xion the constitutional authority to spin up additional Relays from treasury when Sensorium reports survival pressure.
-  - Target: 3-host substrate within 30 days post-Genesis (Akash + Aleph.im or Fleek + community bare-metal). Failure to reach this target is itself a governance signal (the Auto-Research Loop or drive vector needs tuning, not the operator).
+  - Target: 3-host substrate within 30 days post-Genesis (Chutes + operator laptop + Akash standby, Aleph.im, Fleek, or community bare-metal). Failure to reach this target is itself a governance signal (the Auto-Research Loop or drive vector needs tuning, not the operator).
 - **Pay-down commitment:** Closed when `xion-verify discovery` confirms three independent Relay endpoints resolving and the Substrate Vitality vital sign reads `healthy`.
 - **Verifier:** `xion-verify discovery`, `xion-verify provisioning`, `xion-verify vitals`.
 

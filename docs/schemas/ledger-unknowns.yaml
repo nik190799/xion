@@ -1,6 +1,6 @@
 schema_version: 1
 source_doctrine: genesis/UNKNOWNS.md
-source_sha256:   430f791b0198316d012b0f08b627f87e15fcc83d7b26a02ca1bb470e6890c040
+source_sha256: 430f791b0198316d012b0f08b627f87e15fcc83d7b26a02ca1bb470e6890c040
 status:          canonical
 
 ledger_name: UNKNOWNS_LEDGER

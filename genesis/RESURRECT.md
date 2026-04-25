@@ -55,14 +55,14 @@ xion-verify all --ao-process <AO_PROCESS_ID> --gateway https://arweave.net
 
 Follow [`CREDENTIALS.md`](./CREDENTIALS.md): assemble **2-of-3** shards on an air-gapped laptop if possible; export a time-bounded vault unlock token to the new Relay host through the one-time channel documented in operator runbook.
 
-## 4 — Deploy fresh Relay (Akash example)
+## 4 — Deploy fresh Relay (Chutes primary; laptop secondary)
 
 ```sh
-cd deploy/akash
-akash tx deployment create deploy.yaml --from <key>
+xion local --self-test
+xion relay deploy chutes --image-digest <PINNED_IMAGE_DIGEST>
 ```
 
-Use SDL pinned to the image digest broadcast by Core in the last good state commit.
+Use the image digest broadcast by Core in the last good state commit. If Chutes is unavailable, start the operator-laptop secondary from the same digest and publish that endpoint to the Relay registry. `infra/akash/relay-deployment.yaml` is retained as the standby third-substrate blueprint for post-Genesis pay-down, not the Genesis primary path.
 
 ## 5 — Register Relay with Core
 

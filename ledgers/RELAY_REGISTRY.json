@@ -3,15 +3,24 @@
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
-    "dns_seed"
+    "dns_seed",
+    "laptop_secondary"
   ],
   "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
   "relays": [
     {
-      "akash_lease_id": "not-yet-deployed",
+      "endpoint": "https://relay.chutes.example",
       "last_seen_utc_ns": 0,
       "public_key": "ed25519:not-yet-deployed",
-      "relay_id": "operator-local-reference"
+      "relay_id": "chutes-primary-reference",
+      "substrate": "chutes"
+    },
+    {
+      "endpoint": "http://127.0.0.1:8000",
+      "last_seen_utc_ns": 0,
+      "public_key": "ed25519:operator-laptop-reference",
+      "relay_id": "operator-laptop-secondary",
+      "substrate": "operator_laptop"
     }
   ],
   "schema_version": 1

@@ -30,6 +30,13 @@ class ForgetRequest(BaseModel):
 
     scope: ForgetScope = ForgetScope.ALL
 
+
+class RecallRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str
+    top_k: int = 5
+
 @router.get("/memory/consent")
 def get_consent(
     req: Request,
@@ -111,4 +118,38 @@ def post_forget(
         "within_sla": receipt.within_sla,
     }
 
-__all__ = ["ForgetRequest", "ModalityConsent", "router"]
+
+@router.post("/memory/recall")
+def post_recall(
+    req: Request,
+    body: RecallRequest,
+    principal_id: Annotated[str, Depends(admission_dependency)],
+) -> dict[str, object]:
+    """Recall consent-scoped memory snippets through the vector backend."""
+    backend = getattr(req.app.state, "memory_backend", None)
+    if backend is None:
+        return {"hits": [], "backend_id": "not_configured"}
+
+    from orchestrator.embeddings.providers.local_bge_m3 import LocalBgeM3EmbeddingProvider
+
+    embedder = LocalBgeM3EmbeddingProvider()
+    embedding = embedder.embed([body.query]).vectors[0]
+    hits = backend.search(
+        embedding,
+        top_k=max(1, min(body.top_k, 20)),
+        principal_id=principal_id,
+    )
+    return {
+        "backend_id": getattr(backend, "backend_id", "unknown"),
+        "hits": [
+            {
+                "record_id": hit.record_id,
+                "text": hit.text,
+                "score": hit.score,
+                "scope": hit.scope.value,
+            }
+            for hit in hits
+        ],
+    }
+
+__all__ = ["ForgetRequest", "ModalityConsent", "RecallRequest", "router"]

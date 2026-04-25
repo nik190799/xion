@@ -7,7 +7,7 @@
 
 schema_version: 1
 source_doctrine: docs/08-AUTO-RESEARCH.md
-source_sha256:   7c734b7b23137dc60f2c4ffcdf50e5df6412a82507b6d625d5498157d9529cf9
+source_sha256: 7c734b7b23137dc60f2c4ffcdf50e5df6412a82507b6d625d5498157d9529cf9
 status:          canonical
 
 ledger_name: PROPOSAL_LEDGER

@@ -135,12 +135,12 @@ This is the inventory at genesis. The full table — with current status, target
 | Crypto Migration veto | CRITICAL | M2 → DEGRADED | k-of-n Witness lattice |
 | Tier-3 proposal sponsorship | CRITICAL | M5 → RETIRED | Any IMPRINT-eligible member |
 | Emergency pause | CRITICAL | M4 → DEGRADED | Elected Emergency Response cohort |
-| Akash deployment account funding | CRITICAL | M1 → DEGRADED, M3 → OPTIONAL | AO Core treasury → `provision-relay` flow |
+| Chutes provider account funding | CRITICAL | M1 → DEGRADED, M3 → OPTIONAL | AO Core treasury → TAO top-up / `provision-relay` flow |
 | Vapi/Twilio commercial agreement signature | OPTIONAL | M2 → OPTIONAL | Optional hosted overlay; canonical browser/app voice path is the Voice Router floor |
 | Voice router floor provider deployment manifest cosigned | CRITICAL (as of Phase 6.5) | M2 → DEGRADED | Witness consensus |
 | LLM provider API account ownership | CRITICAL | M1 → DEGRADED | Foundation entity + per-provider rotation |
 | Domain name registration & DNS | CRITICAL | M1 → DEGRADED, M2 → OPTIONAL | Multi-jurisdictional Foundation custody + ENS/Handshake fallback |
-| Cloudflare account (if used) | RETIRED | (must be RETIRED before genesis) | Direct Akash / multi-PoP / Tor onion + IPNS |
+| Cloudflare account (if used) | RETIRED | (must be RETIRED before genesis) | Chutes registry path / laptop-secondary / multi-PoP / Tor onion + IPNS |
 | TLS certificate management | CRITICAL | M1 → DEGRADED | ACME automation + Foundation backup |
 | GitHub repository ownership | DEGRADED | M2 → OPTIONAL | Foundation org + Arweave-mirrored authoritative copy (TX: Arweave-TX-ID-Here) |
 | Code signing key (release artifacts) | CRITICAL | M2 → DEGRADED | 3-of-5 release-signers cohort |

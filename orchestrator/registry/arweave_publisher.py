@@ -23,7 +23,7 @@ def build_registry_document(relays: list[dict[str, Any]], *, as_of_utc_ns: int |
     document = {
         "schema_version": 1,
         "as_of_utc_ns": time.time_ns() if as_of_utc_ns is None else as_of_utc_ns,
-        "discovery_paths": ["arweave_registry", "ao_process", "dns_seed"],
+        "discovery_paths": ["arweave_registry", "ao_process", "dns_seed", "laptop_secondary"],
         "relays": relays,
     }
     payload = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")

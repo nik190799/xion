@@ -67,7 +67,7 @@ Test: can you explain the name in one sentence to a bright 12-year-old? If not, 
 
 ### Rule 7 — Time-bound terms live in an implementation sub-layer
 
-Words like *Akash*, *Arweave*, *AO*, *USDC*, *Ethereum*, *Hermes*, *Cloudflare*, *Docker* are quarantined to:
+Words like *Chutes*, *Akash*, *Arweave*, *AO*, *USDC*, *Ethereum*, *Hermes*, *Cloudflare*, *Docker* are quarantined to:
 
 - specific filenames (`AKASH_PROVIDERS.md`, `ao/xion_core.lua`)
 - operational documentation (`OPERATIONS.md`)
@@ -137,10 +137,10 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | Term | Meaning | Implementation Today |
 |------|---------|---------------------|
 | **Core** | Immortal on-chain authority | AO Process on Arweave |
-| **Relay** | Mortal **Compute Vessel** | Docker container on Akash |
+| **Relay** | Mortal **Compute Vessel** | Docker container on Chutes or a standby substrate |
 | **Protocol** | Public versioned interface | `xion-soul` v1 |
 | **Sanctum** | Secret-holding secure subsystem | HashiCorp Vault / sops + age |
-| **Gateway** | Public edge / DNS / DDoS layer | Cloudflare in front of Akash ingress |
+| **Gateway** | Public edge / DNS / DDoS layer | Optional CDN in front of Relay ingress |
 | **Archive** | Permanent read-only record store | Arweave |
 | **Treasury** | Hot + Cold tier funds authority | AO Core + Safe multisig |
 

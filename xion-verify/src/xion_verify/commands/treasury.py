@@ -33,6 +33,16 @@ def check_treasury(repo_root: Path, manifest_rel: str = _MANIFEST) -> list[str]:
     vaults = data.get("vaults")
     if not isinstance(vaults, list):
         errors.append("vaults must be a list")
+    tier1 = data.get("tier1_operating_tokens")
+    if not isinstance(tier1, list):
+        errors.append("tier1_operating_tokens must be a list")
+    else:
+        assets = {row.get("asset") for row in tier1 if isinstance(row, dict)}
+        for required in {"AR", "USDC", "ETH", "TAO"}:
+            if required not in assets:
+                errors.append(f"tier1_operating_tokens missing {required}")
+        if "AKT" in assets:
+            errors.append("AKT must not be Tier 1 while Akash is standby blueprint only")
     return errors
 
 

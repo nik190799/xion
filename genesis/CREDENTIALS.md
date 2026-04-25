@@ -32,7 +32,7 @@ Per-credential rotation retires old ciphertext with overlap window; ledger appen
 
 ## Scoped credentials
 
-Individually encrypted entries: per-LLM-provider keys (usage caps), per-Akash deployment key, scoped Arweave wallet, bridge attestation keys, DB encryption keys.
+Individually encrypted entries: Chutes API key (usage caps), TAO top-up signer metadata, optional third-substrate deployment keys (including Akash standby only if activated), scoped Arweave wallet, bridge attestation keys, DB encryption keys.
 
 ## Rotation
 

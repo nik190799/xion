@@ -28,7 +28,9 @@
 
 Hold enough working inventory to keep `runway_weeks` above the governance-published reserve floor for each asset class. The Genesis Default picture equivalent remains roughly a quarter-to-half-year of expected operating burn, but the doctrine is the ratio: `distance_to_reserve_floor >= 0`. Auto-replenish when `fraction_of_operating_float` for a required asset falls below its governance-published band by a governance-approved swap path from XION/USDC.
 
-**Genesis Default starting set:** AKT (Akash), AR (Arweave), USDC (fiat-pegged ops), ETH (gas), TAO (Bittensor / Chutes inference credits).
+**Genesis Default starting set:** AR (Arweave permanent storage), USDC (fiat-pegged ops), ETH (gas), TAO (Bittensor / Chutes inference credits).
+
+AKT is deliberately **not** Tier 1 at Genesis because Akash is no longer the primary Relay substrate. If governance later activates the Akash SDL as the third-party-secondary standby path, AKT may be added by Tier-2 treasury migration with a published runbook and verifier update.
 
 ### Tier 2 — Strategic reserves (non-working)
 
@@ -61,7 +63,7 @@ Every position carries:
 
 ## Settlement and swap discipline
 
-- **USDC → ETH / AR / AKT** — automatic band-based refills (Genesis Default thresholds).
+- **USDC → ETH / AR / TAO** — automatic band-based refills (Genesis Default thresholds).
 - **TAO → Chutes credits** — `ChutesTopUp` replenishes hosted-inference credits by sending TAO to Chutes' SS58 `payment_address`. At S1 every transfer requires operator multisig co-sign; S3+ auto-top-up inside a governance-published cap is named but not enabled.
 - **XION ↔ stables** — governance-gated operations only; treasury does not market-make XION (Invariant 13).
 - **Regular native settlement** — move working balances to native chains where possible to **reduce** bridged notional.

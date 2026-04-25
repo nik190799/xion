@@ -2,8 +2,8 @@ schema_id: vessel-compact
 schema_version: 1
 source_doctrine: docs/37-VESSELS.md
 source_sha256: 199542dd7fb36245498030b3b25488fd35a5e31a00ae29603ee3881d15b94711
-status: doctrine_only
-defer_to: DEVELOPMENT_ROADMAP.md Phase 6.7 verifier promotion
+status: canonical
+defer_to: production vessel media-provenance and hardware-evidence verifiers
 
 source_doctrines:
   - path: docs/37-VESSELS.md
@@ -274,7 +274,7 @@ availability_model:
 verifiers:
   vessel_compact:
     command: xion-verify vessel-compact
-    status: NOT_YET_SEALED
+    status: live_for_reference_web_podcast_vessel
     checks:
       - manifest_well_formed
       - covenant_hash_declared

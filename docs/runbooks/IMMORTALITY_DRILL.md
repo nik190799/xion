@@ -2,22 +2,23 @@
 
 ## Property
 
-Xion can be resurrected from public artifacts when the operator laptop, primary
-DNS path, and primary Relay substrate fail.
+Xion can be resurrected from public artifacts when the Chutes primary path,
+the primary DNS convenience path, and the operator-laptop secondary posture
+are tested under failure conditions.
 
 ## Drill
 
 1. Pin the current verifier output: `xion-verify all --allow-not-yet-sealed`.
-2. Stop the operator laptop Relay.
-3. Disable the primary DNS convenience path.
-4. Stop the primary Akash lease or equivalent primary substrate.
-5. Bring up the secondary substrate using the latest `genesis/RESURRECT.md`.
-6. Run `scripts/substrate-portability-dry-run.sh` with matching primary and secondary tips.
-7. Run `xion-verify substrate-portability`.
-8. From a third-party machine, run the public verifier battery and record the result.
+2. Disable the primary DNS convenience path.
+3. Simulate Chutes primary failure by pointing `XION_CHUTES_BASE_URL` and `XION_CHUTES_API_BASE_URL` at a black-hole URL.
+4. Bring up the operator-laptop secondary in a temp directory using `xion local --self-test` and the latest `genesis/RESURRECT.md`.
+5. Run `scripts/substrate-portability-dry-run.sh` with matching primary and laptop-secondary tips.
+6. Run `xion-verify substrate-portability`.
+7. Run `scripts/end-to-end-drill.sh` against the laptop-secondary posture.
+8. From a second terminal or another machine, run the public verifier battery and record the result.
 
 ## Residual
 
-A placeholder dry-run row proves the ledger and verifier mechanics. A real
-Immortality Drill requires a warm secondary substrate and remains an operator
-preflight action before Genesis.
+The local rehearsal proves the runbook and verifier mechanics against the
+operator-laptop secondary. It does **not** close `LHT-SUBSTRATE-001`; a real
+third-party secondary remains a 30-day post-Genesis pay-down commitment.

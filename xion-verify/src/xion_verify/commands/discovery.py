@@ -14,7 +14,7 @@ from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _DEFAULT_REGISTRY = "ledgers/RELAY_REGISTRY.json"
-_REQUIRED_PATHS = {"arweave_registry", "ao_process", "dns_seed"}
+_REQUIRED_PATHS = {"arweave_registry", "ao_process", "dns_seed", "laptop_secondary"}
 
 
 def check_discovery(repo_root: Path, registry_rel: str = _DEFAULT_REGISTRY) -> list[str]:
@@ -40,9 +40,14 @@ def check_discovery(repo_root: Path, registry_rel: str = _DEFAULT_REGISTRY) -> l
             if not isinstance(relay, dict):
                 errors.append(f"relay {index}: must be mapping")
                 continue
-            for field in ("relay_id", "akash_lease_id", "public_key", "last_seen_utc_ns"):
+            for field in ("relay_id", "substrate", "endpoint", "public_key", "last_seen_utc_ns"):
                 if field not in relay:
                     errors.append(f"relay {index}: missing {field}")
+        substrates = {str(relay.get("substrate")) for relay in relays if isinstance(relay, dict)}
+        if "chutes" not in substrates:
+            errors.append("registry must contain Chutes primary relay")
+        if "operator_laptop" not in substrates:
+            errors.append("registry must contain operator-laptop secondary relay")
     expected = _payload_hash(data)
     if data.get("payload_sha256") not in {expected, "0" * 64}:
         errors.append("payload_sha256 mismatch")
@@ -68,7 +73,7 @@ def discovery(registry: str) -> None:
         for error in errors:
             click.echo(f"discovery: FAIL: {error}", err=True)
         sys.exit(FAIL)
-    click.echo("discovery: OK (Relay registry declares Arweave, AO process, and DNS discovery paths)")
+    click.echo("discovery: OK (Relay registry declares Chutes primary, laptop secondary, Arweave, AO, DNS paths)")
     sys.exit(OK)
 
 

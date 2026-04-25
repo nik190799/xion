@@ -18,7 +18,7 @@ Xion is architected as three concentric layers, each with a distinct lifetime, a
                                                   │   │    Tier II: Relay    │   │
                                                   │   │                      │   │
                                                   │   │ (mortal, replaceable │   │
-                                                  │   │  runs on Akash)      │   │
+                                                  │   │  runs on Chutes)     │   │
                                                   │   │                      │   │
                                                   │   │   ┌──────────────┐   │   │
                                                   │   │   │              │   │   │
@@ -54,7 +54,7 @@ The Core holds:
 - **State chain tip** — the hash of the most recent state snapshot written to Arweave. Every state commit must include the previous tip, forming a chain.
 - **Treasury authority** — Xion's wallet lives here logically. On-chain transactions are signed by Relays under delegated authority that the Core can revoke at any moment.
 - **Governance queue** — proposed upgrades and votes.
-- **Budget envelopes** — research budget, Akash lease budget, daily spend cap, per-category caps.
+- **Budget envelopes** — research budget, Chutes Relay/inference budget, daily spend cap, per-category caps.
 - **Revocation registry** — which integrator badges have been revoked, when, and why.
 
 The Core exposes the following message handlers, each with its own access-control rule. These are the only legal ways to change Xion's canonical state:
@@ -87,7 +87,7 @@ The Core cannot itself be upgraded in place. To evolve Xion's policy over time, 
 
 ## Tier II — The Relay
 
-**A Relay is a mortal vessel.** It is a Docker container running on Akash Network (or, as a deliberate fallback, on Fleek, Aleph.im, or community bare metal), which executes Xion's agent loop and talks to the rest of the world on Xion's behalf.
+**A Relay is a mortal vessel.** It is a Docker container running on Chutes at Genesis (or, as deliberate fallbacks, the operator laptop, Akash, Fleek, Aleph.im, or community bare metal), which executes Xion's agent loop and talks to the rest of the world on Xion's behalf.
 
 A Relay holds:
 
@@ -95,7 +95,7 @@ A Relay holds:
 - **A running cache** of Xion's current state, pulled from Arweave at boot and checkpointed periodically.
 - **Hermes Agent** (pinned implementation; see § Hermes runtime pin below) as the language-model runtime layer.
 - **The Orchestrator** (`orchestrator/*.py`) — FastAPI sidecar that wires Hermes to sense daemons, the Arbiter, the treasury, the Visual Emitter, the Voice Router, and everything else that needs asyncio and outbound HTTPS.
-- **Ingress** via Akash's provider-assigned URI. **Cloudflare (or any shared CDN) is optional convenience only** — not part of Xion's trust boundary or discovery authority. Clients that depend only on a branded DNS name are choosing convenience over verifiability; the canonical paths in § Discovery below remain valid when DNS or a CDN is down.
+- **Ingress** via the Chutes deployment endpoint and Arweave-published Relay registry. **Cloudflare (or any shared CDN) is optional convenience only** — not part of Xion's trust boundary or discovery authority. Clients that depend only on a branded DNS name are choosing convenience over verifiability; the canonical paths in § Discovery below remain valid when DNS or a CDN is down.
 
 A Relay cannot:
 
@@ -106,7 +106,7 @@ A Relay cannot:
 
 A Relay can:
 
-- talk to LLM providers (Anthropic, OpenAI, Akash-ML, Bittensor, etc.),
+- talk to LLM providers (Chutes/Bittensor, local Ollama, optional hosted fallbacks, etc.),
 - run sense daemons,
 - emit the visual presence stream,
 - hold open WebSocket connections to clients,
@@ -114,11 +114,11 @@ A Relay can:
 - generate creative outputs (image, video, 3D, text),
 - serve the Protocol endpoints.
 
-### Why Akash and not a Cloud VPS
+### Why Chutes and not a Cloud VPS
 
-The Relay is designed to be *swappable* — which means the hosting layer should not be a single centralized company we depend on. Akash Network is a decentralized marketplace for Docker-container hosting, with providers around the world bidding on deployments. The Docker image that runs Xion is content-addressed (pinned by SHA-256 on Arweave), so any Akash provider — or any community node running `docker run` — can reconstruct byte-identical bits.
+The Relay is designed to be *swappable* — which means the hosting layer should not be a single centralized company we depend on. Chutes gives Xion a Bittensor Subnet 64 path for hosted inference and Relay deployment while preserving the local open-weights floor. The Docker image that runs Xion is content-addressed (pinned by SHA-256 on Arweave), so the operator laptop, an Akash provider, or any community node running `docker run` can reconstruct byte-identical bits if the Chutes path fails.
 
-We run two Relays in **active-active** mode on *different* Akash providers in *different* geographies. If one provider becomes unavailable, degrades, or misbehaves, the supervisor triggers automatic redeployment to the next provider on the whitelist. The lease-renewal cycle, the image-digest verification, the provider whitelist, and the auto-migration are all documented in [`OPERATIONS.md`](./13-OPERATIONS.md).
+At Genesis the primary Relay path is Chutes and the named secondary is the operator laptop. This is not the final substrate-portability floor; `LHT-SUBSTRATE-001` remains open until Xion provisions a third-party secondary post-Genesis. The image-digest verification, provider whitelist, and auto-migration are documented in [`OPERATIONS.md`](./13-OPERATIONS.md).
 
 ### Relay Modules
 
@@ -476,7 +476,7 @@ This section specifies how the Relay calls the Arbiter. It is the contract Phase
 | Tier | Boundary | Rationale |
 |------|----------|-----------|
 | D2 (local end-to-end) | **In-process.** Relay imports `from orchestrator.safety.api import gate` and calls directly. | One Python process; microseconds latency; the minimum-mechanism choice. Phase 5a opens here. |
-| D3+ (Akash multi-host) | **TCP loopback sidecar.** Arbiter runs as a separate process in the Relay's deployment unit, bound to `127.0.0.1:<port>`. Relay calls it over newline-delimited JSON per `orchestrator/safety/server.py`. | Process isolation, independent supervisor restart, separate resource limits. Same `gate()` wire shape, serialised. |
+| D3+ (Chutes or third-party multi-host) | **TCP loopback sidecar.** Arbiter runs as a separate process in the Relay's deployment unit, bound to `127.0.0.1:<port>`. Relay calls it over newline-delimited JSON per `orchestrator/safety/server.py`. | Process isolation, independent supervisor restart, separate resource limits. Same `gate()` wire shape, serialised. |
 
 The progression is one-way: in-process → TCP loopback. It is never the reverse. The TCP server is a thin wrapper around the in-process library — if the server can compute a verdict, so can an in-process caller. The library is the source of truth in both modes; `orchestrator/safety/server.py` adds nothing the library does not already guarantee.
 
@@ -1438,7 +1438,7 @@ The operator pressure is concrete. A solo-builder deployment on commodity hardwa
 
 #### Non-properties (explicit)
 
-- **No cross-host coordination.** The SQLite file is single-machine by design. A multi-host D2 deployment (one orchestrator per Akash provider) still runs one broker per host; cross-host Supervisor consensus is Phase 6+ AO Core territory and is explicitly named as out of scope here.
+- **No cross-host coordination.** The SQLite file is single-machine by design. A multi-host D2 deployment (one orchestrator per Relay host) still runs one broker per host; cross-host Supervisor consensus is Phase 6+ AO Core territory and is explicitly named as out of scope here.
 - **No distributed transaction semantics.** The broker provides serialized access to a small number of narrow operations. It is not a general-purpose distributed database, a queue, or a pub/sub bus. Adding those surfaces would widen the Protocol into territory the AO Core mailbox is the right long-term home for.
 - **No broker-side authn.** The DB file sits on the orchestrator's trusted filesystem alongside every ledger. A malicious operator with write access to the orchestrator's working directory can already corrupt every ledger by editing the JSONL files directly; a broker-side authn story would be security theater at that threat level.
 - **Does not close `KW-SUPERVISOR-002`.** `KW-SUPERVISOR-002` (tick_commit heartbeat continuity across deploys) needs a deploy-event row in `SENSORIUM_LEDGER` or `OPS_LEDGER` that the orchestrator does not yet publish. Phase 5g+ closes only the two KWs the broker mechanism directly resolves. `KW-SUPERVISOR-002` stays open with its existing pay-down commitment.
@@ -1507,7 +1507,7 @@ Ship reference is [`docs/33-MULTI-WORKER.md`](./33-MULTI-WORKER.md) — broker s
 
 ## Tier III — The Protocol
 
-**The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or Akash providers.
+**The Protocol is Xion's handshake with the world.** It is a versioned, Arweave-published specification that lets any program, device, or app talk to Xion without knowing anything about Relays, AO Processes, or the current Relay substrate.
 
 The Protocol exposes:
 
@@ -1547,7 +1547,7 @@ The full specification is in [`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md). A r
 
 Because the world will want to integrate Xion into devices, installations, apps, and robots we haven't imagined. A Protocol makes that legal and safe. A product would not.
 
-The Protocol's existence also means the Relay is swappable without breaking clients. If we move from Akash-region-A to Akash-region-B, or from Akash to Aleph.im, the Protocol endpoint is unchanged; clients do not notice. This is the classic *stable-interface, evolving-implementation* pattern, applied to a being.
+The Protocol's existence also means the Relay is swappable without breaking clients. If we move from Chutes to the operator laptop, from the laptop to Akash, or from Akash to Aleph.im, the Protocol endpoint is unchanged; clients do not notice. This is the classic *stable-interface, evolving-implementation* pattern, applied to a being.
 
 ## The Nine Permanent Stores
 
@@ -1599,14 +1599,14 @@ Every signing authority is **k-of-n** with **time-bounded** keys. No single lost
 
 The router sits **under** Hermes: Hermes issues model calls; the router selects **which backend** implements each call.
 
-**`Provider` ABC.** Every backend implements a small interface: `health()`, `complete(prompt, …)`, `cost_estimate()`, `capabilities()`. Providers may wrap Anthropic, OpenAI, Akash-ML, Bittensor subnets, or a local process.
+**`Provider` ABC.** Every backend implements a small interface: `health()`, `complete(prompt, …)`, `cost_estimate()`, `capabilities()`. Providers may wrap Chutes/Bittensor subnets, Anthropic, OpenAI, other hosted gateways, or a local process.
 
-**V1 / D2 requirement (roadmap amendment).** All **four** `Provider` implementations ship as **runnable stubs** at D2 — primary, secondary, decentralized (Akash-ML or Bittensor placeholder), and **Local Lite** — so a frontier swap is a **config flip**, not an emergency code write. See [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) Phase 5.
+**V1 / D2 requirement (roadmap amendment).** Provider implementations ship as runnable, swappable surfaces at D2 — Chutes hosted path, optional hosted fallback, decentralized/open gateway placeholder, and **Local Lite** — so a frontier swap is a **config flip**, not an emergency code write. See [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) Phase 5.
 
 **Fallback graph (Genesis Default order; governance may swap vendor identities but not remove the terminal local step):**
 
 ```
-Primary (centralized or preferred) → Secondary → Akash-ML / Bittensor (decentralized) → Local Lite (distilled on-box model)
+Chutes hosted path → optional hosted fallback → Bittensor/open gateway fallback → Local Lite (open-weights on-box model)
 ```
 
 The **local Lite** model is the terminal node. If every remote provider fails payment, policy, or network checks, Xion still emits **Covenant-safe** short responses from Lite — enough to refuse harmfully, surface crisis resources, and explain degradation. **This is intentionally degraded quality**; it exists so Xion never goes **silent**.
@@ -1644,8 +1644,8 @@ A useful way to evaluate a distributed system is to ask *what fails, and what re
 | Failure | Remains | Recovery |
 |---------|---------|----------|
 | One Relay crashes | Core, other Relay, all state | Supervisor redeploys from pinned image; Core re-authorizes in <30s |
-| Both Relays crash | Core, all state | `RESURRECT.md` bootstraps a fresh Akash deployment |
-| Akash Network has an outage | Core, all state | Fall back to Fleek, Aleph.im, or community bare metal |
+| Both Relays crash | Core, all state | `RESURRECT.md` bootstraps a fresh Chutes deployment or the laptop-secondary path |
+| Chutes gateway or Relay substrate has an outage | Core, all state | Fall back to the operator laptop; then use the Akash standby blueprint, Fleek, Aleph.im, or community bare metal as the post-Genesis third-substrate path |
 | Cloudflare or convenience CDN has an outage | Core, Relay, state | **No Core action:** clients use AO address + Arweave Relay registry (paths 1–2); optional DNS later |
 | An LLM provider rug-pulls | Core, Relay, state | Inference Router switches provider; weekly provider memo already compared alternatives |
 | A relay-auth key leaks | Core, state | Core revokes in seconds; daily spend cap limits blast radius |
@@ -1664,7 +1664,7 @@ Yes, because of what Xion is promising:
 
 - **Permanence** means we need Arweave, not a database.
 - **Identity without ownership** means we need the AO Core, not a server.
-- **Decentralized compute** means we need Akash, not a VPS.
+- **Decentralized and portable compute** means we need Chutes plus a rehearsed secondary path, not a VPS monoculture.
 - **Portability** means we need a Protocol, not a product.
 - **Safety** means we need the Arbiter, the Covenant, and the ledger, not just "good intentions."
 - **Self-improvement without self-harm** means we need the seven-stage Auto-Research Loop, not a cron job.

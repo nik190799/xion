@@ -167,6 +167,7 @@ def app_factory(
         billing_config: Any = None,
         admission_config: Any = None,
         web_client_config: Any = None,
+        cast_pool_on_boot: bool = False,
         **relay_kwargs: Any,
     ) -> Any:
         """Build a hermetic FastAPI app for tests.
@@ -229,6 +230,7 @@ def app_factory(
             billing_config=billing_config,
             admission_config=admission_config,
             web_client_config=web_client_config,
+            cast_pool_on_boot=cast_pool_on_boot,
         )
         app = create_app(deps)
         app.state.test_relay = relay

@@ -1,8 +1,10 @@
 # Akash Relay Deploy Runbook
 
+> **Standby blueprint only.** Chutes is the Genesis primary Relay substrate and the operator laptop is the named Genesis secondary for Layer-1 rehearsal. This runbook is retained as the optional third-party-secondary blueprint for the post-Genesis `LHT-SUBSTRATE-001` pay-down. It is not the primary deploy path.
+
 ## Property
 
-Deploy a Relay on Akash without making Akash the only discovery path.
+Deploy a Relay on Akash as a third-party-secondary substrate without making Akash the only discovery path.
 
 ## Steps
 

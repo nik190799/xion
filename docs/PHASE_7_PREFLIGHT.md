@@ -9,9 +9,11 @@ before the Genesis ceremony.
 
 - **Invariant 18 ratification:** wait the 14-day Constitutional Floor window,
   record Cold Root cosign, then rerun `scripts/voice-sovereignty-amendment-elapse-check.py`.
-- **Akash Relay deployment:** replace the placeholder image in
-  `infra/akash/relay-deployment.yaml`, create at least one lease, publish
-  `ledgers/RELAY_REGISTRY.json`, and run `xion-verify discovery`.
+- **Chutes Relay deployment:** publish the verified Relay image to the Chutes
+  deployment surface, publish `ledgers/RELAY_REGISTRY.json`, and run
+  `xion-verify discovery`. For Layer-1 pre-Genesis rehearsal, the operator
+  laptop is the named secondary substrate; `infra/akash/relay-deployment.yaml`
+  remains a standby third-substrate blueprint, not the primary deployment path.
 - **Cloudflare critical-path removal:** prove Arweave registry, AO process, and
   DNS seed paths resolve without Cloudflare.
 - **Treasury deployment:** deploy `contracts/treasury/MasterTreasury.sol` and

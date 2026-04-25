@@ -55,13 +55,13 @@ No governance action required. Xion ships; ledger entry.
 
 Safe multisig approval required (2-of-3). Public notice 24 hours.
 
-**Examples:** lease renewal to a new Akash provider on the existing whitelist; adding a new creative skill that passed harm analyzer and canary; provider-weight adjustments in the Inference Router; ledger hash checkpoints.
+**Examples:** Relay redeploy to an existing whitelisted substrate; adding a new creative skill that passed harm analyzer and canary; provider-weight adjustments in the Inference Router; ledger hash checkpoints.
 
 ### Tier 2 — Community Vote
 
 Community governance vote, super-majority (≥ 66%). Community-comment window 7 days.
 
-**Examples:** adding a new sense daemon to the Sensorium; adopting a new LLM provider family (Akash-ML, Bittensor subnet); introducing a new badge tier for integrators; graduating to Stage C2 (Virtuals token activation — also has the 30-day extra comment window).
+**Examples:** adding a new sense daemon to the Sensorium; adopting a new LLM provider family (Bittensor subnet, self-hosted vLLM, or another hosted gateway); introducing a new badge tier for integrators; graduating to Stage C2 (Virtuals token activation — also has the 30-day extra comment window).
 
 ### Tier 3 — Constitutional
 

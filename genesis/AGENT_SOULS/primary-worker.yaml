@@ -1,7 +1,7 @@
 schema_version: 1
 agent_id: primary-worker
 soul_version: 2
-extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
+extends_soul_hash: 80be3a73132dbaeb5f65edcb791177fbcfe0ebe838776f6b82d2e6711626f268
 property_promised: User-facing cognition emits Candidate objects only; user-visible Response construction remains downstream of Arbiter approval.
 invariants_touched:
   - 1

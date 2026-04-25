@@ -1,0 +1,51 @@
+schema_id: ledger-model-registry
+schema_version: 1
+source_doctrine: docs/40-CHUTES-INTEGRATION.md
+source_sha256: 5214ae89ac145e3addc0c52d0bc94fc322d2e3e5ee724f7e38236eddc5c55bf3
+status: canonical
+
+property:
+  name: model promotion discipline
+  description: >
+    The Genesis model registry names the day-one primary models exactly once,
+    then every later model change follows audition -> canary -> primary ->
+    retired with evidence, deltas, and an approver.
+
+events:
+  genesis_seed:
+    allowed_only_as_first_row_per_model_slug: true
+    from_state: null
+    to_state: primary
+    evidence_bundle_hash: sha256(genesis/PINNED_HASH.txt)
+    approver: operator-genesis-signature
+  promotion:
+    allowed_transitions:
+      - [null, audition]
+      - [audition, canary]
+      - [canary, primary]
+      - [primary, retired]
+
+required_fields:
+  - event
+  - provider
+  - model_slug
+  - from_state
+  - to_state
+  - evidence_bundle_hash
+  - cost_delta
+  - quality_delta
+  - refusal_delta
+  - approver
+  - ts
+  - prev_hash
+  - row_hash
+
+forbidden:
+  - silent_primary_flip
+  - missing_evidence_bundle_hash
+  - genesis_seed_after_first_row_for_slug
+  - biometric_model_promotion_without_tier_1_amendment
+
+verifier:
+  command: xion-verify model-promotion-discipline
+  status: canonical

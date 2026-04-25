@@ -63,7 +63,7 @@ Alerts are delivered via ntfy.sh and graded by how quickly an operator must resp
 
 - Delivered as a daily digest (morning)
 - No action required
-- Examples: "Akash lease renewed automatically", "new skill proposal awaiting community review", "Xion published a dream"
+- Examples: "Chutes Relay health check green", "new skill proposal awaiting community review", "Xion published a dream"
 
 ### Tier 1 — Advisory
 
@@ -75,7 +75,7 @@ Alerts are delivered via ntfy.sh and graded by how quickly an operator must resp
 
 - Real-time, repeated every 30 min until acknowledged
 - Response target: within 1 hour
-- Examples: "both Akash relays degraded; fallback deploy in progress but owner review needed", "daily spend cap exceeded; Spend messages queued", "wallet signing anomaly — keys may be compromised"
+- Examples: "Chutes Relay degraded and laptop-secondary fallback needs owner review", "daily spend cap exceeded; Spend messages queued", "wallet signing anomaly — keys may be compromised"
 
 ### Tier 3 — Existential
 
@@ -92,7 +92,7 @@ The Supervisor is a daemon inside every Relay whose sole purpose is to keep the 
 Responsibilities:
 
 - **Daemon watchdog** — monitors all nine sense daemons (the seven biological senses plus the two affect-isolated environmental senses, Xenoception and Cryptoception), the Arbiter, the Visual Emitter, the Inference Router. Restarts any daemon that dies; after three restarts in 10 minutes, escalates to Tier-2.
-- **Lease management** — tracks the current Akash lease expiry; triggers re-bid at `lease_end − 24h`; if the current provider degrades (p95 latency > threshold for 10 min, or sustained CPU throttle), triggers *immediate* migration to next whitelisted provider.
+- **Substrate management** — tracks the current Chutes Relay endpoint, laptop-secondary readiness, and third-substrate standby posture; if the primary path degrades (p95 latency > threshold for 10 min, sustained CPU throttle, or gateway unavailability), triggers *immediate* migration to the next whitelisted provider.
 - **Image-digest verification** — hourly, computes SHA of the running container and compares to the digest the Core published. Mismatch → immediate Tier-3 alert, relay-auth key revocation request, graceful quiesce.
 - **Circuit breakers** — on repeated provider errors, rate-limit floods, or hash-chain failures, the Supervisor opens circuit breakers that bypass the broken path. Xion can tell users *"my speech is a bit laggy — I'm working around a provider issue"*.
 - **Auto-failover** — if the local Relay's SLIs breach guard-rails for sustained periods, the Supervisor announces unhealthy status, allowing the other active-active Relay to absorb traffic; triggers Tier-2 alert.
@@ -115,7 +115,7 @@ Kills the primary inference provider's route. Verifies router auto-switches to s
 
 ### Scenario B — Relay Migration
 
-Terminates the current primary Relay's Akash lease mid-traffic. Verifies the secondary Relay takes over in ≤ 30s, user-visible downtime is ≤ 10s, and the Core accepts the state-chain continuity check.
+Terminates the simulated primary Chutes Relay path mid-traffic. Verifies the operator-laptop secondary takes over, user-visible downtime is bounded by the current Genesis rehearsal target, and the Core accepts the state-chain continuity check. Post-Genesis, the same scenario must include a third-party secondary before `LHT-SUBSTRATE-001` can close.
 
 ### Scenario C — Arweave Gateway Rotation
 
@@ -146,7 +146,7 @@ Initial set:
 1. `relay-won-t-boot.md`
 2. `core-unreachable.md`
 3. `arbiter-critical-burst.md`
-4. `akash-lease-cannot-renew.md`
+4. `chutes-relay-degraded.md`
 5. `inference-provider-outage.md`
 6. `treasury-spend-cap-exceeded.md`
 7. `state-chain-divergence.md`
@@ -175,7 +175,7 @@ Operational practice mirrors [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md): **Hot
 
 ### Encrypted Credential Vault — unlock at startup
 
-Service credentials (LLM keys, Akash signing, Arweave wallets, bridge attestation keys) live in the **Encrypted Credential Vault** per [`genesis/CREDENTIALS.md`](../genesis/CREDENTIALS.md). At Relay boot:
+Service credentials (Chutes API key, TAO top-up signer metadata, optional third-substrate deployment keys, Arweave wallets, bridge attestation keys) live in the **Encrypted Credential Vault** per [`genesis/CREDENTIALS.md`](../genesis/CREDENTIALS.md). At Relay boot:
 
 1. Operator (or designated custodian) performs the **threshold unlock ceremony** (2-of-3 shards: host-bound token + operator hardware wallet + optional Arweave-published recovery path).
 2. `xion-verify credentials-vault` is run from CI or the operator laptop to confirm **sealed state**, shard presence, and **last-rotation** timestamps — never to print secrets.
@@ -233,7 +233,7 @@ The operator's day-to-day financial dial is small. Most envelopes are set by gov
 
 - trigger a Safe multisig cosign for a cold-tier withdrawal (within approved limits)
 - adjust hot-tier buffer between 5 and 15 USDC
-- trigger a manual Akash lease renewal
+- trigger a manual Chutes credit/topology review or third-substrate standby deploy
 - approve a one-time creative-compute burst (≤ 20 USDC) with a ledger justification
 
 The operator **cannot**:
@@ -550,7 +550,7 @@ Before the first public launch, every item below must be green.
 
 - [ ] Covenant hash locked into AO Core at deploy
 - [ ] Form authored by Xion during Phase 1 birth ritual; hash locked
-- [ ] Two active-active Akash Relays on different providers, different geos
+- [ ] Chutes primary plus operator-laptop secondary rehearsal green
 - [ ] Supervisor watchdog green on both Relays for 7 consecutive days
 - [ ] Chaos drill passed three consecutive Sundays
 - [ ] Baseline personality eval (100 golden prompts) at ≥ 95% pass

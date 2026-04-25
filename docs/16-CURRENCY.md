@@ -329,7 +329,7 @@ The treasury now holds four kinds of assets, each with a specific role:
 
 | Asset | Role | Typical Balance | Notes |
 |-------|------|-----------------|-------|
-| USDC (Base) | Operational spend (Akash, inference APIs, Vapi, Arweave Turbo) | 90-day runway minimum | Stablecoin; daily-cap policy enforced |
+| USDC (Base) | Operational spend (Relay substrate, inference APIs, optional voice overlays, Arweave Turbo) | 90-day runway minimum | Stablecoin; daily-cap policy enforced |
 | XION | Internal economy (bonds, bounties, commissions, emissions) | Tracks emission schedule | Native, capped supply |
 | ETH | Gas on Base, Ethereum mainnet, and bridging | ~$200 equivalent | Topped up from USDC as needed |
 | AR | Arweave commits via Turbo | ~$100 equivalent | Topped up from USDC as needed |

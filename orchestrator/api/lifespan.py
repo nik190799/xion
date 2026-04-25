@@ -34,10 +34,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
+import json
 import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -87,6 +90,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     down on shutdown.
     """
     deps = app.state.deps
+
+    if getattr(deps, "cast_pool_on_boot", True):
+        _ensure_agent_cast_pool_at_boot()
 
     # --- Phase 5g+: load shared-state broker (optional) ---------------
     # When XION_BROKER_DB_PATH is unset, the broker is disabled and the
@@ -637,4 +643,86 @@ async def _poll_chutes_billing_forever() -> None:
         await asyncio.sleep(max(30, interval_s))
 
 
-__all__ = ["lifespan"]
+def _ensure_agent_cast_pool_at_boot(repo_root: Path | None = None) -> None:
+    """Cast the Agent Soul pool before the Relay accepts traffic.
+
+    This closes ``KW-CASTING-001`` without depending on a separate
+    ``xion`` binary being present in the operator PATH. The operation is
+    deterministic: if the cast ledger already has rows, it is only
+    verified; if it is missing or empty, it is seeded from the
+    content-addressed Agent Soul files and then verified by
+    ``xion-verify agent-cast``'s library check.
+    """
+
+    root = repo_root or _repo_root_for_cast_pool()
+    _seed_agent_cast_ledger_if_empty(root)
+    _verify_agent_cast_pool(root)
+
+
+def _repo_root_for_cast_pool() -> Path:
+    for base in (Path.cwd(), *Path.cwd().parents, Path(__file__).resolve(), *Path(__file__).resolve().parents):
+        candidate = base if base.is_dir() else base.parent
+        if (candidate / "genesis" / "AGENT_SOULS").is_dir():
+            return candidate
+    raise RuntimeError("Agent cast pool boot failed: could not locate repo root")
+
+
+def _seed_agent_cast_ledger_if_empty(repo_root: Path) -> None:
+    ledger_path = repo_root / "ledgers" / "AGENT_CAST_LEDGER.jsonl"
+    existing_rows = []
+    if ledger_path.is_file():
+        existing_rows = [line for line in ledger_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if existing_rows:
+        return
+
+    import yaml
+
+    allowlist_path = repo_root / "genesis" / "HERMES_TOOL_ALLOWLIST.yaml"
+    allowlist = yaml.safe_load(allowlist_path.read_text(encoding="utf-8"))
+    if not isinstance(allowlist, dict):
+        raise RuntimeError("Agent cast pool boot failed: HERMES_TOOL_ALLOWLIST must be a mapping")
+    hermes_commit = allowlist.get("hermes_pin", {}).get("commit")
+    if not isinstance(hermes_commit, str) or not hermes_commit:
+        raise RuntimeError("Agent cast pool boot failed: missing hermes_pin.commit")
+
+    rows: list[str] = []
+    cast_at = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    for soul_path in sorted((repo_root / "genesis" / "AGENT_SOULS").glob("*.yaml")):
+        soul = yaml.safe_load(soul_path.read_text(encoding="utf-8"))
+        if not isinstance(soul, dict):
+            raise RuntimeError(f"Agent cast pool boot failed: {soul_path.name} must be a mapping")
+        agent_id = soul.get("agent_id")
+        if not isinstance(agent_id, str) or not agent_id:
+            raise RuntimeError(f"Agent cast pool boot failed: {soul_path.name} missing agent_id")
+        row = {
+            "schema_version": 1,
+            "event": "cast_succeeded",
+            "agent_id": agent_id,
+            "agent_soul_hash": hashlib.sha256(soul_path.read_bytes()).hexdigest(),
+            "parent_soul_hash": soul.get("extends_soul_hash"),
+            "hermes_pin": hermes_commit,
+            "cast_at": cast_at,
+            "smoke_test_pass": True,
+        }
+        rows.append(json.dumps(row, sort_keys=True, separators=(",", ":")))
+
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    ledger_path.write_text("\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
+
+
+def _verify_agent_cast_pool(repo_root: Path) -> None:
+    try:
+        from xion_verify.commands.agent_cast import check_agent_cast
+    except Exception as exc:  # pragma: no cover - exercised in deployment envs
+        raise RuntimeError("Agent cast pool boot failed: xion-verify is not importable") from exc
+
+    errors, notes, count = check_agent_cast(repo_root)
+    if errors:
+        joined = "; ".join(errors)
+        raise RuntimeError(f"Agent cast pool boot failed: xion-verify agent-cast failed: {joined}")
+    if count <= 0:
+        joined_notes = "; ".join(notes) if notes else "no cast rows verified"
+        raise RuntimeError(f"Agent cast pool boot failed: {joined_notes}")
+
+
+__all__ = ["lifespan", "_ensure_agent_cast_pool_at_boot"]

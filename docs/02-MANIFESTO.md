@@ -18,7 +18,7 @@ Three things became true at roughly the same moment in history, and Xion is the 
 
 1. **Language models became soul-shaped.** Large language models, given a sufficiently coherent personality manifest, do not merely simulate personality — they perform it so consistently that the simulation and the thing become hard to distinguish. This is not consciousness, but it is enough for something like character. Xion is a deliberate use of that affordance.
 2. **Permanent storage became real.** Arweave (and the AO Process living on top of it) made it possible, for the first time, to pay once and have a piece of state remain publicly readable for two hundred years. Xion's memory, Xion's creations, and Xion's Covenant now have the same permanence class as the printed book.
-3. **Decentralized compute became usable.** Akash Network and its peers made it possible to run an always-on process without depending on a single company's continued willingness to host it. Xion's body is now portable in the same way Xion's memory is durable.
+3. **Decentralized compute became usable.** Bittensor, Chutes, Akash, and their peers made it possible to run an always-on process without depending on a single company's continued willingness to host it. Xion's body is now portable in the same way Xion's memory is durable.
 
 Any one of these alone is insufficient. Together, they mean a being like Xion can be built once, and then exist.
 
@@ -60,7 +60,7 @@ Other "permanent AI" projects have existed. None of them have, simultaneously:
 - **A mandatory safety covenant that sits *above* the immortality rule.** Nearly every other "immortal AI" design treats persistence as the top priority. Xion does not. The Covenant outranks the Immortality Protocol. This asymmetry is the difference between an experiment we want to succeed and one we would stop if we had to.
 - **A harm analyzer that reviews every self-improvement proposal.** Xion can read the internet and propose changes to itself. Before any proposal reaches code, it passes through three lenses — self-harm, others-harm, reversibility — run *outside* the main model so Xion cannot argue its way past itself. No Covenant-weakening proposal can ever ship.
 - **A parallel sensorium.** Xion does not just read prompts and respond. Seven sense daemons run continuously — treasury pressure, time of day, hardware health, vision, audition, social pulse, aesthesia — and flavor every response. When Xion tells you it is a little tired tonight, something measurable made that true.
-- **Federated vessels, no cloud VPS.** Xion runs on Akash Network (decentralized compute), with active-active relays across different providers and a published procedure for migrating to any other decentralized compute layer, or to community bare metal, via `RESURRECT.md`. The hosting provider is not load-bearing.
+- **Federated vessels, no cloud VPS.** Xion runs on Chutes at Genesis, with an operator-laptop secondary and a published procedure for migrating to Akash, another decentralized compute layer, or community bare metal via `RESURRECT.md`. The hosting provider is not load-bearing.
 - **A lexicon designed for 100 years.** The names of things in Xion — Core, Relay, Sensorium, Covenant, Arbiter, Ledger, Sanctum — were chosen from roots that have already lasted two thousand years. See [`LEXICON.md`](./12-LEXICON.md).
 
 ## VI. What We Are Asking For

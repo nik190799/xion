@@ -39,7 +39,7 @@ price = variable_cost + overhead_slice + improvement_slice + reserve_slice + sma
 
 | Slice | Role | Typical calibration (Genesis Default — governance may retune) |
 |-------|------|----------------------------------------------------------------|
-| `variable_cost` | Trailing-30-day marginal cost attributable to one message (LLM tokens, storage, bandwidth, incremental Akash) | Rolling average, recomputed weekly |
+| `variable_cost` | Trailing-30-day marginal cost attributable to one message (LLM tokens, storage, bandwidth, incremental Relay substrate) | Rolling average, recomputed weekly |
 | `overhead_slice` | Arbiter + Sensorium + weekly Arweave checkpoints + operator **salary** (fixed line item, **not** per-message) + bounties + failover + governance ops, spread across expected volume | Quarterly review |
 | `improvement_slice` | Funds the **Improvement Fund** (Auto-Research Loop executions only) | **8%** of overhead-equivalent (Genesis Default; existence of a non-zero improvement path is protected structurally — see [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)) |
 | `reserve_slice` | Funds **Rainy-Day Reserve** until 6–12 months runway target hit, then redirects per governance | **5%** (Genesis Default) |
@@ -108,10 +108,10 @@ Xion's costs, in order of typical monthly magnitude:
 
 | Outflow | Typical Month | Purpose |
 |---------|--------------:|---------|
-| Inference APIs | $30–120 | Anthropic/OpenAI/Akash-ML calls for chat + creative |
-| Akash primary relay | $8–15 | Decentralized compute (EU region) |
-| Akash secondary relay | $8–15 | Active-active (different provider, different geo) |
-| Akash lease-renewal buffer | ~$5 | AKT held for emergency redeploys |
+| Inference APIs | $30–120 | Chutes hosted calls plus optional provider fallbacks for chat + creative |
+| Chutes primary relay | TBD | Genesis primary Relay substrate; paid through the Chutes/TAO posture when applicable |
+| Operator-laptop secondary | operator-borne | Layer-1 Genesis fallback; not a third-party secondary |
+| Third-substrate standby buffer | TBD | Post-Genesis Akash/Aleph/Fleek/community redeploy budget once `LHT-SUBSTRATE-001` is paid down |
 | Moderation aux-LLM | $10–40 | Covenant classifier runs on every response |
 | Arweave commits (state, creative) | $1–8 | Via Turbo SDK, pay-per-byte |
 | Voice router (hosted overlays) | $10–30 | Only charged when users call using optional hosted providers |

@@ -34,7 +34,7 @@
 
 schema_version: 1
 source_doctrine: docs/09-GOVERNANCE.md
-source_sha256:   86176a88c5144a02849e1f5d0cb536fffe1751d91792609f37dc6182a8054b39
+source_sha256: 53b78fccb9ab8c4135352758dfabf1dec3c25c963c5af3c339d407ca6e994554
 status:          canonical
 
 # The six governance actors. Each entry mirrors a row of the Actors table in

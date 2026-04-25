@@ -57,7 +57,7 @@ def test_vessel_schema_pins_all_source_doctrines() -> None:
     repo = _repo_root()
 
     assert schema["schema_id"] == "vessel-compact"
-    assert schema["status"] == "doctrine_only"
+    assert schema["status"] == "canonical"
 
     sources = {item["path"]: item["source_sha256"] for item in schema["source_doctrines"]}
     expected_paths = {

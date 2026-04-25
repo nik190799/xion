@@ -3,6 +3,34 @@
   "status": "testnet_placeholder",
   "bridge_exposure_cap_bps": 1000,
   "master_treasury": null,
+  "tier1_operating_tokens": [
+    {
+      "asset": "AR",
+      "purpose": "Arweave permanent storage",
+      "status": "operator_action_required"
+    },
+    {
+      "asset": "USDC",
+      "purpose": "fiat-pegged operations",
+      "status": "operator_action_required"
+    },
+    {
+      "asset": "ETH",
+      "purpose": "gas",
+      "status": "operator_action_required"
+    },
+    {
+      "asset": "TAO",
+      "purpose": "Bittensor / Chutes inference credits",
+      "status": "operator_action_required"
+    }
+  ],
+  "excluded_tier1_assets": [
+    {
+      "asset": "AKT",
+      "reason": "Akash is standby blueprint only at Genesis; add by Tier-2 migration if activated as third-party secondary."
+    }
+  ],
   "vaults": [],
   "residual": "Real testnet/mainnet vault addresses require operator deployment and external audit."
 }

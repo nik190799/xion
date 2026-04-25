@@ -159,6 +159,12 @@ class AppDeps:
     # ``WebClientConfig(enabled=False)`` to skip the env lookup.
     web_client_config: WebClientConfig | None = None
 
+    # --- Phase 6.6 / KW-CASTING-001 closure -------------------------
+    # Production boot must cast the Agent Soul pool before serving chat.
+    # Tests default this to False through app_factory so they do not
+    # mutate repo-root ledgers unless they explicitly exercise this path.
+    cast_pool_on_boot: bool = True
+
 
 def create_app(deps: AppDeps) -> FastAPI:
     """Construct a FastAPI app wired against ``deps``.

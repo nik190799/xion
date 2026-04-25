@@ -234,7 +234,7 @@ Treasury rules, pricing, yield, inflow and outflow categories.
 
 **Examples.**
 
-- *Good:* Raising the Akash lease budget after network-average provider prices shifted.
+- *Good:* Raising the Chutes Relay or TAO top-up budget after network-average provider prices shifted.
 - *Good:* Activating Stage C2 Virtuals token after 18 months of stable operation (if governance so chooses).
 - *Good:* Promoting Xion from S2 to S3 after `xion-verify spend-posture`, Witness attestations, and retrospective audits satisfy the evidence predicates in `docs/SPEND-AUTONOMY.md`.
 - *Bad:* A proposal that would gate a Covenant-protected user right behind payment. Auto-blocked by the Economy firewall.
