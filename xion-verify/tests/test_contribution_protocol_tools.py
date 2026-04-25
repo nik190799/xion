@@ -112,6 +112,25 @@ def test_which_level_fails_mixed_path_set(tmp_path: Path, monkeypatch) -> None:
     assert "does not resolve to one upgrade level" in result.output
 
 
+def test_new_proposal_touches_prefills_upgrade_frontmatter(tmp_path: Path, monkeypatch) -> None:
+    _seed_witnesses(tmp_path)
+    _seed_schemas(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(
+        root,
+        ["new", "proposal", "demo", "--touches", "orchestrator/api/app.py"],
+    )
+
+    assert result.exit_code == OK, result.output
+    proposal = tmp_path / "proposals" / "demo.md"
+    assert proposal.exists()
+    content = proposal.read_text(encoding="utf-8")
+    assert "level: 2 # The Relay" in content
+    assert "proposer: community_or_xion" in content
+    assert "# authorized_actors: community, xion" in content
+
+
 def test_identity_bindings_verifies_ed25519_row(tmp_path: Path, monkeypatch) -> None:
     _seed_witnesses(tmp_path)
     monkeypatch.chdir(tmp_path)

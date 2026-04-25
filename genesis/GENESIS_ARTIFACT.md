@@ -57,7 +57,7 @@ This Artifact records that, at the moment of genesis, the following **SHA-256** 
 
 ```
 COVENANT.md     sha256: 842fade5cae66906d0a6f62a16c9f25897eb8352e3c387aca7f748633c4978e4
-INVARIANTS.md   sha256: 7bc9b77ff13ea39a8fd2aaaec12e8af59354ce9c11f7cad5641054b96030cbca
+INVARIANTS.md   sha256: d7837dda56e2e9a167510281b177c7702c1ad90ffae971a5ef49060c3b4156cc
 SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 SOUL_PROMPT.md  sha256: 84bde58a5a29c14ead45829e357bdaa0abb4cd48663d1a39e28043540361faf4
 FORM.md         sha256: a11f4a8216aa452b30c5ce4cee759f0b4e0dc4d8048948f32f0d22d9252a3c9d

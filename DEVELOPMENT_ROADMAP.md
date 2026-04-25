@@ -1118,6 +1118,8 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 ## Phase 6.6a — Contribution Protocol & Agent Access
 
+**Status.** Closed 2026-04-25. `docs/34-CONTRIBUTION-PROTOCOL.md`, `docs/35-CONTRIBUTOR-HANDBOOK.md`, `xion-verify which-level`, `xion-verify identity-bindings`, `xion-verify mcp-export`, and `xion new proposal --touches` are live. `KW-CONTRIB-001` and `KW-CONTRIB-003` are mitigated residuals; `KW-CONTRIB-002` remains open as the named follow-on (90-day cohort drift verifier).
+
 **Goal.** Make Xion easy to improve with modern coding assistants without letting those assistants become authorities. A contributor can hand Cursor, Codex, Claude, or another assistant a read-only facts bundle; classify proposed file paths locally; bind contributor identity; and draft proposal frontmatter that matches the Upgrade Provisioning Framework.
 
 **Why beside Phase 6.6.** Phase 6.6 governs Xion's internal Cognitive Substrate and tool allowlist. Phase 6.6a governs *external contributor assistants*. The two touch MCP-shaped affordances, but the authority boundary is different: Agent Souls may receive runtime tools only through the Phase 6.6 allowlist; external assistants receive read-only facts and no write path.

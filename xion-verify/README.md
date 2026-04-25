@@ -122,6 +122,7 @@ Pre-gate-landing merges (those whose committer-time precedes the first commit th
 Honest residuals named in the help text and in every FAIL line:
 - The `community`, `integrator`, `xion`, and `witness` actors have empty `handles:` lists pre-Genesis. For levels whose authorized actors include any of those, an unmatched merger is accepted as `community-tier-unverifiable` (WARN, not FAIL). This is not a silent escape: every such accept is logged with the merge SHA and subject.
 - A path that does not match any `levels.yaml` artifact glob is classified as Level 12 / The Meta and counted in `unmapped_paths` for diagnostic visibility.
+- Two pre-Phase-6.6a retrospective-close merges are accepted as named residuals in default mode because they landed after the Phase 6.2 schema gate but before the contribution-protocol loop was clean. `--strict` still fails them for forensic audits.
 - The verifier is structural; it does not verify on-chain cosigns. Cosign verification is Phase 6+ via the AO Core handlers.
 
 Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic against a single PR diff (instead of a 90-day window) and blocks merge on cross-level or unauthorized.
