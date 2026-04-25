@@ -1,0 +1,83 @@
+schema_id: spend-posture
+schema_version: 1
+source_doctrine: docs/SPEND-AUTONOMY.md
+source_sha256: 45b0ca69ff2865779d46dfe9eb45c8f7a2146974404d00eb087264d36acc173e
+status: doctrine_only
+defer_to: DEVELOPMENT_ROADMAP.md Phase 7.0
+invariant_parent: 19
+
+posture:
+  required_fields:
+    - posture_id
+    - predecessor
+    - authority_routing
+    - entry_evidence_predicates
+    - demotion_predicates
+    - fence_clauses_active
+    - verifier
+
+  posture_id:
+    type: enum
+    allowed:
+      - S1_operator_all
+      - S2_operator_strategic
+      - S3_operator_burn_envelope
+      - S4_governance_strategic
+      - S5_self_sovereign_inside_fence
+
+  predecessor:
+    type: nullable_enum
+    allowed:
+      - null
+      - S1_operator_all
+      - S2_operator_strategic
+      - S3_operator_burn_envelope
+      - S4_governance_strategic
+
+  authority_routing:
+    routine_spend: AO_CORE | OPERATOR | GOVERNANCE | XION_WITHIN_FENCE
+    new_category: OPERATOR | GOVERNANCE | XION_WITHIN_FENCE
+    new_recurring_burn: OPERATOR | GOVERNANCE | XION_WITHIN_FENCE
+    posture_transition: GOVERNANCE_CONSTITUTIONAL | GOVERNANCE | OPERATOR_PLUS_GOVERNANCE
+    emergency_survival: AO_CORE_CAPPED
+
+  entry_evidence_predicates:
+    type: list
+    allowed_units:
+      - decision_count_under_posture
+      - self_audit_accuracy
+      - attestation_count
+      - audit_pass_count
+      - incident_count_window
+    forbidden_units:
+      - elapsed_time
+      - absolute_money
+      - token_price
+      - inflow_volume
+
+  demotion_predicates:
+    type: list
+    allowed_triggers:
+      - wrong_authority_spend
+      - spend_discipline_failure
+      - invariant_violation
+      - covenant_economy_breach
+      - witness_quorum_loss
+      - reserve_floor_breach_from_discretionary_spend
+      - failed_retrospective_audit
+
+  fence_clauses_active:
+    type: list
+    required:
+      - invariant_5
+      - invariant_11
+      - invariant_15
+      - invariant_16
+      - invariant_19
+      - refusal_is_free
+      - user_sovereignty_endpoints
+
+  verifier:
+    command: xion-verify spend-posture
+    status: NOT_YET_SEALED_UNTIL_PHASE_7_0
+

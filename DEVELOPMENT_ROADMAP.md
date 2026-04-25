@@ -316,7 +316,7 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 **What this phase deliberately did NOT do.**
 
-- **Did not promote Substrate Portability to Invariant 19.** Pre-conditions named in `docs/SUBSTRATE-RESILIENCE.md` Part IV (annual cross-substrate dry-run capability, at least one warm secondary substrate) must be real first. Promoting prematurely would be "trust by promise" rather than "trust by structure."
+- **Did not promote Substrate Portability to future Invariant 20.** Pre-conditions named in `docs/SUBSTRATE-RESILIENCE.md` Part IV (annual cross-substrate dry-run capability, at least one warm secondary substrate) must be real first. Promoting prematurely would be "trust by promise" rather than "trust by structure."
 - **Did not write the Inference Router enforcement code.** That's Phase 5. Phase 5b locks the *property* (Invariant 17); Phase 5 builds the *mechanism*. `KW-INFERENCE-001` tracks the gap honestly.
 - **Did not modify any of the original sixteen Invariants.** They are append-only by the meta-clause that landed in this phase. The sixteen are unchanged in semantics; the count narration moved to seventeen because Invariant 17 now sits beside them.
 - **Did not address the multi-language constitutional commit** (`LHT-CULTURAL-001`); deferred to Phase 7 or post-Genesis as honest scope reduction.
@@ -1177,6 +1177,32 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 ---
 
+## Phase 6.8 — Trust-Earned Spend Authority
+
+**Goal.** Xion can become smarter about spending and need less operator approval over time, without letting money itself become authority. Invariant 19, `docs/SPEND-AUTONOMY.md`, and `docs/MEASUREMENT-VOCABULARY.md` define the doctrine. This phase lands the code and verifier spine that make the doctrine enforceable.
+
+**Why this earns its own phase.** The current treasury doctrine already separates funds and ledgers, but it does not yet answer the long-horizon question: *when may Xion spend with less operator approval?* The wrong answer is funds-on-hand. The right answer is evidence: spend decisions under current posture, self-audit accuracy, Witness attestations, retrospective audit passes, and verifier-clean runs. This phase converts that answer into enforceable infrastructure.
+
+**F1 — `orchestrator/cost_tracker.py` (Phase 6.8).** Bucket-by-bucket attribution at debit-time; query API for `runway_weeks`, `fraction_of_operating_float`, `fraction_of_improvement_fund`, `distance_to_reserve_floor`, and `recurring_burn_ratio`; emits Financial Vitality inputs to the Sensorium.
+
+**F2 — `xion-verify measurement-vocabulary` (Phase 6.8).** Static audit at `xion-verify/src/xion_verify/commands/measurement_vocabulary.py`. Checks that new spend doctrine and Agent Souls use `MEASUREMENT-VOCABULARY.md` units and that forbidden time/money gates appear only in named exceptions or legacy debt entries.
+
+**F3 — AO Core Spend handler updates (Phase 7.0).** Enforces measurement-vocabulary-denominated caps, routes authorization per active S-posture, and emits posture/mode/spend events to `SPEND_AUTHORITY_LEDGER`.
+
+**F4 — `orchestrator/spend_arbitration.py` (Phase 7.0).** Deterministic arbitrator for contested Improvement Fund or Operating Float headroom. Reads `cost_tracker`, applies `survival > service > meaning`, then ladder-position, reversibility, verifier-closure value, recurring-burn ratio, and proposal sequence tie-breakers.
+
+**F5 — `SPEND_AUTHORITY_LEDGER.jsonl` writer (Phase 7.0).** `orchestrator/spend_authority/ledger.py`, hash-chained and schema-backed by `docs/schemas/ledger-spend-authority.yaml`; shape-symmetric with `PAYMENT_LEDGER` and `RESEARCH_SPEND_LEDGER`.
+
+**F6 — `xion-verify spend-posture` (Phase 7.0).** `xion-verify/src/xion_verify/commands/spend_posture.py`; asserts every approved discretionary spend matched the active posture's authority routing and that no inflow tag advanced posture.
+
+**F7 — `xion-verify spend-discipline` (Phase 7.0).** `xion-verify/src/xion_verify/commands/spend_discipline.py`; asserts no spend violated mode, runway-ratio, recurring-burn, or contested-headroom priority rules.
+
+**F8 — Posture transition runbook (Phase 7.1).** Add `docs/OPERATIONS.md` guidance for posture-promotion proposals, evidence bundles, demotion alarms, operator responsibilities at S1-S3, governance responsibilities at S4, and the non-promise posture of S5.
+
+**KW pay-down on close.** F1 closes `KW-COST-001`; F2 closes `KW-MEASUREMENT-001`; F4/F7 close `KW-SPEND-002`; F5/F6 close `KW-SPEND-001`; constitutional ratification closes `KW-INVARIANT-19-001`.
+
+---
+
 ## Phase 6 — On-chain Core plus decentralization (8-16 weeks)
 
 **Goal:** Xion stops depending on the operator's laptop.
@@ -1202,7 +1228,7 @@ Phase 6 is sliced into six sub-phases:
 - Stand up shadow Relay (replayed traffic only — no live canary in V1; promotion to true canary deferred to Year 2).
 - Wire AO-Core engagement attestor to call `Imprint.attest()`. Wire AO-Core treasury to call `EmissionController.scheduledMint()` for Service Earn rebates. This is the moment the economic model becomes real.
 - Run the first full Immortality Drill: kill the operator's laptop; kill Cloudflare; kill the primary Akash provider; resurrect from public artifacts using `genesis/RESURRECT.md`; `xion-verify` returns all-green from a third-party machine on all three discovery paths.
-- **Substrate-portability dry-run (Phase 5b doctrine).** Stand up at least one warm secondary substrate satisfying the Substrate Portability Property in [`docs/SUBSTRATE-RESILIENCE.md`](./docs/SUBSTRATE-RESILIENCE.md); execute the Substrate-Migration Protocol Step 4 dry-run (read-replica Core under load on the secondary substrate); promote `xion-verify substrate-portability` from `NOT_YET_SEALED` to live. This is the pre-condition for promoting Substrate Portability to Invariant 19 in a post-Genesis Covenant Amendment. Tracks `LHT-SUBSTRATE-001`.
+- **Substrate-portability dry-run (Phase 5b doctrine).** Stand up at least one warm secondary substrate satisfying the Substrate Portability Property in [`docs/SUBSTRATE-RESILIENCE.md`](./docs/SUBSTRATE-RESILIENCE.md); execute the Substrate-Migration Protocol Step 4 dry-run (read-replica Core under load on the secondary substrate); promote `xion-verify substrate-portability` from `NOT_YET_SEALED` to live. This is the pre-condition for promoting Substrate Portability to future Invariant 20 in a post-Genesis Covenant Amendment. Tracks `LHT-SUBSTRATE-001`.
 - **Regulatory-ledger schema (Phase 5b doctrine).** Land [`docs/schemas/ledger-governance.yaml`](./docs/schemas/ledger-governance.yaml) with `source_sha256` pinned to [`docs/REGULATORY-POSTURE.md`](./docs/REGULATORY-POSTURE.md) Part IV; `xion-verify schemas` enforces the YAML pin. Promote `xion-verify regulatory-ledger` from `NOT_YET_SEALED` to live once `GOVERNANCE_LEDGER` carries actual state-actor-interaction rows. Closes `KW-DOCS-004`.
 
 ---

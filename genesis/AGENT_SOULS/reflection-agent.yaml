@@ -1,6 +1,6 @@
 schema_version: 1
 agent_id: reflection-agent
-soul_version: 1
+soul_version: 2
 extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 property_promised: Nightly and quarterly reflection over public ledgers, producing drafts that remain Arbiter-vetted and operator-countersigned before publication.
 invariants_touched:
@@ -26,7 +26,8 @@ forbidden_tools:
   - hermes.tool.user_model_export
 mcp_servers_allowed: []
 cost_envelope:
-  monthly_usd: 15
+  monthly_envelope_fraction: 0.06
+  unit: fraction_of_improvement_fund
   bucket: cognition/specialist/reflection
 output_destinations:
   - type: ledger

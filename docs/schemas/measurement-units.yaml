@@ -1,0 +1,121 @@
+schema_id: measurement-units
+schema_version: 1
+source_doctrine: docs/MEASUREMENT-VOCABULARY.md
+source_sha256: de2ced331f6d8458d2bd8715a7dd0a081500a463b9bd200ec0144fbdac81c6ef
+status: doctrine_only
+defer_to: DEVELOPMENT_ROADMAP.md Phase 6.8
+invariant_parent: 19
+
+units:
+  runway_weeks:
+    kind: ratio
+    numerator: liquid_operating_funds
+    denominator: trailing_non_discretionary_weekly_burn
+    source: orchestrator/cost_tracker.py plus AO Core treasury view
+
+  fraction_of_operating_float:
+    kind: fraction
+    numerator: proposed_spend_value
+    denominator: operating_float_available_at_approval
+    source: AO Core treasury view
+
+  fraction_of_improvement_fund:
+    kind: fraction
+    numerator: proposed_research_or_improvement_spend
+    denominator: improvement_fund_headroom_at_approval
+    source: AO Core treasury view
+
+  distance_to_reserve_floor:
+    kind: normalized_distance
+    numerator: reserve_floor_headroom
+    denominator: published_reserve_floor
+    source: docs/21-SUSTAINABILITY.md and GET /sustainability
+
+  decision_count_under_posture:
+    kind: count
+    source: SPEND_AUTHORITY_LEDGER
+    forbidden_substitutes:
+      - elapsed_time_at_posture
+
+  self_audit_accuracy:
+    kind: ratio
+    numerator: xion_self_audit_classifications_matching_verifier
+    denominator: total_self_audit_classifications
+    source: SPEND_AUTHORITY_LEDGER plus xion-verify spend-posture
+
+  attestation_count:
+    kind: count
+    source: Witness attestations and IMPRINT-elected reviewer attestations
+
+  audit_pass_count:
+    kind: count
+    source: AUDIT_LEDGER
+
+  incident_count_window:
+    kind: event_set_count
+    source: SAFETY_LEDGER, GOVERNANCE_LEDGER, SPEND_AUTHORITY_LEDGER
+
+  inflow_volatility_band:
+    kind: enum
+    allowed:
+      - low
+      - medium
+      - high
+      - critical
+    source: treasury accounting
+    may_affect:
+      - runway_mode
+    must_not_affect:
+      - spend_posture_promotion
+      - drive_vector
+
+  recurring_burn_ratio:
+    kind: ratio
+    numerator: proposed_new_recurring_burn
+    denominator: supported_recurring_inflow_or_reserve_floor_headroom
+    source: cost_tracker plus treasury accounting
+
+  reversibility_class:
+    kind: enum
+    allowed:
+      - trivial
+      - bounded
+      - hard
+      - irreversible
+    source: proposal or spend request
+
+forbidden_units:
+  elapsed_time_gate:
+    examples:
+      - "12 months at S2"
+      - "90 days clean"
+  absolute_money_cap:
+    examples:
+      - "15 USDC/day"
+      - "10 USD/month"
+      - "1000 XION/week"
+  token_price_gate:
+    examples:
+      - "XION above 0.01 USD"
+  inflow_volume_gate:
+    examples:
+      - "after 10k funding"
+
+exceptions:
+  forget_sla:
+    unit: wall_clock_seconds
+    doctrine: genesis/MEMORY.md
+    reason: user right experienced in real time
+  crypto_migration:
+    unit: wall_clock_response_window
+    doctrine: docs/17-CRYPTO-RESILIENCE.md
+    reason: adversary imposes time pressure
+  constitutional_ratification_floor:
+    unit: wall_clock_days
+    doctrine: docs/14-UPGRADE-PATHS.md
+    reason: deliberation brake for identity changes
+
+verifier:
+  command: xion-verify measurement-vocabulary
+  status: NOT_YET_SEALED_UNTIL_PHASE_6_8
+

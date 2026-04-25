@@ -1,6 +1,6 @@
 schema_version: 1
 agent_id: primary-worker
-soul_version: 1
+soul_version: 2
 extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 property_promised: User-facing cognition emits Candidate objects only; user-visible Response construction remains downstream of Arbiter approval.
 invariants_touched:
@@ -27,7 +27,8 @@ forbidden_tools:
   - hermes.tool.user_model_export
 mcp_servers_allowed: []
 cost_envelope:
-  monthly_usd: 120
+  monthly_envelope_fraction: 0.15
+  unit: fraction_of_operating_float
   bucket: cognition/primary
 output_destinations:
   - type: candidate

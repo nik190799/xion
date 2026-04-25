@@ -38,9 +38,9 @@ Historical series remain interpretable after methodology updates because old has
 
 ### 1 — Financial Vitality *(objective)*
 
-**Inputs.** Operating Float weeks, Rainy-Day weeks, 30-day revenue tag totals, Cost-Pressure Ladder step ([`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)).
+**Inputs.** `runway_weeks`, `distance_to_reserve_floor`, inflow volatility band, recurring-burn ratio, Cost-Pressure Ladder pressure step ([`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md), [`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md)).
 
-**Bands (Genesis Defaults).** Healthy: runway ≥ 90 days *and* ladder step ≤ 1. Warning: 45–90 days *or* step 2–3. Critical: < 45 days *or* step ≥ 4 without governance memo.
+**Bands (Genesis Defaults).** Healthy: `distance_to_reserve_floor` positive and pressure step ≤ 1. Warning: runway ratio approaching reserve floor or pressure step 2–3. Critical: reserve-floor breach, pressure step ≥ 4 without governance memo, or runway trajectory collapsing under high inflow volatility.
 
 ### 2 — Substrate Vitality *(objective)*
 
@@ -145,3 +145,4 @@ These metrics feed **Constitutional Integrity** and **Behavioral Fidelity** dash
 - [`17-CRYPTO-RESILIENCE.md`](./17-CRYPTO-RESILIENCE.md) — crypto feed
 - [`05-SENSORIUM.md`](./05-SENSORIUM.md) — Sensorium Event Ledger
 - [`24-COGNITION.md`](./24-COGNITION.md) — cognition verification + vitals mapping
+- [`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md) — financial vitality units

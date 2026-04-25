@@ -90,7 +90,7 @@ Hermes is **not** part of the constitutional quartet hash slots above; it is **i
 The Genesis-era cast faculties are content-addressed by `genesis/AGENT_SOULS/MANIFEST.txt`:
 
 ```
-agent_souls_manifest_sha256: b9544d8af50da8e89dc9c221b8ecfda2f3a6e1c682abe524eb106903240c1f6d
+agent_souls_manifest_sha256: 1324f19237f7d01622f91f6413e87372fcff6d702c843623ae8db9251c005e46
 agent_souls_manifest_path:   genesis/AGENT_SOULS/MANIFEST.txt
 agent_souls_manifest_rule:   sorted byte-concatenation of _SCHEMA.md and *.yaml Soul files
 ```

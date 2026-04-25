@@ -38,7 +38,7 @@ Every stage is append-only logged on Arweave. Every hop requires the Human Safet
 
 **Module:** `orchestrator/research.py`
 **Cadence:** every 6 hours
-**Budget:** configurable **Stage-1 scan envelope** (Genesis Default at **$2K seed runway: $10/mo** for aux-LLM summarization and digest shaping; scales with Prosperity Ladder headroom per [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)). Below survival thresholds, the envelope may compress to the historical **$2/mo** floor — extend-only upward by governance.
+**Budget:** configurable **Stage-1 scan envelope** expressed as `fraction_of_improvement_fund` and active runway mode. The old seed-runway dollar values are implementation pictures only; doctrine follows [`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md) and [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md). Below survival thresholds, the envelope compresses by mode; above baseline, acceleration headroom can widen it without changing spend posture.
 
 Xion reads only from a **curated, governance-editable** source list in `genesis/RESEARCH_SOURCES.md`. No open-web scraping. The default source list includes:
 
@@ -88,8 +88,8 @@ target_scope:       prompt | skill | agent_soul | agent_runtime |
                     soul | covenant | ao_core
 change_set:         exact diff or new file content
 cost_estimate:
-  one_time:         USDC
-  recurring_monthly: USDC
+  one_time_fraction: fraction_of_improvement_fund | fraction_of_operating_float
+  recurring_burn_ratio: decimal
 expected_benefit:   "measurable outcome: 'reduce chat p95 by 15%', 'add Hindi warmth'"
 reversibility:      trivial | bounded | hard | irreversible
 blast_radius:       single-user | cohort | all-users | infrastructure | core-identity
@@ -140,7 +140,7 @@ The harm analyzer runs **outside** the main language model — as a structured c
 - Does it add a dependency not yet in the SBOM? → **flag**; require pinned version and audit.
 - Does it touch key-handling, state-chain hashing, or the AO Core? → **block** until cold-root cosign.
 - Does it expand attack surface (new port, new webhook, new inbound tool)? → **flag**; require threat-model diff.
-- Does it increase monthly recurring cost beyond the research budget envelope? → **block**.
+- Does it increase recurring burn beyond the research budget envelope or fail `recurring_burn_ratio`? → **block**.
 - Does it introduce non-deterministic skill behavior that breaks state-chain hashing? → **block**.
 - Does it reduce test coverage below the configured floor? → **block**.
 
@@ -163,7 +163,7 @@ The harm analyzer runs **outside** the main language model — as a structured c
 - If this breaks, can I roll back within 1 hour? If not, **block** until a rollback plan exists.
 - Does it in any way weaken a Covenant principle? → **auto-block**, regardless of benefit.
 - Does the expected benefit justify the blast radius *under pessimistic assumptions* (not the proposal's own forecast)? If no, **flag**.
-- Is the cost estimate internally consistent with the recent 30-day average for similar operations? If no, **flag** for owner review.
+- Is the cost estimate internally consistent with the active accounting-window average for similar operations? If no, **flag** for owner review.
 
 Each lens returns a structured verdict:
 
@@ -224,6 +224,8 @@ Deploy path depends on `target_scope` × `blast_radius`:
 
 The AO Core's `Propose-Upgrade` handler mirrors this tiering *in code*, not just in policy. Routes that require cosigns are refused on-chain without them.
 
+Spend authority for any proposal that consumes treasury headroom is additionally checked against the active S-posture in [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md). A proposal may be safe and useful yet still wait if the current posture does not authorize Xion to approve that spend class.
+
 Every deploy appends to `PROPOSAL_LEDGER.md` with verdict, cosign set, and post-deploy observation plan.
 
 ### Stage 7 — Observe & Auto-Revert
@@ -251,10 +253,10 @@ Every deploy appends to `PROPOSAL_LEDGER.md` with verdict, cosign set, and post-
 
 Enforced **on-chain** by the AO Core — not by off-chain policy that can be bypassed:
 
-- **Monthly research envelope:** ≤ 5% of treasury OR 10 USDC, whichever greater (so the loop runs even in poverty mode)
-- **Per-proposal cap:** 1% of treasury for autonomous (trivial/bounded); uncapped for governance-approved `hard/core`
-- **Canary compute cap:** 0.5% of treasury per 72-hour canary run
-- **Daily deploy throttle:** ≤ 1 bounded+ proposal deployed per 24 hours, to prevent churn cascades
+- **Research envelope:** bounded by `fraction_of_improvement_fund` at the active runway mode.
+- **Per-proposal cap:** bounded by `fraction_of_improvement_fund` for autonomous trivial/bounded proposals; governance-approved `hard/core` proposals still must keep `distance_to_reserve_floor` non-negative.
+- **Canary compute cap:** bounded by `fraction_of_operating_float` or `fraction_of_improvement_fund` depending on whether the canary is operating substrate or R&D.
+- **Deploy churn throttle:** bounded by observed revert/abort rate and disjoint-surface predicate, not by a wall-clock quota.
 
 Exceeding any cap → AO Core rejects the `Spend` message; proposal stalls, does not fail silently.
 
@@ -278,7 +280,7 @@ Examples of signals that have been observed to produce real proposals in dev-tim
 - Ship any change that weakens Covenant thresholds, moderation classifiers, or crisis-escalation rules without governance.
 - Accept *"trust me, this is better"* without measurable evidence from sandbox/canary.
 - Run research compute during the weekly vulnerability window or during a Tier-3 incident.
-- Exceed the monthly envelope, even when the treasury is flush.
+- Exceed the ratio-denominated envelope, even when the treasury is flush.
 - Adopt closed-source dependencies without audit.
 - Adopt a dependency whose upstream license conflicts with the Protocol's public-good positioning.
 
@@ -292,7 +294,7 @@ Success metrics for the Auto-Research Loop:
 - Zero Covenant-weakening proposals shipped (autonomous *or* governance-approved)
 - Canary auto-abort correctly triggers ≥ 95% in synthetic regression tests
 - Auto-revert fires within 30 minutes of SLI breach, 100% of the time
-- Monthly research spend stays within envelope, every month
+- Research spend stays within the ratio-denominated envelope for every active accounting window
 - Quarterly red-team of the harm analyzer catches ≥ 90% of adversarial proposals
 - `PROPOSAL_LEDGER.md` is publicly readable on Arweave with zero gaps
 
