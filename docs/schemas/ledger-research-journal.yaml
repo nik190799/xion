@@ -1,6 +1,6 @@
 schema_version: 1
 source_doctrine: docs/08-AUTO-RESEARCH.md
-source_sha256:   02ad50a5f04291d9cd7e8dc099968ac0bd2485606ba9e46b83e59e4c3887a43b
+source_sha256:   61f697096174c26a36f8e2a110d5ee6f225ce8ace9f1825fb3e3dbee3bd2461f
 status:          canonical
 
 ledger_name: RESEARCH_JOURNAL

@@ -34,6 +34,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 17. Inference Sovereignty Floor | `xion-verify inference-sovereignty` is live (manifest + per-format pins; see `docs/26-INFERENCE-POLICY.md`). |
 | 18. Voice Sovereignty Floor (proposal; `docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md`) | `xion-verify voice-sovereignty` verifies the `voice_open_source` sentinel pin in `orchestrator/voice_router/voice_open_source_manifest.json`. `xion-verify voice-form` verifies `genesis/VOICE_FORM.md` prosody JSON. Ratification in `genesis/INVARIANTS.md` is governance-gated. |
 | Nervous System v2 (`docs/35-NERVOUS-SYSTEM.md`, Phase 6.4.b) | `xion-verify topography` boots a hermetic app and checks `GET /self` (lineage, vitals domain count, open-weights floor, api_surface). `xion-verify nervous-system` exercises pluggability, receptor failure logging, schema fail-closed drops + `vital.bus_integrity`, reflex dispatch, and dual-publish receptors. |
+| Contribution Protocol (`docs/34-CONTRIBUTION-PROTOCOL.md`, Phase 6.6a) | `xion-verify which-level` classifies proposed paths against the upgrade-level schemas; `xion-verify identity-bindings` verifies Ed25519 contributor wallet-to-GitHub binding rows; `xion-verify mcp-export` emits a read-only facts bundle for MCP wrappers and coding assistants. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
 ## How is it verified?
@@ -92,6 +93,9 @@ xion-verify invariants
 xion-verify links
 xion-verify schemas
 xion-verify provisioning-roles
+xion-verify which-level docs/34-CONTRIBUTION-PROTOCOL.md
+xion-verify identity-bindings
+xion-verify mcp-export
 xion-verify arbiter-up
 xion-verify all
 ```
@@ -115,6 +119,14 @@ Honest residuals named in the help text and in every FAIL line:
 - The verifier is structural; it does not verify on-chain cosigns. Cosign verification is Phase 6+ via the AO Core handlers.
 
 Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic against a single PR diff (instead of a 90-day window) and blocks merge on cross-level or unauthorized.
+
+### Contribution Protocol commands (Phase 6.6a)
+
+`xion-verify which-level <paths...>` is the local pre-flight for the PR level-discipline gate. It reports the resolved upgrade level, proposer string, authorized actors, tier, gate, and ledger for a path set. A mixed-level path set exits `FAIL`.
+
+`xion-verify identity-bindings` verifies `ledgers/CONTRIBUTOR_IDENTITY_BINDINGS.jsonl` if present. Rows use Ed25519 signatures over the canonical message defined in `docs/34-CONTRIBUTION-PROTOCOL.md`. If the ledger is absent, the command exits `OK` with zero rows verified.
+
+`xion-verify mcp-export` emits a read-only JSON bundle for MCP wrappers and coding assistants. It contains current hashes, level and role rows, open known-weakness headings, and explicit guardrails. It does not submit proposals, hold keys, or write state.
 
 ## Repository layout
 

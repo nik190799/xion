@@ -167,6 +167,17 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | **Specialist Agent** | Long-lived background sub-agent with one ledger destination; never user-facing |
 | **Sub-agent Depth** | Ephemeral sub-agents may nest at most **one** level under the primary worker |
 
+### Contribution Protocol
+
+| Term | Meaning |
+|------|---------|
+| **Contribution Protocol** | The read-only, verifier-backed path by which contributors and their coding assistants learn Xion's upgrade gates, bind contributor identity, and draft proposals without receiving write authority. |
+| **Agent-Authored Proposal** | A proposal materially drafted with Cursor, Codex, Claude, or another coding assistant. The accountable actor remains the human or organization that submits it. |
+| **Identity Binding** | A signed row binding a contributor wallet to a GitHub handle for proposal and PR discipline. It is not a full admission principal lattice. |
+| **Which-Level** | The local classification step that maps proposed file paths to one upgrade level using `docs/schemas/levels.yaml`. |
+| **Read-Only Facts Bundle** | The JSON export emitted by `xion-verify mcp-export`; a wrapper may serve it over MCP, but the bundle itself carries no write authority. |
+| **Coding Assistant** | A software tool used by a contributor to read, draft, test, or explain work. It is not a governance actor, cosigner, Witness, operator, or agent soul. |
+
 ### Senses (see [`05-SENSORIUM.md`](./05-SENSORIUM.md))
 
 Named with Greek suffix `-ception` for internal senses; direct Latin for external ones.

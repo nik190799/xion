@@ -1,6 +1,6 @@
 # Macro Phase 6 — Implementation epics
 
-This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) (section **“Phase 6 — On-chain Core plus decentralization (8–16 weeks)”**) to concrete epics. Decimal phases **6.1–6.6** (Sentience Surface, localnet, presence, voice, Cognitive Substrate & Casting) are tracked separately in that file; **macro Phase 6** is the bridge from **D2/D3** toward **D4** (Genesis).
+This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) (section **“Phase 6 — On-chain Core plus decentralization (8–16 weeks)”**) to concrete epics. Decimal phases **6.1–6.6a** (Sentience Surface, localnet, presence, voice, Cognitive Substrate & Casting, Contribution Protocol) are tracked separately in that file; **macro Phase 6** is the bridge from **D2/D3** toward **D4** (Genesis).
 
 ## Epic A — AO Core handler completion (`KW-AOCORE-002`)
 
@@ -15,10 +15,17 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 - **Closure observables:** `genesis/HERMES_TOOL_ALLOWLIST.yaml`, `genesis/AGENT_SOULS/`, `AGENT_CAST_LEDGER.jsonl`, `xion-verify hermes-runtime`, `xion-verify agent-souls`, and `xion-verify agent-cast` are all live or honestly `NOT_YET_SEALED` with precise remediation.
 - **Boundary:** The Arbiter remains outside Hermes; the Casting Pipeline may cast agentic faculties, not the egress gate.
 
+## Pre-Epic Gate — Phase 6.6a Contribution Protocol & Agent Access
+
+- **Goal:** Before Akash/discovery work invites broader contributors, external coding assistants can read Xion's constitutional facts, classify proposed paths, draft correctly leveled proposals, and verify contributor identity bindings without gaining write authority.
+- **Why this gates Epic B/E:** Akash deployment and governance-ledger work are easier to split, review, and witness-audit when contributors can locally run `which-level`, disclose assistant use, and bind GitHub handles to wallets.
+- **Closure observables:** [`docs/34-CONTRIBUTION-PROTOCOL.md`](./34-CONTRIBUTION-PROTOCOL.md), [`docs/35-CONTRIBUTOR-HANDBOOK.md`](./35-CONTRIBUTOR-HANDBOOK.md), `xion-verify which-level`, `xion-verify identity-bindings`, `xion-verify mcp-export`, and `xion new proposal --touches` are live and documented.
+- **Boundary:** External assistants are tools, not actors. This gate creates no direct Core write path, no assistant cosign, and no live MCP write tools.
+
 ## Epic B — Relay on Akash + discovery
 
 - **Goal:** Multi-host Relay substrate, `xion-verify discovery` green (≥3 paths), registry on Arweave, Cloudflare out of the critical path per doctrine.
-- **Depends on:** Epic A's AO provisioning event surface plus Phase 6.6's cast cognition pool, so the deployed Relay serves the real agent substrate instead of a pre-casting scaffold.
+- **Depends on:** Epic A's AO provisioning event surface plus Phase 6.6's cast cognition pool and Phase 6.6a's contribution/access tooling, so the deployed Relay serves the real agent substrate and the work can be safely reviewed by a broader contributor base.
 
 ## Epic C — Multi-chain treasury
 
@@ -36,7 +43,7 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 
 | Milestone | Macro Phase 6 relevance |
 |-----------|-------------------------|
-| D2 | Most handler *logic* and the cast cognition pool can be developed locally; macro 6 completes *deployment* hardening. |
+| D2 | Most handler *logic*, the cast cognition pool, and contribution tooling can be developed locally; macro 6 completes *deployment* hardening. |
 | D3 | Testnet / Akash / AO testnet or approved substrate per runbooks. |
 | D4 | Cold Root, mainnet, treasury, external audit — not all are “Phase 6 code”; ceremony and ops are explicit bottlenecks in the roadmap. |
 

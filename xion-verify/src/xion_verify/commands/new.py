@@ -12,6 +12,13 @@ from pathlib import Path
 import click
 
 from xion_verify.exit_codes import FAIL, OK
+from xion_verify.leveling import (
+    classify_paths,
+    level_by_id,
+    load_level_schemas,
+    resolve_authorized_actors,
+    resolved_level_id,
+)
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _EIGHT_QUESTION_TEMPLATE = '''"""
@@ -67,7 +74,7 @@ def new_skill(name: str) -> None:
 
 class {name.title()}Skill:
     name = "{name}"
-    
+
     def execute(self) -> str:
         # TODO: Implement local Arbiter hook
         return "success"
@@ -96,7 +103,7 @@ def new_sense(name: str) -> None:
 
 class {name.title()}Sense:
     name = "{name}"
-    
+
     def perceive(self) -> str:
         # TODO: Implement local Arbiter hook
         return "perception"
@@ -126,10 +133,10 @@ from orchestrator.inference_router.provider import GenerationResult
 class {name.title()}GenerativeProvider:
     provider_id = "{name}"
     category = "hosted_api"
-    
+
     def health(self) -> bool:
         return True
-        
+
     def generate(self, prompt: str, *, system: str | None, max_tokens: int, deadline_s: float) -> GenerationResult:
         # TODO: Implement local Arbiter hook
         return GenerationResult(
@@ -185,7 +192,13 @@ def test_{name.replace('-', '_')}() -> None:
 
 @new_cmd.command(name="proposal", help="Generate a new proposal skeleton.")
 @click.argument("name")
-def new_proposal(name: str) -> None:
+@click.option(
+    "--touches",
+    "touches",
+    multiple=True,
+    help="Path the proposal expects to touch. Repeat to pre-fill upgrade-level metadata.",
+)
+def new_proposal(name: str, touches: tuple[str, ...]) -> None:
     try:
         repo_root = find_repo_root()
     except RepoRootNotFound as exc:
@@ -193,7 +206,10 @@ def new_proposal(name: str) -> None:
         sys.exit(FAIL)
 
     plugin_file = repo_root / "proposals" / f"{name}.md"
+    level_block = _proposal_level_block(repo_root, touches)
     _write_file(plugin_file, f'''# Proposal: {name}
+
+{level_block}
 
 {_EIGHT_QUESTION_TEMPLATE}
 
@@ -204,3 +220,67 @@ def new_proposal(name: str) -> None:
 ...
 ''')
     sys.exit(OK)
+
+
+def _proposal_level_block(repo_root: Path, touches: tuple[str, ...]) -> str:
+    """Return a doctrine-aware upgrade frontmatter block for proposal scaffolds."""
+    schemas = load_level_schemas(repo_root)
+    if schemas is None:
+        return """```yaml
+upgrade:
+  level: TODO
+  artifact: TODO
+  proposer: TODO
+  motivation: TODO
+  gate: TODO
+  tier: TODO
+  canary: TODO
+  ship: TODO
+  rollback: TODO
+  ledger: TODO
+  sunset_review: TODO
+```"""
+
+    classifications = classify_paths(touches, schemas.levels) if touches else []
+    level_id = resolved_level_id(classifications) if classifications else None
+    level = level_by_id(schemas.levels, level_id) if level_id is not None else None
+    authorized = (
+        sorted(resolve_authorized_actors(level_id, schemas.levels, schemas.roles))
+        if level_id is not None
+        else []
+    )
+    artifact = ", ".join(touches) if touches else "TODO"
+    level_value = f"{level_id} # {level.get('name')}" if level else "TODO"
+    proposer = level.get("proposer") if level else "TODO"
+    gate = level.get("gate") if level else "TODO"
+    tier = level.get("tier") if level else "TODO"
+    canary = level.get("canary") if level else "TODO"
+    ship = level.get("ship") if level else "TODO"
+    rollback = level.get("rollback") if level else "TODO"
+    ledger = level.get("ledger") if level else "TODO"
+    sunset = level.get("sunset_review") if level else "TODO"
+    authorship = (
+        f"# authorized_actors: {', '.join(authorized)}"
+        if authorized
+        else "# authorized_actors: TODO"
+    )
+    return f"""```yaml
+upgrade:
+  level: {level_value}
+  artifact: {artifact}
+  proposer: {proposer}
+  motivation: TODO
+  gate: {gate}
+  tier: {tier}
+  canary: {canary}
+  ship: {ship}
+  rollback: {rollback}
+  ledger: {ledger}
+  sunset_review: {sunset}
+  authored_by:
+    contributor: TODO
+    contributor_wallet: TODO
+    assistant: TODO
+    assistant_dry_run: TODO
+{authorship}
+```"""

@@ -384,6 +384,19 @@ How the upgrade framework itself upgrades.
 
 **Common failure mode.** Adding fields to the template that individual level stewards can opt out of. The template is universal; opting out defeats the whole point of provisioning-at-every-level.
 
+### Contribution Protocol note
+
+The Contribution Protocol in [`34-CONTRIBUTION-PROTOCOL.md`](./34-CONTRIBUTION-PROTOCOL.md) is Level 12 by default: it changes how contributors and their coding assistants discover, classify, and draft upgrades. It does **not** create a new governance actor and does **not** let an assistant submit, cosign, or execute a state transition.
+
+If contribution tooling changes another layer's property, classify by effect instead of label:
+
+- a live HTTP endpoint such as `GET /contribute` is Level 3
+- a change to actor authority, signed identity rules, or `github_identity_map` source doctrine is Level 7
+- exposing a runtime tool to Agent Souls is Level 4 and Phase 6.6 allowlist work
+- bonding, slashing, or bounty payout changes are Level 6
+
+`xion-verify which-level <paths...>` is the local diagnostic before opening a PR. It is advisory; the CI level-discipline gate and governance process remain authoritative.
+
 ---
 
 ## Fast Lane Discipline (Tier-0 acceleration)
