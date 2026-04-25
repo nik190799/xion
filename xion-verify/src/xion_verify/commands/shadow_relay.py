@@ -11,13 +11,19 @@ import sys
 from pathlib import Path
 
 import click
-import httpx
 
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
+# httpx is imported lazily inside the command so that running any *other*
+# xion-verify subcommand (e.g. `ao-handlers`) does not require httpx to be
+# installed. shadow-relay is a Tier B optional check; the rest of the CLI
+# uses only stdlib for its network round-trips.
+
 
 async def _check_shadow_relay(port: int) -> list[str]:
+    import httpx  # noqa: PLC0415  (intentional: lazy dep — see module docstring above)
+
     errors = []
     base_url = f"http://127.0.0.1:{port}"
 

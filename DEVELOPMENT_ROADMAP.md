@@ -27,7 +27,7 @@ The bottleneck between D1 and D4 is **not code-writing**. It is: Cold Root cerem
 
 ```mermaid
 flowchart LR
-  P6_1[Phase 6.1: Lua skeleton + AO testnet<br/>partial close 2026-04-24<br/>see KW-AOCORE-001/004 + Phase 6.1.b] --> P6_2[Phase 6.2: Provisioning and Roles]
+  P6_1[Phase 6.1: Lua skeleton + AO seal<br/>closed 2026-04-25<br/>via Phase 6.1.b finalization] --> P6_2[Phase 6.2: Provisioning and Roles]
   P6_1 --> P6_3[Phase 6.3: Interaction Anchoring]
   P6_1 --> P6_4[Phase 6.4: Presence Emitters]
   P6_2 --> P6_2_done[xion new CLI<br/>roles.yaml<br/>verify provisioning-roles]
@@ -942,7 +942,7 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 ---
 
-## Phase 6.1 — AO Core Skeleton (Lua landed; testnet deploy pending — partial close 2026-04-24)
+## Phase 6.1 — AO Core Skeleton (closed 2026-04-25 via Phase 6.1.b finalization)
 
 **Status.** The Lua skeleton (`ao/core/main.lua` with `commit-state` and `attest` handlers against the pinned ABI) is in-tree, the orchestrator's `STATE_CHAIN_LEDGER` writer module (`orchestrator/ao_core/ledger.py`) is in-tree, and `xion-verify ao-handlers` is now structurally honest about the deploy gap: it returns `NOT_YET_SEALED` with a precise remediation message when `genesis/AO_DEPLOY_RECEIPT.json` self-describes as a placeholder, and only returns `OK` after a real AO compute-unit round-trip confirms tip parity. The earlier (2026-04-23) closure of `KW-AOCORE-001` was premature — the receipt was a placeholder and the verifier had a `"dummy" in pid` bypass that returned `OK` without a network call. Both are fixed.
 
@@ -957,7 +957,9 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 **What unblocks full close.** The operator runs the deploy from a working environment (WSL2 from this same machine is the smallest path), replaces the placeholder receipt, sends a first `commit-state` message, lets the orchestrator's writer record the seed row at `ledgers/STATE_CHAIN_LEDGER.jsonl`. At that point `xion-verify ao-handlers` returns `OK` and `KW-AOCORE-001` + `KW-AOCORE-003` close together.
 
-## Phase 6.1.b — Localnet substrate amendment (infrastructure landed 2026-04-24; seal still pending operator)
+**Closure (2026-04-25).** Done in the Phase 6.1.b finalization PR. The legacynet path turned out to be permanently blocked by upstream MU 500s, so Phase 6.1.b elected the `permaweb/ao-localnet` substrate (closure path #2 of `KW-AOCORE-004`); the seal landed against that substrate via WSL2 + Node 20 instead of from Windows. The deploy artifacts, verifier OK output, and process id are recorded in the Phase 6.1.b section below and in `CHANGELOG.md` § "[Phase 6.1.b finalization] — 2026-04-25". Closes `KW-AOCORE-001` and `KW-AOCORE-003`.
+
+## Phase 6.1.b — Localnet substrate amendment (closed 2026-04-25 — substrate sealed against `permaweb/ao-localnet`)
 
 **Why a sub-phase.** After Phase 6.1's partial close, the second deploy attempt found that the upstream legacy MU at `https://mu.ao-testnet.xyz` was returning HTTP 500 on every spawn and `aos` 2.0 had silently flipped its default to AO mainnet (forbidden at this phase per `docs/09-GOVERNANCE.md`'s Tier-3 cosign ceremony obligation). Both compounding blockers were captured as `KW-AOCORE-004`, which named three closure paths: wait for upstream MU recovery, adopt `permaweb/ao-localnet` Docker as a self-sufficient substrate, or collapse the seal into the Phase 6+ mainnet ceremony. Path #2 was elected because it removes the upstream dependency, is reproducible by any future operator (and CI), and gives the 17-handler backlog (`KW-AOCORE-002`) a working iteration substrate.
 
@@ -972,9 +974,13 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 - **Test coverage.** [`xion-verify/tests/test_ao_handlers.py`](./xion-verify/tests/test_ao_handlers.py) gains five new cases for the substrate gate: `localnet` allowed, `legacynet` allowed, `mainnet` rejected, unknown value rejected, missing on a non-placeholder receipt rejected. Plus a sixth case asserting `anchor-interaction-batch` (Phase 6.3 handler) is now in the expected set, bringing the verifier's expected-handler count from 19 to 20.
 - **KW pay-down narrative (no closure).** [`KW-AOCORE-004`](./KNOWN_WEAKNESSES.md)'s "Pay-down commitment" gains an explicit `[ELECTED 2026-04-24, Phase 6.1.b]` annotation on path #2, naming this PR's runbook + compose stack + verifier change as the supporting artifacts. **The KW remains OPEN** — election is not closure; the substrate is now reachable but the seal is not yet sealed.
 
-**What unblocks full close (and what this PR explicitly does not promise).** This PR is infrastructure-and-doctrine; the seal itself is the operator's next action: run `scripts/ao-localnet-up.sh` from WSL2, follow the new runbook to spawn an AO process and load `ao/core/main.lua`, send the first `commit-state`, then commit the resulting non-placeholder `genesis/AO_DEPLOY_RECEIPT.json` (with `substrate: "localnet"`) plus the seed `ledgers/STATE_CHAIN_LEDGER.jsonl` row in a follow-up small PR (≤5 files). At that point `xion-verify ao-handlers` flips from `NOT_YET_SEALED` to `OK`, `KW-AOCORE-001` + `KW-AOCORE-003` + `KW-AOCORE-004` all close together, the L30 mermaid label flips from "partial close 2026-04-24" to "closed", and the 17-handler backlog (`KW-AOCORE-002`) gains a working CI substrate to iterate against.
+**Closure (2026-04-25).** All four close-conditions named above completed in the Phase 6.1.b finalization PR:
+- `scripts/ao-localnet-seal.sh` (a one-shot replacement for the runbook's eleven REPL steps) was driven to exit-0 from `xion-verify ao-handlers` three times in a row against fresh `permaweb/ao-localnet` bring-ups, on different fresh process IDs each run (proving reproducibility, not luck). Six non-obvious traps surfaced and were fixed in-tree; full debrief in `docs/runbooks/AO_DEPLOY_LOCALNET.md` § "Lessons learned" and in `KNOWN_WEAKNESSES.md` § `KW-AOCORE-004`.
+- The committed canon is the third run's artifacts: [`genesis/AO_DEPLOY_RECEIPT.json`](./genesis/AO_DEPLOY_RECEIPT.json) names process id `7G35XZsoMbT7c8mkOt4cJALPJudpRzSnOUK0xaKs04Q` on substrate `localnet`, signer `55Plp-xUQ5B-955uJYjtCT4kR0eEf63lhzGd__pw1jY`, first commit-state message id `MXKxwuycUWluvfL4oeW4-HUXUHTuq0riTl_LzjBZtEw`, lua source sha256 `97970eeef4b5e908f85c7f5b55b4f526adf2e64f2a2879f1d874412e0322c799`. [`ledgers/STATE_CHAIN_LEDGER.jsonl`](./ledgers/STATE_CHAIN_LEDGER.jsonl) carries the corresponding row 0.
+- `xion-verify ao-handlers` returns `OK (20 handler schema(s) verified, Lua skeleton matches deployed hash, substrate=localnet, local tip parity verified against http://localhost:4004 at height=1)`.
+- `KW-AOCORE-001`, `KW-AOCORE-003`, and `KW-AOCORE-004` all closed in the same PR. The 17-handler backlog (`KW-AOCORE-002`) now has a working iteration substrate (Phase 6.2 + 6.3 ship the rest family-by-family).
 
-**Honest residual.** Receipts produced against localnet are NOT publicly queryable on Arweave — that durability bar is explicitly Phase 6+ and not a Phase 6.1 requirement (see the `docs/28-AO-CORE.md` substrate amendment for the doctrine reasoning). Operators must not mistake a localnet `process_id` for a mainnet identity.
+**Honest residual.** Receipts produced against localnet are NOT publicly queryable on Arweave — that durability bar is explicitly Phase 6+ and not a Phase 6.1 requirement (see the `docs/28-AO-CORE.md` substrate amendment for the doctrine reasoning). Operators must not mistake a localnet `process_id` for a mainnet identity. The path from "sealed against localnet" to "sealed against mainnet under Tier-3 cosign" is the Phase 6+ ceremony's job, not Phase 6.1's.
 
 ---
 

@@ -18,7 +18,25 @@ AuthorizedSigners = AuthorizedSigners or {
 -- Constants
 MAX_EVENT_WEIGHT = 100
 
--- Helper: Check authorization
+-- Helper: Check authorization.
+--
+-- IMPORTANT for future contract maintainers: `msg.From` is the ID of whoever
+-- *signed* the inbound DataItem. For an external owner-signed message that's
+-- the owner's wallet address (which we accept via `[Owner] = true` above). For
+-- a message produced by `Send({ Target = ao.id, ... })` from inside an `Eval`,
+-- `msg.From == ao.id` (the process itself), which is NOT the owner and is NOT
+-- in `AuthorizedSigners` — the message is rejected with `non_authorised_caller`
+-- and the rejection is invisible from inside the REPL because no exception is
+-- raised. This trap cost a half-day during the Phase 6.1.b seal: a `Send` from
+-- inside `aos --run "Send({Target=ao.id,...})"` was silently rejected and the
+-- operator-script wrote a receipt naming a process whose `StateTip` was still
+-- `{ height=0, root=zeros }`. The fix is to send `Commit-State` (and any other
+-- authorized action) externally, signed by the owner — see
+-- `scripts/ao-localnet-send-commit-state.cjs` for the template, and
+-- `docs/runbooks/AO_DEPLOY_LOCALNET.md` § "Lessons learned" for the full
+-- write-up. When the authority lattice (Phase 6.2) populates `AuthorizedSigners`
+-- with hot/warm-tier addresses, those addresses likewise must sign messages
+-- *outside* the process; an Eval-driven `Send` will still hit this branch.
 local function is_authorized(msg)
     return AuthorizedSigners[msg.From] == true
 end

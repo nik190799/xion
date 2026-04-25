@@ -181,56 +181,130 @@ def _read_latest_ledger_tip(ledger_path: Path) -> tuple[int, str] | None:
     return height, root
 
 
-def _fetch_gateway_tip(gateway_url: str, process_id: str) -> tuple[int | None, tuple[int, str] | None, str | None]:
-    """Read the AO compute unit's view of the process state.
+# Lua expression sent via the CU's /dry-run endpoint. Returns a JSON string
+# encoding the AO process's authoritative StateTip — height + root in the same
+# shape the verifier wants. Using dry-run (a side-effect-free Eval) means the
+# verifier can prove tip parity *without* signing a transaction or paying gas,
+# which preserves the "any third party with a CU URL can verify" property.
+_STATE_TIP_DRYRUN_LUA = (
+    'return require("json").encode({'
+    'state_tip_height = StateTip and StateTip.height or -1, '
+    'state_root_sha256 = StateTip and StateTip.root or ""'
+    "})"
+)
+
+
+def _fetch_gateway_tip(gateway_url: str, process_id: str, owner_address: str) -> tuple[int | None, tuple[int, str] | None, str | None]:
+    """Read the AO compute unit's view of the process state via /dry-run.
 
     Returns (exit_code_hint, (height, root) | None, message). exit_code_hint is
     NOT_YET_SEALED on network/parse failure (never fake-green), OK otherwise.
+
+    The legacy AO CU exposes the process *memory* under /state/<pid> (a binary
+    blob — useful for snapshots, not for tip parity), but the structured query
+    surface is /dry-run?process-id=<pid>: POST a minimal Eval message body and
+    receive `{ Output: { data: { output: <lua-return-string>, ... } }, ... }`.
+    We send a tiny `return json.encode({state_tip_height=..., state_root_sha256=...})`
+    expression and parse the inner string. This matches how aoconnect's `dryrun()`
+    helper queries process state and is the same surface the orchestrator uses.
+
+    The `owner_address` MUST match the process's stored Owner. AOS's default Eval
+    handler only *executes* the Data when `msg.From == Owner`; otherwise it falls
+    through to the generic message-printer and the response carries a "New Message
+    From <pid>: Action = Eval" banner string in `Output.data.output` instead of
+    the Lua return value. The CU populates `From` from the dry-run body's `Owner`
+    field (no signature is required because dry-run is side-effect-free), so
+    passing the owner here is both necessary and sufficient. The verifier reads
+    `owner_address` from the receipt's `signer_address` field — which any third
+    party reviewing the receipt has access to — so this preserves the trust model.
     """
-    url = f"{gateway_url.rstrip('/')}/state/{process_id}"
-    req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "xion-verify"})
+    url = f"{gateway_url.rstrip('/')}/dry-run?process-id={process_id}"
+    body_obj = {
+        "Id": "1234",
+        # See docstring: must equal the process's Owner so AOS evaluates Data
+        # rather than handing it to the default banner-printer.
+        "Owner": owner_address,
+        "Target": process_id,
+        "Anchor": "0",
+        "Tags": [{"name": "Action", "value": "Eval"}],
+        "Data": _STATE_TIP_DRYRUN_LUA,
+    }
+    body_bytes = json.dumps(body_obj).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body_bytes,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "xion-verify",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=_GATEWAY_TIMEOUT_S) as resp:
-            body = resp.read()
-            content_type = resp.headers.get("Content-Type", "")
+            raw = resp.read()
     except urllib.error.URLError as exc:
-        return NOT_YET_SEALED, None, f"AO gateway unreachable at {url}: {exc.reason}"
+        return NOT_YET_SEALED, None, f"AO CU /dry-run unreachable at {url}: {exc.reason}"
     except TimeoutError as exc:
-        return NOT_YET_SEALED, None, f"AO gateway timeout at {url}: {exc}"
+        return NOT_YET_SEALED, None, f"AO CU /dry-run timeout at {url}: {exc}"
     except OSError as exc:
-        return NOT_YET_SEALED, None, f"AO gateway socket error at {url}: {exc}"
+        return NOT_YET_SEALED, None, f"AO CU /dry-run socket error at {url}: {exc}"
 
     try:
-        text = body.decode("utf-8", errors="replace")
-    except Exception as exc:  # noqa: BLE001
-        return NOT_YET_SEALED, None, f"AO gateway response not decodable: {exc}"
+        outer = json.loads(raw.decode("utf-8", errors="replace"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return NOT_YET_SEALED, None, f"AO CU /dry-run response not JSON at {url}: {exc}"
 
-    parsed: Any = None
-    if "json" in content_type.lower() or text.lstrip().startswith(("{", "[")):
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError:
-            parsed = None
+    if not isinstance(outer, dict):
+        return NOT_YET_SEALED, None, f"AO CU /dry-run response not a JSON object at {url}: {str(outer)[:200]!r}"
 
-    if isinstance(parsed, dict):
-        height = parsed.get("state_tip_height")
-        if height is None:
-            height = parsed.get("height")
-        root = parsed.get("state_root_sha256")
-        if root is None:
-            root = parsed.get("root")
-        if isinstance(height, int) and isinstance(root, str) and len(root) == 64:
-            return OK, (height, root), None
+    output = outer.get("Output")
+    if not isinstance(output, dict):
+        return NOT_YET_SEALED, None, f"AO CU /dry-run response missing Output at {url}: {str(outer)[:200]!r}"
 
-    return (
-        NOT_YET_SEALED,
-        None,
-        (
-            f"AO gateway response shape unrecognized at {url}; "
-            f"expected JSON object containing `state_tip_height` (int) and `state_root_sha256` (64-char hex). "
-            f"Got: {text[:200]!r}"
-        ),
-    )
+    data = output.get("data")
+    inner_json: str | None = None
+    if isinstance(data, dict):
+        candidate = data.get("output")
+        if isinstance(candidate, str):
+            inner_json = candidate
+    elif isinstance(data, str):
+        inner_json = data
+
+    if inner_json is None:
+        return NOT_YET_SEALED, None, f"AO CU /dry-run Output.data missing string `output` at {url}: {str(output)[:200]!r}"
+
+    try:
+        inner = json.loads(inner_json)
+    except json.JSONDecodeError as exc:
+        return NOT_YET_SEALED, None, f"AO CU /dry-run inner Lua return is not JSON at {url}: {exc} (got {inner_json[:200]!r})"
+
+    if not isinstance(inner, dict):
+        return NOT_YET_SEALED, None, f"AO CU /dry-run inner JSON not an object at {url}: {str(inner)[:200]!r}"
+
+    height = inner.get("state_tip_height")
+    root = inner.get("state_root_sha256")
+
+    if not isinstance(height, int) or not isinstance(root, str) or len(root) != 64:
+        return (
+            NOT_YET_SEALED,
+            None,
+            (
+                f"AO CU /dry-run state shape unrecognized at {url}; "
+                "expected `state_tip_height` (int) and `state_root_sha256` (64-char hex). "
+                f"Got: {inner!r}"
+            ),
+        )
+
+    if height < 0:
+        return (
+            NOT_YET_SEALED,
+            None,
+            f"AO CU /dry-run reports StateTip uninitialized at {url} (height={height}); "
+            "the process likely never received its first commit-state.",
+        )
+
+    return OK, (height, root), None
 
 
 def _check_receipt_and_gateway(repo_root: Path, schema_count: int) -> tuple[int, str]:
@@ -315,7 +389,11 @@ def _check_receipt_and_gateway(repo_root: Path, schema_count: int) -> tuple[int,
     local_height, local_root = local_tip
 
     gateway_url = os.environ.get("XION_AO_GATEWAY_URL", _DEFAULT_GATEWAY)
-    code_hint, gateway_tip, msg = _fetch_gateway_tip(gateway_url, receipt["process_id"])
+    code_hint, gateway_tip, msg = _fetch_gateway_tip(
+        gateway_url,
+        receipt["process_id"],
+        receipt["signer_address"],
+    )
     if gateway_tip is None:
         return code_hint, f"ao-handlers: NOT_YET_SEALED ({msg}; cannot prove tip parity offline)"
 

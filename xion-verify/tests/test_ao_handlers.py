@@ -245,7 +245,7 @@ def test_ao_handlers_not_yet_sealed_gateway_unreachable(tmp_path: Path, monkeypa
     monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         "xion_verify.commands.ao_handlers._fetch_gateway_tip",
-        lambda gw, pid: (NYS, None, "AO gateway unreachable at https://test.invalid: name resolution failure"),
+        lambda gw, pid, owner: (NYS, None, "AO gateway unreachable at https://test.invalid: name resolution failure"),
     )
     _seed_full_schemas(tmp_path)
     lua = _seed_lua(tmp_path)
@@ -262,7 +262,7 @@ def test_ao_handlers_fail_tip_parity_mismatch(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         "xion_verify.commands.ao_handlers._fetch_gateway_tip",
-        lambda gw, pid: (OK, (2, "b" * 64), None),
+        lambda gw, pid, owner: (OK, (2, "b" * 64), None),
     )
     _seed_full_schemas(tmp_path)
     lua = _seed_lua(tmp_path)
@@ -282,7 +282,7 @@ def test_ao_handlers_ok_full_round_trip(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         "xion_verify.commands.ao_handlers._fetch_gateway_tip",
-        lambda gw, pid: (OK, (1, "a" * 64), None),
+        lambda gw, pid, owner: (OK, (1, "a" * 64), None),
     )
     _seed_full_schemas(tmp_path)
     lua = _seed_lua(tmp_path)
@@ -389,7 +389,7 @@ def test_ao_handlers_ok_substrate_localnet(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         "xion_verify.commands.ao_handlers._fetch_gateway_tip",
-        lambda gw, pid: (OK, (1, "a" * 64), None),
+        lambda gw, pid, owner: (OK, (1, "a" * 64), None),
     )
     _seed_full_schemas(tmp_path)
     lua = _seed_lua(tmp_path)
@@ -405,7 +405,7 @@ def test_ao_handlers_ok_substrate_legacynet(tmp_path: Path, monkeypatch) -> None
     monkeypatch.setattr("xion_verify.commands.ao_handlers.find_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         "xion_verify.commands.ao_handlers._fetch_gateway_tip",
-        lambda gw, pid: (OK, (1, "a" * 64), None),
+        lambda gw, pid, owner: (OK, (1, "a" * 64), None),
     )
     _seed_full_schemas(tmp_path)
     lua = _seed_lua(tmp_path)

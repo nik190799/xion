@@ -98,6 +98,59 @@ else
   log "Wallets already generated under $WALLETS_DIR/"
 fi
 
+# ---- Patch upstream MU: GraphQL fallback for `Scheduler` on process (localnet) --
+# On ArLocal, getProcess() can cache gateway data without a `Scheduler` tag; aos then
+# hits "No Scheduler tag found on process ...". Upstream only vendors services/mu/Dockerfile
+# (MU source is cloned inside the image from permaweb/ao); the patch script fetches
+# schedulerLocations.js, writes schedulerLocations.xion.js into the build context, and
+# injects COPY into the Dockerfile. Rebuild mu when the overlay or Dockerfile changed.
+_MU_DF="$UPSTREAM_DIR/services/mu/Dockerfile"
+if [ ! -f "$_MU_DF" ]; then
+  log "warn: MU patch skipped (missing $_MU_DF). Clone upstream first (this script normally creates .upstream/)."
+else
+  log "scheduling getProcess GraphQL tag patch (MU Dockerfile: $_MU_DF)"
+  if patch_log="$(XION_AO_LOCALNET_UPSTREAM_DIR="$UPSTREAM_DIR" bash "$SCRIPT_DIR/patch-ao-localnet-mu-graphql-fallback.sh" 2>&1)"; then
+    if [ -n "$patch_log" ]; then
+      while IFS= read -r pline; do
+        [ -n "$pline" ] && log "  $pline"
+      done <<EOF
+$patch_log
+EOF
+    fi
+    if echo "$patch_log" | grep -qE " patched |injected Dockerfile" 2>/dev/null; then
+      log "Rebuilding ao-localnet-mu (Xion GraphQL tag fallback) — required for local aos; may take a few minutes …"
+      docker compose -f "$INFRA_DIR/docker-compose.yaml" build mu
+    elif echo "$patch_log" | grep -qF "already up to date" 2>/dev/null; then
+      log "MU schedulerLocations overlay already current; no rebuild."
+    elif echo "$patch_log" | grep -qE "pattern not found|skip|layout changed" 2>/dev/null; then
+      log "warn: MU patch did not apply (see lines above). aos may fail with 'No Scheduler tag found on process' until fixed."
+    fi
+  else
+    log "warn: patch-ao-localnet-mu-graphql-fallback.sh failed; continuing (see above)"
+  fi
+fi
+
+# ---- Patch upstream CU: Node 22+ (current ao/servers/cu main uses Promise.withResolvers) ----
+# Upstream pins FROM node:20-alpine. Main-branch CU then throws in readResult:
+#   Promise.withResolvers is not a function → aos "Could not connect to process" (not a timing race).
+if [ -f "$SCRIPT_DIR/patch-ao-localnet-cu-node22.sh" ]; then
+  set +e
+  cu_log="$(XION_AO_LOCALNET_UPSTREAM_DIR="$UPSTREAM_DIR" bash "$SCRIPT_DIR/patch-ao-localnet-cu-node22.sh" 2>&1)"
+  cu_rc=$?
+  set -e
+  if [ -n "$cu_log" ]; then
+    while IFS= read -r cline; do
+      [ -n "$cline" ] && log "  $cline"
+    done <<EOF
+$cu_log
+EOF
+  fi
+  if [ "$cu_rc" -eq 2 ]; then
+    log "Rebuilding ao-localnet-cu (Node 22 base) …"
+    docker compose -f "$INFRA_DIR/docker-compose.yaml" build cu
+  fi
+fi
+
 # ---- Bring up the stack via the wrapper compose -----------------------------
 log "Starting localnet stack (first run can take 10-15 min while building from source) ..."
 docker compose -f "$INFRA_DIR/docker-compose.yaml" up -d --wait
@@ -106,14 +159,19 @@ docker compose -f "$INFRA_DIR/docker-compose.yaml" up -d --wait
 log "Polling $GATEWAY_URL for CU readiness (timeout ${HEALTH_TIMEOUT_S}s) ..."
 deadline=$(( $(date +%s) + HEALTH_TIMEOUT_S ))
 while :; do
-  # The CU at /state/<arbitrary-pid> typically returns 404 when the process
-  # is unknown but a 5xx if the CU itself is not ready. Either a 200 OR a
-  # 404 is "the CU is responding"; only network-level failure or 5xx means
-  # not-ready.
-  http_code="$(curl -s -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/state/readiness-probe-pid" || true)"
-  if [ "$http_code" = "200" ] || [ "$http_code" = "404" ]; then
-    log "CU is responding at $GATEWAY_URL (HTTP $http_code on /state/<probe>)"
-    break
+  # The CU is expected to be reachable; depending on the upstream `ao/servers/cu`
+  # build, `/state/<pid>` for an unknown or synthetic PID may be 200, 404, or
+  # 500. A connection-level failure (no TCP response) is what this poll is
+  # really guarding against, so we treat *any* HTTP response code 200–599 as
+  # "CU is speaking HTTP on the gateway port."
+  http_code="$(
+    curl -sS -m 2 -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/state/readiness-probe-pid" 2>/dev/null || true
+  )"
+  if [ -n "$http_code" ] && [ "$http_code" != "000" ]; then
+    if [ "$http_code" -ge 200 ] 2>/dev/null && [ "$http_code" -le 599 ] 2>/dev/null; then
+      log "CU is responding at $GATEWAY_URL (HTTP $http_code on /state/<probe>)"
+      break
+    fi
   fi
   now=$(date +%s)
   if [ "$now" -ge "$deadline" ]; then
@@ -135,9 +193,12 @@ cat <<EOF
   Bundler:           http://localhost:4007
 
 Next steps for the Phase 6.1 deploy:
+  0. Seed the mock ArLocal chain (required once per fresh volume; otherwise
+     aos spawn often fails with "Invalid Return 'undefined'"):
+       bash scripts/ao-localnet-seed.sh
   1. Follow docs/runbooks/AO_DEPLOY_LOCALNET.md to spawn an aos process
      against the local CU/MU URLs, load ao/core/main.lua, and send the
-     first Commit-State message.
+     first Commit-State message (or: bash scripts/ao-localnet-seal.sh).
   2. After capturing the receipt fields, set XION_AO_GATEWAY_URL=$GATEWAY_URL
      and run: xion-verify ao-handlers
   3. Tear down later with:

@@ -1,11 +1,11 @@
 {
-    "status": "placeholder",
-    "process_id": "ao_testnet_dummy_pid_1234567890",
-    "timestamp": 1682300000,
+    "status": "deployed",
+    "process_id": "7G35XZsoMbT7c8mkOt4cJALPJudpRzSnOUK0xaKs04Q",
+    "timestamp": 1777093131,
     "network": "testnet",
-    "substrate": null,
-    "signer_address": null,
-    "lua_source_sha256": null,
-    "aos_version": null,
-    "note": "PLACEHOLDER \u2014 no real AO deployment has been performed. xion-verify ao-handlers reads `status` and returns NOT_YET_SEALED until this file is replaced by a real receipt produced by a successful `aos` deploy. Allowed values for `substrate` (Phase 6.1.b, enforced by xion-verify): \"legacynet\" (upstream AO testnet via https://cu.ao-testnet.xyz) | \"localnet\" (Xion-controlled permaweb/ao-localnet Docker stack via http://localhost:4004; see infra/ao-localnet/ and docs/runbooks/AO_DEPLOY_LOCALNET.md). \"mainnet\" is FORBIDDEN at Phase 6.1; reserved for Phase 6+ Tier-3 ceremony per docs/09-GOVERNANCE.md. The legacy `network` field is retained for backward compatibility but the verifier prefers `substrate`. See KW-AOCORE-001, KW-AOCORE-003, KW-AOCORE-004."
+    "substrate": "localnet",
+    "signer_address": "55Plp-xUQ5B-955uJYjtCT4kR0eEf63lhzGd__pw1jY",
+    "lua_source_sha256": "97970eeef4b5e908f85c7f5b55b4f526adf2e64f2a2879f1d874412e0322c799",
+    "aos_version": "AOS Client Version: 2.0.11. 2025",
+    "first_commit_state_message_id": "MXKxwuycUWluvfL4oeW4-HUXUHTuq0riTl_LzjBZtEw"
 }

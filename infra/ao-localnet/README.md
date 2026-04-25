@@ -90,6 +90,17 @@ Document any such fallback in `KW-AOCORE-004` for the next operator. The doctrin
 
 Optional profile-gated services (port 4001 ardrive-web, 4005 turbo, 4006 scar) are not enabled by default and not used by Xion. The bring-up script does not enable them.
 
+## Known seal traps (read this before debugging your first failed seal)
+
+The Phase 6.1.b finalization run (2026-04-25) surfaced six non-obvious traps that each look at the surface like a different problem ("Could not connect to process", "process drifts on every aos call", "verifier returns NOT_YET_SEALED with the wrong reason"). All six are now fixed in-tree, but if you're modifying any part of the seal pipeline, knowing what the symptoms map to will save hours. Full chronological debrief with symptoms + fix lanes lives in [docs/runbooks/AO_DEPLOY_LOCALNET.md](../../docs/runbooks/AO_DEPLOY_LOCALNET.md) § "Lessons learned (Phase 6.1.b finalization, 2026-04-25)". One-line index:
+
+1. **CU on Node 20** → `Promise.withResolvers is not a function` server-side, surfaces as "Could not connect to process". Fix: `scripts/patch-ao-localnet-cu-node22.sh` (run automatically by `ao-localnet-up.sh`).
+2. **`aoconnect` clobbers `AO_URL`** → `aos` 2.0's legacy sentinel is wiped, requests silently route through HyperBEAM. Fix: `scripts/patch-npm-aoconnect-preserve-ao-url.sh`.
+3. **`--run` swallows leading `--`** → minimist parses any value starting with `-` as `{ run: true }`; `Buffer.from(true)` blows up. Fix: prepend a space to the Lua source (handled by `scripts/ao-localnet-seal.sh`).
+4. **ArLocal indexes spawn DataItems lazily** → back-to-back `aos $NAME` calls re-spawn instead of resuming. Fix: capture the pid from step 1 and pass *that* (43-char base64url) as the name to subsequent calls; `register()`'s `isAddress` branch then short-circuits the gql lookup.
+5. **`Send({Target=ao.id,...})` from inside an Eval has `msg.From == ao.id`, not `Owner`** → silently rejected with `non_authorised_caller`. Fix: send externally signed by the owner — see `scripts/ao-localnet-send-commit-state.cjs` (CJS, not ESM, because Node's ESM loader doesn't honor `NODE_PATH` for `exports`-field resolution).
+6. **CU's `/state/<pid>` is binary, not JSON** → the verifier needs `POST /dry-run?process-id=<pid>` with a Lua-encoded body, AND the dry-run body's `Owner` field must equal the process's actual owner (otherwise AOS returns its banner-print string instead of the eval result). Fix: `xion-verify/src/xion_verify/commands/ao_handlers.py` does this; threads `signer_address` from the receipt.
+
 ## Doctrine cross-references
 
 - [docs/28-AO-CORE.md](../../docs/28-AO-CORE.md) § "Substrate amendment (Phase 6.1.b, 2026-04-XX)"
