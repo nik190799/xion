@@ -95,4 +95,6 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "interaction-anchor",
     "presence",
     "modality-consent",
+    "nervous-system",
+    "topography",
 )

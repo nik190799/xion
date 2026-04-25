@@ -22,3 +22,8 @@ _NAMES: dict[int, str] = {
 def name(code: int) -> str:
     """Human-readable label for an exit code."""
     return _NAMES.get(code, f"UNKNOWN({code})")
+
+
+def exit_code_to_system_exit(code: int) -> int:
+    """Map verifier exit code to the process return code (identity)."""
+    return code

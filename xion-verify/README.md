@@ -31,6 +31,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 15. Drive Vector Lock | `xion-verify drive-vector` runs both the static doctrine audit of `docs/08-AUTO-RESEARCH.md` AND a live AST walk of `orchestrator.volition.compute_drive_vector` against `SOURCE_WHITELIST` (Phase 5c). `xion-verify drive` re-reads `docs/18-VOLITION.md` Part III and asserts `GENESIS_WEIGHTS` byte-matches doctrine (Phase 5c live). |
 | 16. Treasury Tier Separation | `xion-verify treasury`, `treasury-flow`, `foundation-reserve` are `NOT_YET_SEALED`. |
 | 17. Inference Sovereignty Floor | `xion-verify inference-sovereignty` is `NOT_YET_SEALED` until the Inference Router and `open_weights_manifest.json` ship in Phase 5. |
+| Nervous System v2 (`docs/35-NERVOUS-SYSTEM.md`, Phase 6.4.b) | `xion-verify topography` boots a hermetic app and checks `GET /self` (lineage, vitals domain count, open-weights floor, api_surface). `xion-verify nervous-system` exercises pluggability, receptor failure logging, schema fail-closed drops + `vital.bus_integrity`, reflex dispatch, and dual-publish receptors. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
 ## How is it verified?

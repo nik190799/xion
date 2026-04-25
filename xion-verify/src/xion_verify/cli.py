@@ -21,8 +21,8 @@ import click
 
 from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
-from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.ao_handlers import verify_ao_handlers
+from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.auto_research import auto_research
 from xion_verify.commands.charter_signed import charter_signed
@@ -48,13 +48,14 @@ from xion_verify.commands.interaction_anchor import cli as interaction_anchor
 from xion_verify.commands.ledgers import ledgers
 from xion_verify.commands.links import links
 from xion_verify.commands.local import local_cmd
+from xion_verify.commands.modality_consent import modality_consent
+from xion_verify.commands.nervous_system import nervous_system_cli
 from xion_verify.commands.new import new_cmd
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
 from xion_verify.commands.operator_dependency import operator_dependency
-from xion_verify.commands.pricing import pricing
-from xion_verify.commands.presence import presence
-from xion_verify.commands.modality_consent import modality_consent
 from xion_verify.commands.pre_genesis import pre_genesis
+from xion_verify.commands.presence import presence
+from xion_verify.commands.pricing import pricing
 from xion_verify.commands.provisioning_roles import provisioning_roles
 from xion_verify.commands.rebuild import rebuild
 from xion_verify.commands.refund_fidelity import refund_fidelity
@@ -63,15 +64,16 @@ from xion_verify.commands.refusal_rate import refusal_rate
 from xion_verify.commands.registries import registries
 from xion_verify.commands.replay_corpus import replay_corpus
 from xion_verify.commands.research_sources import research_sources
-from xion_verify.commands.shadow_relay import shadow_relay
 from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
+from xion_verify.commands.shadow_relay import shadow_relay
 from xion_verify.commands.skill_bounty import skill_bounty
 from xion_verify.commands.soul_prompt import soul_prompt
 from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.substrates import substrates
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
+from xion_verify.commands.topography import topography_cli
 from xion_verify.commands.vitals import vitals
 from xion_verify.commands.voice_property import voice_property
 from xion_verify.commands.web_client import web_client
@@ -129,6 +131,8 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "provisioning-roles": provisioning_roles,
     "presence": presence,
     "modality-consent": modality_consent,
+    "nervous-system": nervous_system_cli,
+    "topography": topography_cli,
 }
 
 
