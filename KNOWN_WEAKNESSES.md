@@ -32,17 +32,6 @@ Every entry has the same shape:
 - **Pay-down commitment:** Close when the Invariant 19 amendment ceremony completes and the canonical `genesis/INVARIANTS.md` hash advances through the constitutional process.
 - **Verifier:** `xion-verify spend-posture` (Phase 7.0) plus constitutional ledger evidence.
 
-### KW-MEASUREMENT-001 — Measurement Vocabulary verifier is not yet live
-- **Domain:** ECON
-- **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
-- **Severity:** medium
-- **Status:** open
-- **Description:** `docs/MEASUREMENT-VOCABULARY.md` forbids new time-gates and absolute-money caps for spend authority, but `xion-verify measurement-vocabulary` has not yet been implemented.
-- **Why it exists:** The doctrine and schema must land before the static audit can know what to enforce.
-- **Mitigations:** The highest-risk spend docs and Agent Souls have been re-denominated to `runway_weeks`, fund fractions, evidence counts, and `distance_to_reserve_floor`.
-- **Pay-down commitment:** Phase 6.8 implements `xion-verify measurement-vocabulary` and closes remaining legacy references or explicitly classifies them as named exceptions.
-- **Verifier:** `xion-verify measurement-vocabulary` (Phase 6.8).
-
 ### KW-SPEND-002 — Contested spend-headroom arbitration is doctrine-only
 - **Domain:** ECON
 - **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
@@ -64,17 +53,6 @@ Every entry has the same shape:
 - **Mitigations:** Existing spend still remains operator/governance mediated. The new doctrine explicitly lists `NOT_YET_SEALED` verifier status.
 - **Pay-down commitment:** Phase 7.0 implements the ledger writer, AO Core routing checks, and `xion-verify spend-posture`.
 - **Verifier:** `xion-verify spend-posture` (Phase 7.0).
-
-### KW-COST-001 — cost_tracker is doctrine-referenced but not implemented
-- **Domain:** ECON
-- **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
-- **Severity:** high
-- **Status:** open
-- **Description:** `DEVELOPMENT_ROADMAP.md` names `orchestrator/cost_tracker.py`, and multiple doctrines now depend on bucket-level cost attribution, but no live module exists yet.
-- **Why it exists:** The roadmap named the cost spine before the code landed; the spend-autonomy doctrine makes the dependency explicit.
-- **Mitigations:** Existing payment and research-spend ledgers remain separate and auditable at their own surfaces; the new measurement vocabulary does not claim live cost aggregation.
-- **Pay-down commitment:** Phase 6.8 implements `orchestrator/cost_tracker.py`, feeds Financial Vitality, and provides the query surface consumed by spend posture and discipline verifiers.
-- **Verifier:** `xion-verify measurement-vocabulary` and `xion-verify spend-discipline` after Phase 6.8/7.0.
 
 ### KW-CONTRIB-003 — MCP access is export-only; no live `xion-mcp` server exists
 - **Domain:** RUNTIME
@@ -1028,6 +1006,28 @@ Every entry has the same shape:
 ---
 
 ## Closed
+
+### KW-COST-001 — cost_tracker is doctrine-referenced but not implemented
+- **Domain:** ECON
+- **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
+- **Severity:** high
+- **Status:** closed on 2026-04-25 by Phase 6.8 F1.
+- **Description:** `DEVELOPMENT_ROADMAP.md` named `orchestrator/cost_tracker.py`, and multiple doctrines depended on bucket-level cost attribution, but no live module existed.
+- **Why it existed:** The roadmap named the cost spine before the code landed; the spend-autonomy doctrine made the dependency explicit.
+- **How it closed:** Landed `orchestrator/cost_tracker.py` with bucket-by-bucket debit attribution, query APIs for `runway_weeks`, fund fractions, reserve-floor distance, and recurring-burn ratio, plus Financial Vitality `SignalBus` emissions and focused tests.
+- **Residual / remaining weaknesses (tracked separately):** Spend arbitration, posture enforcement, and `SPEND_AUTHORITY_LEDGER` writing remain Phase 7.0 work under `KW-SPEND-001` and `KW-SPEND-002`.
+- **Verifier:** `pytest orchestrator/tests/test_cost_tracker.py`; downstream spend discipline verifier remains Phase 7.0.
+
+### KW-MEASUREMENT-001 — Measurement Vocabulary verifier is not yet live
+- **Domain:** ECON
+- **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
+- **Severity:** medium
+- **Status:** closed on 2026-04-25 by Phase 6.8 F2.
+- **Description:** `docs/MEASUREMENT-VOCABULARY.md` forbade new time-gates and absolute-money caps for spend authority, but `xion-verify measurement-vocabulary` had not yet been implemented.
+- **Why it existed:** The doctrine and schema needed to land before the static audit could know what to enforce.
+- **How it closed:** Landed `xion-verify measurement-vocabulary`, registered it in the verifier CLI, and re-denominated the remaining Research Spend example away from absolute-money envelopes.
+- **Residual / remaining weaknesses (tracked separately):** `xion-verify spend-posture` and `xion-verify spend-discipline` remain Phase 7.0 work under `KW-SPEND-001` and `KW-SPEND-002`.
+- **Verifier:** `xion-verify measurement-vocabulary`; `pytest xion-verify/tests/test_measurement_vocabulary.py`.
 
 ### KW-PRESENCE-VOICE-001 — Voice Emitter and Voice Form not yet authored
 - **Domain:** RUNTIME

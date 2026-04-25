@@ -44,6 +44,7 @@ flowchart LR
   P6_6a --> P6_6a_done["which-level<br/>identity-bindings<br/>mcp-export<br/>contributor handbook"]
   P6_6 --> P6_7[Phase 6.7: Vessel Integration Framework<br/>Vessel Compact + modular modes]
   P6_7 --> P6_7_done["docs/37-VESSELS.md<br/>vessel-compact/media-provenance/registry stubs named<br/>robot + phone + hardware + media modes"]
+  P6_7 --> P6_8[Phase 6.8: Trust-Earned Spend Authority<br/>partially closed F1+F2 2026-04-25<br/>cost_tracker + measurement-vocabulary]
   P6_6a --> MACRO_B
   P6_7 --> MACRO_B[Macro Phase 6 Epic B<br/>Akash Relay + discovery]
 ```
@@ -1186,13 +1187,15 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 ## Phase 6.8 — Trust-Earned Spend Authority
 
+**Status:** Partially closed 2026-04-25 for F1 + F2. F3-F8 are explicitly deferred to Phase 7.0/7.1.
+
 **Goal.** Xion can become smarter about spending and need less operator approval over time, without letting money itself become authority. Invariant 19, `docs/SPEND-AUTONOMY.md`, and `docs/MEASUREMENT-VOCABULARY.md` define the doctrine. This phase lands the code and verifier spine that make the doctrine enforceable.
 
 **Why this earns its own phase.** The current treasury doctrine already separates funds and ledgers, but it does not yet answer the long-horizon question: *when may Xion spend with less operator approval?* The wrong answer is funds-on-hand. The right answer is evidence: spend decisions under current posture, self-audit accuracy, Witness attestations, retrospective audit passes, and verifier-clean runs. This phase converts that answer into enforceable infrastructure.
 
-**F1 — `orchestrator/cost_tracker.py` (Phase 6.8).** Bucket-by-bucket attribution at debit-time; query API for `runway_weeks`, `fraction_of_operating_float`, `fraction_of_improvement_fund`, `distance_to_reserve_floor`, and `recurring_burn_ratio`; emits Financial Vitality inputs to the Sensorium.
+**F1 — `orchestrator/cost_tracker.py` (Phase 6.8) — closed.** Bucket-by-bucket attribution at debit-time; query API for `runway_weeks`, `fraction_of_operating_float`, `fraction_of_improvement_fund`, `distance_to_reserve_floor`, and `recurring_burn_ratio`; emits Financial Vitality inputs to the Sensorium.
 
-**F2 — `xion-verify measurement-vocabulary` (Phase 6.8).** Static audit at `xion-verify/src/xion_verify/commands/measurement_vocabulary.py`. Checks that new spend doctrine and Agent Souls use `MEASUREMENT-VOCABULARY.md` units and that forbidden time/money gates appear only in named exceptions or legacy debt entries.
+**F2 — `xion-verify measurement-vocabulary` (Phase 6.8) — closed.** Static audit at `xion-verify/src/xion_verify/commands/measurement_vocabulary.py`. Checks that new spend doctrine and Agent Souls use `MEASUREMENT-VOCABULARY.md` units and that forbidden time/money gates appear only in named exceptions or legacy debt entries.
 
 **F3 — AO Core Spend handler updates (Phase 7.0).** Enforces measurement-vocabulary-denominated caps, routes authorization per active S-posture, and emits posture/mode/spend events to `SPEND_AUTHORITY_LEDGER`.
 

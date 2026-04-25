@@ -10,6 +10,21 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Phase 6.8 — Trust-Earned Spend Authority F1/F2 — 2026-04-25
+
+Lands the measurement spine for Invariant 19 without granting spend authority: Xion can measure spend pressure and audit spend-unit vocabulary, but F3-F8 authority routing remains deferred to Phase 7.0/7.1.
+
+### Added
+
+- **`orchestrator/cost_tracker.py`** — bucket-attributed cost tracker with `runway_weeks`, `fraction_of_operating_float`, `fraction_of_improvement_fund`, `distance_to_reserve_floor`, `recurring_burn_ratio`, and Financial Vitality `SignalBus` emissions.
+- **`xion-verify measurement-vocabulary`** — static verifier for spend doctrine and Agent Soul measurement units.
+- **Tests** — focused cost-tracker and measurement-vocabulary verifier coverage.
+
+### Changed
+
+- **`docs/27-RESEARCH-SPEND.md`** now expresses the Stage-1 envelope example as `fraction_of_improvement_fund`, not an absolute-money monthly cap.
+- **`KNOWN_WEAKNESSES.md`** closes `KW-COST-001` and `KW-MEASUREMENT-001`; `KW-SPEND-001`, `KW-SPEND-002`, and `KW-INVARIANT-19-001` remain open for Phase 7.0/7.1 and constitutional ratification.
+
 ### Phase 6.7 — Vessel Integration Framework — 2026-04-25
 
 Closes the Vessel Integration Framework as a doctrine-sealed, verifier-registered phase: many carriers may render or transmit Xion, but none may become Xion, hide Xion's refusals, trap user data, or pretend degraded/local output is full Core-connected Xion.

@@ -102,6 +102,17 @@ register_kind(
 )
 # Mapping doctrine resource / connection kinds (v1)
 register_kind(SignalSchema("resource.cost_runway_days", "float", 0.0, 1e6, 1))
+register_kind(SignalSchema("resource.runway_weeks", "float", 0.0, 1e6, 1))
+register_kind(
+    SignalSchema("financial.fraction_of_operating_float", "float", 0.0, 1e6, 1)
+)
+register_kind(
+    SignalSchema("financial.fraction_of_improvement_fund", "float", 0.0, 1e6, 1)
+)
+register_kind(
+    SignalSchema("financial.distance_to_reserve_floor", "float", -1e6, 1e6, 1)
+)
+register_kind(SignalSchema("financial.recurring_burn_ratio", "float", 0.0, 1e6, 1))
 register_kind(
     SignalSchema("resource.disk_remaining_pct", "float", 0.0, 1.0, 1)
 )

@@ -8,7 +8,7 @@
 
 **Invariants touched.** Strengthens Invariants 15, 16, and 19. Respects Invariants 2 and 14 where absolute time protects a user right or an adversarial response window.
 
-**Verification.** `xion-verify measurement-vocabulary` statically audits `docs/**` and `genesis/**` for forbidden unit forms outside the named exceptions. It reports `NOT_YET_SEALED` until Phase 6.8.
+**Verification.** `xion-verify measurement-vocabulary` statically audits spend doctrine and Agent Souls for forbidden unit forms outside the named exceptions.
 
 **Deprecation.** Unit definitions are operational doctrine. Removing the requirement that spend authority and spend caps avoid elapsed-time and absolute-money shortcuts would weaken Invariant 19 and requires a sister-Core fork.
 
@@ -101,7 +101,7 @@ One-time inflow may fund one-time acceleration. It must not create recurring obl
 4. The Agent Soul schema uses `monthly_envelope_fraction`, not `monthly_usd`.
 5. `SPEND-AUTONOMY.md`, `SUSTAINABILITY.md`, `TREASURY.md`, and Agent Souls all reference this vocabulary.
 
-Until Phase 6.8 implements the verifier, the subcommand reports `NOT_YET_SEALED`.
+Phase 6.8 F2 implements this verifier as a live `OK`/`FAIL` check.
 
 ---
 

@@ -37,6 +37,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | Cognitive Substrate & Casting (`docs/HERMES_PIN_PROTOCOL.md`, Phase 6.6) | `xion-verify hermes-runtime` verifies the Hermes pin, default-deny allowlist, and disabled runtime flags. `xion-verify agent-souls` verifies parent Soul hashes and tool subsets. `xion-verify agent-cast` verifies `AGENT_CAST_LEDGER` rows against the Agent Soul manifest. `xion-verify cognition` includes the Arbiter/Hermes boundary check. |
 | Contribution Protocol (`docs/34-CONTRIBUTION-PROTOCOL.md`, Phase 6.6a) | `xion-verify which-level` classifies proposed paths against the upgrade-level schemas; `xion-verify identity-bindings` verifies Ed25519 contributor wallet-to-GitHub binding rows; `xion-verify mcp-export` emits a read-only facts bundle for MCP wrappers and coding assistants. |
 | Vessel Integration Framework (`docs/37-VESSELS.md`, Phase 6.7) | `xion-verify vessel-compact`, `xion-verify media-provenance`, and `xion-verify vessel-registry` exist as honest `NOT_YET_SEALED` stubs until reference vessel manifests, signed media bundles, and append-only attestation/disavowal registries exist. |
+| Trust-Earned Spend Authority (`docs/SPEND-AUTONOMY.md`, Phase 6.8 F1/F2) | `xion-verify measurement-vocabulary` statically audits spend doctrine and Agent Souls for `docs/MEASUREMENT-VOCABULARY.md` units, rejecting forbidden elapsed-time and absolute-money authority gates outside named exceptions. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
 ## How is it verified?
@@ -106,6 +107,7 @@ xion-verify mcp-export
 xion-verify vessel-compact
 xion-verify media-provenance
 xion-verify vessel-registry
+xion-verify measurement-vocabulary
 xion-verify arbiter-up
 xion-verify all
 ```
@@ -149,6 +151,10 @@ Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic 
 
 `xion-verify mcp-export` emits a read-only JSON bundle for MCP wrappers and coding assistants. It contains current hashes, level and role rows, open known-weakness headings, and explicit guardrails. It does not submit proposals, hold keys, or write state.
 
+### Trust-Earned Spend Authority commands (Phase 6.8)
+
+`xion-verify measurement-vocabulary` audits `SPEND-AUTONOMY.md`, `19-TREASURY.md`, `21-SUSTAINABILITY.md`, `24-COGNITION.md`, `27-RESEARCH-SPEND.md`, and `genesis/AGENT_SOULS/*.yaml` for canonical measurement units. It rejects `monthly_usd` Agent Soul envelopes and forbidden time/money gates such as "after 90 days" or absolute per-period money caps.
+
 ## Repository layout
 
 ```
@@ -177,6 +183,7 @@ xion-verify/
       cast.py                         — xion cast pool operator command
       cognition.py                    — docs/24-COGNITION.md §11 + Arbiter/Hermes boundary
       drive_vector.py                 — Invariant 15 (static only until D2)
+      measurement_vocabulary.py       — Phase 6.8 spend-unit vocabulary audit
       state_chain.py                  — Invariant 4 (stub until D2)
       not_yet_sealed.py               — factory for NOT_YET_SEALED stubs (shrinks toward genesis)
   tests/

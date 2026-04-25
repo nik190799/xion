@@ -1,7 +1,7 @@
 schema_id: measurement-units
 schema_version: 1
 source_doctrine: docs/MEASUREMENT-VOCABULARY.md
-source_sha256: de2ced331f6d8458d2bd8715a7dd0a081500a463b9bd200ec0144fbdac81c6ef
+source_sha256: 941f07822c67d7307c3c265d320503c5995f70841cb71a2a40dee5697fe8edce
 status: doctrine_only
 defer_to: DEVELOPMENT_ROADMAP.md Phase 6.8
 invariant_parent: 19

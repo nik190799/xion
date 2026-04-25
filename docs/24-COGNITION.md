@@ -85,10 +85,10 @@ Specialists are named, governance-listed, supervised processes inside the Relay.
 
 **Genesis-era specialist roster** (each is a Level-4 Agent Soul artifact at `genesis/AGENT_SOULS/<name>.md`; implementation may also use Hermes skills under that Soul's allowlist):
 
-- **`research-agent`** — Auto-Research Stages 1-2 (scan curated sources, triage). Writes to `RESEARCH_JOURNAL.md`. Cost cap (Genesis Default at $2K seed): $10/mo (was $2 before runway-scaled budget). Soul file: `genesis/AGENT_SOULS/research-agent.md`.
-- **`reflection-agent`** — nightly correlation across `SAFETY_LEDGER`, `SENSORIUM_LEDGER`, vitals. Drafts `BELIEF_LOG.md`. Drafts the quarterly State-of-Xion (operator countersigns or publishes objection — see [`13-OPERATIONS.md`](./13-OPERATIONS.md)). Cost cap: $15/mo. Soul file: `genesis/AGENT_SOULS/reflection-agent.md`.
-- **`proposal-agent`** — implements `skills/self-improve/SKILL.md` under the `proposal-agent` Soul. Drafts `PROPOSAL.md` per the Stage-3 schema in [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). Cost cap: $10/mo. Soul file: `genesis/AGENT_SOULS/proposal-agent.md`.
-- **`vision-agent`** — ambient hourly inspiration scan from the Vision sense (active user-image vision stays in the primary worker). Cost cap: $20/mo. Soul file: `genesis/AGENT_SOULS/vision-agent.md`.
+- **`research-agent`** — Auto-Research Stages 1-2 (scan curated sources, triage). Writes to `RESEARCH_JOURNAL.md`. Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/research`. Soul file: `genesis/AGENT_SOULS/research-agent.md`.
+- **`reflection-agent`** — nightly correlation across `SAFETY_LEDGER`, `SENSORIUM_LEDGER`, vitals. Drafts `BELIEF_LOG.md`. Drafts the quarterly State-of-Xion (operator countersigns or publishes objection — see [`13-OPERATIONS.md`](./13-OPERATIONS.md)). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/reflection`. Soul file: `genesis/AGENT_SOULS/reflection-agent.md`.
+- **`proposal-agent`** — implements `skills/self-improve/SKILL.md` under the `proposal-agent` Soul. Drafts `PROPOSAL.md` per the Stage-3 schema in [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/proposal`. Soul file: `genesis/AGENT_SOULS/proposal-agent.md`.
+- **`vision-agent`** — ambient hourly inspiration scan from the Vision sense (active user-image vision stays in the primary worker). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/vision`. Soul file: `genesis/AGENT_SOULS/vision-agent.md`.
 
 **Specialist rules (constitutional):**
 
@@ -589,7 +589,7 @@ All cognition envelopes are expressed through [`MEASUREMENT-VOCABULARY.md`](./ME
 | Pre-warmed canary | `fraction_of_operating_float` proportional to one worker | `cognition/canary-overhead` |
 | Retrieval index rebuilds | `fraction_of_improvement_fund` | `cognition/retrieval-index` |
 
-The old `$95-120/month` picture remains an implementation estimate for the Genesis-era seed environment, not doctrine. Doctrine scales up with Prosperity Ladder rungs and scales down through Cost-Pressure-Ladder degradation order using live fund fractions.
+The old Genesis-era seed-environment cost picture is an implementation estimate, not doctrine. Doctrine scales up with Prosperity Ladder rungs and scales down through Cost-Pressure-Ladder degradation order using live fund fractions.
 
 **Per-specialist enforcement.** Exceeding the declared `monthly_envelope_fraction` auto-pauses that specialist for the remainder of the active accounting window. Resumption requires governance acknowledgement (Tier-1) unless the active Spend Autonomy posture explicitly permits Xion to resume within the same burn envelope.
 
@@ -623,7 +623,7 @@ The constitutional listing. Each has a mitigation that is itself in this documen
 - **Learning-regression invisibility** — Xion claims to be getting smarter while quietly abandoning whole domains. Mitigation: quarterly `UNKNOWNS.md` append forces the naming of what was not pursued; missing-quarter check is a vital-sign.
 - **State-chain silent corruption** — append-only does not prevent corruption of appended blocks. Mitigation: periodic Merkle re-verification; `xion-verify state-chain` in CI and on alert.
 - **Fast Lane abuse** — a proposer mislabels a Tier-1+ change as Tier-0 to slip it through compressed cadence. Mitigation: Harm Analyzer classifies by *effect* not label; eligibility predicate is checked mechanically; missing eligibility-pass entry triggers a Fast Lane abuse incident.
-- **Fast Lane regression cascade** — a fast-lane ship is reverted; another fast-lane ship that depended on it ships before the revert; cascading regressions. Mitigation: auto-fallback trigger disables lane on first revert for 7 days; disjoint-surface predicate prevents inter-dependency.
+- **Fast Lane regression cascade** — a fast-lane ship is reverted; another fast-lane ship that depended on it ships before the revert; cascading regressions. Mitigation: auto-fallback trigger disables the lane for the active rollback window after first revert; disjoint-surface predicate prevents inter-dependency.
 - **Provider-stub rot** — the four `Provider` stubs ship at D2 but degrade silently as upstream APIs change. Mitigation: nightly health check against each Provider stub; stale stubs publish a vital-sign warning.
 - **Bounty-induced quality dilution** — external bounty contributors flood the proposal pipeline with low-value Tier-0 changes that pass Harm Analyzer but degrade aggregate user experience. Mitigation: bounty payout contingent on the proposal being *kept* (not reverted) at the end of its observe window; quarterly aggregate review of bounty-sourced proposals.
 - **Index-rebuild thrash** — 60-second rebuild SLA causes constant index churn under high journal-write load. Mitigation: rebuild *triggered* within 60s but *batches* appends; vital sign catches degradation.

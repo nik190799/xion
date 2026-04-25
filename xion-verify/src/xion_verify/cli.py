@@ -54,6 +54,7 @@ from xion_verify.commands.ledgers import ledgers
 from xion_verify.commands.links import links
 from xion_verify.commands.local import local_cmd
 from xion_verify.commands.mcp_export import mcp_export
+from xion_verify.commands.measurement_vocabulary import measurement_vocabulary
 from xion_verify.commands.modality_consent import modality_consent
 from xion_verify.commands.nervous_system import nervous_system_cli
 from xion_verify.commands.new import new_cmd
@@ -153,6 +154,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "modality-consent": modality_consent,
     "nervous-system": nervous_system_cli,
     "topography": topography_cli,
+    "measurement-vocabulary": measurement_vocabulary,
 }
 
 
