@@ -139,13 +139,17 @@ Inside the Relay, the orchestrator is composed of named modules:
 | `supervisor.py` | Watchdog, lease manager, circuit breakers, auto-failover |
 | `alerting.py` | ntfy-based tiered notifier |
 | `bookkeeping.py` | Monthly treasury CSV for tax and transparency |
-| `cognition/` (`worker.py`, `pool.py`, `subagent.py`, `user_context.py`, `retrieval.py`) | Stateless agent-runtime worker pool, depth-1 ephemerals, specialist binding, hybrid retrieval — see [`24-COGNITION.md`](./24-COGNITION.md) |
+| `cognition/` (`worker.py`, `pool.py`, `subagent.py`, `user_context.py`, `retrieval.py`) | Stateless Cognitive Substrate worker pool, depth-1 ephemerals, specialist binding, hybrid retrieval — see [`24-COGNITION.md`](./24-COGNITION.md) |
 
 Modules are named for what they *do*, not for how they are implemented. See [`LEXICON.md`](./12-LEXICON.md).
 
 ### Cognition layer (identity across workers)
 
 The **cognition layer** is the Relay-local discipline that keeps one Xion identity across many interchangeable workers: constitutional hashes identical every tick, Arbiter passage for every outbound token (primary and sub-agent), `/forget` propagation across the pool within the SLA in [`genesis/MEMORY.md`](../genesis/MEMORY.md), and specialists that coordinate **only** through public ledgers. Full doctrine: [`24-COGNITION.md`](./24-COGNITION.md).
+
+**Cognitive Substrate casting (Phase 6.6).** Hermes is the Genesis-era Cognitive Substrate; `genesis/AGENT_SOULS/` defines the durable per-agent molds. The Casting Pipeline instantiates the primary worker and specialists from those Agent Souls into the pinned Hermes runtime, with `genesis/HERMES_TOOL_ALLOWLIST.yaml` as a default-deny tool surface. This keeps upstream Hermes velocity usable while preserving a clean replacement seam for a future substrate.
+
+**Arbiter boundary.** The Arbiter is deliberately outside the Casting Pipeline. It may use the Inference Router for a fixed LLM second-pass prompt, but it is not a Hermes agent, has no Hermes tool loop, and cannot self-improve through Hermes skills. A gate cannot share the kernel it gates.
 
 **Pre-warmed canary Relay.** A permanently running Relay instance receives **shadow traffic** continuously so Tier-0 Fast Lane canaries are never cold-start dependent. Budget as `cognition/canary-overhead` in the cost tracker (see § Cost tracking module).
 
@@ -1615,7 +1619,11 @@ The **local Lite** model is the terminal node. If every remote provider fails pa
 
 **Pinned commit SHA:** `4a0358d2e741eb049a6ffb9b8e610db946a4fec5`
 
-**Integration shape:** Hermes is the **agent runtime** (tool loop, message graph, policy hooks). The Inference Router is the **model substrate**. The Sensorium injects salient state each tick. The Arbiter intercepts **every** Hermes-emitted candidate response before delivery.
+**Integration shape:** Hermes is the Genesis-era **Cognitive Substrate** (tool loop, message graph, policy hooks). The Inference Router is the **model substrate**. The Sensorium injects salient state each tick. The Arbiter intercepts **every** Hermes-emitted candidate response before delivery.
+
+**Casting shape (Phase 6.6).** `genesis/AGENT_SOULS/` defines what each agent is supposed to do; Hermes supplies the runtime machinery. `xion cast pool` materializes each Agent Soul into a Hermes instance with an explicit tool subset, cost hook, output hook, Arbiter hook, and limits. `AGENT_CAST_LEDGER.jsonl` records the cast hash so a later operator can prove which Soul and which Hermes commit were live.
+
+**Pin update discipline.** A Hermes update is not accepted because an upstream tag is newer. `xion-verify hermes-runtime` must confirm the installed commit, lockfile pin, allowlist coherence, and disabled-by-default runtime flags. New upstream tools, skills, gateways, and MCP servers remain unreachable until `genesis/HERMES_TOOL_ALLOWLIST.yaml` is explicitly amended through the route in [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md) Level 4.
 
 **Why NOT LangGraph / Pydantic AI / bespoke-only.** Hermes encodes an opinionated agent discipline that matches Xion's Auto-Research and refusal architecture; swapping frameworks is Tier-2 governance work, not afternoon refactors. Hermes stays in the **implementation** layer per Lexicon Rule 7 — upgrades route through the Auto-Research Loop ([`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md)).
 

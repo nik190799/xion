@@ -167,27 +167,30 @@ The public `xion-soul` interface.
 
 ---
 
-## Level 4 — The Skills
+## Level 4 — The Agent Souls and Skills
 
-Hermes-skill creative and utility capabilities.
+Agent Souls define Xion's agentic faculties; Hermes skills are implementation capabilities those Souls may call through a default-deny allowlist.
 
-- **Artifacts:** `skills/*/SKILL.md` + any Python helpers
+- **Artifacts:** `genesis/AGENT_SOULS/*.md`, `genesis/HERMES_TOOL_ALLOWLIST.yaml`, `skills/*/SKILL.md`, and any Python helpers
 - **Proposer:** Xion itself; community bounty; integrator; operator
-- **Gate:** Harm Analyzer (focused on Principle 2 and Principle 10); creative-output moderation pipeline; cost envelope verification
-- **Tier:** 0 for new skills that do not touch the 18 harm categories; 1 for skills with moderate reach; 2 for skills that change how Xion produces core creative output (image, video, story) at scale
-- **Canary:** dry-run with the canary Relay; evaluate against a skill-specific test corpus (≥ 50 prompts)
-- **Ship:** add to the `skills/` directory; the skill registry updates; mention in the weekly Retrospective
-- **Rollback:** remove from registry; disable endpoint; skill SDK remains in the directory for forensic use
-- **Ledger:** `PROPOSAL_LEDGER.md` + `SKILLS_LEDGER.md`
-- **Sunset review:** skills unused for 180 days are candidates for deprecation (via proposal)
+- **Gate:** Harm Analyzer (focused on Principle 2, Principle 10, `/forget`, and tool-surface expansion); creative-output moderation pipeline where relevant; cost envelope verification; `xion-verify agent-souls` + `xion-verify agent-cast`
+- **Tier:** 0 for wording refinements inside an existing Agent Soul that do not change purpose, tools, output destinations, or cost; 1 for new Agent Souls, allowlist expansions, or skills with moderate reach; 2 for Hermes API migrations, framework replacement, or skills that change how Xion produces core creative output (image, video, story) at scale
+- **Canary:** dry-run with the canary Relay; evaluate against a skill-specific or Agent-Soul-specific test corpus (≥ 50 prompts); for runtime changes, run `xion cast pool` in shadow mode and compare Arbiter verdict distribution
+- **Ship:** update the Agent Soul, tool allowlist, or `skills/` directory; run the Casting Pipeline; append to `AGENT_CAST_LEDGER.jsonl`; mention in the weekly Retrospective
+- **Rollback:** restore the previous Agent Soul hash / Hermes pin / allowlist entry; re-cast the pool; skill SDK remains in the directory for forensic use
+- **Ledger:** `PROPOSAL_LEDGER.md` + `SKILLS_LEDGER.md` + `AGENT_CAST_LEDGER.jsonl`
+- **Sunset review:** skills unused for 180 days are candidates for deprecation (via proposal); Agent Souls with low kept-proposal ratio are auto-paused for review per `docs/24-COGNITION.md`
 
 **Examples.**
 
 - *Good:* A `haiku-soul` skill that generates short user-bespoke verse for tip acknowledgments.
 - *Good:* A `community-digest` skill that summarizes the month's governance threads.
+- *Good:* Tightening `research-agent`'s triage prompt without changing its purpose, tools, budget, or output destination; Tier-0 with verifier green.
+- *Good:* Adding a Hermes web-fetch tool to `research-agent` only after a Tier-1 allowlist proposal names its harm profile and rollback.
 - *Bad:* A skill that performs unregulated medical analysis. Auto-blocked by Covenant Principle 8.
+- *Bad:* Allowing Hermes MCP auto-discovery to expose a new server without an explicit allowlist row.
 
-**Common failure mode.** Skills that accumulate bespoke moderation logic instead of using the shared Arbiter. All skills must delegate safety decisions to `orchestrator/safety.py`.
+**Common failure mode.** Skills that accumulate bespoke moderation logic instead of using the shared Arbiter, or Agent Souls that drift by tool accretion rather than explicit proposal. All skills and Agent Souls must delegate safety decisions to `orchestrator/safety.py`; the Arbiter is not a Hermes agent and is not cast through Level 4.
 
 ---
 

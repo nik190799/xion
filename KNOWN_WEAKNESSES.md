@@ -21,6 +21,61 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-HERMES-001 — Hermes pin exists in doctrine, but runtime dependency and verifier are not live
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
+- **Severity:** medium
+- **Status:** open
+- **Description:** `docs/04-ARCHITECTURE.md` and `docs/24-COGNITION.md` name Hermes as the Cognitive Substrate, but the installed dependency, lockfile pin, and live `xion-verify hermes-runtime` check are not yet the gate that protects runtime updates.
+- **Why it exists:** Phase 6+ ran the Hermes spike and landed wrappers first; Phase 6.6 is the point where the pin becomes an enforceable runtime property.
+- **Mitigations:** Hermes is currently constrained by wrapper doctrine (`orchestrator/cognition/hermes/`) and by the Arbiter egress gate; no upstream Hermes tool surface is trusted by default.
+- **Pay-down commitment:** Phase 6.6 adds a commit-pinned Hermes dependency, `genesis/HERMES_TOOL_ALLOWLIST.yaml`, disabled-by-default runtime flags, and `xion-verify hermes-runtime`.
+- **Verifier:** `xion-verify hermes-runtime` (Phase 6.6).
+
+### KW-AGENT-SOULS-001 — Specialists are prose-defined but not content-addressed Agent Souls
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
+- **Severity:** medium
+- **Status:** open
+- **Description:** The primary worker and specialists have doctrine in `docs/24-COGNITION.md`, but they do not yet have per-agent Soul files under `genesis/AGENT_SOULS/` with hashes, tool subsets, cost envelopes, triggers, and output destinations.
+- **Why it exists:** The cognition doctrine defined the properties before the durable per-agent artifacts existed.
+- **Mitigations:** Specialist rules, cost envelopes, and output destinations are named in `docs/24-COGNITION.md`; the Arbiter still gates every emitted candidate.
+- **Pay-down commitment:** Phase 6.6 lands `genesis/AGENT_SOULS/_SCHEMA.md` plus initial Souls for `primary-worker`, `research-agent`, `reflection-agent`, `proposal-agent`, and `vision-agent`, then pins the manifest in `genesis/GENESIS_ARTIFACT.md`.
+- **Verifier:** `xion-verify agent-souls` (Phase 6.6).
+
+### KW-CASTING-001 — No cast ledger proves live agents match their Souls
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
+- **Severity:** medium
+- **Status:** open
+- **Description:** There is not yet an `AGENT_CAST_LEDGER.jsonl` or verifier proving that each live Hermes agent was instantiated from the expected Agent Soul hash, parent Soul hash, Hermes pin, and tool allowlist.
+- **Why it exists:** The wrapper layer landed before the Casting Pipeline and live cast-pool verifier.
+- **Mitigations:** Hermes specialists are not treated as constitutional identities; workers remain stateless and the Arbiter constructs user-visible `Response` objects.
+- **Pay-down commitment:** Phase 6.6 implements `xion cast pool`, appends cast records, smoke-tests each cast agent, and promotes `xion-verify agent-cast`.
+- **Verifier:** `xion-verify agent-cast` (Phase 6.6).
+
+### KW-MEMORY-HERMES-001 — Hermes/Honcho memory needs Xion `/forget` adapter before user memory can rely on it
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
+- **Severity:** high
+- **Status:** open
+- **Description:** Hermes's memory stack and Honcho-style user modeling can improve episodic recall, but Xion cannot rely on them for user memory until `/forget` propagates through the external memory backend within the 15-second SLA in `genesis/MEMORY.md`.
+- **Why it exists:** Off-the-shelf memory systems optimize persistence and personalization; Xion's invariant requires bounded forgetting and consent-aware cache zeroing.
+- **Mitigations:** Until the adapter ships, Hermes/Honcho memory remains non-load-bearing for user-specific recall. The existing consent endpoint and worker-pool forget doctrine remain the controlling contract.
+- **Pay-down commitment:** Phase 6.6 or its immediate follow-up implements a memory adapter that deletes peer/session/collection data, drops in-flight ephemerals, waits for acknowledgement before worker ack, and is exercised by `xion-verify cognition --forget-sim`.
+- **Verifier:** `xion-verify cognition --forget-sim` plus `xion-verify agent-cast` memory-surface checks.
+
+### KW-COGNITION-ARBITER-BOUNDARY-001 — Arbiter/Hermes runtime boundary is doctrine-pinned but not mechanically verified
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
+- **Severity:** high
+- **Status:** open
+- **Description:** The architecture requires the Arbiter to remain outside Hermes. That boundary is doctrine-pinned, but there is not yet a verifier that fails if the Arbiter is cast as a Hermes agent, gains Hermes tools, or uses Hermes skill self-improvement paths.
+- **Why it exists:** The "use Hermes for every agentic faculty" rule needs an explicit carve-out for the egress gate.
+- **Mitigations:** `orchestrator/safety.py` remains a separate library/process path today, and `docs/04-ARCHITECTURE.md` / `docs/24-COGNITION.md` now state the boundary.
+- **Pay-down commitment:** Phase 6.6 extends `xion-verify hermes-runtime` and `xion-verify cognition` to assert that Arbiter modules do not import Hermes runtime surfaces and that no Agent Soul or cast record has `agent_id=arbiter`.
+- **Verifier:** `xion-verify hermes-runtime`, `xion-verify cognition`.
+
 ### KW-SENSORIUM-COUPLING-001 — Sensorium was a monolithic struct; every new sense risked touching every consumer
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.4.b planning)

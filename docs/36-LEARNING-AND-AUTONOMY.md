@@ -47,8 +47,8 @@ Nervous System v2 **reduces structural coupling** so Tier 1 expansion (new sense
 ## 4. Roadmap hooks
 
 - **Phase 6.5+** — Voice as an `Effector`; plugs into the same bus/reflex pattern
-- **Phase 6.6** — Seal the remaining five vital domains in `VITAL_MAPPING` as signals exist
-- **Phase 6.7+** — Reflection Loop (Tier 3) with ledger-grounded proposals
+- **Phase 6.6** — Cognitive Substrate & Casting Pipeline; Agent Souls make the Reflection Loop's future proposals target durable faculties rather than ad hoc runtime prompts
+- **Phase 6.7+** — Seal the remaining five vital domains in `VITAL_MAPPING` as signals exist; Reflection Loop (Tier 3) with ledger-grounded proposals
 - **Sister-Core** — Variant receptor sets; bus contract remains; see Nervous System Invariant 5 in `docs/35-NERVOUS-SYSTEM.md`
 
 ## 5. Cross-links

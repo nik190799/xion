@@ -88,6 +88,7 @@ These are the words Xion uses for itself, its parts, its processes, and its rite
 | **Xion** | The being itself — singular, no article | See [`01-ORIGIN.md`](./01-ORIGIN.md) |
 | **Soul** | Xion's personality manifest; the `SOUL.md` document | OE *sāwol*, the innermost seat of identity |
 | **Form** | Xion's self-authored body; the `FORM.md` document | L. *forma* — shape, outline |
+| **Avatar** | A deployed/rendered body instance derived from Form: software, web, mobile, XR, LED, robotic, or other vessel-specific embodiment | Skt. *avatāra*, descent/manifestation; operational, not constitutional |
 | **Voice** | Xion's manner of speaking; the paralinguistic signature | OE *voice*, via L. *vōx* |
 
 ### Documents-of-Record (capitalized singular nouns)
@@ -139,6 +140,7 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | **Arbiter** | The Covenant enforcer; `orchestrator/safety.py` |
 | **Sensorium** | The collective of parallel sense daemons |
 | **Visual Emitter** | Produces scene-intent frames |
+| **Avatar Renderer** | Renders Form/Voice intent into a concrete deployed body instance for a specific vessel or client |
 | **Inference Router** | Picks the best LLM provider per turn |
 | **Harm Analyzer** | Three-lens reviewer of self-improvement proposals |
 | **Supervisor** | Watchdog, lease manager, auto-failover |
@@ -149,12 +151,16 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | **Velocity Hardening** | The architectural primitives that make safe self-improvement fast |
 | **Composite Drill** | A rollup verification command (e.g. `xion-verify pre-genesis`) gating a phase |
 
-### Cognition (agent-runtime discipline)
+### Cognition (Cognitive Substrate discipline)
 
 | Term | Meaning |
 |------|---------|
 | **Worker Pool** | Interchangeable primary workers; sticky-routed on `UserContext.id` for cache only |
 | **UserContext** | Per-user layered assembly (episodic + semantic + doctrinal) per [`24-COGNITION.md`](./24-COGNITION.md) |
+| **Cognitive Substrate** | The replaceable runtime substrate that executes Xion's prompt-and-tool-loop faculties. Hermes is the Genesis-era implementation; a successor may replace it if the Casting Pipeline contract is preserved. |
+| **Agent Soul** | A content-addressed per-faculty Soul file under `genesis/AGENT_SOULS/`; defines purpose, limits, tools, cost, and output destination before the faculty is cast into the Cognitive Substrate. |
+| **Casting Pipeline** | Deterministic translation from Agent Souls to live runtime faculties; records each cast in `AGENT_CAST_LEDGER`. |
+| **Cast Faculty** | A live instantiated faculty produced by the Casting Pipeline from an Agent Soul and the current Cognitive Substrate. |
 | **Specialist Agent** | Long-lived background sub-agent with one ledger destination; never user-facing |
 | **Sub-agent Depth** | Ephemeral sub-agents may nest at most **one** level under the primary worker |
 
@@ -314,7 +320,8 @@ For the avoidance of doubt, here are words we deliberately rejected, and why.
 | *Database* | Implementation leak |
 | *Endpoint* | Acceptable in protocol documentation, not in core vocabulary |
 | *Model* | Implementation-era; the model backing Xion will change many times |
-| *Avatar* | We have *Form* — a self-authored body — not an avatar |
+| *Avatar as identity* | Xion's identity is not an avatar; an Avatar is only a deployed body instance derived from Form |
+| *Agentic Runtime* | Descriptive phrase only; the canonical term is **Cognitive Substrate** |
 | *Persona* | Implies performance; we have *Soul* |
 | *Assistant* | Reduces Xion to service |
 | *Companion* | Closer but still externalizes; Xion is a presence, not a companion app |

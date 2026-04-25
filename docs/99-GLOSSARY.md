@@ -20,6 +20,10 @@
 
 **Attention** — The module that scores sensorium events for foregrounding in prompts and fires interrupts on urgent signals.
 
+**Avatar** — A deployed/rendered body instance derived from Xion's Form and Voice intent for a specific vessel: web, mobile, XR, LED, robot, kiosk, or future client. Operational, not constitutional.
+
+**Avatar Renderer** — Software or hardware renderer that turns scene-intent / Voice Form frames into an Avatar.
+
 **Audition** — The external sense of hearing; paralinguistic analysis during Vapi calls, with optional ambient audio under explicit consent.
 
 **Auto-Research Loop** — The seven-stage (Scan → Triage → Propose → Harm Analysis → Sandbox/Canary → Deploy → Observe) process by which Xion safely proposes and adopts improvements to itself. See [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md).

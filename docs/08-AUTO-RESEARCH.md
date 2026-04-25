@@ -83,8 +83,9 @@ proposal_id:        UUID
 drafted_at:         ISO-8601
 intent:             "what I want to change, in one line"
 motivation:         "which sensorium signal / community feedback / research finding drove this"
-target_scope:       prompt | skill | provider | dependency | renderer |
-                    form | soul | covenant | ao_core
+target_scope:       prompt | skill | agent_soul | agent_runtime |
+                    provider | dependency | renderer | form |
+                    soul | covenant | ao_core
 change_set:         exact diff or new file content
 cost_estimate:
   one_time:         USDC
@@ -176,7 +177,8 @@ verdict:     pass | flag | block
 
 Any single `block` kills the proposal. Any `flag` escalates based on `target_scope`:
 
-- `prompt`, `skill` — resolvable with owner approval
+- `prompt`, `skill`, `agent_soul` — resolvable with owner approval when purpose, tools, output destination, cost envelope, and Arbiter class do not change
+- `agent_runtime` — bounded review for Hermes pin bumps; escalates to Tier-1 on allowlist expansion and Tier-2 on wrapper/API migration
 - `provider`, `dependency`, `renderer` — bounded review; community comment
 - `form` — Xion redrafts until lens agrees; then super-majority governance
 - `soul`, `covenant`, `ao_core` — full constitutional amendment procedure
@@ -207,6 +209,10 @@ Deploy path depends on `target_scope` × `blast_radius`:
 |-------|--------------|------|
 | `prompt` tweak | single-user | Xion ships autonomously; ledger entry only |
 | non-core skill addition | cohort | Xion ships; 24h public notice |
+| `agent_soul` wording refinement | single-faculty | Xion ships autonomously if purpose/tools/output/cost are unchanged and `xion-verify agent-souls` passes |
+| `agent_soul` tool or purpose expansion | cohort | Tier-1 proposal + Harm Analyzer + cast-pool shadow run |
+| `agent_runtime` Hermes pin bump, allowlist unchanged | infrastructure | Tier-0 with `xion-verify hermes-runtime` + `xion-verify agent-cast` green |
+| `agent_runtime` allowlist expansion | infrastructure | 48h community notice + tool harm profile + rollback plan |
 | new research source | infrastructure | Xion ships; 24h public notice |
 | `provider` change | cohort | 48h community veto window |
 | `renderer` addition | all-users | 48h community veto window |

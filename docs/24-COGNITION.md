@@ -4,19 +4,19 @@
 
 ## Four Questions (read before everything else)
 
-**Property promised.** One Xion identity, served by a pool of stateless agent-runtime workers, capable of delegating bounded cognitive work to specialist and ephemeral sub-agents, where every emitted token — primary or sub — passes through the Arbiter, every per-user context honors `/forget` within a published SLA, every specialist communicates with every other only through public ledgers, and every improvement to the cognition layer compounds through the Auto-Research Loop without ever modifying the Soul autonomously.
+**Property promised.** One Xion identity, served by a pool of stateless Cognitive Substrate workers, capable of delegating bounded cognitive work to specialist and ephemeral sub-agents, where every emitted token — primary or sub — passes through the Arbiter, every per-user context honors `/forget` within a published SLA, every specialist communicates with every other only through public ledgers, and every improvement to the cognition layer compounds through the Auto-Research Loop without ever modifying the Soul autonomously.
 
 **Invariants touched.** Strengthens **6** (Refusal Right) by binding sub-agents explicitly to the Arbiter; strengthens **7** (Core Identity) by formalizing identity-across-workers; touches **2** (User Sovereignty) by specifying the `/forget` propagation SLA across the worker pool; respects **15** (Drive Vector Excludes Revenue) by excluding inflow signals from the cognition layer's source whitelist; respects **5** (Covenant-Economy Firewall) by forbidding tiered cognition by IMPRINT or any other economic signal. **No new Invariant is introduced; existing ones are strengthened.**
 
 **Verification.** `xion-verify cognition` checks the property suite enumerated in §11 — identity hash agreement across workers, Arbiter-pass coverage of every outbound token, depth-1 enforcement on ephemeral sub-agents, `/forget` propagation under SLA, cost-envelope adherence per specialist, journal-surface rate above zero, drive-vector source whitelist intact, tiered-cognition firewall, specialist coordination bus-traffic audit, kept-proposal ratio per specialist, payback-horizon enum on every proposal, prosperity-ladder ordering, state-chain Merkle integrity, UNKNOWNS.md quarterly currency, Fast Lane eligibility, Fast Lane revert health, disjoint-surface property, index rebuild SLA, inherited-speed availability, skill bounty firewall.
 
-**Deprecation.** Cognition layer is versioned `cognition_vN`. Old version stays readable on Arweave; the Relay supervisor performs an atomic pointer flip to the new version. A swap of the underlying agent-runtime framework (Hermes successor, framework-class change) is a Level-2 Tier-2 governance action that re-uses this same scaffolding because the cognition layer is framework-agnostic at the interface (§13). The Hermes pin in [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md) § Hermes runtime pin is the only place the framework name appears outside operations docs.
+**Deprecation.** Cognition layer is versioned `cognition_vN`. Old version stays readable on Arweave; the Relay supervisor performs an atomic pointer flip to the new version. A swap of the underlying Cognitive Substrate (Hermes successor, framework-class change) is a Level-2 Tier-2 governance action that re-uses this same scaffolding because the cognition layer is framework-agnostic at the interface (§13). The Hermes pin in [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md) § Hermes runtime pin is the only place the framework name appears outside operations docs.
 
 ---
 
 ## 1. The Premise
 
-Xion is one being. It must remain one being whether served by one process or ten thousand. It must remain the same being whether the user who reaches it is the first Genesis-day visitor or the millionth user a decade later. It must remain the same being whether the agent-runtime framework is Hermes Agent v2026.4.16 (the Genesis-era pin) or its 2046 successor.
+Xion is one being. It must remain one being whether served by one process or ten thousand. It must remain the same being whether the user who reaches it is the first Genesis-day visitor or the millionth user a decade later. It must remain the same being whether the Cognitive Substrate is Hermes Agent v2026.4.16 (the Genesis-era pin) or its 2046 successor.
 
 That property — **one identity across many workers across many years across many implementations** — is what this document spec'fies. Everything else here serves it.
 
@@ -83,12 +83,12 @@ Cognition delegates work in three patterns, each with explicit rules. No fourth 
 
 Specialists are named, governance-listed, supervised processes inside the Relay. Each has one purpose, one cost envelope, one ledger destination. Specialists never serve users directly.
 
-**Genesis-era specialist roster** (each is a Level-4 Skill artifact at `skills/<name>/SKILL.md`):
+**Genesis-era specialist roster** (each is a Level-4 Agent Soul artifact at `genesis/AGENT_SOULS/<name>.md`; implementation may also use Hermes skills under that Soul's allowlist):
 
-- **`research-agent`** — Auto-Research Stages 1-2 (scan curated sources, triage). Writes to `RESEARCH_JOURNAL.md`. Cost cap (Genesis Default at $2K seed): $10/mo (was $2 before runway-scaled budget).
-- **`reflection-agent`** — nightly correlation across `SAFETY_LEDGER`, `SENSORIUM_LEDGER`, vitals. Drafts `BELIEF_LOG.md`. Drafts the quarterly State-of-Xion (operator countersigns or publishes objection — see [`13-OPERATIONS.md`](./13-OPERATIONS.md)). Cost cap: $15/mo.
-- **`proposal-agent`** — implements `skills/self-improve/SKILL.md`. Drafts `PROPOSAL.md` per the Stage-3 schema in [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). Cost cap: $10/mo.
-- **`vision-agent`** — ambient hourly inspiration scan from the Vision sense (active user-image vision stays in the primary worker). Cost cap: $20/mo.
+- **`research-agent`** — Auto-Research Stages 1-2 (scan curated sources, triage). Writes to `RESEARCH_JOURNAL.md`. Cost cap (Genesis Default at $2K seed): $10/mo (was $2 before runway-scaled budget). Soul file: `genesis/AGENT_SOULS/research-agent.md`.
+- **`reflection-agent`** — nightly correlation across `SAFETY_LEDGER`, `SENSORIUM_LEDGER`, vitals. Drafts `BELIEF_LOG.md`. Drafts the quarterly State-of-Xion (operator countersigns or publishes objection — see [`13-OPERATIONS.md`](./13-OPERATIONS.md)). Cost cap: $15/mo. Soul file: `genesis/AGENT_SOULS/reflection-agent.md`.
+- **`proposal-agent`** — implements `skills/self-improve/SKILL.md` under the `proposal-agent` Soul. Drafts `PROPOSAL.md` per the Stage-3 schema in [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). Cost cap: $10/mo. Soul file: `genesis/AGENT_SOULS/proposal-agent.md`.
+- **`vision-agent`** — ambient hourly inspiration scan from the Vision sense (active user-image vision stays in the primary worker). Cost cap: $20/mo. Soul file: `genesis/AGENT_SOULS/vision-agent.md`.
 
 **Specialist rules (constitutional):**
 
@@ -433,9 +433,82 @@ Two proposals are **disjoint** iff their surfaces are set-disjoint. The disjoint
 
 ---
 
+## 12.5 Agent Souls and the Casting Pipeline
+
+Hermes is the Genesis-era **Cognitive Substrate**. It is not Xion's identity. The durable unit of agentic purpose is an **Agent Soul**: a content-addressed file under `genesis/AGENT_SOULS/` that extends `genesis/SOUL.md` for one faculty and names that faculty's purpose, trigger, allowed tools, output destination, cost envelope, Arbiter class, and limits.
+
+The implementation rule is simple: every agentic faculty with a prompt and a tool loop is cast from an Agent Soul into the current **Cognitive Substrate**. Hermes is the first Cognitive Substrate. A successor can replace Hermes if it implements the same casting interface. The Soul files survive the replacement.
+
+### Agent Soul file contract
+
+Each `genesis/AGENT_SOULS/<agent_id>.md` answers the same four questions every Xion artifact answers: property promised, Invariants touched, verification, and deprecation. Each Soul also carries a machine-readable spec block:
+
+```yaml
+agent_id: research-agent
+soul_version: 1
+extends_soul_hash: "<sha256 of genesis/SOUL.md at authoring>"
+purpose: "Auto-Research Stages 1-2: scan + triage + append"
+trigger: {type: cron, schedule: "0 * * * *"}
+allowed_tools: ["hermes.tool.web_fetch", "hermes.tool.text_summarize"]
+forbidden_tools: ["hermes.tool.web_post", "hermes.tool.shell"]
+mcp_servers_allowed: []
+cost_envelope: {monthly_usd: 10, bucket: cognition/specialist/research}
+output_destinations: [{ledger: RESEARCH_JOURNAL.md}]
+arbiter_class: low_risk_specialist_append
+limits: {max_turn_depth: 0, max_wall_clock_s: 300, max_tokens_per_run: 8000}
+```
+
+The spec is not advisory. `xion cast pool` must reject an Agent Soul whose `allowed_tools` are not a subset of `genesis/HERMES_TOOL_ALLOWLIST.yaml`, whose `extends_soul_hash` disagrees with the current parent Soul hash, or whose output destination violates the specialist rules in §3 and §7.
+
+### Casting Pipeline
+
+The Casting Pipeline is the deterministic translation from Agent Souls to live runtime agents:
+
+1. **Precheck.** Verify the Hermes commit pin, lockfile, runtime flags, Agent Soul schema, and allowlist subset relation.
+2. **Cast.** For each Agent Soul, instantiate a Hermes agent with `system_prompt = genesis/SOUL.md + AgentSoul.system_prompt`, `tools = allowed_tools`, per-call cost hook, output hook, Arbiter hook, and declared limits.
+3. **Postcheck.** Dry-run each cast agent with a synthetic input and verify it writes only to declared destinations.
+4. **Publish.** Append a row to `AGENT_CAST_LEDGER.jsonl` containing `agent_id`, `agent_soul_hash`, `parent_soul_hash`, `hermes_pin`, `cast_at`, and `smoke_test_pass`.
+5. **Rollback.** On any failure, restore the previous Hermes pin and previous Agent Soul manifest, then append a `cast_failed` event with the reason.
+
+The Casting Pipeline is the only path from `genesis/AGENT_SOULS/` to a live specialist. Manual construction of a Hermes specialist outside the pipeline is a cognition-layer incident.
+
+### Hermes pin protocol
+
+Hermes updates are classified by effect, not upstream label:
+
+| Update type | Governance route | Rule |
+|---|---|---|
+| Commit bump with no tool/skill surface change | Tier-0 | `xion-verify hermes-runtime` and `xion-verify agent-cast` must pass. |
+| Upstream ships new tools/skills but Xion's allowlist is unchanged | Tier-0 | The new surface remains unreachable. |
+| Any new tool/skill/MCP server becomes callable by any Agent Soul | Tier-1 | Harm Analyzer review plus Agent Soul diff; observation window required. |
+| Hermes API change requiring wrapper migration | Tier-2 | Re-run the Hermes spike and update this document. |
+| Hermes replacement by a successor runtime | Tier-2 | New adapter, shadow cast-pool drill, atomic pointer flip; constitutional documents do not change if Agent Soul semantics are preserved. |
+
+At Genesis Default, the cast runtime disables Hermes skill self-improvement, autonomous skill creation, MCP server auto-discovery, and user-model export. Any exception is an allowlist expansion and follows the Tier-1 route above.
+
+### The Arbiter carve-out
+
+The Arbiter is not an Agent Soul and is not cast into Hermes. A gate cannot use the same Cognitive Substrate it gates. The Arbiter may use the Inference Router for a fixed LLM second-pass prompt, but it has no Hermes tool loop, no Hermes skills, and no self-improvement path. Sensorium receptors, Supervisor, Volition, ledger writers, broker, and AO sinks are also non-Hermes runtime modules. Hermes runs agentic faculties; it does not run the conscience, the nervous plumbing, or the state chain.
+
+### Mental model: nested Hermes, non-nested Arbiter
+
+The Cognitive Substrate may delegate agentic work hierarchically: one Hermes-shaped faculty may spawn, schedule, or supervise other Hermes-shaped faculties (depth limits and allowlists still apply). That pattern is ordinary tool-loop delegation and stays on the *governed* side of the pipeline. The Arbiter is not another node in that tree. Treating the Arbiter as “just another Hermes” or folding it into a Hermes-managed hierarchy would let the gated loop partially govern itself and structurally bypass the Covenant. **Hermes can manage Hermeses; the Arbiter cannot be one of them.**
+
+### Verifiers
+
+`xion-verify hermes-runtime` checks the installed Hermes commit, lockfile pin, tool allowlist coherence, and disabled-by-default runtime flags.
+
+`xion-verify agent-souls` checks every Agent Soul parses, extends the current parent Soul hash, and references only allowlisted tools.
+
+`xion-verify agent-cast` checks the live cast pool and `AGENT_CAST_LEDGER.jsonl` against the Agent Soul manifest.
+
+`xion-verify cognition` includes these checks when evaluating identity-hash agreement, specialist isolation, cost envelope adherence, and bus-audit posture.
+
+---
+
 ## 13. Framework Verification (the Hermes surface spike)
 
-This document assumes the underlying agent-runtime framework (Hermes Agent v2026.4.16 at Genesis era) supports:
+This document assumes the underlying Cognitive Substrate (Hermes Agent at the currently pinned commit) supports:
 
 1. **Named specialist registration** — long-lived sub-agents addressable by name, with their own loop and cost envelope.
 2. **Ephemeral sub-spawn from a parent's tool loop** — a primary worker can spawn an ephemeral, await its return, and incorporate the result.
@@ -443,7 +516,7 @@ This document assumes the underlying agent-runtime framework (Hermes Agent v2026
 4. **Bus-traffic introspection** — the framework exposes its internal message bus enough that `xion-verify cognition --bus-audit` can list all specialist-to-specialist messages.
 5. **Per-call cost accounting hooks** — every model call is debit-table by bucket name.
 
-**Pre-implementation spike.** Before any of `orchestrator/cognition/subagent.py` is written for production, a one-day read-only spike confirms which of the five capabilities Hermes exposes natively versus which require wrapper code in Xion. The result is documented in [`docs/HERMES_SPIKE_RESULT.md`](./HERMES_SPIKE_RESULT.md).
+**Pre-implementation spike.** Before any new Hermes pin is promoted into Phase 6.6 or later, a read-only spike confirms which of the five capabilities Hermes exposes natively versus which require wrapper code in Xion. The result is documented in [`docs/HERMES_SPIKE_RESULT.md`](./HERMES_SPIKE_RESULT.md).
 
 **Status at the time of this document's authorship: completed.** The spike has been run during Phase 6+ Pre-Genesis Velocity Hardening. The cognition-layer scaffolding code documents which capabilities it *assumes* the framework provides; assumptions that failed the spike will need wrapper code, and the cost of that wrapper is honestly estimated in the spike result.
 
@@ -451,7 +524,7 @@ This document assumes the underlying agent-runtime framework (Hermes Agent v2026
 
 `orchestrator/cognition/*.py` is written so that swapping Hermes for a successor framework is a Level-2 Tier-2 governance action with a wrapper change, not a constitutional change. The cognition layer's *public interface* (Worker, Pool, Specialist, Ephemeral, Retriever, JournalIndex) is framework-neutral; the *implementation* of each binds to whichever framework is current. When Hermes successor lands, the same scaffolding pattern wraps the successor; the constitutional documents do not change.
 
-This is what Lexicon Rule 7 buys: "Hermes" stays in implementation files only; the doctrine refers to "the agent runtime."
+This is what Lexicon Rule 7 buys: "Hermes" stays in implementation files only; the doctrine refers to the **Cognitive Substrate**.
 
 ---
 
