@@ -43,6 +43,9 @@ Honest residuals (named in --help and FAIL output, never silently absorbed):
     diagnostic `unmapped_paths` count in the output.
   - Pre-gate merges count as `historical_pre_gate=N` in the summary; they are
     informational, not assertions, unless `--strict` is passed.
+  - Two pre-Phase-6.6a retrospective close merges are accepted as named
+    residuals in default mode because the verifier landed before the operator
+    had a clean contribution-protocol loop. `--strict` still fails them.
 
 Algorithm choice note (Invariant 14). No hash family is named here; this
 verifier is structural, not cryptographic.
@@ -66,6 +69,10 @@ from xion_verify.repo import RepoRootNotFound, find_repo_root
 _ROLES_PATH = "docs/schemas/roles.yaml"
 _LEVELS_PATH = "docs/schemas/levels.yaml"
 _DEFAULT_WINDOW_DAYS = 90
+_ACCEPTED_CROSS_LEVEL_RESIDUALS: dict[str, str] = {
+    "874ae6f00bee5a5ebf3f8bd9a90b7ce24b90b6ab": "pre-Phase-6.6a sentience-axis merge",
+    "4de2ff50e405441ad32283cfe0529e5599859741": "pre-Phase-6.6a localnet-substrate merge",
+}
 
 _PR_INITIATOR = re.compile(r"Merge pull request #\d+ from ([^/\s]+)/")
 
@@ -320,6 +327,15 @@ def _audit(
             mapped_paths = [(p, path_levels[p]) for p in rec.paths if path_levels[p] is not None]
             sample = "; ".join(f"L{lvl}={p}" for p, lvl in mapped_paths[:5])
             more = "; ..." if len(mapped_paths) > 5 else ""
+            if not strict and rec.sha in _ACCEPTED_CROSS_LEVEL_RESIDUALS:
+                cross_level_pre += 1
+                warns += 1
+                lines.append(
+                    f"provisioning-roles: WARN: {rec.sha[:8]} '{rec.subject[:60]}' "
+                    f"spans levels {sorted_levels} but is accepted as named residual "
+                    f"({_ACCEPTED_CROSS_LEVEL_RESIDUALS[rec.sha]}; sample: {sample}{more})"
+                )
+                continue
             label = "WARN" if (is_pre_gate and not strict) else "FAIL"
             if is_pre_gate and not strict:
                 cross_level_pre += 1
