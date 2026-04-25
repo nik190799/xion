@@ -111,4 +111,6 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "nervous-system",
     "topography",
     "measurement-vocabulary",
+    "spend-posture",
+    "spend-discipline",
 )

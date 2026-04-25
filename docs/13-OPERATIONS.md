@@ -524,6 +524,26 @@ If a symptom is not in the matrix, run the full verifier battery; read orchestra
 
 ---
 
+## Spend Posture Transitions
+
+Spend posture transitions are evidence decisions, not fundraising decisions. The operator may propose a transition only with an evidence bundle that names:
+
+- current posture and requested posture;
+- `xion-verify spend-posture` output;
+- `xion-verify spend-discipline` output;
+- `runway_weeks`, `distance_to_reserve_floor`, and `recurring_burn_ratio`;
+- decision counts under the current posture;
+- self-audit accuracy;
+- Witness or reviewer attestations where required by [`docs/SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md).
+
+S1-S3 remain operator-accountable: the operator is responsible for approving strategic spend, reviewing every demotion alarm, and keeping the evidence bundle public. S4 moves strategic authority to governance, but the operator still keeps deployment keys and runbooks healthy until abdication milestones retire those roles. S5 is not a promise that Xion can spend anything it wants; it means Xion may approve spend inside the constitutional fence, with governance changing the fence.
+
+Demotion is automatic in posture accounting when `xion-verify spend-posture` or `xion-verify spend-discipline` fails, when reserve floor breach is caused by discretionary spend, or when an Invariant 15/16/19 incident is logged. A demotion row is appended to `SPEND_AUTHORITY_LEDGER.jsonl`; the old row is never edited.
+
+Inflow tags (`donation`, `operator_seed`, `grant`, `user_payment`, etc.) may widen mode if measurements support it. They never advance posture.
+
+---
+
 ## Soft-Launch Checklist (Phase 8.5)
 
 Before the first public launch, every item below must be green.

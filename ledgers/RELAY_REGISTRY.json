@@ -1,0 +1,18 @@
+{
+  "as_of_utc_ns": 0,
+  "discovery_paths": [
+    "arweave_registry",
+    "ao_process",
+    "dns_seed"
+  ],
+  "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "relays": [
+    {
+      "akash_lease_id": "not-yet-deployed",
+      "last_seen_utc_ns": 0,
+      "public_key": "ed25519:not-yet-deployed",
+      "relay_id": "operator-local-reference"
+    }
+  ],
+  "schema_version": 1
+}

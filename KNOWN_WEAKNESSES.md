@@ -36,34 +36,34 @@ Every entry has the same shape:
 - **Domain:** ECON
 - **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
 - **Severity:** medium
-- **Status:** open
-- **Description:** `docs/SPEND-AUTONOMY.md` defines deterministic arbitration for contested Improvement Fund / Operating Float headroom, but there is not yet an `orchestrator/spend_arbitration.py` implementation.
+- **Status:** closed (2026-04-25, Phase 6 completion plan)
+- **Description:** `docs/SPEND-AUTONOMY.md` defines deterministic arbitration for contested Improvement Fund / Operating Float headroom; `orchestrator/spend_arbitration.py` now implements the published order.
 - **Why it exists:** The safe order is to pin the priority law before adding the executor.
-- **Mitigations:** The doctrine forbids private specialist bargaining and names `SPEND_AUTHORITY_LEDGER` as the future public coordination surface.
-- **Pay-down commitment:** Phase 7.0 implements `orchestrator/spend_arbitration.py` and tests it against synthetic contested-headroom cases.
-- **Verifier:** `xion-verify spend-discipline` (Phase 7.0).
+- **Mitigations:** Closed by deterministic arbitration plus `xion-verify spend-discipline`.
+- **Pay-down commitment:** Complete for code-completable scope; live AO Core execution remains Phase 7 preflight.
+- **Verifier:** `xion-verify spend-discipline`.
 
 ### KW-SPEND-001 — Spend Autonomy postures lack live verifier enforcement
 - **Domain:** ECON
 - **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
 - **Severity:** high
-- **Status:** open
-- **Description:** `docs/SPEND-AUTONOMY.md` defines S1-S5 authority postures, but `xion-verify spend-posture` and the `SPEND_AUTHORITY_LEDGER` writer are not yet live.
+- **Status:** closed (2026-04-25, Phase 6 completion plan)
+- **Description:** `docs/SPEND-AUTONOMY.md` defines S1-S5 authority postures; `xion-verify spend-posture` and the `SPEND_AUTHORITY_LEDGER` writer are now live for local/verifier scope.
 - **Why it exists:** The posture registry and ledger schema must land before the AO Core Spend handler can enforce authority routing.
-- **Mitigations:** Existing spend still remains operator/governance mediated. The new doctrine explicitly lists `NOT_YET_SEALED` verifier status.
-- **Pay-down commitment:** Phase 7.0 implements the ledger writer, AO Core routing checks, and `xion-verify spend-posture`.
-- **Verifier:** `xion-verify spend-posture` (Phase 7.0).
+- **Mitigations:** Existing spend remains operator/governance mediated until AO Core deployment. The verifier rejects wrong authority and inflow-as-authority transitions.
+- **Pay-down commitment:** Complete for code-completable scope; deployed AO Core routing is tracked in `docs/PHASE_7_PREFLIGHT.md`.
+- **Verifier:** `xion-verify spend-posture`.
 
 ### KW-CONTRIB-003 — MCP access is export-only; no live `xion-mcp` server exists
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6a Contribution Protocol)
 - **Severity:** low
-- **Status:** mitigated-residual
-- **Description:** External coding assistants can consume `xion-verify mcp-export`, but there is not yet a long-running MCP server with Cursor / Claude Desktop install snippets.
+- **Status:** closed (2026-04-25, Phase 6 completion plan)
+- **Description:** External coding assistants can consume `xion-verify mcp-export` and the read-only `tools/xion_mcp` server with Cursor / Claude Desktop install snippets.
 - **Why it exists:** The first safe slice keeps the surface read-only and verifier-backed before adding server lifecycle, packaging, and client-specific config.
-- **Mitigations:** `xion-verify mcp-export` emits the same read-only facts a future MCP server must serve, with explicit `no_state_writes`, `no_proposal_submission`, `no_key_custody`, and `no_agent_governance_actor` guardrails.
-- **Pay-down commitment:** Close when a packaged `xion-mcp` server wraps the same facts contract, ships read-only tool descriptors, has tests, and is documented for Cursor and Claude Desktop.
-- **Verifier:** `xion-verify mcp-export`; future close requires package-local tests plus `xion-verify links`.
+- **Mitigations:** `tools/xion_mcp` exposes only read-only tools and rejects write-like tool names.
+- **Pay-down commitment:** Complete.
+- **Verifier:** `pytest tools/xion_mcp/tests/test_server.py`; `xion-verify mcp-export`.
 
 ### KW-CONTRIB-002 — Agent-authored proposal cohort drift is not yet measured
 - **Domain:** GOVERNANCE
@@ -234,11 +234,11 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
 - **Severity:** high
-- **Status:** open
-- **Description:** Hermes's memory stack and Honcho-style user modeling can improve episodic recall, but Xion cannot rely on them for user memory until `/forget` propagates through the external memory backend within the 15-second SLA in `genesis/MEMORY.md`.
+- **Status:** closed (2026-04-25, Phase 6 completion plan)
+- **Description:** Hermes's memory stack and Honcho-style user modeling can improve episodic recall; Xion now has a backend-shaped `/forget` adapter contract with a 15-second SLA simulation.
 - **Why it exists:** Off-the-shelf memory systems optimize persistence and personalization; Xion's invariant requires bounded forgetting and consent-aware cache zeroing.
-- **Mitigations:** Until the adapter ships, Hermes/Honcho memory remains non-load-bearing for user-specific recall. The existing consent endpoint and worker-pool forget doctrine remain the controlling contract. Phase 6.6's allowlist keeps `user_model_export` disabled by default.
-- **Pay-down commitment:** Immediate Phase 6.6 follow-up implements a memory adapter that deletes peer/session/collection data, drops in-flight ephemerals, waits for acknowledgement before worker ack, and is exercised by `xion-verify cognition --forget-sim`.
+- **Mitigations:** `orchestrator/cognition/memory_adapter.py` deletes scoped records, waits for acknowledgement, and `POST /forget` routes through the adapter when configured.
+- **Pay-down commitment:** Complete for adapter contract; real external backend integration is a deployment choice under the same interface.
 - **Verifier:** `xion-verify cognition --forget-sim` plus `xion-verify agent-cast` memory-surface checks.
 
 ### KW-COGNITION-ARBITER-BOUNDARY-001 — Arbiter/Hermes runtime boundary is doctrine-pinned but not mechanically verified

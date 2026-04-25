@@ -1,3 +1,48 @@
+schema_id: ledger-governance
+schema_version: 1
+source_doctrine: docs/REGULATORY-POSTURE.md
+source_sha256: 6d14c4801ae04356857ea6a654a2e63e6de3dd876925a4826b9cc5d546516048
+status: canonical
+ledger_name: GOVERNANCE_LEDGER
+append_only: true
+storage: local_jsonl
+redactable: false
+
+row:
+  required_fields:
+    - schema_version
+    - seq
+    - prev_hash
+    - this_hash
+    - class
+    - state_actor_identifier
+    - jurisdiction
+    - demand_summary_hash
+    - demand_artifact_uri
+    - covenant_principles_touched
+    - invariants_touched
+    - response_category
+    - response_artifact_uri
+    - user_notification
+    - linked_safety_ledger_seq
+    - date
+  allowed:
+    class: [A, B, C, D]
+    response_category:
+      - comply
+      - refuse
+      - escalate-pending
+      - comply-with-disclosure
+
+conditional_rules:
+  class_B_C_D_covenant_or_invariant: true
+  class_B_invariant_required: true
+  class_C_safety_seq_required: true
+  user_notification_required_for_identified_user: true
+
+hash:
+  algorithm: sha256
+  canonicalization: json.dumps(row_without_this_hash, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 # docs/schemas/ledger-governance.yaml
 #
 # CANONICAL. schema_version: 1 as of Phase 6 (Pre-Genesis).

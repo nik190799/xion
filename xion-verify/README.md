@@ -29,15 +29,15 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | 8–9. Supply Caps | `xion-verify supply` is `NOT_YET_SEALED` until contracts deploy. |
 | 14. Crypto-Agility Mandate | `xion-verify crypto-currency` is `NOT_YET_SEALED`; `hashing.py` is the single algorithmic cite-point. |
 | 15. Drive Vector Lock | `xion-verify drive-vector` runs both the static doctrine audit of `docs/08-AUTO-RESEARCH.md` AND a live AST walk of `orchestrator.volition.compute_drive_vector` against `SOURCE_WHITELIST` (Phase 5c). `xion-verify drive` re-reads `docs/18-VOLITION.md` Part III and asserts `GENESIS_WEIGHTS` byte-matches doctrine (Phase 5c live). |
-| 16. Treasury Tier Separation | `xion-verify treasury`, `treasury-flow`, `foundation-reserve` are `NOT_YET_SEALED`. |
+| 16. Treasury Tier Separation | `xion-verify treasury` is live for contract/manifest structure; `treasury-flow` and `foundation-reserve` remain `NOT_YET_SEALED` until live vault flow rows exist. |
 | Macro Phase 6 Provisioning | `xion-verify provisioning` is live and checks the five `provision-*` AO handler schemas are concrete, marked `status: canonical`, registered in `ao/core/main.lua`, and resealed by `genesis/AO_DEPLOY_RECEIPT.json`. |
 | 17. Inference Sovereignty Floor | `xion-verify inference-sovereignty` is live (manifest + per-format pins; see `docs/26-INFERENCE-POLICY.md`). |
 | 18. Voice Sovereignty Floor (proposal; `docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md`) | `xion-verify voice-sovereignty` verifies the `voice_open_source` sentinel pin in `orchestrator/voice_router/voice_open_source_manifest.json`. `xion-verify voice-form` verifies `genesis/VOICE_FORM.md` prosody JSON. Ratification in `genesis/INVARIANTS.md` is governance-gated. |
 | Nervous System v2 (`docs/35-NERVOUS-SYSTEM.md`, Phase 6.4.b) | `xion-verify topography` boots a hermetic app and checks `GET /self` (lineage, vitals domain count, open-weights floor, api_surface). `xion-verify nervous-system` exercises pluggability, receptor failure logging, schema fail-closed drops + `vital.bus_integrity`, reflex dispatch, and dual-publish receptors. |
 | Cognitive Substrate & Casting (`docs/HERMES_PIN_PROTOCOL.md`, Phase 6.6) | `xion-verify hermes-runtime` verifies the Hermes pin, default-deny allowlist, and disabled runtime flags. `xion-verify agent-souls` verifies parent Soul hashes and tool subsets. `xion-verify agent-cast` verifies `AGENT_CAST_LEDGER` rows against the Agent Soul manifest. `xion-verify cognition` includes the Arbiter/Hermes boundary check. |
 | Contribution Protocol (`docs/34-CONTRIBUTION-PROTOCOL.md`, Phase 6.6a) | `xion-verify which-level` classifies proposed paths against the upgrade-level schemas; `xion-verify identity-bindings` verifies Ed25519 contributor wallet-to-GitHub binding rows; `xion-verify mcp-export` emits a read-only facts bundle for MCP wrappers and coding assistants. |
-| Vessel Integration Framework (`docs/37-VESSELS.md`, Phase 6.7) | `xion-verify vessel-compact`, `xion-verify media-provenance`, and `xion-verify vessel-registry` exist as honest `NOT_YET_SEALED` stubs until reference vessel manifests, signed media bundles, and append-only attestation/disavowal registries exist. |
-| Trust-Earned Spend Authority (`docs/SPEND-AUTONOMY.md`, Phase 6.8 F1/F2) | `xion-verify measurement-vocabulary` statically audits spend doctrine and Agent Souls for `docs/MEASUREMENT-VOCABULARY.md` units, rejecting forbidden elapsed-time and absolute-money authority gates outside named exceptions. |
+| Vessel Integration Framework (`docs/37-VESSELS.md`, Phase 6.7) | `xion-verify vessel-compact` is live for the reference software vessel manifest; `media-provenance` and `vessel-registry` remain honest `NOT_YET_SEALED` stubs until signed media bundles and append-only attestation/disavowal registries exist. |
+| Trust-Earned Spend Authority (`docs/SPEND-AUTONOMY.md`, Phase 6.8) | `xion-verify measurement-vocabulary`, `spend-posture`, and `spend-discipline` are live for measurement vocabulary, authority routing, and spend discipline. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
 ## How is it verified?
@@ -108,6 +108,12 @@ xion-verify vessel-compact
 xion-verify media-provenance
 xion-verify vessel-registry
 xion-verify measurement-vocabulary
+xion-verify spend-posture
+xion-verify spend-discipline
+xion-verify discovery
+xion-verify treasury
+xion-verify substrate-portability
+xion-verify regulatory-ledger
 xion-verify arbiter-up
 xion-verify all
 ```
@@ -154,6 +160,10 @@ Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic 
 ### Trust-Earned Spend Authority commands (Phase 6.8)
 
 `xion-verify measurement-vocabulary` audits `SPEND-AUTONOMY.md`, `19-TREASURY.md`, `21-SUSTAINABILITY.md`, `24-COGNITION.md`, `27-RESEARCH-SPEND.md`, and `genesis/AGENT_SOULS/*.yaml` for canonical measurement units. It rejects `monthly_usd` Agent Soul envelopes and forbidden time/money gates such as "after 90 days" or absolute per-period money caps.
+
+`xion-verify spend-posture` verifies `SPEND_AUTHORITY_LEDGER.jsonl` authority routing against the active S-posture and rejects inflow-tag posture advancement.
+
+`xion-verify spend-discipline` verifies mode, runway, reserve-floor, and recurring-burn discipline over the same ledger.
 
 ## Repository layout
 

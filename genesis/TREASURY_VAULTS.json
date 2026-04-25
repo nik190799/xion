@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "status": "testnet_placeholder",
+  "bridge_exposure_cap_bps": 1000,
+  "master_treasury": null,
+  "vaults": [],
+  "residual": "Real testnet/mainnet vault addresses require operator deployment and external audit."
+}

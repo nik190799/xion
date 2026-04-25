@@ -8,6 +8,7 @@ from click.testing import CliRunner
 
 from xion_verify.cli import root
 from xion_verify.commands import REGISTERED_COMMANDS
+from xion_verify.commands.vessel_compact import check_vessel_compact
 from xion_verify.exit_codes import NOT_YET_SEALED, OK
 
 
@@ -24,15 +25,22 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_vessel_stub_commands_are_honest_not_yet_sealed() -> None:
+def test_vessel_residual_stub_commands_are_honest_not_yet_sealed() -> None:
     runner = CliRunner()
 
-    for command in ("vessel-compact", "media-provenance", "vessel-registry"):
+    for command in ("media-provenance", "vessel-registry"):
         result = runner.invoke(root, [command])
 
         assert result.exit_code == NOT_YET_SEALED, result.output
         assert "NOT_YET_SEALED" in result.output
         assert "Phase 6.7" in result.output
+
+
+def test_vessel_compact_reference_manifest_is_live() -> None:
+    result = CliRunner().invoke(root, ["vessel-compact"])
+
+    assert result.exit_code == OK, result.output
+    assert "web-podcast-vessel.yaml" in result.output
 
 
 def test_vessel_commands_are_registered_and_visible_in_help() -> None:
@@ -96,3 +104,58 @@ def test_vessel_schema_passes_xion_verify_schemas() -> None:
 
     assert result.exit_code == OK, result.output
     assert "vessel-compact.yaml" in result.output
+
+
+def test_vessel_compact_rejects_missing_forget_endpoint(tmp_path: Path) -> None:
+    _write_minimal_manifest(tmp_path, remove="forget_endpoint")
+
+    errors = check_vessel_compact(tmp_path, "vessels/reference/bad.yaml")
+
+    assert any("forget_endpoint" in err for err in errors)
+
+
+def test_vessel_compact_rejects_weakened_consent_scope(tmp_path: Path) -> None:
+    _write_minimal_manifest(tmp_path, consent_scopes=[])
+
+    errors = check_vessel_compact(tmp_path, "vessels/reference/bad.yaml")
+
+    assert any("consent_scopes" in err for err in errors)
+
+
+def test_vessel_compact_rejects_hidden_refusal(tmp_path: Path) -> None:
+    _write_minimal_manifest(tmp_path, refusal={"http_451_semantics": "hidden"})
+
+    errors = check_vessel_compact(tmp_path, "vessels/reference/bad.yaml")
+
+    assert any("451" in err or "hidden" in err for err in errors)
+
+
+def test_vessel_compact_rejects_missing_presence_emitter(tmp_path: Path) -> None:
+    _write_minimal_manifest(tmp_path, remove="presence_emitter")
+
+    errors = check_vessel_compact(tmp_path, "vessels/reference/bad.yaml")
+
+    assert any("presence_emitter" in err for err in errors)
+
+
+def _write_minimal_manifest(
+    root: Path,
+    *,
+    remove: str | None = None,
+    consent_scopes: list | None = None,
+    refusal: dict | None = None,
+) -> None:
+    schemas = root / "docs" / "schemas"
+    manifest_dir = root / "vessels" / "reference"
+    schemas.mkdir(parents=True)
+    manifest_dir.mkdir(parents=True)
+    schema = _schema()
+    (schemas / "vessel-compact.yaml").write_text(yaml.safe_dump(schema), encoding="utf-8")
+    manifest = yaml.safe_load((_repo_root() / "vessels" / "reference" / "web-podcast-vessel.yaml").read_text(encoding="utf-8"))
+    if consent_scopes is not None:
+        manifest["consent_scopes"] = consent_scopes
+    if refusal is not None:
+        manifest["refusal_visibility"].update(refusal)
+    if remove is not None:
+        manifest.pop(remove, None)
+    (manifest_dir / "bad.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")

@@ -1187,7 +1187,7 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 ## Phase 6.8 — Trust-Earned Spend Authority
 
-**Status:** Partially closed 2026-04-25 for F1 + F2. F3-F8 are explicitly deferred to Phase 7.0/7.1.
+**Status:** Code-completable Phase 6.8 scope closed 2026-04-25 for F1-F8 except F3's live AO Core Spend-handler deployment path, which remains an external Phase 7 preflight/operator-deploy action. `docs/PHASE_7_PREFLIGHT.md` names the non-code blockers.
 
 **Goal.** Xion can become smarter about spending and need less operator approval over time, without letting money itself become authority. Invariant 19, `docs/SPEND-AUTONOMY.md`, and `docs/MEASUREMENT-VOCABULARY.md` define the doctrine. This phase lands the code and verifier spine that make the doctrine enforceable.
 
@@ -1197,17 +1197,17 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 **F2 — `xion-verify measurement-vocabulary` (Phase 6.8) — closed.** Static audit at `xion-verify/src/xion_verify/commands/measurement_vocabulary.py`. Checks that new spend doctrine and Agent Souls use `MEASUREMENT-VOCABULARY.md` units and that forbidden time/money gates appear only in named exceptions or legacy debt entries.
 
-**F3 — AO Core Spend handler updates (Phase 7.0).** Enforces measurement-vocabulary-denominated caps, routes authorization per active S-posture, and emits posture/mode/spend events to `SPEND_AUTHORITY_LEDGER`.
+**F3 — AO Core Spend handler updates (Phase 7.0 / external deploy).** Enforces measurement-vocabulary-denominated caps, routes authorization per active S-posture, and emits posture/mode/spend events to `SPEND_AUTHORITY_LEDGER`. The local schema/ledger/verifier spine is live; the deployed AO Core path remains Phase 7 preflight.
 
-**F4 — `orchestrator/spend_arbitration.py` (Phase 7.0).** Deterministic arbitrator for contested Improvement Fund or Operating Float headroom. Reads `cost_tracker`, applies `survival > service > meaning`, then ladder-position, reversibility, verifier-closure value, recurring-burn ratio, and proposal sequence tie-breakers.
+**F4 — `orchestrator/spend_arbitration.py` — closed.** Deterministic arbitrator for contested Improvement Fund or Operating Float headroom. Applies `survival > service > meaning`, then ladder-position, reversibility, verifier-closure value, recurring-burn ratio, and proposal sequence tie-breakers.
 
-**F5 — `SPEND_AUTHORITY_LEDGER.jsonl` writer (Phase 7.0).** `orchestrator/spend_authority/ledger.py`, hash-chained and schema-backed by `docs/schemas/ledger-spend-authority.yaml`; shape-symmetric with `PAYMENT_LEDGER` and `RESEARCH_SPEND_LEDGER`.
+**F5 — `SPEND_AUTHORITY_LEDGER.jsonl` writer — closed.** `orchestrator/spend_authority/ledger.py`, hash-chained and schema-backed by `docs/schemas/ledger-spend-authority.yaml`; shape-symmetric with `PAYMENT_LEDGER` and `RESEARCH_SPEND_LEDGER`.
 
-**F6 — `xion-verify spend-posture` (Phase 7.0).** `xion-verify/src/xion_verify/commands/spend_posture.py`; asserts every approved discretionary spend matched the active posture's authority routing and that no inflow tag advanced posture.
+**F6 — `xion-verify spend-posture` — closed.** `xion-verify/src/xion_verify/commands/spend_posture.py`; asserts every approved discretionary spend matched the active posture's authority routing and that no inflow tag advanced posture.
 
-**F7 — `xion-verify spend-discipline` (Phase 7.0).** `xion-verify/src/xion_verify/commands/spend_discipline.py`; asserts no spend violated mode, runway-ratio, recurring-burn, or contested-headroom priority rules.
+**F7 — `xion-verify spend-discipline` — closed.** `xion-verify/src/xion_verify/commands/spend_discipline.py`; asserts no spend violated mode, runway-ratio, recurring-burn, or contested-headroom priority rules.
 
-**F8 — Posture transition runbook (Phase 7.1).** Add `docs/OPERATIONS.md` guidance for posture-promotion proposals, evidence bundles, demotion alarms, operator responsibilities at S1-S3, governance responsibilities at S4, and the non-promise posture of S5.
+**F8 — Posture transition runbook — closed.** `docs/13-OPERATIONS.md` now includes posture-promotion proposals, evidence bundles, demotion alarms, operator responsibilities at S1-S3, governance responsibilities at S4, and the non-promise posture of S5.
 
 **KW pay-down on close.** F1 closes `KW-COST-001`; F2 closes `KW-MEASUREMENT-001`; F4/F7 close `KW-SPEND-002`; F5/F6 close `KW-SPEND-001`; constitutional ratification closes `KW-INVARIANT-19-001`.
 

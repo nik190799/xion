@@ -10,6 +10,23 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Complete Phase 6 code-completable residuals — 2026-04-25
+
+Implements the code-completable Phase 6 closure plan while keeping ceremony/procurement blockers explicit for Phase 7 preflight.
+
+### Added
+
+- **Cognition forget adapter** — `orchestrator/cognition/memory_adapter.py`, `/forget` API hook, and `xion-verify cognition --forget-sim`.
+- **Read-only MCP server** — `tools/xion_mcp/` wraps `mcp-export` facts without write, sign, payment, or proposal-submission tools.
+- **Vessel reference manifest** — `vessels/reference/web-podcast-vessel.yaml` and live `xion-verify vessel-compact`.
+- **Spend authority enforcement spine** — `SPEND_AUTHORITY_LEDGER` schema/writer, `orchestrator/spend_arbitration.py`, `xion-verify spend-posture`, and `xion-verify spend-discipline`.
+- **Macro Phase 6 code scaffolds** — Akash Relay registry/discovery, treasury vault contracts/manifest/verifier, substrate portability dry-run ledger/verifier, governance ledger schema/verifier, and `docs/PHASE_7_PREFLIGHT.md`.
+
+### Changed
+
+- `xion-verify discovery`, `treasury`, `substrate-portability`, and `regulatory-ledger` are promoted from stubs to structural live verifiers.
+- Remaining non-code blockers are documented as external Phase 7 preflight actions: Invariant 18 elapsed-window/cosign, real Akash deploy, bridge audit, warm secondary substrate, and real state-actor rows.
+
 ### Phase 6.8 — Trust-Earned Spend Authority F1/F2 — 2026-04-25
 
 Lands the measurement spine for Invariant 19 without granting spend authority: Xion can measure spend pressure and audit spend-unit vocabulary, but F3-F8 authority routing remains deferred to Phase 7.0/7.1.

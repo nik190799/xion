@@ -44,6 +44,7 @@ from xion_verify.commands.constitutional import (
 )
 from xion_verify.commands.cost_pressure import cost_pressure
 from xion_verify.commands.crisis_fidelity import crisis_fidelity
+from xion_verify.commands.discovery import discovery
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.hermes_runtime import hermes_runtime
@@ -70,6 +71,7 @@ from xion_verify.commands.refund_fidelity import refund_fidelity
 from xion_verify.commands.refusal_is_free import refusal_is_free
 from xion_verify.commands.refusal_rate import refusal_rate
 from xion_verify.commands.registries import registries
+from xion_verify.commands.regulatory_ledger import regulatory_ledger
 from xion_verify.commands.replay_corpus import replay_corpus
 from xion_verify.commands.research_sources import research_sources
 from xion_verify.commands.schemas import schemas
@@ -78,11 +80,16 @@ from xion_verify.commands.sensorium_ledger import sensorium_ledger
 from xion_verify.commands.shadow_relay import shadow_relay
 from xion_verify.commands.skill_bounty import skill_bounty
 from xion_verify.commands.soul_prompt import soul_prompt
+from xion_verify.commands.spend_discipline import spend_discipline
+from xion_verify.commands.spend_posture import spend_posture
 from xion_verify.commands.state_chain import state_chain
+from xion_verify.commands.substrate_portability import substrate_portability
 from xion_verify.commands.substrates import substrates
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
 from xion_verify.commands.topography import topography_cli
+from xion_verify.commands.treasury import treasury
 from xion_verify.commands.vitals import vitals
+from xion_verify.commands.vessel_compact import vessel_compact
 from xion_verify.commands.voice_form import voice_form
 from xion_verify.commands.voice_property import voice_property
 from xion_verify.commands.voice_sovereignty import voice_sovereignty
@@ -114,11 +121,13 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "replay-corpus": replay_corpus,
     "ledgers": ledgers,
     "drive": drive,
+    "discovery": discovery,
     "drive-vector": drive_vector,
     "state-chain": state_chain,
     "arbiter-up": arbiter_up,
     "refusal-rate": refusal_rate,
     "pricing": pricing,
+    "treasury": treasury,
     "refund-fidelity": refund_fidelity,
     "refusal-is-free": refusal_is_free,
     "crisis-fidelity": crisis_fidelity,
@@ -126,6 +135,8 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "inference-sovereignty": inference_sovereignty,
     "voice-sovereignty": voice_sovereignty,
     "voice-form": voice_form,
+    "substrate-portability": substrate_portability,
+    "regulatory-ledger": regulatory_ledger,
     "sensorium-ledger": sensorium_ledger,
     "api-tokens": api_tokens,
     "web-client": web_client,
@@ -155,6 +166,9 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "nervous-system": nervous_system_cli,
     "topography": topography_cli,
     "measurement-vocabulary": measurement_vocabulary,
+    "vessel-compact": vessel_compact,
+    "spend-posture": spend_posture,
+    "spend-discipline": spend_discipline,
 }
 
 

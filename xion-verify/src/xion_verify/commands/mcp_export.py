@@ -62,8 +62,14 @@ def mcp_export(pretty: bool) -> None:
         click.echo(f"mcp-export: FAIL: {exc}", err=True)
         sys.exit(FAIL)
 
+    payload = build_mcp_export_payload(repo_root)
+    click.echo(json.dumps(payload, indent=2 if pretty else None, sort_keys=True))
+    sys.exit(OK)
+
+
+def build_mcp_export_payload(repo_root: Path) -> dict[str, Any]:
     schemas = load_level_schemas(repo_root)
-    payload: dict[str, Any] = {
+    return {
         "schema_version": 1,
         "mode": "read_only",
         "property": "Expose constitutional and contribution-planning facts to coding agents without write authority.",
@@ -87,5 +93,3 @@ def mcp_export(pretty: bool) -> None:
         "known_weaknesses_open": _known_weaknesses(repo_root),
         "proposal_ledger": _proposal_ledger_status(repo_root),
     }
-    click.echo(json.dumps(payload, indent=2 if pretty else None, sort_keys=True))
-    sys.exit(OK)

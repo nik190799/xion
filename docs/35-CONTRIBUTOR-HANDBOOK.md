@@ -25,19 +25,53 @@ xion-verify which-level docs/34-CONTRIBUTION-PROTOCOL.md
 xion-verify mcp-export > xion-agent-facts.json
 ```
 
-4. Draft the proposal with the paths you expect to touch:
+4. For MCP-capable assistants, run the read-only server instead of copying a JSON file:
+
+```bash
+python -m tools.xion_mcp.server
+```
+
+Cursor MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "xion": {
+      "command": "python",
+      "args": ["-m", "tools.xion_mcp.server"]
+    }
+  }
+}
+```
+
+Claude Desktop MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "xion": {
+      "command": "python",
+      "args": ["-m", "tools.xion_mcp.server"]
+    }
+  }
+}
+```
+
+The `xion-mcp` server exposes only read-only tools: `mcp_export`, `which_level`, `links`, `covenant`, `invariants`, `soul`, and `unknowns`. It has no write, commit, signing, payment, or proposal-submission tool.
+
+5. Draft the proposal with the paths you expect to touch:
 
 ```bash
 xion new proposal add-ecoception --touches orchestrator/senses/ecoception.py
 ```
 
-5. If you are binding a contributor wallet to your GitHub handle, write a row to `ledgers/CONTRIBUTOR_IDENTITY_BINDINGS.jsonl` and run:
+6. If you are binding a contributor wallet to your GitHub handle, write a row to `ledgers/CONTRIBUTOR_IDENTITY_BINDINGS.jsonl` and run:
 
 ```bash
 xion-verify identity-bindings
 ```
 
-6. Before opening a PR:
+7. Before opening a PR:
 
 ```bash
 xion-verify --self-test
@@ -112,4 +146,4 @@ The value of disclosure is measurement: Xion can later ask whether agent-assiste
 
 ## First-Version Limit
 
-This handbook intentionally stops short of a live `xion-mcp` server and a full `xion-propose draft` package. The first version is a read-only facts export and verifier-backed scaffolding. That is enough for contributors to arrive at the gates cleanly without giving any assistant write authority.
+This handbook intentionally stops short of a full `xion-propose draft` package or any MCP write surface. The first version is a read-only facts export, a read-only `xion-mcp` wrapper, and verifier-backed scaffolding. That is enough for contributors to arrive at the gates cleanly without giving any assistant write authority.

@@ -56,6 +56,20 @@ def _arbiter_boundary_errors(repo_root: Path) -> list[str]:
     return errors
 
 
+def _run_forget_sim() -> list[str]:
+    try:
+        from orchestrator.cognition.memory_adapter import run_forget_simulation
+
+        receipt = run_forget_simulation()
+    except Exception as exc:
+        return [f"forget simulation failed: {exc}"]
+    if not receipt.within_sla:
+        return ["forget simulation exceeded 15-second SLA"]
+    if receipt.deleted_records < 4:
+        return [f"forget simulation deleted too few records: {receipt.deleted_records}"]
+    return []
+
+
 @click.command(
     name="cognition",
     help="Cognition-layer property suite (strengthens Invariants 2, 6, 7, 15; pre-D2 is static).",
@@ -86,6 +100,15 @@ def cognition(strict: bool, bus_audit: bool, forget_sim: bool, identity: bool, d
         click.echo("cognition: NOT_YET_SEALED — Relay metrics endpoints not wired (D2)")
         sys.exit(NOT_YET_SEALED)
 
+    if forget_sim:
+        errs = _run_forget_sim()
+        if errs:
+            for e in errs:
+                click.echo(f"cognition --forget-sim: FAIL: {e}", err=True)
+            sys.exit(FAIL)
+        click.echo("cognition --forget-sim: OK (memory forget simulation acknowledged within SLA)")
+        sys.exit(OK)
+
     errs = _static_checks(repo_root)
     notes: list[str] = []
     if not errs:
@@ -110,6 +133,6 @@ def cognition(strict: bool, bus_audit: bool, forget_sim: bool, identity: bool, d
     click.echo("cognition: OK (static doctrine, Hermes runtime, Agent Souls, cast ledger, Arbiter boundary verified)")
     for note in dict.fromkeys(notes):
         click.echo(f"cognition: {note}")
-    if bus_audit or forget_sim or identity:
+    if bus_audit or identity:
         click.echo("cognition: requested sub-check is stub-only until D2")
     sys.exit(OK)

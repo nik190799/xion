@@ -2,6 +2,68 @@ schema_id: ledger-spend-authority
 schema_version: 1
 source_doctrine: docs/SPEND-AUTONOMY.md
 source_sha256: 45b0ca69ff2865779d46dfe9eb45c8f7a2146974404d00eb087264d36acc173e
+status: canonical
+ledger_name: SPEND_AUTHORITY_LEDGER
+append_only: true
+storage: local_jsonl
+redactable: false
+
+row:
+  required_fields:
+    - schema_version
+    - seq
+    - prev_hash
+    - this_hash
+    - timestamp_utc_ns
+    - decision_id
+    - spend_class
+    - active_posture
+    - active_mode
+    - approver_class
+    - authority_decision
+    - evidence_bundle_hash
+    - inflow_tag_reference
+    - fund_source
+    - runway_measurements
+    - proposed_amount
+    - recurring_burn_weekly_delta
+    - source_sha256
+  allowed:
+    active_posture:
+      - S1_operator_all
+      - S2_operator_strategic
+      - S3_operator_burn_envelope
+      - S4_governance_strategic
+      - S5_self_sovereign_inside_fence
+    active_mode:
+      - survival
+      - baseline
+      - acceleration
+      - expansion
+    approver_class:
+      - operator
+      - ao_core
+      - governance
+      - xion
+    authority_decision:
+      - approved
+      - rejected
+      - escalated
+    spend_class:
+      - survival_ops
+      - routine_ops
+      - one_time_acceleration
+      - recurring_capacity
+      - posture_transition
+      - contested_headroom
+
+hash:
+  algorithm: sha256
+  canonicalization: json.dumps(row_without_this_hash, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+schema_id: ledger-spend-authority
+schema_version: 1
+source_doctrine: docs/SPEND-AUTONOMY.md
+source_sha256: 45b0ca69ff2865779d46dfe9eb45c8f7a2146974404d00eb087264d36acc173e
 status: doctrine_only
 defer_to: DEVELOPMENT_ROADMAP.md Phase 7.0
 ledger_name: SPEND_AUTHORITY_LEDGER.jsonl

@@ -1,0 +1,128 @@
+schema_version: 1
+vessel_id: web-podcast-reference
+vessel_mode: podcast_media
+compact_version: 1
+core_identity:
+  core_process_id: localnet-reference
+  state_height: 1
+  relay_authorization_chain: []
+covenant:
+  covenant_hash: 4f8b13a9d4ae1c0fbb8cf3fd41b59a2a54b7d93a40e680891a7f00ac14f5de6a
+  covenant_ack_path: /covenant
+  update_visibility: visible_before_playback
+capabilities:
+  - speaker
+  - display
+  - media_recording
+consent_scopes:
+  - scope_id: stream_voice
+    capability: speaker
+    status: active
+    user_visible_label: Voice playback
+  - scope_id: stream_visual
+    capability: display
+    status: active
+    user_visible_label: Visual presence frame
+free_endpoints:
+  export: /export
+  forget: /forget
+  inspect: /inspect
+  empty_billing_behavior: covenant_rights_remain_free
+  offline_behavior: disclose_offline_floor
+  manufacturer_absence_behavior: no_manufacturer_override
+refusal_visibility:
+  covenant_flags: visible
+  http_451_semantics: preserved
+  arbiter_explanation: visible_when_safe
+  mode_rendering: audible_and_visual_veil
+payment_posture: operator_paid
+local_storage:
+  caches: declared
+  memory_handles: none
+  transcripts: exportable
+  media: signed_reference_bundle_required
+  embeddings: none
+  biometrics: none
+  receipts: exportable
+  forget_clearance: clears_local_cache
+provenance:
+  relay_id: reference-relay
+  relay_signature_chain: declared
+  core_lineage: genesis_localnet
+  covenant_hash: 4f8b13a9d4ae1c0fbb8cf3fd41b59a2a54b7d93a40e680891a7f00ac14f5de6a
+  response_or_media_status: unsealed_reference
+  user_verification_path: /inspect
+presence_emitter: /presence/stream
+modality_consent: /memory/consent
+pricing_decomposition: /pricing
+disavowal_endpoint: /vessels/disavow
+forget_endpoint: /forget
+degraded_behavior:
+  relay_unavailable: disclose_not_live_xion
+  core_unavailable: disclose_core_unavailable
+  network_unavailable: offline_cache_only
+  voice_floor_unavailable: text_only
+  local_model_unavailable: no_local_impersonation
+  user_disclosure: visible_banner
+physical_trust_controls:
+  physical_mute: not_applicable
+  camera_shutter: not_applicable
+  local_memory_indicator: software_indicator
+  offline_degraded_indicator: visible_banner
+  safe_reset: clear_cache_button
+revocation:
+  disavowal_feed: /vessels/disavowals.json
+  stop_claiming_xion_path: /vessels/retire
+  retirement_export_forget_window: immediate_export_then_forget
+agentic_surface:
+  principal: human
+  agent_in_path: false
+  agent_identity: none
+  agent_authority: none
+  agent_memory: none
+  attribution_rules: direct_relay_attribution
+  retry_posture: no_auto_retry_after_refusal
+  tool_forwarding: none
+  forget_into_agent_memory: not_applicable
+  anonymous_to_authenticated_upgrade: ephemeral_only
+  input_authenticity:
+    capture_origin: replayed
+    live_indicator: false
+    replay_attack_posture: media_reference_only
+    high_assurance_command_allowed: false
+  receiving_side_verification: exportable_transcript_bundle
+data_taxonomy:
+  - class_id: relayed
+    human_description: Relay response transcript
+    source: xion_relay
+    storage_location: local_cache
+    operator_or_controller: vessel_operator
+    retention_window: session
+    default_disposition: delete_on_forget
+    export_reachability: export_endpoint
+    forget_propagation_rule: local_cache_clear
+    inspect_visibility: visible
+    residency: local
+    special_category_flags: []
+    third_party_recipients: []
+    availability_reference: online_full
+availability_model:
+  reachability_matrix:
+    online_full:
+      readable_by_user: true
+      readable_by_xion: true
+      export_available: true
+      forget_available: true
+      inspect_available: true
+      write_allowed: true
+      user_disclosure: live_xion
+      proof_posture: signed
+  cross_vessel_forget_latency_max: 15s
+  backfill_policy: none
+  pending_state_visibility: visible
+  crisis_fidelity_floor: relay_required
+  corruption_disclosure_policy: disclose_and_stop_claiming_xion
+  mid_conversation_export: available
+  concurrent_session_policy: one_session_per_principal
+  substrate_fallback_context_gap: disclosed
+source_sha256: 199542dd7fb36245498030b3b25488fd35a5e31a00ae29603ee3881d15b94711
