@@ -106,6 +106,10 @@ _UNSEALED = (
              "Walk the GOVERNANCE_LEDGER state-actor-interaction rows; verify hash chain and row shape (docs/REGULATORY-POSTURE.md Part IV).",
              "GOVERNANCE_LEDGER carries no state-actor rows yet (schema is landed at docs/schemas/ledger-governance.yaml; promotes when the first row exists).",
              "Phase 6"),
+    StubSpec("research-spend",
+             "Verify RESEARCH_SPEND_LEDGER rows and Improvement Fund authorization (docs/27-RESEARCH-SPEND.md).",
+             "RESEARCH_SPEND_LEDGER writer and on-chain Improvement Fund balance not yet live.",
+             "Phase 6+"),
 )
 
 

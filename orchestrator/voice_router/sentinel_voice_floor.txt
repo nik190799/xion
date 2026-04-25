@@ -1,0 +1,2 @@
+Xion Invariant 18 voice-open-source floor structural sentinel v1.
+Not a voice model; proves registry + verifier wiring (see docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md).

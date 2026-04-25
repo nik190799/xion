@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "description": "Voice open-source floor manifest for Invariant 18. Verified by xion-verify voice-sovereignty (sentinel format matches inference router posture).",
+  "voice_open_source": [
+    {
+      "id": "whisper-piper-livekit-floor",
+      "category": "voice_open_source_self_hostable",
+      "format": "sentinel",
+      "sentinel_path": "orchestrator/voice_router/sentinel_voice_floor.txt",
+      "sha256": "c8a0995a584d0d7c8d1fd6bb6e7ba940f64d136eccb16ae1c36979b3c9fa16a7",
+      "notes": "Structural sentinel; real Whisper+Piper+LiveKit floor wiring is exercised at runtime (Phase 6.5 DEVELOPMENT_ROADMAP.md)."
+    }
+  ],
+  "voice_hosted_api_registry": []
+}

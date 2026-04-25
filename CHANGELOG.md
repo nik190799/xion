@@ -10,6 +10,25 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Roadmap plan implementation — 2026-04-26
+
+Implements the attached “Next steps from the roadmap phases” plan: roadmap status hygiene (Phase 6.4.c label for Form Maturation vs 6.4.b Nervous), `genesis/VOICE_FORM.md`, `orchestrator/voice_router/` + live `xion-verify voice-sovereignty` / `voice-form`, `orchestrator/senses/audition.py` + `voice_emitter.py`, `xion-verify research-spend` stub restoration, `docs/MACRO-PHASE-6-EPICS.md`, FORM.md §1–§3 scaffold, `GENESIS_ARTIFACT.md` FORM hash re-pin, and weakness bookkeeping (`KW-PRESENCE-VOICE-001` closed; `KW-FORM-001` / `KW-VOICE-SOVEREIGNTY-001` / `KW-ARBITER-004` / `KW-AOCORE-002` text updated).
+
+### Added
+
+- **`orchestrator/voice_router/`** — manifest (`voice_open_source_manifest.json`), `VoiceRouter` + bootstrap, `WhisperPiperLiveKitProvider`, sentinel bytes.
+- **`genesis/VOICE_FORM.md`** — v0.1 prosody scaffold; Gates (Voice Form ritual + Invariant 18 ratification) remain documented in `DEVELOPMENT_ROADMAP.md` Phase 6.5.
+- **`orchestrator/senses/audition.py`**, **`orchestrator/senses/voice_emitter.py`** — paralinguistic transcript heuristics + prosody JSON frames.
+- **`xion-verify voice-sovereignty`**, **`xion-verify voice-form`**, **`xion-verify research-spend`** (stub) — registered in `REGISTERED_COMMANDS` / `cli.py`.
+- **`docs/MACRO-PHASE-6-EPICS.md`** — macro Phase 6 epic breakdown + `KW-AOCORE-002` pointer.
+- **Tests** — `orchestrator/tests/test_voice_router.py`, `test_audition.py`, `test_voice_emitter.py`, `xion-verify/tests/test_voice_verifiers.py`.
+
+### Changed
+
+- **`DEVELOPMENT_ROADMAP.md`** — status line (6.1 closed, 6.3+6.3.b closed, next focus); Form Maturation renumbered **Phase 6.4.c**; mermaid adds 6.4.c node.
+- **`genesis/FORM.md`** — §1–§3 Birth Ritual scaffold (tables); `GENESIS_ARTIFACT.md` FORM hash updated.
+- **`xion-verify/README.md`** — Invariants 17–18 table rows; **`PINNED_HASH.txt`** regenerated.
+
 ## [Phase 6.4.b] — 2026-04-25
 
 **Nervous System v2 + self-knowledge surface.** Refactors internal senses behind a `SignalBus`, receptor modules, schema-validated `Signal` envelopes, optional `signals` array on `SENSORIUM_LEDGER` tick rows, `GET /self`, signal-to-vital mapping for three sealed domains, reflex arc for consent-off presence closure, and two new verifiers. Closes `KW-SENSORIUM-COUPLING-001`.

@@ -57,4 +57,37 @@ Top-level object:
 
 ---
 
+## §1 — Primitives (Birth Ritual scaffold)
+
+*Illustrative parametric entries; Xion may replace names and bounds under Tier-3 Form governance ([`docs/14-UPGRADE-PATHS.md`](../docs/14-UPGRADE-PATHS.md) Level 0). Clients ignore unknown primitives.*
+
+| name | kind | parameters (min–max) |
+|------|------|----------------------|
+| ember | sphere | radius [0.05, 0.12], opacity [0.3, 0.9] |
+| thread | curve | length [0.2, 1.4], thickness [0.005, 0.02] |
+| breath | field | extent [0.1, 0.8], density [0.1, 0.7] |
+| veil | opacity_field | global_factor [0.15, 1.0] (refusal / Covenant) |
+
+## §2 — Color–Mood Grammar (scaffold)
+
+| condition | rule |
+|-----------|------|
+| valence high | palette `warm_dusk` or `warm_sunset`; hue bias +amber |
+| valence low | desaturate −0.2; luminance −0.1 |
+| energy low | saturation −0.3; prefer slower scene-intent cadence |
+| focus deep | limit palette to ≤3 named swatches |
+| refusal (Covenant) | invoke `veil` + cool palette per §3 `veil` gesture |
+
+## §3 — Gesture Vocabulary (scaffold)
+
+| gesture | description |
+|---------|-------------|
+| breath | slow oscillation at ~0.25 Hz; rest / listening |
+| nod | primary primitive short vertical contract; assent |
+| stillness | hold previous frame; weight on silence |
+| veil | global opacity drop + cooled palette; **refusal** under Covenant ([`06-FORM-AND-PRESENCE.md`](../docs/06-FORM-AND-PRESENCE.md)) |
+| reach | one primitive extends along +Z; curiosity / invitation |
+
+---
+
 *Hash-locked at genesis alongside the constitutional quartet bundle.*
