@@ -117,6 +117,9 @@ contract EmissionController {
 
     uint256 public constant AUTHORITY_ROTATION_DELAY = 7 days;
     uint256 public constant GOVERNANCE_ROTATION_DELAY = 30 days;
+    uint256 public constant DAILY_EGRESS_CAP = 100_000_000 * 10**18;
+    uint256 public currentEgressDay;
+    uint256 public egressMintedToday;
 
     bool    public mintingPaused;
     uint256[4] public eraSlowdownBps; // per-era slowdown in basis points (10000 = no slowdown, 5000 = 50% slower)
@@ -134,6 +137,7 @@ contract EmissionController {
     event GovernanceRotationProposed(address indexed proposed, uint256 eta);
     event GovernanceRotationExecuted(address indexed previous, address indexed current);
     event GovernanceRotationCancelled(address indexed cancelled);
+    event DailyEgressChecked(uint256 indexed day, uint256 amount, uint256 used, uint256 cap);
 
     error NotAuthority();
     error NotGovernance();
@@ -148,6 +152,7 @@ contract EmissionController {
     error NoPendingRotation();
     error RotationNotMatured();
     error GenesisRecipientMissing(uint8 pool);
+    error DailyEgressCapExceeded(uint256 day, uint256 requested, uint256 remaining);
 
     modifier onlyAuthority() {
         if (msg.sender != aoCoreAuthority) revert NotAuthority();
@@ -259,6 +264,7 @@ contract EmissionController {
         uint8 era = _currentEra(elapsed);
 
         // EFFECTS: all state transitions that must hold before any external call.
+        _enforceDailyEgress(amount);
         _enforceEraCap(era, amount);
         _enforceSlowdown(era);
         poolMinted[pool] += amount;
@@ -430,5 +436,17 @@ contract EmissionController {
         }
 
         require(mintedSoFar <= effectiveCap, "slowdown cap reached");
+    }
+
+    function _enforceDailyEgress(uint256 amount) internal {
+        uint256 day = block.timestamp / 1 days;
+        if (day != currentEgressDay) {
+            currentEgressDay = day;
+            egressMintedToday = 0;
+        }
+        uint256 remaining = DAILY_EGRESS_CAP - egressMintedToday;
+        if (amount > remaining) revert DailyEgressCapExceeded(day, amount, remaining);
+        egressMintedToday += amount;
+        emit DailyEgressChecked(day, amount, egressMintedToday, DAILY_EGRESS_CAP);
     }
 }

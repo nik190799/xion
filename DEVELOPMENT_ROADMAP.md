@@ -4,6 +4,8 @@
 >
 > **Scope:** Everything that comes after Phase 0 / Phase 0b / Phase 2 (the doctrine layer). The constitutional layer is finished, every constitutional file is hashed into `genesis/GENESIS_ARTIFACT.md` § 4, and those hashes verify via `xion-verify {covenant|invariants|soul|form|memory|resurrect|credentials|unknowns}`.
 >
+> **Phase 6.9 closed 2026-04-25:** Decentralization & Modular Substrate replaced the hosted OpenRouter default with Chutes/Bittensor SN64, added modular provider/billing/cache/embedding/rerank/tool/bridge substrates, bounded cognition loops, request fingerprint audit fields, and the Phase 6.9 verifier set.
+>
 > **Read order before opening this file for execution:** all doctrine files in `docs/` (including `24-COGNITION.md` and `SKILL_BOUNTY.md`), all files in `genesis/`, `KNOWN_WEAKNESSES.md`, `CHANGELOG.md`, and `xion-verify/README.md` for the four Properties answers behind the verifier.
 
 ---
@@ -45,8 +47,9 @@ flowchart LR
   P6_6 --> P6_7[Phase 6.7: Vessel Integration Framework<br/>Vessel Compact + modular modes]
   P6_7 --> P6_7_done["docs/37-VESSELS.md<br/>vessel-compact/media-provenance/registry stubs named<br/>robot + phone + hardware + media modes"]
   P6_7 --> P6_8[Phase 6.8: Trust-Earned Spend Authority<br/>partially closed F1+F2 2026-04-25<br/>cost_tracker + measurement-vocabulary]
+  P6_8 --> P6_9[Phase 6.9: Decentralization + Modular Substrate<br/>closed 2026-04-25<br/>Chutes, modular AI, bridge caps]
   P6_6a --> MACRO_B
-  P6_7 --> MACRO_B[Macro Phase 6 Epic B<br/>Akash Relay + discovery]
+  P6_9 --> MACRO_B[Macro Phase 6 Epic B<br/>Relay deployment + discovery]
 ```
 
 ---
@@ -1210,6 +1213,25 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 **F8 — Posture transition runbook — closed.** `docs/13-OPERATIONS.md` now includes posture-promotion proposals, evidence bundles, demotion alarms, operator responsibilities at S1-S3, governance responsibilities at S4, and the non-promise posture of S5.
 
 **KW pay-down on close.** F1 closes `KW-COST-001`; F2 closes `KW-MEASUREMENT-001`; F4/F7 close `KW-SPEND-002`; F5/F6 close `KW-SPEND-001`; constitutional ratification closes `KW-INVARIANT-19-001`.
+
+---
+
+## Phase 6.9 — Decentralization & Modular Substrate
+
+**Status:** Closed 2026-04-25 for code-completable scope. Live deployment, external audit, and post-Genesis light-client bridge hardening remain Phase 7+ obligations.
+
+**Goal.** Remove centralized hosted-inference dependency, make every AI layer swappable by Protocol, and gate Phase 7 on verifiable modularity rather than provider promises.
+
+**Landed.**
+
+- Chutes/Bittensor SN64 is the hosted default via `ChutesGenerativeProvider`, `ChutesBillingProvider`, and `ChutesTopUp`; OpenRouter remains parity fallback only.
+- Provider Protocol now covers multimodal messages, structured outputs, tool-calling, embeddings, STT/TTS, judging, cache control, provider fingerprints, reasoning-token accounting, and TEE attestation.
+- Safety path uses deterministic Chutes DeepSeek judge pins; shadow/canary routing, model-promotion ledgers, request-fingerprint audit fields, cache scaffold, embeddings, SQLite vector memory, reranking, prompt isolation, tool resolvers, and bounded cognition loops are live.
+- AO/EVM bridge substrate now has `BridgeAttestor`, multisig and light-client-stub implementations, daily egress caps in Solidity, and bridge verifiers.
+
+**Verifier set.** `inference-provider-chutes`, `billing-credits-floor`, `chutes-topup-multisig`, `arbiter-determinism`, `shadow-divergence`, `model-promotion-discipline`, `request-fingerprint`, `memory-store-integrity`, `embedder-health`, `rerank-improvement`, `tool-resolver-mcp`, `prompt-isolation`, `cognition-loop-bounded`, `bridge-attest`, `bridge-egress-cap`.
+
+**Known-weakness reconciliation.** Closes the OpenRouter concentration shape of `KW-INFER-001`; opens residuals for Chutes economics, Chutes gateway liveness, embedding retrieval quality, and bridge multisig trust.
 
 ---
 

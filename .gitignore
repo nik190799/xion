@@ -57,6 +57,7 @@ ENV/
 
 # Cognition journal default SQLite path (orchestrator/cognition/journal.py)
 journal.db
+journal_vectors.db
 
 # ----- Node / TypeScript (clients/web, tooling) -----
 node_modules/

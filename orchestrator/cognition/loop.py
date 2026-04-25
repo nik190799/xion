@@ -1,12 +1,32 @@
-"""Phase 5h: The Cognition Wiring - Agentic Loop."""
+"""Phase 5h/6.9: Bounded agentic loop."""
+
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass
 from typing import Any, AsyncIterator
 from .context import assemble_context
 from .journal import Journal
 from .retrieval import retrieve_context
 from .hermes.depth import DepthEnforcer
+from orchestrator.inference_router.provider import Message
+from orchestrator.tools import PythonToolResolver
 
-_JOURNAL = Journal()
+_JOURNAL: Journal | None = None
 _DEPTH_ENFORCER = DepthEnforcer(max_depth=1)
+_TOOL_RESOLVER: PythonToolResolver | None = None
+
+
+@dataclass(frozen=True)
+class CognitionLoopBudget:
+    delegation_depth: int = 1
+    iteration_count: int = 3
+    tool_rounds: int = 3
+    reasoning_tokens: int = 4096
+    wall_clock_s: float = 8.0
+
+
+DEFAULT_BUDGET = CognitionLoopBudget()
 
 def run_turn(
     provider: Any,
@@ -16,31 +36,61 @@ def run_turn(
     max_tokens: int,
     deadline_s: float,
     correlation_id: str,
+    principal_id: str = "global",
+    budget: CognitionLoopBudget = DEFAULT_BUDGET,
 ) -> Any:
     """Run a single turn of the agentic loop synchronously."""
-    _DEPTH_ENFORCER.check_depth(1)
+    _DEPTH_ENFORCER.check_depth(budget.delegation_depth)
+    started = time.monotonic()
+    effective_deadline_s = min(deadline_s, budget.wall_clock_s)
     
-    _JOURNAL.append(correlation_id, "user", prompt)
+    journal = _journal()
+    journal.append(correlation_id, "user", prompt, principal_id=principal_id)
     
-    retrieved = retrieve_context(_JOURNAL, prompt)
-    recent = _JOURNAL.get_recent(limit=5)
+    retrieved = retrieve_context(journal, prompt, principal_id=principal_id)
+    recent = journal.get_recent(limit=5)
     
     full_system_prompt = assemble_context(
         soul_prompt=soul_prompt,
         sensorium_snapshot=sensorium_snapshot,
         recent_journal=recent,
-        retrieved_context=retrieved
+        retrieved_context=retrieved,
+        user_prompt=prompt,
+        correlation_id=correlation_id,
     )
     
-    result = provider.generate(
-        prompt,
-        system=full_system_prompt,
-        max_tokens=max_tokens,
-        deadline_s=deadline_s,
-    )
+    result = None
+    for _iteration in range(budget.iteration_count):
+        remaining_s = (
+            effective_deadline_s
+            if _iteration == 0
+            else effective_deadline_s - (time.monotonic() - started)
+        )
+        if remaining_s <= 0:
+            raise TimeoutError("cognition loop wall-clock budget exceeded")
+        if callable(getattr(provider, "generate_messages", None)):
+            result = provider.generate_messages(
+                [
+                    Message.text("system", full_system_prompt),
+                    Message.text("user", prompt),
+                ],
+                max_tokens=min(max_tokens, budget.reasoning_tokens),
+                tools=_openai_tools()[: budget.tool_rounds],
+                response_format={"type": "text"},
+                reasoning_effort="high",
+                deadline_s=remaining_s,
+            )
+        else:
+            result = provider.generate(
+                prompt,
+                system=full_system_prompt,
+                max_tokens=min(max_tokens, budget.reasoning_tokens),
+                deadline_s=remaining_s,
+            )
+        break
     
     if result and getattr(result, "text", None):
-        _JOURNAL.append(correlation_id, "xion", result.text)
+        journal.append(correlation_id, "xion", result.text, principal_id=principal_id)
         
     return result
 
@@ -53,28 +103,33 @@ async def stream_run_turn(
     deadline_s: float,
     correlation_id: str,
     stream_generate_func: Any,
+    principal_id: str = "global",
+    budget: CognitionLoopBudget = DEFAULT_BUDGET,
 ) -> AsyncIterator[Any]:
     """Async streaming variant of the agentic loop."""
-    _DEPTH_ENFORCER.check_depth(1)
+    _DEPTH_ENFORCER.check_depth(budget.delegation_depth)
     
-    _JOURNAL.append(correlation_id, "user", prompt)
+    journal = _journal()
+    journal.append(correlation_id, "user", prompt, principal_id=principal_id)
     
-    retrieved = retrieve_context(_JOURNAL, prompt)
-    recent = _JOURNAL.get_recent(limit=5)
+    retrieved = retrieve_context(journal, prompt, principal_id=principal_id)
+    recent = journal.get_recent(limit=5)
     
     full_system_prompt = assemble_context(
         soul_prompt=soul_prompt,
         sensorium_snapshot=sensorium_snapshot,
         recent_journal=recent,
-        retrieved_context=retrieved
+        retrieved_context=retrieved,
+        user_prompt=prompt,
+        correlation_id=correlation_id,
     )
     
     gen = stream_generate_func(
         provider,
         prompt,
         system=full_system_prompt,
-        max_tokens=max_tokens,
-        deadline_s=deadline_s,
+        max_tokens=min(max_tokens, budget.reasoning_tokens),
+        deadline_s=min(deadline_s, budget.wall_clock_s),
     )
     
     full_text = []
@@ -86,4 +141,25 @@ async def stream_run_turn(
         yield chunk
         
     if full_text:
-        _JOURNAL.append(correlation_id, "xion", "".join(full_text))
+        journal.append(correlation_id, "xion", "".join(full_text), principal_id=principal_id)
+
+
+def _openai_tools() -> list[dict[str, Any]]:
+    return [spec.to_openai_tool() for spec in _tool_resolver().list_tools()]
+
+
+def _journal() -> Journal:
+    global _JOURNAL
+    if _JOURNAL is None:
+        _JOURNAL = Journal()
+    return _JOURNAL
+
+
+def _tool_resolver() -> PythonToolResolver:
+    global _TOOL_RESOLVER
+    if _TOOL_RESOLVER is None:
+        _TOOL_RESOLVER = PythonToolResolver()
+    return _TOOL_RESOLVER
+
+
+__all__ = ["CognitionLoopBudget", "DEFAULT_BUDGET", "run_turn", "stream_run_turn"]

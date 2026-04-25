@@ -317,6 +317,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # initialise the slot so admission_dependency does not have to
     # check for its existence on every call.
     app.state.health_rate_limiters = {}
+    # Phase 6.9: vector memory is a first-class forget backend. Journal
+    # writes use the same SQLite file path by default, so /forget deletes
+    # embedded memory as well as future memory substrates behind this adapter.
+    from orchestrator.memory import build_default_memory_store
+
+    app.state.memory_backend = build_default_memory_store()
 
     # Wire the Supervisor (or broker shell) into the Relay AFTER the
     # pre-seed tick, so any in-process code that races the lifespan
@@ -378,11 +384,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     anchor_task = asyncio.create_task(anchor_daemon.run_forever(), name="xion-anchor-run")
     app.state.anchor_task = anchor_task
 
+    billing_credit_task = None
+    if os.environ.get("XION_CHUTES_API_KEY", "").strip():
+        billing_credit_task = asyncio.create_task(
+            _poll_chutes_billing_forever(),
+            name="xion-chutes-billing-run",
+        )
+    app.state.billing_credit_task = billing_credit_task
+
     try:
         yield
     finally:
         supervisor.stop()
         anchor_task.cancel()
+        if billing_credit_task is not None:
+            billing_credit_task.cancel()
 
         # Shutdown budget: 2 * tick_cadence_s. Generous — a healthy
         # Supervisor exits on the next poll boundary (<= poll_interval_s,
@@ -399,6 +415,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             supervisor_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await supervisor_task
+        if billing_credit_task is not None:
+            with contextlib.suppress(asyncio.CancelledError):
+                await billing_credit_task
 
         # Drop the wire-up so a subsequent lifespan (unusual, but
         # possible in test re-runs on the same Relay instance) does
@@ -486,7 +505,7 @@ def _build_router_from_env() -> InferenceRouter:
 
 
 def _register_env_providers(router: InferenceRouter) -> None:
-    """Register OpenRouter (if XION_OPENROUTER_API_KEY set) and Ollama
+    """Register Chutes/OpenRouter (if their API keys are set) and Ollama
     (always).
 
     Failures in provider construction (e.g., malformed URL) are
@@ -498,8 +517,12 @@ def _register_env_providers(router: InferenceRouter) -> None:
     # Import lazily so the Phase 5f read-only surface does not pull
     # the providers package during module load.
     from orchestrator.inference_router.providers import (
+        ChutesGenerativeProvider,
         OllamaGenerativeProvider,
         OpenRouterGenerativeProvider,
+    )
+    from orchestrator.inference_router.providers.chutes import (
+        ChutesProviderError,
     )
     from orchestrator.inference_router.providers.ollama import (
         OllamaProviderError,
@@ -508,6 +531,38 @@ def _register_env_providers(router: InferenceRouter) -> None:
         OpenRouterProviderError,
     )
 
+    if os.environ.get("XION_CHUTES_API_KEY", "").strip():
+        try:
+            chutes = ChutesGenerativeProvider()
+        except ChutesProviderError as e:
+            print(
+                f"State-of-Xion: Chutes provider not registered: {e}",
+                file=sys.stderr,
+                flush=True,
+            )
+        else:
+            router.register(chutes)
+            shadow_model = os.environ.get(
+                "XION_CHUTES_SHADOW_MODEL",
+                "Qwen/Qwen3-235B-A22B-Instruct-2507",
+            ).strip()
+            if shadow_model:
+                try:
+                    router.register_shadow(
+                        ChutesGenerativeProvider(
+                            model=shadow_model,
+                            tee_required=False,
+                        )
+                    )
+                except ChutesProviderError as e:
+                    print(
+                        f"State-of-Xion: Chutes shadow provider not registered: {e}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+
+    # OpenRouter remains a 30-day parity-window fallback/shadow provider
+    # when the operator keeps its credential configured.
     if os.environ.get("XION_OPENROUTER_API_KEY", "").strip():
         try:
             openrouter = OpenRouterGenerativeProvider()
@@ -530,6 +585,56 @@ def _register_env_providers(router: InferenceRouter) -> None:
         )
     else:
         router.register(ollama)
+
+
+async def _poll_chutes_billing_forever() -> None:
+    """Append Chutes balance telemetry rows while the API process is live."""
+    from orchestrator.billing.credit_ledger import append_billing_row
+    from orchestrator.billing.providers.chutes_billing import (
+        ChutesBillingProvider,
+        ChutesBillingError,
+    )
+
+    interval_s = int(os.environ.get("XION_CHUTES_BILLING_POLL_S", "300"))
+    ledger_path = Path(os.environ.get(
+        "XION_CHUTES_BILLING_LEDGER",
+        "ledgers/BILLING_LEDGER.jsonl",
+    ))
+    burn_rate_raw = os.environ.get("XION_CHUTES_BURN_USD_PER_DAY", "").strip()
+    burn_rate = float(burn_rate_raw) if burn_rate_raw else None
+    try:
+        provider = ChutesBillingProvider()
+    except ChutesBillingError as exc:
+        print(
+            f"State-of-Xion: Chutes billing telemetry disabled: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+    while True:
+        try:
+            balance = await asyncio.to_thread(provider.balance)
+            runway = (
+                balance.balance_usd / burn_rate
+                if burn_rate is not None and burn_rate > 0
+                else None
+            )
+            append_billing_row(
+                ledger_path,
+                provider_id=provider.provider_id,
+                event="balance_poll",
+                balance_usd=balance.balance_usd,
+                balance_tao=balance.balance_tao,
+                payment_address=balance.payment_address,
+                runway_inference_credits_days=runway,
+            )
+        except Exception as exc:
+            print(
+                f"State-of-Xion: Chutes billing poll failed: {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
+        await asyncio.sleep(max(30, interval_s))
 
 
 __all__ = ["lifespan"]

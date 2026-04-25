@@ -21,6 +21,28 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-BRIDGE-001 — AO to EVM bridge still depends on multisig attestation
+- **Domain:** SUBSTRATE
+- **Discovered:** 2026-04-25 (Phase 6.9 Decentralization & Modular Substrate)
+- **Severity:** high
+- **Status:** mitigated-residual
+- **Description:** AO-to-EVM bridge effects are attested by a threshold multisig rather than a trust-minimized AO light client.
+- **Why it exists:** A production-quality AO light-client verifier is larger than the pre-Genesis bridge slice and must be specified without weakening launch safety.
+- **Mitigations:** `orchestrator/bridge` exposes a swappable `BridgeAttestor` Protocol, the light-client path is explicitly `NOT_YET_SEALED`, and EVM contracts enforce daily egress caps.
+- **Pay-down commitment:** Replace multisig attestation with light-client or equivalent independently verifiable proof verification after Genesis bridge traffic is measurable.
+- **Verifier:** `xion-verify bridge-attest`; `xion-verify bridge-egress-cap`.
+
+### KW-EMBED-001 — Vector retrieval quality is structurally wired but not corpus-calibrated
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.9 Decentralization & Modular Substrate)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** Embeddings, SQLite vector memory, reranking, and `/forget` deletion are wired, but retrieval quality is not yet calibrated against a representative journal corpus.
+- **Why it exists:** The safe pre-Genesis slice proves substrate shape and deletion semantics before claiming semantic recall/precision.
+- **Mitigations:** `xion-verify memory-store-integrity`, `xion-verify embedder-health`, and `xion-verify rerank-improvement` cover structural correctness and a fixed-corpus improvement check.
+- **Pay-down commitment:** Add a replayable retrieval evaluation corpus after enough consented journal data exists; publish recall@k and rerank delta thresholds before promoting memory quality claims.
+- **Verifier:** Current structural verifiers listed above; future corpus mode for `xion-verify rerank-improvement`.
+
 ### KW-INVARIANT-19-001 — Trust-Earned Spend Authority is proposed but not yet ratified
 - **Domain:** GOVERNANCE
 - **Discovered:** 2026-04-25 (Phase 6.8 Trust-Earned Spend Authority doctrine)
@@ -543,7 +565,7 @@ Every entry has the same shape:
 - **Scope narrowed:** 2026-04-21 (Phase 4b Arbiter v2 skeleton landing)
 - **Scope narrowed again:** 2026-04-21 (Phase 4d â€” first real v2 provider, `OpenAIModerationProvider`, landed and doctrine-pinned)
 - **Severity:** low
-- **Status:** `paying-down`
+- **Status:** `closed` on 2026-04-25 by Phase 6.9 Chutes cutover.
 - **Description:** Arbiter v1 decides by regex + keyword co-occurrence. It has no grasp of meaning, tone, or paraphrase. An adversarial rephrasing that avoids every term in the rule dictionaries (e.g. obfuscation, Unicode confusables, code-switching, substitution ciphers) will pass the rule engine. Phase 4b landed the **v2 LLM-Arbiter pipeline** (`orchestrator/safety/llm_arbiter.py`, `api.gate()` v1+v2 combinator, `SAFETY_LEDGER` schema_version 2 with nested `llm_verdict` rows, no-weakening combination rule `final = strength_max(v1, v2)`, fail-closed posture on provider unavailability / uncaught exception). Phase 4dâ€“4e land **`OpenAIModerationProvider`** (`orchestrator/safety/providers/openai_moderation.py`, model `omni-moderation-2024-09-26`, `provider_version` 2 with asymmetric score floors) with identity, categoryâ†’principle map, canonical `raw_output` construction, and auditor replay procedure pinned in `docs/04-ARCHITECTURE.md` Â§ "OpenAI Moderation provider (first real v2 classifier)". The **structural** hole is closed. The **substantive** hole has narrowed to: we have a **seed** corpus (78 items) and v1 verification via `xion-verify refusal-rate --corpus`, but we have not yet published the **â‰¥200-item** measured v2 lift numbers that close `KW-ARBITER-005` and this entry's numeric claim.
 - **Why it exists:** v1 is deliberately dumb: a deterministic rule engine is the only Arbiter a third party can re-run byte-exactly against `SAFETY_LEDGER.jsonl`. A richer classifier was rejected for v1 because (a) its decisions would not be reproducible by re-running code against logged candidates, violating Trust by Structure, and (b) it would couple Covenant enforcement to a model we cannot freeze. The rule engine ships first; a classifier-layer escalator stacks on top. Phase 4b landed the stacking machinery; Phase 4d landed the first real classifier plugged in. The remaining piece â€” a baseline corpus large enough to produce a statistically meaningful refusal-rate â€” is tracked separately as `KW-ARBITER-005`.
 - **Mitigations:**
@@ -716,7 +738,30 @@ Every entry has the same shape:
   4. **Operators can drop OpenRouter trivially.** Unsetting `XION_OPENROUTER_API_KEY` in the environment de-registers the OpenRouter provider at the next lifespan boot; the Router then has only the floor to choose from, satisfying Invariant 17 with zero third-party dependency. The "trivially" here is the point â€” the gateway concentration is opt-out.
   5. **Model rotation is now one env-var â€” and has been exercised.** `XION_OPENROUTER_MODEL=<provider>/<model>` rotates the upstream-model-level concentration from `moonshotai/kimi-k2.6` to any other catalogued model with no code change and no new credential. This mitigation is stronger post-2026-04-23: on that date the mechanism was exercised for the first real time (rotating from `moonshotai/kimi-k2` to `moonshotai/kimi-k2.6`), with a read-only OpenRouter-catalog probe confirming the target slug's validity and the operator's Moonshot-AI BYOK attachment before the commit landed. The mitigation is no longer asserted â€” it is witnessed. Future rotations (within the same gateway or across gateways once a second is registered) follow the same mechanism and the same CHANGELOG-entry pattern.
 - **Pay-down commitment:** Closes when (a) a scheduled `xion-verify inference-cutover` verifier exercises `open_weights_only` mode under a representative load and records the dry-run outcome in an `INFERENCE_LEDGER` (pinned in `docs/schemas/`), (b) the annual dry-run cadence Invariant 17 clause 5 requires is wired into the operator runbook with a calendar anchor and a failure-mode drill, (c) at minimum one additional hosted **gateway** (e.g., `together.ai`, a self-hosted vLLM endpoint, or a second OpenAI-compatible gateway) is documented in `docs/26-INFERENCE-POLICY.md` with a pinned implementation and a pinned gateway-level failover ordering, and (d) at minimum two Genesis Default **models** are pinned as a failover list inside the gateway (so that model-level failover exists even before a second gateway lands). All four are Phase 6+ work; closure commit lands the verifier, the ledger schema, the runbook diff, the second gateway, and the model failover list.
-- **Verifier:** None today. Named provisionally as `xion-verify inference-cutover` (structural: exercises the mode switch end-to-end under a synthetic load). `xion-verify inference-sovereignty` (live) already covers the manifest's structural-floor pin and is unaffected by this KW.
+- **Closure note (Phase 6.9):** The OpenRouter gateway concentration is closed by replacing the Genesis Default hosted gateway with Chutes (Bittensor Subnet 64), wiring `ChutesGenerativeProvider`, making `moonshotai/Kimi-K2.6-TEE` the hosted default, and adding Chutes billing telemetry plus TAO top-up scaffolding. The old gateway remains only as a 30-day parity-window fallback. Residual Chutes-specific risk is tracked separately as `KW-INFER-004` and `KW-INFER-005` because `KW-INFER-002` and `KW-INFER-003` are already occupied by the Phase 5g-vii provider-error and fallback closures.
+- **Verifier:** `xion-verify inference-provider-chutes` verifies the provider surface and TEE default. `xion-verify billing-credits-floor` and `xion-verify chutes-topup-multisig` verify the new credit telemetry / top-up surface.
+
+### KW-INFER-004 — Chutes SN64 economics depend on Bittensor subsidy through the December 2026 halving
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-25 (Phase 6.9 Chutes cutover planning)
+- **Severity:** medium
+- **Status:** `paying-down`
+- **Description:** Chutes' low rack rates are materially supported by Bittensor Subnet 64 emissions. Public 2026 analysis estimates a high subsidy-to-revenue ratio today, and the December 2026 halving reduces emissions. If external customer revenue does not rise, Chutes prices may drift toward unsubsidized break-even or service quality may degrade.
+- **Mitigations:** Xion keeps the local Ollama floor hot under Invariant 17, uses model-promotion discipline instead of silent default flips, and keeps OpenRouter as a temporary parity fallback during the Chutes migration window.
+- **Pay-down commitment:** Closes when either (a) Chutes publishes sustained revenue/subsidy health above a governance-published threshold for two consecutive quarters after the halving, or (b) Xion pins a non-Bittensor hosted fallback in `docs/26-INFERENCE-POLICY.md` and exercises quarterly cutover drills.
+- **Verifier:** `xion-verify inference-provider-chutes` is live for the Chutes surface; future `xion-verify provider-cutover-drill` will exercise the non-Bittensor fallback when pinned.
+
+### KW-INFER-005 — Chutes compute is decentralized, but the public API gateway remains a liveness dependency
+
+- **Domain:** `RUNTIME`
+- **Discovered:** 2026-04-25 (Phase 6.9 Chutes cutover planning)
+- **Severity:** medium
+- **Status:** `paying-down`
+- **Description:** Chutes routes work to Subnet 64 miners, but Xion reaches that market through the Chutes-operated `llm.chutes.ai` and `api.chutes.ai` gateway surfaces. If the gateway is down, censored, or account-suspended, the hosted path fails even while the underlying miners may remain healthy.
+- **Mitigations:** `hosted_api_first` falls through to the Ollama floor on Chutes provider failure. The Chutes provider class is swappable under the same Provider Protocol, and billing telemetry is isolated behind `BillingProvider`.
+- **Pay-down commitment:** Closes when a second SN64 gateway endpoint is pinned, Xion runs its own gateway/validator path, or a non-Bittensor decentralized inference provider is registered as a primary fallback with a successful cutover drill.
+- **Verifier:** `xion-verify inference-provider-chutes`; future `xion-verify provider-cutover-drill`.
 
 ### KW-INFER-002 â€” Provider error details are swallowed by a generic exception handler; operator surface collapses distinct failure modes into `no_healthy_provider`
 

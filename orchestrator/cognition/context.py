@@ -1,26 +1,26 @@
-"""Phase 5h: The Cognition Wiring - Context Assembly."""
-import json
+"""Phase 5h/6.9: Context Assembly compatibility wrapper."""
+
+from __future__ import annotations
+
 from typing import Any
+
+from orchestrator.cognition.prompt_composer import IsolatingPromptComposer
 
 def assemble_context(
     soul_prompt: str,
     sensorium_snapshot: dict[str, Any] | None,
     recent_journal: list[str],
-    retrieved_context: list[str]
+    retrieved_context: list[str],
+    *,
+    user_prompt: str = "",
+    correlation_id: str | None = None,
 ) -> str:
-    """Assemble the multi-part context window.
-    
-    The SOUL_PROMPT is structurally guaranteed to be the first element.
-    """
-    parts = [soul_prompt.strip()]
-    
-    if sensorium_snapshot:
-        parts.append("--- SENSORIUM STATE ---\n" + json.dumps(sensorium_snapshot, indent=2))
-        
-    if retrieved_context:
-        parts.append("--- RETRIEVED MEMORY ---\n" + "\n".join(retrieved_context))
-        
-    if recent_journal:
-        parts.append("--- RECENT JOURNAL ---\n" + "\n".join(recent_journal))
-        
-    return "\n\n".join(parts)
+    """Assemble context through the Phase 6.9 isolating composer."""
+    return IsolatingPromptComposer().compose(
+        soul_prompt=soul_prompt,
+        user_prompt=user_prompt,
+        sensorium_snapshot=sensorium_snapshot,
+        recent_journal=recent_journal,
+        retrieved_context=retrieved_context,
+        correlation_id=correlation_id,
+    )

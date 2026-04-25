@@ -12,10 +12,16 @@ GLOBAL_MIN_MAX_TOKENS = 1024
 
 # Keyed by (provider_id, model_id) -> min_max_tokens
 _REGISTRY: dict[tuple[str, str], int] = {
+    # Chutes' Kimi K2.6 TEE has the same reasoning-token headroom need
+    # as the prior OpenRouter Kimi path.
+    ("chutes", "moonshotai/Kimi-K2.6-TEE"): 1024,
+    ("ChutesGenerativeProvider", "moonshotai/Kimi-K2.6-TEE"): 1024,
     # OpenRouter's Kimi K2.6 requires room for <thought>
+    ("openrouter", "moonshotai/kimi-k2.6"): 1024,
     ("OpenRouterGenerativeProvider", "moonshotai/kimi-k2.6"): 1024,
     # Local fallback doesn't need as much room for system prompts
-    ("OllamaGenerativeProvider", "gemma-4b"): 256,
+    ("ollama", "gemma4:e4b-it-q4_K_M"): 1024,
+    ("OllamaGenerativeProvider", "gemma4:e4b-it-q4_K_M"): 1024,
 }
 
 

@@ -41,6 +41,7 @@ To add a new provider:
 
 from __future__ import annotations
 
+from orchestrator.safety.providers import chutes_llm_judge  # noqa: F401 — registers on import
 from orchestrator.safety.providers import openai_moderation  # noqa: F401 — registers on import
 
 __all__: list[str] = []

@@ -315,6 +315,7 @@ def register_chat_route(app: FastAPI) -> None:
                         effective_max_tokens,
                         deadline_s,
                         ingress.correlation_id,
+                        principal_id,
                     ),
                     timeout=deadline_s,
                 )
@@ -385,6 +386,21 @@ def register_chat_route(app: FastAPI) -> None:
                 provider_id=provider_id,
                 outcome="success",
                 failure_reason_class=None,
+                provider_fingerprint=getattr(result, "provider_fingerprint", None),
+                model_version=getattr(result, "model_version", None),
+                reasoning_tokens=getattr(result, "reasoning_tokens", 0),
+                cache_hit_ratio=getattr(result, "cache_hit_ratio", 0.0),
+                tee_attestation=getattr(result, "tee_attestation", None),
+            )
+            await _run_shadow_attempts(
+                router=router,
+                primary_provider=provider,
+                primary_result=result,
+                prompt=req.message,
+                system=app.state.soul_prompt,
+                max_tokens=effective_max_tokens,
+                deadline_s=min(deadline_s, 8.0),
+                correlation_id=ingress.correlation_id,
             )
             break
 
@@ -812,6 +828,11 @@ def _write_attempt_row(
     provider_id: str,
     outcome: str,
     failure_reason_class: str | None,
+    provider_fingerprint: str | None = None,
+    model_version: str | None = None,
+    reasoning_tokens: int = 0,
+    cache_hit_ratio: float = 0.0,
+    tee_attestation: str | None = None,
 ) -> None:
     """Write one REQUEST_LEDGER v2 provider-attempt row.
 
@@ -835,6 +856,11 @@ def _write_attempt_row(
             provider_id=provider_id,
             outcome=outcome,
             failure_reason_class=failure_reason_class,
+            provider_fingerprint=provider_fingerprint,
+            model_version=model_version,
+            reasoning_tokens=reasoning_tokens,
+            cache_hit_ratio=cache_hit_ratio,
+            tee_attestation=tee_attestation,
         )
         append_provider_attempt(path, record)
     except Exception as exc:
@@ -846,6 +872,66 @@ def _write_attempt_row(
             file=sys.stderr,
             flush=True,
         )
+
+
+async def _run_shadow_attempts(
+    *,
+    router: Any,
+    primary_provider: Any,
+    primary_result: Any,
+    prompt: str,
+    system: str | None,
+    max_tokens: int,
+    deadline_s: float,
+    correlation_id: str,
+) -> None:
+    shadows = (
+        router.select_shadow_ordered()
+        if router is not None and callable(getattr(router, "select_shadow_ordered", None))
+        else []
+    )
+    if not shadows:
+        return
+    from orchestrator.inference_router.shadow import (
+        append_shadow_row,
+        divergence,
+        text_sha256,
+    )
+
+    ledger_path = Path(os.environ.get("XION_SHADOW_LEDGER", "ledgers/SHADOW_LEDGER.jsonl"))
+    for shadow in shadows:
+        try:
+            shadow_result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    shadow.generate,
+                    prompt,
+                    system=system,
+                    max_tokens=max_tokens,
+                    deadline_s=deadline_s,
+                ),
+                timeout=deadline_s,
+            )
+            append_shadow_row(
+                ledger_path,
+                correlation_id=correlation_id,
+                primary_provider_id=getattr(primary_provider, "provider_id", type(primary_provider).__name__),
+                shadow_provider_id=getattr(shadow, "provider_id", type(shadow).__name__),
+                primary_model_id=getattr(primary_result, "model_id", None),
+                shadow_model_id=getattr(shadow_result, "model_id", None),
+                primary_sha256=text_sha256(getattr(primary_result, "text", "")),
+                shadow_sha256=text_sha256(getattr(shadow_result, "text", "")),
+                divergence_score=divergence(
+                    getattr(primary_result, "text", ""),
+                    getattr(shadow_result, "text", ""),
+                ),
+            )
+        except Exception as exc:
+            print(
+                f"State-of-Xion: shadow inference failed "
+                f"(correlation_id={correlation_id} provider={getattr(shadow, 'provider_id', type(shadow).__name__)}): {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
 
 
 def _principle_to_int(pid: str) -> int:
