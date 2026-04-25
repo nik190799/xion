@@ -23,13 +23,19 @@ from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.ao_handlers import verify_ao_handlers
 from xion_verify.commands.api_tokens import api_tokens
+from xion_verify.commands.arbiter_determinism import arbiter_determinism
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.auto_research import auto_research
+from xion_verify.commands.billing_credits_floor import billing_credits_floor
+from xion_verify.commands.bridge_attest import bridge_attest
+from xion_verify.commands.bridge_egress_cap import bridge_egress_cap
 from xion_verify.commands.cast import cast_cmd
 from xion_verify.commands.charter_signed import charter_signed
 from xion_verify.commands.chat_streaming_fidelity import chat_streaming_fidelity
+from xion_verify.commands.chutes_topup_multisig import chutes_topup_multisig
 from xion_verify.commands.cognition import cognition
 from xion_verify.commands.cognition_disjoint import cognition_disjoint
+from xion_verify.commands.cognition_loop_bounded import cognition_loop_bounded
 from xion_verify.commands.agent_cast import agent_cast
 from xion_verify.commands.agent_souls import agent_souls
 from xion_verify.commands.constitutional import (
@@ -47,8 +53,10 @@ from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.discovery import discovery
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
+from xion_verify.commands.embedder_health import embedder_health
 from xion_verify.commands.hermes_runtime import hermes_runtime
 from xion_verify.commands.identity_bindings import identity_bindings
+from xion_verify.commands.inference_provider_chutes import inference_provider_chutes
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.interaction_anchor import cli as interaction_anchor
 from xion_verify.commands.ledgers import ledgers
@@ -56,6 +64,8 @@ from xion_verify.commands.links import links
 from xion_verify.commands.local import local_cmd
 from xion_verify.commands.mcp_export import mcp_export
 from xion_verify.commands.measurement_vocabulary import measurement_vocabulary
+from xion_verify.commands.memory_store_integrity import memory_store_integrity
+from xion_verify.commands.model_promotion_discipline import model_promotion_discipline
 from xion_verify.commands.modality_consent import modality_consent
 from xion_verify.commands.nervous_system import nervous_system_cli
 from xion_verify.commands.new import new_cmd
@@ -64,6 +74,7 @@ from xion_verify.commands.operator_dependency import operator_dependency
 from xion_verify.commands.pre_genesis import pre_genesis
 from xion_verify.commands.presence import presence
 from xion_verify.commands.pricing import pricing
+from xion_verify.commands.prompt_isolation import prompt_isolation
 from xion_verify.commands.provisioning import provisioning
 from xion_verify.commands.provisioning_roles import provisioning_roles
 from xion_verify.commands.rebuild import rebuild
@@ -73,11 +84,14 @@ from xion_verify.commands.refusal_rate import refusal_rate
 from xion_verify.commands.registries import registries
 from xion_verify.commands.regulatory_ledger import regulatory_ledger
 from xion_verify.commands.replay_corpus import replay_corpus
+from xion_verify.commands.request_fingerprint import request_fingerprint
 from xion_verify.commands.research_sources import research_sources
+from xion_verify.commands.rerank_improvement import rerank_improvement
 from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
 from xion_verify.commands.shadow_relay import shadow_relay
+from xion_verify.commands.shadow_divergence import shadow_divergence
 from xion_verify.commands.skill_bounty import skill_bounty
 from xion_verify.commands.soul_prompt import soul_prompt
 from xion_verify.commands.spend_discipline import spend_discipline
@@ -86,6 +100,7 @@ from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.substrate_portability import substrate_portability
 from xion_verify.commands.substrates import substrates
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
+from xion_verify.commands.tool_resolver_mcp import tool_resolver_mcp
 from xion_verify.commands.topography import topography_cli
 from xion_verify.commands.treasury import treasury
 from xion_verify.commands.vitals import vitals
@@ -125,6 +140,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "drive-vector": drive_vector,
     "state-chain": state_chain,
     "arbiter-up": arbiter_up,
+    "arbiter-determinism": arbiter_determinism,
     "refusal-rate": refusal_rate,
     "pricing": pricing,
     "treasury": treasury,
@@ -150,6 +166,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "research-sources": research_sources,
     "pre-genesis": pre_genesis,
     "shadow-relay": shadow_relay,
+    "shadow-divergence": shadow_divergence,
     "cost-pressure": cost_pressure,
     "substrates": substrates,
     "auto-research": auto_research,
@@ -169,6 +186,19 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "vessel-compact": vessel_compact,
     "spend-posture": spend_posture,
     "spend-discipline": spend_discipline,
+    "inference-provider-chutes": inference_provider_chutes,
+    "billing-credits-floor": billing_credits_floor,
+    "chutes-topup-multisig": chutes_topup_multisig,
+    "model-promotion-discipline": model_promotion_discipline,
+    "request-fingerprint": request_fingerprint,
+    "memory-store-integrity": memory_store_integrity,
+    "embedder-health": embedder_health,
+    "rerank-improvement": rerank_improvement,
+    "tool-resolver-mcp": tool_resolver_mcp,
+    "prompt-isolation": prompt_isolation,
+    "cognition-loop-bounded": cognition_loop_bounded,
+    "bridge-attest": bridge_attest,
+    "bridge-egress-cap": bridge_egress_cap,
 }
 
 

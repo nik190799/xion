@@ -114,6 +114,21 @@ xion-verify discovery
 xion-verify treasury
 xion-verify substrate-portability
 xion-verify regulatory-ledger
+xion-verify inference-provider-chutes
+xion-verify billing-credits-floor
+xion-verify chutes-topup-multisig
+xion-verify arbiter-determinism
+xion-verify shadow-divergence
+xion-verify model-promotion-discipline
+xion-verify request-fingerprint
+xion-verify memory-store-integrity
+xion-verify embedder-health
+xion-verify rerank-improvement
+xion-verify tool-resolver-mcp
+xion-verify prompt-isolation
+xion-verify cognition-loop-bounded
+xion-verify bridge-attest
+xion-verify bridge-egress-cap
 xion-verify arbiter-up
 xion-verify all
 ```

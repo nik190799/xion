@@ -208,6 +208,7 @@ def register_chat_stream_route(app: FastAPI) -> None:
             ),
             user_proof_commit=user_proof_commit,
             user_proof_algorithm=user_proof_algorithm,
+            principal_id=principal_id,
         )
         return StreamingResponse(
             generator,
@@ -240,6 +241,7 @@ async def _stream_body(
     voice_sensorium_state: Any = None,
     user_proof_commit: str | None = None,
     user_proof_algorithm: str | None = None,
+    principal_id: str = "global",
 ) -> AsyncIterator[bytes]:
     """The SSE byte stream.
 
@@ -416,6 +418,7 @@ async def _stream_body(
         deadline_s,
         ingress.correlation_id,
         stream_generate,
+        principal_id,
     )
     try:
         # Per-chunk wall-clock deadline check. The individual

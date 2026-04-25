@@ -31,6 +31,18 @@ from .commitment import (
     verify_b2_x402_shape,
 )
 from .config import BillingConfig, BillingConfigError, load_billing_config_from_env
+from .credit_ledger import (
+    ChainBroken as BillingCreditChainBroken,
+)
+from .credit_ledger import (
+    append_billing_row,
+)
+from .credit_ledger import (
+    iter_rows as iter_billing_rows,
+)
+from .credit_ledger import (
+    verify_chain as verify_billing_credit_chain,
+)
 from .ledger import (
     SCHEMA_VERSION,
     ZERO_HASH,
@@ -47,16 +59,20 @@ __all__ = [
     "ZERO_HASH",
     "BillingConfig",
     "BillingConfigError",
+    "BillingCreditChainBroken",
     "ChainBroken",
     "Commitment",
     "CommitmentRejectReason",
+    "append_billing_row",
     "append_payment_row",
     "build_payment_row",
     "chain_tip",
+    "iter_billing_rows",
     "iter_rows",
     "load_billing_config_from_env",
     "parse_commitment_header",
     "verify_b1_attestation",
     "verify_b2_x402_shape",
+    "verify_billing_credit_chain",
     "verify_chain",
 ]

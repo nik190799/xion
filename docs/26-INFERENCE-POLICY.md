@@ -51,7 +51,7 @@ The orchestrator enforces a hard server-side minimum (`MIN_MAX_TOKENS = 1024`) o
 
 **Deferred work:** This floor is currently global. A future phase will introduce per-model adaptive floors via a model-registry consult (`KW-INFER-00x`), allowing non-reasoning models to use tighter budgets while reasoning models get the headroom they need. Until then, the global floor fails safe upward.
 
-## Genesis Defaults (Phase 5g-i.1, 2026-04-21)
+## Genesis Defaults (Phase 6.9, 2026-04-25)
 
 Operator-rotatable. Any change to these defaults is a commit to this file; any change that would alter which provider Xion speaks through by default is a Tier-2 operational decision per `docs/14-UPGRADE-PATHS.md`.
 
@@ -61,16 +61,27 @@ Operator-rotatable. Any change to these defaults is a commit to this file; any c
 | Floor provider | Ollama (`http://localhost:11434`) | `XION_OLLAMA_URL` | process start |
 | Floor model | `gemma4:e4b-it-q4_K_M` | `XION_OLLAMA_FLOOR_MODEL` | process start |
 | Floor model verified-bytes pin | `<unset>` (operator-supplied path to the upstream Hugging Face GGUF after C0 download) | `XION_OPEN_WEIGHTS_GGUF_PATH` | process start |
-| Hosted gateway | OpenRouter at `https://openrouter.ai/api/v1` | `XION_OPENROUTER_BASE_URL` | process start |
-| Hosted model | `moonshotai/kimi-k2.6` | `XION_OPENROUTER_MODEL` | process start |
-| Hosted credential | *(operator-supplied)* | `XION_OPENROUTER_API_KEY` | process start |
-| Hosted referer header | *(operator-supplied repo or deployment URL)* | `XION_OPENROUTER_REFERER` | process start |
-| Hosted app-name header | `xion-os` | `XION_OPENROUTER_APP_NAME` | process start |
+| Hosted gateway | Chutes (Bittensor Subnet 64) at `https://llm.chutes.ai/v1` | `XION_CHUTES_BASE_URL` | process start |
+| Hosted model | `moonshotai/Kimi-K2.6-TEE` | `XION_CHUTES_HOSTED_MODEL` | process start |
+| Hosted credential | *(operator-supplied Chutes API key)* | `XION_CHUTES_API_KEY` | process start |
+| Hosted TEE required | `true` | `XION_CHUTES_TEE_REQUIRED` | process start |
+| Hosted billing API | Chutes management API at `https://api.chutes.ai` | `XION_CHUTES_API_BASE_URL` | process start |
+| Hosted parity fallback | OpenRouter at `https://openrouter.ai/api/v1` during 30-day parity window only | `XION_OPENROUTER_BASE_URL` | process start |
 | Per-turn deadline | `30` seconds | `XION_CHAT_DEADLINE_S` | process start |
 
-The OpenRouter API key is loaded from the process environment, optionally pre-loaded from a gitignored `.env` at the repo root at lifespan startup. The key never enters git, never enters ledger rows, never appears in log lines (the `OpenRouterGenerativeProvider` scrubs `Authorization` headers and bare `sk-or-...` tokens from error paths).
+The Chutes API key is loaded from the process environment, optionally pre-loaded from a gitignored `.env` at the repo root at lifespan startup. The key never enters git, never enters ledger rows, never appears in log lines (`ChutesGenerativeProvider` scrubs `Authorization` headers and bare `cpk_...` tokens from error paths).
 
-The `HTTP-Referer` and `X-Title` headers are OpenRouter's optional-but-recommended app-identity signals. They do not authenticate the request; they let OpenRouter attribute traffic to the calling application for catalog analytics and developer-portal attribution. Setting them is a courtesy, not a security control; misconfiguring them is not a secret-exposure incident.
+OpenRouter remains available only as a parity-window fallback while Chutes is shadow-tested. If `XION_OPENROUTER_API_KEY` is still set, the provider registers after Chutes and is policy-legal as a fallback. Once the 30-day parity ledger is clean, the OpenRouter provider is deleted.
+
+## The hosted-provider choice (Chutes SN64 + `moonshotai/Kimi-K2.6-TEE`)
+
+Phase 6.9 rotates the Genesis Default hosted provider from OpenRouter to Chutes (Bittensor Subnet 64). Three properties drive the rotation:
+
+- **Decentralized compute substrate.** The inference work is executed by Subnet 64 miners rather than a single corporate inference gateway. Chutes still operates the public API gateway, so gateway liveness remains a named weakness (`KW-INFER-003`), but the compute path is materially less centralized than OpenRouter.
+- **TEE-by-default.** The default model is `moonshotai/Kimi-K2.6-TEE`. The provider health check reads the Chutes model catalog and refuses the hosted path when `XION_CHUTES_TEE_REQUIRED=true` and the model does not advertise `confidential_compute=true`. Every successful TEE turn stamps `tee_attestation="intel_tdx_via_chutes"` in the provider result and REQUEST_LEDGER attempt metadata.
+- **On-chain billing.** Chutes accounts expose a Bittensor SS58 `payment_address`. Xion can replenish inference credits with a TAO transfer from Treasury Tier 1 instead of depending on an operator-owned Stripe card. At S1 this requires operator multisig co-sign; S3+ auto-top-up inside a cap is named but not enabled.
+
+The rollback chain is one env-var: `moonshotai/Kimi-K2.6-TEE` -> non-TEE `moonshotai/Kimi-K2.6` -> `moonshotai/Kimi-K2.5-TEE` -> the local open-weights floor. A non-TEE rollback is a Covenant degradation and MUST be logged in `REQUEST_LEDGER` via `tee_attestation=null`.
 
 ## The floor-model choice (Gemma 4 E4B-it)
 
@@ -134,9 +145,9 @@ Invariant 17 clause 5 requires an annual dry-run that exercises `policy_mode="op
 
 The model-blob pin does not block boot when the operator has not yet downloaded the upstream GGUF; the `health()` check at lifespan startup still gates only on Ollama daemon reachability + floor-model presence. The pin is a *Witness-verifiable claim about the bytes the operator should be running*, not a runtime gate. Production deployments that want a runtime gate enforcing byte-identity would need an additional check that (a) reads the local Ollama blob path, (b) sha256s it, (c) refuses bootstrap on mismatch — that is a future layer Phase 5g-viii deliberately does not ship because it would couple Xion's floor to Ollama's internal blob layout.
 
-## The hosted-provider choice (OpenRouter gateway + `moonshotai/kimi-k2.6` default model)
+## Historical hosted-provider choice (OpenRouter gateway + `moonshotai/kimi-k2.6` default model)
 
-Phase 5g-i.1 pins OpenRouter (`https://openrouter.ai/api/v1`) as the Genesis Default hosted gateway and `moonshotai/kimi-k2.6` as the Genesis Default hosted model served through that gateway. Rationale:
+Phase 5g-i.1 pinned OpenRouter (`https://openrouter.ai/api/v1`) as the hosted gateway and `moonshotai/kimi-k2.6` as the hosted model served through that gateway. Phase 6.9 supersedes this as the Genesis Default; this section remains as the historical record and parity-window rollback rationale. Rationale at the time:
 
 - **OpenAI-compatible API at the gateway.** OpenRouter's `/v1/chat/completions` endpoint matches the OpenAI request/response shape and provides this compatibility across a long catalog of upstream models. The provider implementation is ~200 lines of stdlib `http.client` (no OpenRouter SDK, no OpenAI SDK). No new Python dependency; no supply-chain widening.
 - **Model rotation is a config change, not a code change.** Adding or switching a hosted model (e.g., from `moonshotai/kimi-k2.6` to `anthropic/claude-3.5-sonnet` or `openai/gpt-4o-mini`) is an env-var flip at deploy time: `XION_OPENROUTER_MODEL=<slug>`. The multi-hosted-provider failover chain that the Phase 5g-i plan would have required three doctrines and three test matrices to ship becomes, in the OpenRouter posture, a failover order pinned in this file plus a retry policy in the provider. A full Phase-6 failover doctrine is still owed (§ `KW-INFER-001` pay-down); the OpenRouter refactor earns the pre-requisite plumbing for free.

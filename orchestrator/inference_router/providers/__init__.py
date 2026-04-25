@@ -2,7 +2,12 @@
 
 Doctrine anchor: ``docs/26-INFERENCE-POLICY.md``.
 
-Two providers ship in Phase 5g-i.1:
+Three providers ship as of Phase 6.9:
+
+- ``ChutesGenerativeProvider`` — hosted-API gateway on Bittensor Subnet 64
+  (Chutes' OpenAI-compatible ``/v1/chat/completions``), ``category="hosted_api"``.
+  Registered when ``XION_CHUTES_API_KEY`` is set. The Phase 6.9 Genesis
+  Default hosted model is ``moonshotai/Kimi-K2.6-TEE``.
 
 - ``OpenRouterGenerativeProvider`` — hosted-API gateway (OpenRouter's
   OpenAI-compatible ``/v1/chat/completions``), ``category="hosted_api"``.
@@ -25,12 +30,14 @@ are designed to run inside ``asyncio.to_thread`` from the Chat handler.
 
 from __future__ import annotations
 
+from orchestrator.inference_router.providers.chutes import ChutesGenerativeProvider
 from orchestrator.inference_router.providers.ollama import OllamaGenerativeProvider
 from orchestrator.inference_router.providers.openrouter import (
     OpenRouterGenerativeProvider,
 )
 
 __all__ = [
+    "ChutesGenerativeProvider",
     "OllamaGenerativeProvider",
     "OpenRouterGenerativeProvider",
 ]

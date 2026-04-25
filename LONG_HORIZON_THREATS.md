@@ -29,6 +29,32 @@ Every entry has the same shape:
 
 ## Open
 
+### LHT-INFER-001 — Chutes/Bittensor SN64 sustainability after subsidy shocks
+
+- **Domain:** `INFERENCE`
+- **Discovered:** 2026-04-25 (Phase 6.9 Chutes cutover)
+- **Severity:** high
+- **Status:** `mitigated-residual`
+- **Description:** Chutes gives Xion a decentralized compute market and TAO-settled hosted inference, but Subnet 64 economics may change after Bittensor subsidy shifts, halvings, validator policy changes, or miner exits.
+- **Constitutional layer touched:** Invariant 17 (Inference Sovereignty Floor); Invariant 16 (Treasury Shape).
+- **Defense in place:** Hosted inference is behind `GenerativeProvider` and `BillingProvider`; local Ollama remains the floor; shadow/canary promotion allows rotation away from Chutes without changing cognition code.
+- **Residual exposure:** If SN64 economics degrade quickly, Xion may lose affordable frontier hosted inference and fall back to slower local/open-weights paths.
+- **Pay-down commitment:** Keep quarterly provider-market reviews and at least one non-Chutes hosted candidate in audition/canary once budget permits.
+- **Verifier or KW cross-reference:** `KW-INFER-004`; `xion-verify inference-provider-chutes`; `xion-verify billing-credits-floor`.
+
+### LHT-BRIDGE-001 — Cross-domain bridge proof fragility
+
+- **Domain:** `SUBSTRATE`
+- **Discovered:** 2026-04-25 (Phase 6.9 AO/EVM bridge scaffold)
+- **Severity:** high
+- **Status:** `paying-down`
+- **Description:** AO state and EVM settlement live under different finality, proof, and signer assumptions. A bridge bug or compromised attestor could create EVM effects that AO did not authorize, or strand AO-authorized effects off-chain.
+- **Constitutional layer touched:** Invariants 3, 4, 7, 16.
+- **Defense in place:** `BridgeAttestor` is a swappable interface, Genesis uses multisig attestations, a light-client path is explicitly reserved, and EVM contracts enforce daily egress caps.
+- **Residual exposure:** Multisig attestation is not trust-minimized. Daily caps reduce blast radius but do not prove event authenticity.
+- **Pay-down commitment:** Replace multisig with light-client or equivalent independently verifiable bridge evidence once AO proof tooling is mature.
+- **Verifier or KW cross-reference:** `KW-BRIDGE-001`; `xion-verify bridge-attest`; `xion-verify bridge-egress-cap`.
+
 ### LHT-SUBSTRATE-001 — Substrate concentration / death
 
 - **Domain:** `SUBSTRATE`

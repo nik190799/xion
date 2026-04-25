@@ -119,6 +119,10 @@ The *first* Relay is operator-deployed (chicken-and-egg). All subsequent Relays 
 
 Cross-domain calls are mediated by the AO-Core attestor (Phase 6.5), never by direct EVM invocation from Lua.
 
+### Phase 6.9 Bridge Attestor
+
+The attestor is now a modular runtime interface under `orchestrator/bridge`. Genesis uses a multisig attestor for AO event evidence and reserves a `LightClientBridgeAttestor` as `NOT_YET_SEALED` for future trust-minimized verification. EVM-side egress is capped per day in `EmissionController.sol` and `MasterTreasury.sol`; see [`AO-EVM-BRIDGE.md`](./AO-EVM-BRIDGE.md).
+
 ## Phase 6 Dependency Map
 
 Phase 6 is sliced into six sub-phases:

@@ -293,6 +293,11 @@ class ProviderAttemptRecord:
     provider_id: str
     outcome: str  # "success" | "failure"
     failure_reason_class: str | None
+    provider_fingerprint: str | None = None
+    model_version: str | None = None
+    reasoning_tokens: int = 0
+    cache_hit_ratio: float = 0.0
+    tee_attestation: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.correlation_id, str) or not self.correlation_id:
@@ -382,6 +387,11 @@ def _row_from_provider_attempt(
         "provider_id": record.provider_id,
         "outcome": record.outcome,
         "failure_reason_class": record.failure_reason_class,
+        "provider_fingerprint": record.provider_fingerprint,
+        "model_version": record.model_version,
+        "reasoning_tokens": record.reasoning_tokens,
+        "cache_hit_ratio": record.cache_hit_ratio,
+        "tee_attestation": record.tee_attestation,
     }
     row["this_hash"] = _sha256_hex(_canonical_bytes_excluding_this_hash(row))
     return row

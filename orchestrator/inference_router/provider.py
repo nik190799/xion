@@ -44,7 +44,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from orchestrator.inference_router.router import Category
 
@@ -194,6 +194,99 @@ FAILURE_REASON_CLASSES: tuple[str, ...] = (
 
 
 @dataclass(frozen=True)
+class TextPart:
+    """Text content part for the canonical multimodal-ready Message type."""
+
+    text: str
+    type: Literal["text"] = "text"
+
+
+@dataclass(frozen=True)
+class ImagePart:
+    """Reserved 6.10 image part; not wired to /chat in 6.9."""
+
+    uri: str
+    mime_type: str
+    type: Literal["image"] = "image"
+
+
+@dataclass(frozen=True)
+class AudioPart:
+    """Reserved 6.10 audio part; not wired to /chat in 6.9."""
+
+    uri: str
+    mime_type: str
+    type: Literal["audio"] = "audio"
+
+
+@dataclass(frozen=True)
+class VideoPart:
+    """Reserved 6.10 video part; not wired to /chat in 6.9."""
+
+    uri: str
+    mime_type: str
+    type: Literal["video"] = "video"
+
+
+ContentPart = TextPart | ImagePart | AudioPart | VideoPart
+
+
+@dataclass(frozen=True)
+class Message:
+    """Canonical provider message, multimodal-ready while text-only in 6.9."""
+
+    role: Literal["system", "developer", "user", "assistant", "tool"]
+    content_parts: list[ContentPart]
+
+    @classmethod
+    def text(cls, role: Literal["system", "developer", "user", "assistant", "tool"], text: str) -> "Message":
+        return cls(role=role, content_parts=[TextPart(text=text)])
+
+    def to_openai(self) -> dict[str, Any]:
+        """Project to OpenAI-compatible message shape.
+
+        The current /chat surface is text-only; non-text parts are
+        represented with metadata placeholders so providers fail closed
+        rather than silently dropping future modalities.
+        """
+        if all(isinstance(part, TextPart) for part in self.content_parts):
+            return {
+                "role": self.role,
+                "content": "\n".join(part.text for part in self.content_parts if isinstance(part, TextPart)),
+            }
+        content: list[dict[str, Any]] = []
+        for part in self.content_parts:
+            if isinstance(part, TextPart):
+                content.append({"type": "text", "text": part.text})
+            elif isinstance(part, ImagePart):
+                content.append({"type": "image_url", "image_url": {"url": part.uri}})
+            elif isinstance(part, AudioPart):
+                content.append({"type": "input_audio", "input_audio": {"uri": part.uri, "mime_type": part.mime_type}})
+            elif isinstance(part, VideoPart):
+                content.append({"type": "input_video", "input_video": {"uri": part.uri, "mime_type": part.mime_type}})
+        return {"role": self.role, "content": content}
+
+
+@dataclass(frozen=True)
+class Transcript:
+    text: str
+    paralinguistics: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class Verdict:
+    decision: str
+    reasons: list[str]
+    raw: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class CacheControl:
+    mode: Literal["default", "bypass", "refresh"] = "default"
+    namespace: str | None = None
+
+
+@dataclass(frozen=True)
 class GenerationResult:
     """The return value of ``GenerativeProvider.generate(...)``.
 
@@ -229,6 +322,11 @@ class GenerationResult:
     usage_out: int
     finish_reason: str
     latency_ms: int
+    provider_fingerprint: str = ""
+    model_version: str = ""
+    reasoning_tokens: int = 0
+    cache_hit_ratio: float = 0.0
+    tee_attestation: str | None = None
 
 
 @runtime_checkable
@@ -265,6 +363,40 @@ class GenerativeProvider(Protocol):
         max_tokens: int,
         deadline_s: float,
     ) -> GenerationResult: ...
+
+    def generate_messages(
+        self,
+        messages: list[Message],
+        *,
+        max_tokens: int,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+        stream: bool = False,
+        tools: list[dict[str, Any]] | None = None,
+        response_format: dict[str, Any] | None = None,
+        reasoning_effort: Literal["low", "medium", "high"] | None = None,
+        cache_control: CacheControl | None = None,
+        deadline_s: float = 30.0,
+    ) -> GenerationResult:
+        raise NotImplementedError
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
+    def transcribe(
+        self,
+        audio: bytes,
+        *,
+        return_paralinguistics: bool = False,
+    ) -> Transcript:
+        raise NotImplementedError
+
+    def synthesize(self, text: str, prosody: dict[str, Any] | None = None) -> bytes:
+        raise NotImplementedError
+
+    def judge(self, messages: list[Message], rubric: dict[str, Any]) -> Verdict:
+        raise NotImplementedError
 
 
 async def stream_generate(
@@ -334,19 +466,33 @@ async def stream_generate(
         usage_out=result.usage_out,
         finish_reason=result.finish_reason,
         latency_ms=result.latency_ms,
+        provider_fingerprint=result.provider_fingerprint,
+        model_version=result.model_version,
+        reasoning_tokens=result.reasoning_tokens,
+        cache_hit_ratio=result.cache_hit_ratio,
+        tee_attestation=result.tee_attestation,
     )
 
 
 __all__ = [
     "FAILURE_REASON_CLASSES",
+    "AudioPart",
+    "CacheControl",
+    "ContentPart",
     "GenerationResult",
     "GenerativeProvider",
+    "ImagePart",
     "InsufficientCreditsError",
+    "Message",
     "ModerationRefusalError",
     "ProviderError",
     "ProviderTimeoutError",
     "ProviderUnreachableError",
     "RateLimitedUpstreamError",
+    "TextPart",
+    "Transcript",
     "UnknownProviderError",
+    "Verdict",
+    "VideoPart",
     "stream_generate",
 ]

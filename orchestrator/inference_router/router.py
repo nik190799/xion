@@ -53,10 +53,20 @@ class InferenceRouter:
     manifest_path: Path
     policy_mode: PolicyMode = DEFAULT_POLICY_MODE
     _providers: list[Provider] = field(default_factory=list)
+    _shadow_providers: list[Provider] = field(default_factory=list)
     _bootstrapped: bool = field(default=False, init=False, repr=False)
 
     def register(self, p: Provider) -> None:
+        from orchestrator.inference_router.test_kit import assert_provider_registerable
+
+        assert_provider_registerable(p)
         self._providers.append(p)
+
+    def register_shadow(self, p: Provider) -> None:
+        from orchestrator.inference_router.test_kit import assert_provider_registerable
+
+        assert_provider_registerable(p)
+        self._shadow_providers.append(p)
 
     def _manifest(self) -> dict[str, Any]:
         return json.loads(self.manifest_path.read_text(encoding="utf-8"))
@@ -154,6 +164,15 @@ class InferenceRouter:
         """
         ordered = self.select_ordered(policy=policy)
         return ordered[0] if ordered else None
+
+    def select_shadow_ordered(self) -> list[Provider]:
+        if not self._bootstrapped:
+            return []
+        return [
+            p
+            for p in self._shadow_providers
+            if callable(getattr(p, "generate", None)) and bool(p.health())
+        ]
 
 
 @dataclass
