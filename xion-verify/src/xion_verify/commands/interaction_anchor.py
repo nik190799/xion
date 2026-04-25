@@ -23,6 +23,48 @@ def _get_ts_field(kind: str) -> str:
         "safety": "timestamp_utc_ns",
     }.get(kind, "timestamp_utc_ns")
 
+def _fetch_gateway_anchor_batch(gateway_url: str, process_id: str, owner_address: str, batch_root_sha256: str) -> bool:
+    import json
+    import urllib.request
+    
+    lua_code = 'return require("json").encode(AnchorBatches or {})'
+    url = f"{gateway_url.rstrip('/')}/dry-run?process-id={process_id}"
+    body_obj = {
+        "Id": "1234",
+        "Owner": owner_address,
+        "Target": process_id,
+        "Anchor": "0",
+        "Tags": [{"name": "Action", "value": "Eval"}],
+        "Data": lua_code,
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(body_obj).encode("utf-8"),
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "xion-verify",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
+            raw = resp.read()
+            outer = json.loads(raw.decode("utf-8"))
+            data = outer.get("Output", {}).get("data", {})
+            if isinstance(data, dict):
+                inner_json = data.get("output", "")
+            else:
+                inner_json = data
+            batches = json.loads(inner_json)
+            if isinstance(batches, list):
+                for b in batches:
+                    if b.get("batch_root_sha256") == batch_root_sha256:
+                        return True
+    except Exception:
+        pass
+    return False
+
 def verify_interaction_anchor(
     repo_root: Path,
     stdout: TextIO,
@@ -45,6 +87,23 @@ def verify_interaction_anchor(
     except Exception as e:
         print(f"FAIL: ANCHOR_LEDGER integrity broken: {e}", file=stdout)
         return 1
+
+    receipt_path = repo_root / "genesis" / "AO_DEPLOY_RECEIPT.json"
+    owner_address = ""
+    ao_pid = ""
+    if receipt_path.exists():
+        try:
+            import json
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            owner_address = receipt.get("signer_address", "")
+            ao_pid = receipt.get("process_id", "")
+        except Exception:
+            pass
+
+    import os
+    gateway_url = os.environ.get("XION_AO_GATEWAY_URL", "https://cu.ao-testnet.xyz")
+    
+    ao_confirmed = 0
         
     # Read source rows lazily
     for rec in anchor_records:
@@ -113,7 +172,17 @@ def verify_interaction_anchor(
                 print(f"FAIL: inclusion proof failed for index {idx} at anchor seq {rec.seq}", file=stdout)
                 return 1
 
-    print(f"OK ({len(anchor_records)} anchors cross-checked)", file=stdout)
+        if rec.ao_message_id is not None and ao_pid and owner_address:
+            if _fetch_gateway_anchor_batch(gateway_url, ao_pid, owner_address, rec.batch_root_sha256):
+                ao_confirmed += 1
+            else:
+                print(f"FAIL: ao_message_id is set but batch_root_sha256 not found on AO process {ao_pid}", file=stdout)
+                return 1
+
+    if ao_confirmed > 0:
+        print(f"OK ({len(anchor_records)} anchors cross-checked, {ao_confirmed} of {len(anchor_records)} also confirmed on AO Core PID={ao_pid})", file=stdout)
+    else:
+        print(f"OK ({len(anchor_records)} anchors cross-checked)", file=stdout)
     return 0
 
 @click.command(name="interaction-anchor")

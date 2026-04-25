@@ -1,5 +1,6 @@
 import type { BearerCredential } from "../auth/BearerContext";
 import { buildAuthorizationHeader } from "../auth/BearerContext";
+import { signMessage } from "./crypto";
 
 // Single fetch wrapper for every Xion API call from the web client.
 //
@@ -179,17 +180,26 @@ export type ChatSuccessResponse = {
   correlation_id: string;
 };
 
-export function postChat(
+export async function postChat(
   credential: BearerCredential | null,
   message: string,
   maxTokens: number,
   signal?: AbortSignal,
 ): Promise<ChatSuccessResponse> {
+  const { signatureB64, publicKeyB64 } = await signMessage(message);
   return apiFetch<ChatSuccessResponse>({
     path: "/chat",
     method: "POST",
     credential,
-    body: { message, max_tokens: maxTokens },
+    body: {
+      message,
+      max_tokens: maxTokens,
+      user_proof: {
+        user_pubkey_b64: publicKeyB64,
+        signature_b64: signatureB64,
+        algorithm: "ed25519",
+      },
+    },
     signal,
   });
 }
@@ -268,6 +278,7 @@ export async function* streamChat(
     }
   }
   try {
+    const { signatureB64, publicKeyB64 } = await signMessage(req.message);
     const response = await fetch("/chat/stream", {
       method: "POST",
       headers: {
@@ -275,7 +286,15 @@ export async function* streamChat(
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       },
-      body: JSON.stringify({ message: req.message, max_tokens: req.maxTokens }),
+      body: JSON.stringify({
+        message: req.message,
+        max_tokens: req.maxTokens,
+        user_proof: {
+          user_pubkey_b64: publicKeyB64,
+          signature_b64: signatureB64,
+          algorithm: "ed25519",
+        },
+      }),
       signal: controller.signal,
     });
     if (!response.ok) {

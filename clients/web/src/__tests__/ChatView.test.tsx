@@ -5,6 +5,14 @@ import userEvent from "@testing-library/user-event";
 import { ChatView } from "../views/ChatView";
 import { BearerProvider } from "../auth/BearerContext";
 
+vi.mock("../lib/crypto", () => ({
+  signMessage: async () => ({
+    signatureB64: "mock-signature",
+    publicKeyB64: "mock-pubkey"
+  }),
+  forgetKeys: async () => {}
+}));
+
 // Minimal fetch stub; each test overrides window.fetch with a vi.fn()
 // returning the Response shape for that posture. We do NOT mock the
 // ApiErrorException pipe — we let it run end-to-end so the test is a

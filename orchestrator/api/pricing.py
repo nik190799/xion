@@ -127,6 +127,7 @@ class PricingConfig:
     improvement_slice: float
     reserve_slice: float
     small_buffer: float
+    modality_costs: dict[str, int]
     last_reviewed_utc_ns: int
     governance_revision_id: str
 
@@ -193,6 +194,7 @@ class PricingConfig:
                 reserve_slice=self.reserve_slice,
                 small_buffer=self.small_buffer,
             ),
+            modality_costs=self.modality_costs,
             last_reviewed_utc_ns=self.last_reviewed_utc_ns,
             governance_revision_id=self.governance_revision_id,
         )
@@ -249,6 +251,9 @@ def load_pricing_config_from_env(
     - ``XION_PRICE_SLICE_IMPROVEMENT``      float in [0.0, 1.0]
     - ``XION_PRICE_SLICE_RESERVE``          float in [0.0, 1.0]
     - ``XION_PRICE_SLICE_SMALL_BUFFER``     float in [0.0, 1.0]
+    - ``XION_MODALITY_COST_VISUAL``         uint, micro-XION (Phase 6.4)
+    - ``XION_MODALITY_COST_VITALS``         uint, micro-XION (Phase 6.4)
+    - ``XION_MODALITY_COST_VOICE``          uint, micro-XION (Phase 6.4)
     - ``XION_PRICING_LAST_REVIEWED_UTC_NS`` uint ns-since-epoch (default: now)
     - ``XION_PRICING_REVISION_ID``          string ≤ 128 chars
 
@@ -284,6 +289,11 @@ def load_pricing_config_from_env(
         "XION_POSTED_PRICE_MICRO_XION",
         _GENESIS_DEFAULT_POSTED_PRICE_MICRO_XION,
     )
+    modality_costs = {
+        "visual": _read_int_env("XION_MODALITY_COST_VISUAL", 0),
+        "vitals": _read_int_env("XION_MODALITY_COST_VITALS", 0),
+        "voice": _read_int_env("XION_MODALITY_COST_VOICE", 0),
+    }
     if now_utc_ns is None:
         now_utc_ns = time.time_ns()
     last_reviewed = _read_int_env(
@@ -302,6 +312,7 @@ def load_pricing_config_from_env(
         improvement_slice=improvement_slice,
         reserve_slice=reserve_slice,
         small_buffer=small_buffer,
+        modality_costs=modality_costs,
         last_reviewed_utc_ns=last_reviewed,
         governance_revision_id=revision_id,
     )

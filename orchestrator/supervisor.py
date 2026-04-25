@@ -125,6 +125,7 @@ class Supervisor:
         clock_ns: Callable[[], int] = time.time_ns,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
         publish: Callable[[Mapping[str, Any]], None] | None = None,
+        presence_bus: Any | None = None,
     ) -> None:
         if tick_cadence_s <= 0:
             raise ValueError("Supervisor: tick_cadence_s must be > 0")
@@ -207,6 +208,14 @@ class Supervisor:
         )
         with self._snapshot_lock:
             self._latest_snapshot = state
+            
+        if getattr(self, "_presence_bus", None) is not None:
+            try:
+                self._presence_bus.publish(state)
+            except Exception as exc:
+                import sys as _sys
+                print(f"State-of-Xion: PresenceBus publish failed: {exc!r}", file=_sys.stderr, flush=True)
+
         # Phase 5g+ broker hook. Best-effort; a publish failure must
         # not corrupt the in-process snapshot, so any exception from
         # the broker is swallowed after a best-effort log. The tick

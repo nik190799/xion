@@ -69,6 +69,7 @@ class AnchorRecord:
     batch_size: int
     leaf_correlation_ids: list[str]
     ao_message_id: str | None = None
+    degraded_to_local: bool | None = None
 
     def __post_init__(self):
         if self.schema_version not in _KNOWN_SCHEMA_VERSIONS:
@@ -111,6 +112,8 @@ class AnchorRecord:
         }
         if self.ao_message_id is not None:
             d["ao_message_id"] = self.ao_message_id
+        if self.degraded_to_local is not None:
+            d["degraded_to_local"] = self.degraded_to_local
         return d
 
 
@@ -179,6 +182,7 @@ def append(
     batch_size: int,
     leaf_correlation_ids: list[str],
     ao_message_id: str | None = None,
+    degraded_to_local: bool | None = None,
 ) -> AnchorRecord:
     """Appends a new record to the chain. Verifies chain on write."""
     p = Path(path)
@@ -201,6 +205,8 @@ def append(
         }
         if ao_message_id is not None:
             proto["ao_message_id"] = ao_message_id
+        if degraded_to_local is not None:
+            proto["degraded_to_local"] = degraded_to_local
 
         this_hash = _sha256_hex(_canonical_bytes_excluding_this_hash(proto))
         proto["this_hash"] = this_hash

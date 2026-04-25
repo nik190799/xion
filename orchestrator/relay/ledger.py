@@ -179,6 +179,8 @@ class RequestRecord:
     final_outcome: str
     gate_latency_ms_total: int
     relay_id: str
+    user_proof_commit: str | None = None
+    user_proof_algorithm: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.correlation_id, str) or not self.correlation_id:
@@ -239,6 +241,9 @@ def _row_from_record(
         "gate_latency_ms_total": record.gate_latency_ms_total,
         "relay_id": record.relay_id,
     }
+    if record.user_proof_commit is not None:
+        row["user_proof_commit"] = record.user_proof_commit
+        row["user_proof_algorithm"] = record.user_proof_algorithm
     row["this_hash"] = _sha256_hex(_canonical_bytes_excluding_this_hash(row))
     return row
 

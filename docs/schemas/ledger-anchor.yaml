@@ -38,6 +38,7 @@ row:
     - leaf_correlation_ids    # list[string]; the correlation_ids of the leaves, sorted lexicographically
   optional_fields:
     - ao_message_id           # string | null; null in Phase 6.3, populated in Phase 6.3.b when AO unblocks
+    - degraded_to_local       # bool | null; true if AO Core round-trip failed and batch degraded to local-only
 
 # Canonicalization rule for hashing (must match implementation exactly).
 hash:

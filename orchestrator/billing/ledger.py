@@ -197,6 +197,8 @@ def build_payment_row(
     seq: int,
     prev_hash: str,
     stream_id: str | None = None,
+    user_proof_commit: str | None = None,
+    user_proof_algorithm: str | None = None,
 ) -> dict[str, Any]:
     """Assemble a PAYMENT_LEDGER row and compute its ``this_hash``.
 
@@ -341,6 +343,9 @@ def build_payment_row(
     }
     if stream_id is not None:
         row["stream_id"] = stream_id
+    if user_proof_commit is not None:
+        row["user_proof_commit"] = user_proof_commit
+        row["user_proof_algorithm"] = user_proof_algorithm
     row["this_hash"] = _sha256_hex(_canonical_bytes_excluding_this_hash(row))
     return row
 
@@ -362,6 +367,8 @@ def append_payment_row(
     authorization_reference: str,
     source_sha256: str,
     stream_id: str | None = None,
+    user_proof_commit: str | None = None,
+    user_proof_algorithm: str | None = None,
 ) -> dict[str, Any]:
     """Append a new row to the ledger. Returns the written row.
 
@@ -391,6 +398,8 @@ def append_payment_row(
             seq=next_seq,
             prev_hash=prev_hash,
             stream_id=stream_id,
+            user_proof_commit=user_proof_commit,
+            user_proof_algorithm=user_proof_algorithm,
         )
         line = json.dumps(
             row,

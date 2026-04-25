@@ -1,11 +1,11 @@
 {
     "status": "deployed",
-    "process_id": "7G35XZsoMbT7c8mkOt4cJALPJudpRzSnOUK0xaKs04Q",
-    "timestamp": 1777093131,
+    "process_id": "UVPGSN3_N1Wd-VtT22bMByQYjdBbHIsXpGfveM52OGQ",
+    "timestamp": 1777094908,
     "network": "testnet",
     "substrate": "localnet",
     "signer_address": "55Plp-xUQ5B-955uJYjtCT4kR0eEf63lhzGd__pw1jY",
-    "lua_source_sha256": "97970eeef4b5e908f85c7f5b55b4f526adf2e64f2a2879f1d874412e0322c799",
+    "lua_source_sha256": "8f6e58d6655002e5aedd0dd247674aa8123b5761994447eaab08b95cc488b13f",
     "aos_version": "AOS Client Version: 2.0.11. 2025",
-    "first_commit_state_message_id": "MXKxwuycUWluvfL4oeW4-HUXUHTuq0riTl_LzjBZtEw"
+    "first_commit_state_message_id": "YX8o4MVCQJbrPGQ6PuttEWYtu6rZz7Fm-w4Kc231-QQ"
 }

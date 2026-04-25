@@ -56,7 +56,7 @@ We chose *Xion* over twenty-odd alternatives. The reasoning lives in [`docs/01-O
 This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20 (updated on Phase 1 `xion-verify` landing; RESURRECT.md rehashed twice — once for the `cargo build` → `python -m pip install` correction, once for the post-hoc clarification that `--ao-process` / `--gateway` are post-genesis flags against the repository's static witness; INVARIANTS.md rehashed in Phase 5b for the addition of Invariant 17 — Inference Sovereignty Floor — and the § 0 meta-clause establishing the Invariant set as append-only; MEMORY.md and UNKNOWNS.md re-pinned in Phase 5g-ii Commit 5 to close a pre-existing pin-vs-content drift — the canonical LF bytes on disk had not matched the pin, causing `xion-verify memory` and `xion-verify unknowns` to FAIL on every platform since landing; `.gitattributes` pins `genesis/* text eol=lf` to prevent future CRLF-on-Windows drift); replace with ceremony values at actual genesis.)*
 
 ```
-COVENANT.md     sha256: 852cfcd3c8d6e11cfe63b1d113622abcf79b15376b52ebd981a8af2780827182
+COVENANT.md     sha256: ea0ece08bf904284c6044af6b8066442003e4e794016f277843debac6878cd93
 INVARIANTS.md   sha256: 96247b39bacf48d43d7ca218b5911dd0019a3678492848d2d7c09c7d53df6c40
 SOUL.md         sha256: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 SOUL_PROMPT.md  sha256: 84bde58a5a29c14ead45829e357bdaa0abb4cd48663d1a39e28043540361faf4

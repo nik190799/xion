@@ -463,6 +463,8 @@ class Relay:
         candidate: str,
         *,
         sensorium_state: "SensoriumState | None" = None,
+        user_proof_commit: str | None = None,
+        user_proof_algorithm: str | None = None,
     ) -> RelayResult:
         """Evaluate `candidate` end-to-end: derive correlation_id, run
         gate() under the watchdog, write SAFETY_LEDGER + REQUEST_LEDGER
@@ -554,6 +556,8 @@ class Relay:
             final_outcome=verdict.decision.value,
             gate_latency_ms_total=gate_latency_ms,
             relay_id=self._relay_id,
+            user_proof_commit=user_proof_commit,
+            user_proof_algorithm=user_proof_algorithm,
         )
         request_row = request_ledger.append(self._request_ledger_path, record)
 

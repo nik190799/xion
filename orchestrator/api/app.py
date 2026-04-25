@@ -46,6 +46,8 @@ from .chat import register_chat_route
 from .chat_stream import register_chat_stream_route
 from .lifespan import lifespan
 from .me import router as me_router
+from .memory import router as memory_router
+from .presence import router as presence_router
 from .models import DriveResponse, HealthResponse, SensoriumResponse, VitalsResponse
 from .pricing import register_pricing_route
 from .web_client import (
@@ -256,6 +258,9 @@ def create_app(deps: AppDeps) -> FastAPI:
     register_chat_route(app)
     register_chat_stream_route(app)
     app.include_router(me_router)
+    app.include_router(memory_router)
+    app.include_router(presence_router)
+    app.include_router(presence_router)
 
     # --- Phase 5g-v: optional web-client mount ---------------------
     # Registered last so /app/* cannot shadow any admission-gated API

@@ -282,6 +282,19 @@ class UsageEnvelope(BaseModel):
 MIN_MAX_TOKENS = 1024
 
 
+class UserProof(BaseModel):
+    """Client-side Ed25519 proof of the message.
+    
+    If present, the orchestrator MUST verify the signature before processing
+    the turn. Malformed or invalid signatures fail-closed with HTTP 400.
+    """
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    
+    user_pubkey_b64: str
+    signature_b64: str
+    algorithm: Literal["ed25519"]
+
+
 class ChatRequest(BaseModel):
     """Phase 5g-i request body for ``POST /chat``.
 
@@ -314,6 +327,10 @@ class ChatRequest(BaseModel):
             "The floor is set to 1024 (MIN_MAX_TOKENS) so reasoning-posture "
             "models have room to emit visible content (see docs/26-INFERENCE-POLICY.md)."
         ),
+    )
+    user_proof: UserProof | None = Field(
+        default=None,
+        description="Optional client-side Ed25519 proof of the message.",
     )
 
 
@@ -589,6 +606,10 @@ class PricingResponse(BaseModel):
     )
     five_slice: FiveSliceBreakdown = Field(
         description="The decomposition of per_message_price into the five doctrinal slices.",
+    )
+    modality_costs: dict[str, int] = Field(
+        default_factory=dict,
+        description="Phase 6.4: Extra cost (in micro_XION) added per-modality (visual, vitals, voice).",
     )
     last_reviewed_utc_ns: int = Field(
         ge=0,

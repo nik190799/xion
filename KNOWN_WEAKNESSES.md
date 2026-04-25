@@ -25,22 +25,33 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Phase 6.3 Interaction Anchoring)
 - **Severity:** low
-- **Status:** open
+- **Status:** closed (2026-04-25, Phase 6.3.b)
 - **Description:** The `user_proof_commit` field added to the ledgers in Phase 6.3 records whatever the client sends, but the orchestrator does not verify that the client actually signed anything.
 - **Why it exists:** Client-side Ed25519 key generation and signature logic were deferred to Phase 6.3.b to decouple the backend anchoring infrastructure from the frontend cryptography.
 - **Mitigations:** Algorithm-agnostic schema means Phase 6.3.b can ship without schema migration.
-- **Pay-down commitment:** Phase 6.3.b will land client-side signing and `/forget` IndexedDB key wipe.
+- **Pay-down commitment:** Phase 6.3.b shipped client-side signing and `/forget` IndexedDB key wipe.
 - **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3.b stub).
+
+### KW-PROOF-002 — IndexedDB wiping logic lacks cross-tab coordination
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.3.b Client Proofs)
+- **Severity:** low
+- **Status:** open
+- **Description:** When the user clicks "Forget my keys", the local IndexedDB is wiped, but other open tabs of the same origin are not notified to drop their in-memory key references.
+- **Why it exists:** Cross-tab `BroadcastChannel` coordination was deferred to keep the Phase 6.3.b PR small.
+- **Mitigations:** A page reload clears the in-memory state.
+- **Pay-down commitment:** Phase 6.4 will add `BroadcastChannel` sync to the Forget-my-keys flow.
+- **Verifier:** Manual testing.
 
 ### KW-ANCHOR-AO-001 — AnchorDaemon writes to local ledger only; AO Core sink deferred
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Phase 6.3 Interaction Anchoring)
 - **Severity:** medium
-- **Status:** open
+- **Status:** closed (2026-04-25, Phase 6.3.b)
 - **Description:** The hourly Merkle interaction roots are written to the local `ANCHOR_LEDGER.jsonl` but are not posted to AO Core.
 - **Why it exists:** `AOCoreSink` is a Phase 6.3.b deliverable. The AO Core substrate that would receive its writes is now sealed (KW-AOCORE-004 closed 2026-04-25), so the sink itself is no longer blocked, only scheduled. Earlier text said "blocked by KW-AOCORE-004"; that statement is stale and is preserved in git history only.
 - **Mitigations:** The verifier `interaction-anchor` checks all local integrity properties and explicitly prints that it checks 0 anchors on-chain.
-- **Pay-down commitment:** Phase 6.3.b will ship `AOCoreSink` once Phase 6.1 unblocks.
+- **Pay-down commitment:** Phase 6.3.b shipped `AOCoreSink` using a local node helper to sign and post to AO Core.
 - **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3.b stub).
 
 ### KW-AOCORE-004 — Phase 6.1 testnet seal blocked by aos-2.0 mainnet default + upstream legacy MU 500
@@ -89,12 +100,12 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
 - **Severity:** low
-- **Status:** open
+- **Status:** closed (2026-04-25, Phase 6.4)
 - **Description:** `GET /presence/stream` and the Visual Emitter described in `docs/06-FORM-AND-PRESENCE.md` are not built.
 - **Why it exists:** Deferred to Phase 6.4.
 - **Mitigations:** None.
-- **Pay-down commitment:** Phase 6.4 will build the PresenceBus and Visual/Vital Emitters.
-- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.4 block).
+- **Pay-down commitment:** Phase 6.4 built the PresenceBus and Visual/Vital Emitters.
+- **Verifier:** `xion-verify presence`.
 
 ### KW-PRESENCE-VOICE-001 — Voice Emitter and Voice Form not yet authored
 - **Domain:** RUNTIME
@@ -122,12 +133,12 @@ Every entry has the same shape:
 - **Domain:** ECON
 - **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
 - **Severity:** medium
-- **Status:** open
+- **Status:** closed (2026-04-25, Phase 6.4)
 - **Description:** Users cannot express per-modality consent (visuals/vitals/voice) and lack structural defense against silent billing.
 - **Why it exists:** Deferred to Phase 6.4 with presence emitters.
 - **Mitigations:** Covenant Principle 5 mandates financial dignity.
-- **Pay-down commitment:** Phase 6.4 will add modality consent toggles and per-modality price slices to `/pricing`.
-- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.4 block).
+- **Pay-down commitment:** Phase 6.4 added modality consent toggles and per-modality price slices to `/pricing`.
+- **Verifier:** `xion-verify modality-consent`.
 
 ### KW-VOICE-SOVEREIGNTY-001 — Voice surface depends on a single hosted commercial provider
 - **Domain:** RUNTIME
@@ -140,12 +151,12 @@ Every entry has the same shape:
 - **Pay-down commitment:** Phase 6.5 will land `voice_open_source_self_hostable` floor provider and verify it via `xion-verify voice-sovereignty`.
 - **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.5 block).
 
-### KW-AOCORE-002 — 17 of 19 AO Core handlers are still doctrine-only
+### KW-AOCORE-002 — 17 of 20 AO Core handlers are still doctrine-only
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-23 (Phase 6.1 AO Core Skeleton)
 - **Severity:** low
 - **Status:** open
-- **Description:** Two of nineteen handlers (`commit-state`, `attest`) now have Lua implementations in `ao/core/main.lua` AND are deployed + verified against the localnet substrate (KW-AOCORE-001 + KW-AOCORE-004 closed 2026-04-25, see Phase 6.1.b finalization). The remaining 17 (treasury, provisioning, sustainability, authority) are still doctrine-only and ship family-by-family in Phase 6.2 and 6.3 against this same substrate.
+- **Description:** Three of twenty handlers (`commit-state`, `attest`, `anchor-interaction-batch`) now have Lua implementations in `ao/core/main.lua` AND are deployed + verified against the localnet substrate (KW-AOCORE-001 + KW-AOCORE-004 closed 2026-04-25, see Phase 6.1.b finalization). The remaining 17 (treasury, provisioning, sustainability, authority) are still doctrine-only and ship family-by-family in Phase 6.2 and 6.3 against this same substrate.
 - **Why it exists:** Phase 6 is sliced into sub-phases. Phase 6.1 shipped the skeleton and the state-chain loop; the rest follow in 6.2 and 6.3.
 - **Mitigations:** xion-verify ao-handlers asserts the schemas match the doctrine.
 - **Pay-down commitment:** Closes family-by-family in Phase 6.2 and 6.3.

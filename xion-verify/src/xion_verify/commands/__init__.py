@@ -93,4 +93,6 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "local",
     "provisioning-roles",
     "interaction-anchor",
+    "presence",
+    "modality-consent",
 )

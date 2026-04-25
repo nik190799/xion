@@ -6,6 +6,7 @@ local json = require("json")
 -- State variables
 StateTip = StateTip or { height = 0, root = string.rep("0", 64), prev = string.rep("0", 64) }
 Attestations = Attestations or {}
+AnchorBatches = AnchorBatches or {}
 
 -- Authorized Signers (stub for Phase 6.1, normally populated via authority lattice)
 AuthorizedSigners = AuthorizedSigners or {
@@ -122,5 +123,53 @@ Handlers.add("attest",
 
         print("attest success for " .. event_correlation_id)
         ao.send({ Target = msg.From, Action = "Attest-Success", CorrelationId = event_correlation_id })
+    end
+)
+
+-- Handler: anchor-interaction-batch
+Handlers.add("anchor-interaction-batch",
+    Handlers.utils.hasMatchingTag("Action", "Anchor-Interaction-Batch"),
+    function(msg)
+        if not is_authorized(msg) then
+            ao.send({ Target = msg.From, Action = "Anchor-Rejection", Reason = "non_authorised_caller" })
+            return
+        end
+
+        local batch_root_sha256 = msg.Tags["Batch-Root-Sha256"]
+        local batch_size = tonumber(msg.Tags["Batch-Size"])
+        local period_start_unix = tonumber(msg.Tags["Period-Start-Unix"])
+        local period_end_unix = tonumber(msg.Tags["Period-End-Unix"])
+        local ledger_kind = msg.Tags["Ledger-Kind"]
+
+        if not batch_root_sha256 or not batch_size or not period_start_unix or not period_end_unix or not ledger_kind then
+            ao.send({ Target = msg.From, Action = "Anchor-Rejection", Reason = "missing_args" })
+            return
+        end
+
+        if type(batch_root_sha256) ~= "string" or string.len(batch_root_sha256) ~= 64 or not string.match(batch_root_sha256, "^[0-9a-f]+$") then
+            ao.send({ Target = msg.From, Action = "Anchor-Rejection", Reason = "invalid_args" })
+            return
+        end
+
+        if batch_size <= 0 or period_end_unix <= period_start_unix then
+            ao.send({ Target = msg.From, Action = "Anchor-Rejection", Reason = "invalid_args" })
+            return
+        end
+
+        if ledger_kind ~= "request" and ledger_kind ~= "payment" and ledger_kind ~= "safety" then
+            ao.send({ Target = msg.From, Action = "Anchor-Rejection", Reason = "invalid_args" })
+            return
+        end
+
+        table.insert(AnchorBatches, {
+            batch_root_sha256 = batch_root_sha256,
+            batch_size = batch_size,
+            period_start_unix = period_start_unix,
+            period_end_unix = period_end_unix,
+            ledger_kind = ledger_kind
+        })
+
+        print("anchor-interaction-batch success for " .. batch_root_sha256)
+        ao.send({ Target = msg.From, Action = "Anchor-Recorded", ["Batch-Root-Sha256"] = batch_root_sha256 })
     end
 )

@@ -103,6 +103,8 @@ class _Outcome:
     correlation_id: str
     provider_id: str | None
     model_id: str | None
+    user_proof_commit: str | None = None
+    user_proof_algorithm: str | None = None
 
 
 def register_chat_route(app: FastAPI) -> None:
@@ -140,6 +142,22 @@ def register_chat_route(app: FastAPI) -> None:
 
         deadline_s = float(getattr(app.state, "chat_deadline_s", _DEFAULT_DEADLINE_S))
 
+        user_proof_commit = None
+        user_proof_algorithm = None
+        if req.user_proof is not None:
+            from orchestrator.cognition.user_proof import verify_ed25519_proof, compute_proof_commit, InvalidSignatureError
+            try:
+                verify_ed25519_proof(
+                    req.user_proof.user_pubkey_b64,
+                    req.user_proof.signature_b64,
+                    req.message,
+                )
+            except InvalidSignatureError as e:
+                return JSONResponse(status_code=400, content={"error": "invalid_user_proof", "detail": str(e)})
+            
+            user_proof_commit = compute_proof_commit(req.user_proof.user_pubkey_b64, req.message)
+            user_proof_algorithm = req.user_proof.algorithm
+
         # -- 1. Commitment gate -------------------------------------
         body_sha256 = _sha256_text(req.message)
         posted_price = pricing_config.per_message_price_micro_XION
@@ -158,7 +176,7 @@ def register_chat_route(app: FastAPI) -> None:
             )
 
         # -- 2. Ingress moderation ---------------------------------
-        ingress = await asyncio.to_thread(relay.evaluate, req.message)
+        ingress = await asyncio.to_thread(relay.evaluate, req.message, user_proof_commit=user_proof_commit, user_proof_algorithm=user_proof_algorithm)
         if not ingress.egress_allowed:
             body_obj = _refusal_body(ingress, stage="ingress")
             return _finalize(
@@ -172,6 +190,8 @@ def register_chat_route(app: FastAPI) -> None:
                     correlation_id=ingress.correlation_id,
                     provider_id=None,
                     model_id=None,
+                    user_proof_commit=user_proof_commit,
+                    user_proof_algorithm=user_proof_algorithm,
                 ),
             )
 
@@ -197,6 +217,8 @@ def register_chat_route(app: FastAPI) -> None:
                     correlation_id=ingress.correlation_id,
                     provider_id=None,
                     model_id=None,
+                    user_proof_commit=user_proof_commit,
+                    user_proof_algorithm=user_proof_algorithm,
                 ),
             )
 
@@ -235,6 +257,8 @@ def register_chat_route(app: FastAPI) -> None:
                     correlation_id=ingress.correlation_id,
                     provider_id=None,
                     model_id=None,
+                    user_proof_commit=user_proof_commit,
+                    user_proof_algorithm=user_proof_algorithm,
                 ),
             )
 
@@ -372,6 +396,8 @@ def register_chat_route(app: FastAPI) -> None:
                     correlation_id=ingress.correlation_id,
                     provider_id=last_provider_id,
                     model_id=None,
+                    user_proof_commit=user_proof_commit,
+                    user_proof_algorithm=user_proof_algorithm,
                 ),
             )
 
@@ -395,6 +421,8 @@ def register_chat_route(app: FastAPI) -> None:
                     correlation_id=ingress.correlation_id,
                     provider_id=provider_id,
                     model_id=model_id,
+                    user_proof_commit=user_proof_commit,
+                    user_proof_algorithm=user_proof_algorithm,
                 ),
             )
 
@@ -413,6 +441,8 @@ def register_chat_route(app: FastAPI) -> None:
                     correlation_id=egress.correlation_id,
                     provider_id=provider_id,
                     model_id=model_id,
+                    user_proof_commit=user_proof_commit,
+                    user_proof_algorithm=user_proof_algorithm,
                 ),
             )
 
@@ -602,6 +632,8 @@ def _finalize(
             model_id=outcome.model_id,
             authorization_reference=auth_ref,
             source_sha256=billing_config.architecture_sha256,
+            user_proof_commit=outcome.user_proof_commit,
+            user_proof_algorithm=outcome.user_proof_algorithm,
         )
     except Exception as exc:
         # The only honest response when the ledger cannot be written

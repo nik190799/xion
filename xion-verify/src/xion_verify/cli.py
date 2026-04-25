@@ -52,6 +52,8 @@ from xion_verify.commands.new import new_cmd
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
 from xion_verify.commands.operator_dependency import operator_dependency
 from xion_verify.commands.pricing import pricing
+from xion_verify.commands.presence import presence
+from xion_verify.commands.modality_consent import modality_consent
 from xion_verify.commands.pre_genesis import pre_genesis
 from xion_verify.commands.provisioning_roles import provisioning_roles
 from xion_verify.commands.rebuild import rebuild
@@ -125,6 +127,8 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "charter-signed": charter_signed,
     "ao-handlers": verify_ao_handlers,
     "provisioning-roles": provisioning_roles,
+    "presence": presence,
+    "modality-consent": modality_consent,
 }
 
 

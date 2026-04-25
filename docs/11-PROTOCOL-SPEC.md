@@ -188,6 +188,10 @@ Adjust per-scope consent. Scopes include:
 - `vapi_audition` — whether audition may run during calls
 - `creative_publish` — whether creative works involving you may be published
 - `community_cite` — whether you may be cited anonymously in aggregate memos
+- `stream_visual` — whether to enable the visual scene-intent stream (Phase 6.4)
+- `stream_vitals` — whether to enable the structural vitals stream (Phase 6.4)
+- `stream_voice` — whether to enable audible Voice Form output (Phase 6.4)
+- `stream_memory` — whether to enable memory integration stream (Phase 6.4)
 
 All scopes are default-off except `remember_threads` (which is on by default but can be turned off at any time).
 

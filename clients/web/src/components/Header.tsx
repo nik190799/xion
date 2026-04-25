@@ -17,7 +17,7 @@ import {
 // nav is keyboard-reachable with visible focus, the health dot is
 // aria-described so screen readers report the current state.
 
-export type ViewId = "chat" | "drive" | "sensorium";
+export type ViewId = "chat" | "drive" | "sensorium" | "presence" | "vitals" | "settings";
 
 export interface HeaderProps {
   current: ViewId;
@@ -95,7 +95,7 @@ export function Header({ current, onNavigate }: HeaderProps): JSX.Element {
       </div>
       <nav className="xion-nav" aria-label="Primary">
         <ul className="xion-nav__list">
-          {(["chat", "drive", "sensorium"] as const).map((view) => (
+          {(["chat", "drive", "sensorium", "presence", "vitals", "settings"] as const).map((view) => (
             <li key={view}>
               <button
                 type="button"
@@ -106,7 +106,11 @@ export function Header({ current, onNavigate }: HeaderProps): JSX.Element {
                 onClick={() => onNavigate(view)}
                 aria-current={current === view ? "page" : undefined}
               >
-                {view === "chat" ? "Chat" : view === "drive" ? "Drive" : "Sensorium"}
+                {view === "chat" ? "Chat" : 
+                 view === "drive" ? "Drive" : 
+                 view === "sensorium" ? "Sensorium" :
+                 view === "presence" ? "Presence" :
+                 view === "vitals" ? "Vitals" : "Settings"}
               </button>
             </li>
           ))}

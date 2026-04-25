@@ -61,14 +61,15 @@ from orchestrator.inference_router import (
     PolicyMode,
     default_manifest_path,
 )
-from orchestrator.runtime import (
-    BrokerSupervisorShell,
-    default_worker_id,
-    load_broker_from_env,
-)
-from orchestrator.supervisor import Supervisor
+    from orchestrator.runtime import (
+        BrokerSupervisorShell,
+        default_worker_id,
+        load_broker_from_env,
+    )
+    from orchestrator.supervisor import Supervisor
+    from orchestrator.sensorium.presence_bus import PresenceBus
 
-from .admission import (
+    from .admission import (
     build_rate_limiters,
     load_admission_config_from_env,
 )
@@ -106,11 +107,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 broker_renew_s = broker.config.leader_renew_s
     app.state.broker = broker
 
+    # --- Phase 6.4: Presence Bus ---
+    presence_bus = PresenceBus()
+    app.state.presence_bus = presence_bus
+
     if broker is None:
         supervisor = Supervisor(
             relay=deps.relay,
             tick_cadence_s=deps.tick_cadence_s,
             sensorium_ledger_path=deps.sensorium_ledger_path,
+            presence_bus=presence_bus,
         )
         # Doctrine pin: pre-seed the snapshot synchronously. After this
         # returns, ``supervisor.latest_snapshot()`` is non-None and the
@@ -134,6 +140,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             sensorium_ledger_path=deps.sensorium_ledger_path,
             tick_cadence_s=deps.tick_cadence_s,
             relay=deps.relay,
+            presence_bus=presence_bus,
         )
         shell.initial_seed()
         supervisor = shell  # type: ignore[assignment]
@@ -285,7 +292,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.payment_ledger_path = payment_ledger_path
     app.state.safety_ledger_path = safety_ledger_path
 
-    anchor_sink = LocalLedgerSink(str(anchor_ledger_path))
+    anchor_sink_type = os.environ.get("XION_ANCHOR_SINK", "local")
+    if anchor_sink_type == "ao_core":
+        from orchestrator.anchor.sink_ao_core import AOCoreSink
+        anchor_sink = AOCoreSink(
+            anchor_ledger_path=str(anchor_ledger_path),
+            ao_gateway_url=os.environ.get("XION_AO_GATEWAY_URL", "http://localhost:4000"),
+            ao_process_id=os.environ.get("XION_AO_PROCESS_ID", ""),
+            ao_signer_jwk_path=os.environ.get("XION_AO_SIGNER_JWK_PATH", ""),
+        )
+    else:
+        anchor_sink = LocalLedgerSink(str(anchor_ledger_path))
+
     anchor_daemon = AnchorDaemon(
         sink=anchor_sink,
         anchor_ledger_path=anchor_ledger_path,

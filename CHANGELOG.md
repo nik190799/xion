@@ -10,6 +10,25 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+## [Phase 6.3.b] — 2026-04-25
+
+The Phase 6.3.b iteration lands two deferred tasks: AO Core interaction anchoring and client-side proof generation, closing the respective KWs.
+
+### Added
+- **`Anchor-Interaction-Batch` handler in `ao/core/main.lua`**: The handler validates the batch root, batch size, period timestamps, and ledger kind, appending valid batches to the `AnchorBatches` table. Localnet was re-sealed to capture this handler.
+- **`AOCoreSink` in `orchestrator/anchor/sink_ao_core.py`**: A new AnchorSink implementation that posts interaction batches to AO Core using an out-of-process `.cjs` helper, falling back to local-only ledger writes on failure. Wired to `XION_ANCHOR_SINK=ao_core` via `orchestrator/api/lifespan.py`.
+- **`UserProof` in API Models**: Pydantic model for client-side Ed25519 proofs, added as an optional field on `ChatRequest`.
+- **Web Crypto Ed25519 Client**: Added `clients/web/src/lib/crypto.ts` with IndexedDB-backed non-extractable keypair generation and signing. Wired into `postChat` and `streamChat`.
+
+### Changed
+- **`interaction-anchor` Verification**: `xion-verify` now fetches the `AnchorBatches` table via a `POST /dry-run` to the AO gateway and confirms that interaction roots recorded locally are mirrored in the AO Core state.
+- **`RequestRecord` and `build_payment_row`**: Extended to include `user_proof_commit` and `user_proof_algorithm`.
+- **`pyproject.toml`**: Added `cryptography` to the `[api]` extra to support standard-library-adjacent Ed25519 proof validation on the backend.
+
+### Closed
+- **`KW-PROOF-001`**: Client-side Ed25519 proofs are now generated and verified on the server.
+- **`KW-ANCHOR-AO-001`**: The AO Core sink successfully posts interaction anchors to the localnet substrate.
+
 ## [Phase 6.1.b finalization] — 2026-04-25
 
 The Phase 6.1.b infrastructure shipped 2026-04-24 (Compose wrapper, bring-up script, runbook, doctrine amendment, verifier substrate gate) was elected as the closure path for `KW-AOCORE-004` but explicitly left "the operator runs the new runbook end-to-end" as a follow-up small PR. This entry collapses the seal-mechanism work *and* the seal-artifact commit into one ratification: the runbook's eleven REPL-driven steps now run unattended as `scripts/ao-localnet-seal.sh`, the seal was driven to a green `xion-verify ao-handlers` against a fresh `permaweb/ao-localnet` bring-up (twice in a row for reproducibility), and the resulting receipt + first state-chain row are committed. **`KW-AOCORE-001`, `KW-AOCORE-003`, and `KW-AOCORE-004` close.**

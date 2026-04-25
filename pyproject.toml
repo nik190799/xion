@@ -127,6 +127,8 @@ api = [
     "httpx>=0.27,<1",
     # Finding #3: Explicitly declare python-dotenv for XION_DOTENV_PATH opt-in.
     "python-dotenv>=1.0",
+    # Ed25519 verification for client proofs
+    "cryptography>=41.0.0",
 ]
 
 dev = [
