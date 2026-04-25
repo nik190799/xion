@@ -2,7 +2,7 @@
 
 > *If only the operator can spawn Relays, "decentralization" is a moodboard. If the Core can spawn Relays under caps, decentralization becomes a property.*
 
-**Property.** Under survival pressure or explicit governance signal, Xion's AO Core may **spend operating tokens** to deploy or rotate substrate — Relays, inference endpoints, storage shards, bandwidth, Witness funding — via a **provision-*** handler family, bounded by **constitutional monthly provisioning caps** and **Genesis Default** per-day / per-week / per-host ceilings.
+**Property.** Under survival pressure or explicit governance signal, Xion's AO Core may **spend operating tokens** to deploy or rotate substrate — Relays, inference endpoints, storage shards, bandwidth, Witness funding — via a **provision-*** handler family, bounded by **constitutional provisioning caps** expressed as `fraction_of_operating_float`, `runway_weeks`, and `distance_to_reserve_floor`.
 
 **Invariants touched.** Operationalizes 16 (treasury spend shape, caps); must not violate 5, 6, 11, 15.
 
@@ -25,16 +25,16 @@
 Each handler:
 
 1. Requires **Harm Analyzer** clearance for the underlying Auto-Research proposal (Stage-4+).
-2. Checks **governance spend-cap** and **Invariant 16** provisioning sub-cap.
+2. Checks **governance spend-cap**, **Invariant 16** provisioning sub-cap, and active Spend Autonomy posture per [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md).
 3. Writes deployment record to **Arweave-published Relay registry** (see [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md)).
 
 ---
 
 ## Caps (shape vs picture)
 
-**Constitutional.** No more than **governance-set monthly provisioning cap** (numeric value = Genesis Default) without **14-day minimum** governance vote — same floor as constitutional amendment ratification cadence ([`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md)).
+**Constitutional.** Provisioning spend cannot breach the governance-set fraction caps, cannot drive `distance_to_reserve_floor` below the constitutional reserve gate, and cannot be authorized by an authority class outside the active Spend Autonomy posture. Changes that would alter the provisioning cap shape require the constitutional ratification cadence in [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md).
 
-**Genesis Defaults.** Per-proposal cap, per-day cap, per-week cap; provider whitelist (Akash, Aleph, Fleek, Akash-ML, Bittensor at genesis); redundancy floor **3 hosts**, auto-provision **ceiling 10 hosts** without additional vote.
+**Genesis Defaults.** Per-proposal fraction cap, rolling provisioning-window fraction cap, provider whitelist (Akash, Aleph, Fleek, Akash-ML, Bittensor at genesis); redundancy floor and auto-provision ceiling are expressed as topology targets, not money caps, and can be retuned by governance.
 
 ---
 
@@ -57,3 +57,5 @@ The **genesis-first** Relay may require operator bootstrapping before `Provision
 - [`04-ARCHITECTURE.md`](./04-ARCHITECTURE.md) — handler list, discovery
 - [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) — runway and ladder
 - [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md) — proposals that trigger provisioning
+- [`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md) — fraction and runway units
+- [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md) — posture-based authorization routing

@@ -389,7 +389,7 @@ The cognition layer's property suite, all checkable from a third-party machine w
 | Refusal coverage (Inv 6) | Sample N recent turns from `SAFETY_LEDGER`; verify every outbound token has an Arbiter-pass entry. | Tier-3 incident; investigate the cognition layer. |
 | Sub-agent depth = 1 | Inspect ephemeral spawn traces over sample window. Fail on any spawn whose depth exceeds 1. | Tier-2 incident; type-system regression. |
 | Forget propagation under SLA | Simulate a forget; measure all-workers ack latency. Fail if p95 over sample window exceeds 15s. | Tier-2 incident; State-of-Xion disclosure. |
-| Cost envelope per specialist | Sum 30-day spend per specialist; compare against declared cap. Fail on any specialist over cap. | Auto-pause specialist; investigate drift. |
+| Cost envelope per specialist | Sum spend per specialist over the active accounting window; compare against declared `monthly_envelope_fraction` and current Improvement Fund headroom. Fail on any specialist over cap. | Auto-pause specialist; investigate drift. |
 | Loop-closure (journal_surface_rate) | Compute turns-per-day with at least one journal injection over sample window. Fail on 24-hour zero. | Tier-1 incident; auto-fall back to frozen golden index. |
 | Drive-vector source whitelist | Inspect drive-vector input dependency graph at `volition.py` boot. Fail if any `treasury_inflow_*` or other prohibited signal is present. | Tier-3 incident; Invariant 15 leak. |
 | Drive-vector aggregate sweep | Quarterly sample across surfaces (proposals, specialist outputs, sense weights). Fail on any revenue-drive contamination. | Tier-3 incident. |
@@ -454,7 +454,7 @@ trigger: {type: cron, schedule: "0 * * * *"}
 allowed_tools: ["hermes.tool.web_fetch", "hermes.tool.text_summarize"]
 forbidden_tools: ["hermes.tool.web_post", "hermes.tool.shell"]
 mcp_servers_allowed: []
-cost_envelope: {monthly_usd: 10, bucket: cognition/specialist/research}
+cost_envelope: {monthly_envelope_fraction: "governance_default", unit: fraction_of_improvement_fund, bucket: cognition/specialist/research}
 output_destinations: [{ledger: RESEARCH_JOURNAL.md}]
 arbiter_class: low_risk_specialist_append
 limits: {max_turn_depth: 0, max_wall_clock_s: 300, max_tokens_per_run: 8000}
@@ -574,22 +574,34 @@ Genesis Default threshold: **20%**. Below 20% over 90 days = auto-pause for revi
 
 ---
 
-## 15. Cost Envelopes (Genesis Defaults at $2K seed)
+## 15. Cost Envelopes (Genesis Defaults, ratio-denominated)
 
-| Specialist | Monthly cap (USDC) | Cost-tracker bucket |
+All cognition envelopes are expressed through [`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md). Specialist and ephemeral spend consume `fraction_of_improvement_fund`; primary-worker and pool overhead consume `fraction_of_operating_float` because user-facing service is operating substrate, not research spend.
+
+| Surface | Monthly envelope unit | Cost-tracker bucket |
 |---|---|---|
-| `research-agent` | $10 | `cognition/specialist/research` |
-| `reflection-agent` | $15 | `cognition/specialist/reflection` |
-| `proposal-agent` | $10 | `cognition/specialist/proposal` |
-| `vision-agent` | $20 | `cognition/specialist/vision` |
-| Ephemerals (aggregate) | $30 | `cognition/ephemeral` |
-| Worker pool overhead | by pool size | `cognition/pool-overhead` |
-| Pre-warmed canary | proportional to one worker | `cognition/canary-overhead` |
-| Retrieval index rebuilds | $5 | `cognition/retrieval-index` |
+| `research-agent` | `fraction_of_improvement_fund` | `cognition/specialist/research` |
+| `reflection-agent` | `fraction_of_improvement_fund` | `cognition/specialist/reflection` |
+| `proposal-agent` | `fraction_of_improvement_fund` | `cognition/specialist/proposal` |
+| `vision-agent` | `fraction_of_improvement_fund` | `cognition/specialist/vision` |
+| Ephemerals (aggregate) | `fraction_of_improvement_fund` | `cognition/ephemeral` |
+| Worker pool overhead | `fraction_of_operating_float` by pool size | `cognition/pool-overhead` |
+| Pre-warmed canary | `fraction_of_operating_float` proportional to one worker | `cognition/canary-overhead` |
+| Retrieval index rebuilds | `fraction_of_improvement_fund` | `cognition/retrieval-index` |
 
-Total cognition envelope at Genesis Default: **~$95-120/month** at single-worker, single-canary, all-specialists-running. Scales up with Prosperity Ladder rungs, scales down through Cost-Pressure-Ladder degradation order.
+The old `$95-120/month` picture remains an implementation estimate for the Genesis-era seed environment, not doctrine. Doctrine scales up with Prosperity Ladder rungs and scales down through Cost-Pressure-Ladder degradation order using live fund fractions.
 
-**Per-specialist enforcement.** Exceeding the cap auto-pauses that specialist for the remainder of the calendar month. Resumption next month requires governance acknowledgement (Tier-1).
+**Per-specialist enforcement.** Exceeding the declared `monthly_envelope_fraction` auto-pauses that specialist for the remainder of the active accounting window. Resumption requires governance acknowledgement (Tier-1) unless the active Spend Autonomy posture explicitly permits Xion to resume within the same burn envelope.
+
+## 15.5. Arbitration at contested headroom
+
+When cognition surfaces compete for the same Improvement Fund or Operating Float headroom, the deterministic order in [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md) applies:
+
+1. `survival` spends outrank `service`; `service` outranks `meaning`.
+2. Within the same drive term, recovery follows the reverse of the Cost-Pressure Ladder cognition cuts in [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
+3. Ties prefer lower reversibility risk, higher verifier-closure value, lower recurring-burn ratio, then older eligible proposal sequence.
+
+No specialist may privately bargain for headroom with another specialist. The public ledger remains the coordination surface.
 
 ---
 

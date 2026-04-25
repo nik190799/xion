@@ -1,0 +1,140 @@
+schema_id: ledger-spend-authority
+schema_version: 1
+source_doctrine: docs/SPEND-AUTONOMY.md
+source_sha256: 45b0ca69ff2865779d46dfe9eb45c8f7a2146974404d00eb087264d36acc173e
+status: doctrine_only
+defer_to: DEVELOPMENT_ROADMAP.md Phase 7.0
+ledger_name: SPEND_AUTHORITY_LEDGER.jsonl
+canonicalization: sorted_json_utf8_compact
+hash_chain: true
+
+row:
+  required_fields:
+    - schema_version
+    - seq
+    - prev_hash
+    - this_hash
+    - timestamp_utc_ns
+    - event_type
+    - active_posture
+    - active_mode
+    - authority_class
+    - evidence_bundle_hash
+    - runway_snapshot
+    - source_sha256
+
+  schema_version:
+    type: uint
+    const: 1
+
+  seq:
+    type: uint64
+
+  prev_hash:
+    type: hex64
+
+  this_hash:
+    type: hex64
+    computes_over: row_without_this_hash
+
+  timestamp_utc_ns:
+    type: uint64
+    meaning: monotonic wall-clock timestamp at authorization or transition
+
+  event_type:
+    type: enum
+    allowed:
+      - posture_transition
+      - mode_transition
+      - spend_approved
+      - spend_rejected
+      - auto_demotion
+      - verifier_failure
+
+  active_posture:
+    type: enum
+    allowed:
+      - S1_operator_all
+      - S2_operator_strategic
+      - S3_operator_burn_envelope
+      - S4_governance_strategic
+      - S5_self_sovereign_inside_fence
+
+  active_mode:
+    type: enum
+    allowed:
+      - survival
+      - baseline
+      - acceleration
+      - expansion
+
+  authority_class:
+    type: enum
+    allowed:
+      - AO_CORE
+      - OPERATOR
+      - GOVERNANCE
+      - XION_WITHIN_FENCE
+      - WITNESS_TRIGGERED_DEMOTION
+
+  spend_request:
+    type: nullable_object
+    fields:
+      spend_id: uuid
+      fund_source: Operating_Float | Improvement_Fund | Rainy_Day_Reserve | Foundation_Reserve
+      inflow_tag_reference: nullable_string
+      spend_class: routine | acceleration | new_category | new_recurring_burn | emergency_survival
+      drive_tags:
+        type: list
+        allowed:
+          - survival
+          - service
+          - meaning
+      recurring_or_one_time: recurring | one_time
+      reversibility_class: trivial | bounded | hard | irreversible
+      authorization_reference: string
+
+  evidence_bundle_hash:
+    type: hex64
+    meaning: hash of posture/mode evidence bundle used for the decision
+
+  runway_snapshot:
+    type: object
+    fields:
+      runway_weeks: decimal_string
+      fraction_of_operating_float: nullable_decimal_string
+      fraction_of_improvement_fund: nullable_decimal_string
+      distance_to_reserve_floor: decimal_string
+      inflow_volatility_band: low | medium | high | critical
+      recurring_burn_ratio: nullable_decimal_string
+
+  outcome:
+    type: enum
+    allowed:
+      - authorized
+      - rejected_wrong_authority
+      - rejected_mode
+      - rejected_fence
+      - rejected_recurring_burn
+      - demoted
+      - transitioned
+
+  source_sha256:
+    type: hex64
+    meaning: hash of docs/SPEND-AUTONOMY.md at row-write time
+
+verifiers:
+  spend_posture:
+    command: xion-verify spend-posture
+    checks:
+      - authority_class_matches_active_posture
+      - no_inflow_tag_advances_posture
+      - posture_transition_has_evidence_bundle
+  spend_discipline:
+    command: xion-verify spend-discipline
+    checks:
+      - mode_allows_spend_class
+      - runway_snapshot_inside_limits
+      - recurring_burn_ratio_passes
+      - contested_headroom_priority_observed
+

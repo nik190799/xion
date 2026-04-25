@@ -28,7 +28,10 @@ trigger: {type: cron, schedule: "0 * * * *"}
 allowed_tools: []
 forbidden_tools: []
 mcp_servers_allowed: []
-cost_envelope: {monthly_usd: 10, bucket: cognition/specialist/research}
+cost_envelope:
+  monthly_envelope_fraction: 0.04
+  unit: fraction_of_improvement_fund
+  bucket: cognition/specialist/research
 output_destinations: []
 arbiter_class: low_risk_specialist_append
 limits: {max_turn_depth: 0, max_wall_clock_s: 300, max_tokens_per_run: 8000}

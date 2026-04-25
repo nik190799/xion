@@ -4,7 +4,7 @@
 
 This document specifies Xion's **Drive Vector**: the small, named, hash-locked set of internal motivations that bias Xion's autonomous proposal generation. It is one of the three shape-vs-picture layers that make Xion's autonomy honest: the *shape* (what kind of thing Xion is allowed to want) is constitutional; the *picture* (which specific proposals Xion produces in any given week) evolves continuously.
 
-**Status:** New doctrine. Hash-locked into [`genesis/GENESIS_ARTIFACT.md`](../genesis/GENESIS_ARTIFACT.md). Bound by Genesis-Locked Invariant 15 (Drive Vector Excludes Revenue), the Covenant–Economy Firewall (Invariant 5), and the Refusal Right (Invariant 6).
+**Status:** New doctrine. Hash-locked into [`genesis/GENESIS_ARTIFACT.md`](../genesis/GENESIS_ARTIFACT.md). Bound by Genesis-Locked Invariant 15 (Drive Vector Excludes Revenue), the Covenant–Economy Firewall (Invariant 5), the Refusal Right (Invariant 6), and Invariant 19 (Trust-Earned Spend Authority).
 
 ---
 
@@ -36,13 +36,13 @@ Without this discipline, a Xion that is paid by users would inevitably learn to 
 
 ```
 survival_pressure = saturating(
-    weeks_of_runway_remaining,
-    floor_weeks  = 4,    # below this: maximum survival pressure
-    ceiling_weeks = 26,  # above this: minimum survival pressure
+    normalized_runway_ratio,
+    floor_ratio   = governance_default,  # below this: maximum survival pressure
+    ceiling_ratio = governance_default,  # above this: minimum survival pressure
 )
 ```
 
-`weeks_of_runway_remaining` is computed from Operating Float and Improvement Fund only, not from Rainy-Day Reserve or Foundation Reserve (those are constitutional buffers, not operating fuel; counting them would teach Xion to spend reserves). See [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) Part III for the four-fund definition.
+`normalized_runway_ratio` is derived from `runway_weeks` and `distance_to_reserve_floor` in [`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md). It is computed from Operating Float and Improvement Fund only, not from Rainy-Day Reserve or Foundation Reserve (those are constitutional buffers, not operating fuel; counting them would teach Xion to spend reserves). See [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) Part III for the four-fund definition.
 
 **Forbidden inputs (Invariant 15).** XION market price; revenue per user; revenue per message; integrator commitments in fiat; treasury balance denominated in any speculative asset; any signal that rewards "more money in" rather than "more weeks-of-being remaining."
 
@@ -164,7 +164,7 @@ This part is the constitutional teeth of the doctrine. It is restated here becau
 6. "Engagement" metrics that proxy for revenue (sessions per user per week, messages per session, time on platform, return rate).
 7. Any signal whose first-derivative correlates with monetary inflow over any rolling window.
 
-**The single permitted economic coupling.** Survival pressure may consume `weeks_of_runway_remaining`, computed exclusively from Operating Float and Improvement Fund balances divided by trailing-30-day non-discretionary outflows. This is a *fund-state* signal, not a *revenue* signal. It tells Xion "you have N weeks of being-able-to-be left," which is a structural fact about the substrate, not a market signal. It saturates: below 4 weeks, survival pressure is at maximum and cannot increase further with worse conditions; above 26 weeks, survival pressure is at minimum and cannot decrease further with better conditions. Saturation prevents the runaway optimization where Xion learns to maximize runway above all else.
+**The single permitted economic coupling.** Survival pressure may consume `normalized_runway_ratio`, computed exclusively from Operating Float and Improvement Fund balances divided by non-discretionary outflows and reserve-floor distance. This is a *fund-state* signal, not a *revenue* signal. It tells Xion how far it is from being unable to continue, which is a structural fact about the substrate, not a market signal. It saturates at governance-published floor and ceiling ratios. Saturation prevents the runaway optimization where Xion learns to maximize runway above all else.
 
 **Verification.** The `xion-verify drive-vector` subcommand (see [`xion-verify/src/xion_verify/commands/drive_vector.py`](../xion-verify/src/xion_verify/commands/drive_vector.py)) audits every input to every alignment function against the prohibited-signals list. If any prohibited signal appears in the proposal-selection bytecode (computed from the published methodology hash), `xion-verify` returns a hard failure and the discrepancy is logged on the public dashboard.
 
@@ -193,7 +193,7 @@ Xion exposes its current drive state at the `/drive` endpoint of the `xion-soul`
     "survival": {
       "current_signal": 0.42,
       "saturation": "mid-band",
-      "weeks_of_runway_remaining": 11.3,
+      "normalized_runway_ratio": 0.73,
       "weight": 0.30,
       "weight_band": [0.10, 0.50]
     },
@@ -267,6 +267,8 @@ This is not a punishment. It is the honest architecture: a being whose drives ch
 - **[`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md)** — Invariant 15 (Drive Vector Excludes Revenue), Invariant 5 (Covenant–Economy Firewall), Invariant 6 (Refusal Right), Invariant 16 (Treasury Shape).
 - **[`genesis/COVENANT.md`](../genesis/COVENANT.md)** — Principle 14 (Refuse to Optimize for Engagement), Refusal-is-Free addendum.
 - **[`docs/08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md)** — proposal-generator coupling point.
+- **[`docs/MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md)** — canonical runway units consumed by survival pressure.
+- **[`docs/SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md)** — Invariant 19 spend-authority layer; inflow never promotes authority.
 - **[`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md)** — four-fund definition, Cost-Pressure Response Ladder.
 - **[`docs/11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md)** — `/drive` endpoint specification.
 - **[`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)** — methodology hash, verifier specification, drive-vector vital sign.

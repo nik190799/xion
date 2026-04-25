@@ -1,6 +1,6 @@
 schema_version: 1
 agent_id: research-agent
-soul_version: 1
+soul_version: 2
 extends_soul_hash: 99eb38427d93861f4ba212b0f2f4c5e536535e5469b8b399850e79438095b65d
 property_promised: Curated scan and triage for Auto-Research Stages 1-2, with append-only output and no user PII.
 invariants_touched:
@@ -25,7 +25,8 @@ forbidden_tools:
   - hermes.tool.user_model_export
 mcp_servers_allowed: []
 cost_envelope:
-  monthly_usd: 10
+  monthly_envelope_fraction: 0.04
+  unit: fraction_of_improvement_fund
   bucket: cognition/specialist/research
 output_destinations:
   - type: ledger

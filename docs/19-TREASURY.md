@@ -26,7 +26,7 @@
 
 ### Tier 1 — Operating tokens (working inventory)
 
-Hold **3–6 months** of expected operating burn per asset class, auto-replenish when below threshold by governance-approved swap path from XION/USDC.
+Hold enough working inventory to keep `runway_weeks` above the governance-published reserve floor for each asset class. The Genesis Default picture equivalent remains roughly a quarter-to-half-year of expected operating burn, but the doctrine is the ratio: `distance_to_reserve_floor >= 0`. Auto-replenish when `fraction_of_operating_float` for a required asset falls below its governance-published band by a governance-approved swap path from XION/USDC.
 
 **Genesis Default starting set:** AKT (Akash), AR (Arweave), USDC (fiat-pegged ops), ETH (gas), TAO (when Bittensor inference is wired).
 
@@ -79,7 +79,7 @@ Every position carries:
 
 ## Prosperity routing (Genesis Default)
 
-When runway is **healthy**, marginal earned inflows follow the **prosperity split** defaults in [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) (reserve top-up → Improvement headroom → Operating Float ceiling). **New recurring capex** (extra Relays, always-on canaries, standing model seats) requires the **18-month reserve floor** documented there — prosperity must not convert runway into fixed burn without a savings proof.
+When runway is **healthy**, marginal earned inflows follow the **prosperity split** defaults in [`21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md) (reserve top-up → Improvement headroom → Operating Float ceiling). **New recurring capex** (extra Relays, always-on canaries, standing model seats) requires the recurring-burn test in [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md): `recurring_burn_ratio` must pass and `distance_to_reserve_floor` must remain positive after the obligation. Prosperity must not convert runway into fixed burn without a savings proof.
 
 ## Cross-references
 
@@ -89,3 +89,5 @@ When runway is **healthy**, marginal earned inflows follow the **prosperity spli
 - [`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md) — Financial Vitality inputs
 - [`docs/24-COGNITION.md`](./24-COGNITION.md) — cognition cost buckets (treasury-facing)
 - [`docs/11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) — `GET /treasury`
+- [`docs/MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md) — canonical runway and fund-fraction units
+- [`docs/SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md) — authority posture and recurring-burn discipline

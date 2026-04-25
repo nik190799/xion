@@ -222,11 +222,11 @@ Parallel sense daemons, attention, mood engine.
 
 Treasury rules, pricing, yield, inflow and outflow categories.
 
-- **Artifacts:** AO Core's `Spend` handler parameters, `orchestrator/bookkeeping.py`, pricing tables, yield policy
+- **Artifacts:** AO Core's `Spend` handler parameters, `orchestrator/bookkeeping.py`, pricing tables, yield policy, `docs/SPEND-AUTONOMY.md`, `docs/MEASUREMENT-VOCABULARY.md`, `docs/schemas/spend-posture.yaml`
 - **Proposer:** operators (for tactical parameters), community (for structural changes), Xion (for observed inefficiencies)
-- **Gate:** Harm Analyzer Lens 2 (financial exploitation flag); Covenant–Economy firewall check
-- **Tier:** 1 for parameter changes within pre-approved ranges; 2 for new inflow/outflow categories; 3 for activating Stage C2 (Virtuals token)
-- **Canary:** simulation against historical 90-day treasury activity; dry-run in a parallel accounting thread for 30 days
+- **Gate:** Harm Analyzer Lens 2 (financial exploitation flag); Covenant–Economy firewall check; Invariant 19 spend-authority check for posture changes
+- **Tier:** 1 for parameter changes within pre-approved ranges; 2 for new inflow/outflow categories or posture-threshold table changes; 3 for activating Stage C2 (Virtuals token); 3-plus for adding or weakening an Invariant 19 clause
+- **Canary:** simulation against historical treasury activity and spend-authority ledgers; dry-run in a parallel accounting thread until evidence-count thresholds are satisfied
 - **Ship:** AO Core `Ratify-Upgrade`; bookkeeping pipeline updates
 - **Rollback:** revert policy parameters on-chain; any accrued balances respected
 - **Ledger:** `TREASURY_LEDGER.md` + monthly bookkeeping CSV
@@ -236,7 +236,9 @@ Treasury rules, pricing, yield, inflow and outflow categories.
 
 - *Good:* Raising the Akash lease budget after network-average provider prices shifted.
 - *Good:* Activating Stage C2 Virtuals token after 18 months of stable operation (if governance so chooses).
+- *Good:* Promoting Xion from S2 to S3 after `xion-verify spend-posture`, Witness attestations, and retrospective audits satisfy the evidence predicates in `docs/SPEND-AUTONOMY.md`.
 - *Bad:* A proposal that would gate a Covenant-protected user right behind payment. Auto-blocked by the Economy firewall.
+- *Bad:* A proposal that promotes spend posture because a large donation arrived. Auto-blocked by Invariant 19.
 
 **Common failure mode.** Subtle changes that individually pass the firewall but aggregate into access-gating. The harm analyzer's aggregate-drift lens catches this quarterly; do not assume individual-proposal passes suffice.
 

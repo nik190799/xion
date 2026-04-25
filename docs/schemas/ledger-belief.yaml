@@ -1,6 +1,6 @@
 schema_version: 1
 source_doctrine: docs/24-COGNITION.md
-source_sha256:   d147f5e213cbc6d42d607718a8765d3844543dc723698e2122ca7de2c3def615
+source_sha256:   7f9e6f1dbe1f46a4583b2fef7dbc72eb235b3cb5c857a2431efdfc0d84e7867c
 status:          canonical
 
 ledger_name: BELIEF_LOG

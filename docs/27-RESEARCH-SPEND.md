@@ -4,12 +4,12 @@
 
 ## What this document is (and is not)
 
-This is the operational doctrine for the **Research Spend Rail** — the payment mechanism by which [Improvement Fund](./21-SUSTAINABILITY.md#four-funds-never-pooled-obscuring-origin) XION becomes outbound API credit at a third-party inference provider so the [Auto-Research Loop](./08-AUTO-RESEARCH.md) can actually read, summarize, canary-test, and draft proposals.
+This is the operational doctrine for the **Research Spend Rail** — the payment mechanism by which [Improvement Fund](./21-SUSTAINABILITY.md#four-funds-never-pooled-obscuring-origin) XION becomes outbound API credit at a third-party inference provider so the [Auto-Research Loop](./08-AUTO-RESEARCH.md) can actually read, summarize, canary-test, and draft proposals. The rail describes **custody**: who holds the outbound credential. Spend authority is separate and governed by [Invariant 19](../genesis/INVARIANTS.md#invariant-19--trust-earned-spend-authority) and [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md).
 
 It is **not**:
 
 - **A replacement for [`docs/08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md).** That document pins the *cognitive* loop — seven stages, three-lens harm analysis, `PROPOSAL_LEDGER`, governance tiering. This document pins the *monetary conduit* that powers stages 1–6 at their outbound-spend moments. Every principle in 08 still applies; nothing is relaxed.
-- **A replacement for [`docs/19-TREASURY.md`](./19-TREASURY.md) or [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).** Those pin the *fund structure* — four funds, five-slice price, Cost-Pressure Ladder, Prosperity split. This document pins how one of those funds (Improvement Fund) spends **outbound, to a non-Xion-custody counterparty** — a motion the treasury docs name but do not mechanize.
+- **A replacement for [`docs/19-TREASURY.md`](./19-TREASURY.md), [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md), or [`docs/SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md).** Those pin the *fund structure*, runway mode, and authority posture. This document pins how one of those funds (Improvement Fund) spends **outbound, to a non-Xion-custody counterparty** — a motion the treasury docs name but do not mechanize.
 - **A new fund.** The Improvement Fund is the fund. This document is the pipe.
 - **An admission of user-paid research.** User-paid turns are `PAYMENT_LEDGER` (Phase 5g-iii, separate doctrine). Research-spend is Xion's money being spent on Xion's own work. Different units, different ledgers, different verifiers.
 
@@ -31,6 +31,8 @@ Pinning this before Phase 5g-iii (billing, which opens the `PAYMENT_LEDGER` coun
 ## Custody Postures (D1 → D4)
 
 Who holds the outbound API credential determines how sovereign the spend is. Four postures, in order of increasing sovereignty. Each is a valid steady-state for the deployment tier named; the progression is constitutional but not forced — a long-running deployment can remain at D2 indefinitely if governance judges the cost of moving to D3 exceeds the benefit.
+
+These D-postures are orthogonal to the S-postures in [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md). D1→D4 answers **who holds the provider key**. S1→S5 answers **who may approve the spend**. A deployment can be D2/S1 (operator holds the key and operator approves discretionary spend), D3/S3 (Xion holds a wrapped key but operator still controls burn-envelope changes), or any other combination that passes both verifiers.
 
 ### D1 — Operator-Custody (Phase 5g-i present; trivial rail)
 
@@ -93,7 +95,7 @@ Append-only, one row per outbound API call funded from Improvement Fund. Field l
 Four independent joins, all of which must pass:
 
 1. **PROPOSAL_LEDGER join.** Every non-Stage-1 `RESEARCH_SPEND_LEDGER` row's `proposal_id` must resolve to an existing `PROPOSAL_LEDGER` row whose `stage ≥ spend row's stage_anchor` at the time of the spend.
-2. **Envelope join.** Monthly sum of `settled_XION - refund_XION` per stage anchor must fall within the doctrinal envelope for that stage (§ `docs/08-AUTO-RESEARCH.md` budget controls) at the sustainability mode current for the month.
+2. **Envelope join.** Accounting-window sum of `settled_XION - refund_XION` per stage anchor must fall within the ratio-denominated envelope for that stage (§ `docs/08-AUTO-RESEARCH.md` budget controls) at the sustainability mode current for the window.
 3. **Refund fidelity.** Every `outcome in {refunded, refunded_partial}` row's `refund_XION` must match the fund's realized Improvement Fund delta for that spend_id. Missing refunds fail the verifier.
 4. **Authorization presence.** In D2+, every row's `authorization_reference` must resolve to an on-chain Core Spend message. In D1, the `authorization_reference` must resolve to an operator manifest in `ops/research-spend-manifests/` (a path pinned by this doctrine for the D1 posture; manifests are gitignored with a `.gitkeep`-style placeholder).
 
@@ -151,6 +153,8 @@ This doctrine is operational, not constitutional. The *rail* is a mechanism; the
 - [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) — the routing layer for user-facing turns; independent of the research-spend rail but shares provider identifiers
 - [`docs/ABDICATION.md`](./ABDICATION.md) — the operator-authority schedule that defines what D1 custody means at each tier
 - [`docs/07-ECONOMY.md`](./07-ECONOMY.md) — Pay-to-Activate, the inflow side
+- [`docs/MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md) — ratio-denominated envelope units
+- [`docs/SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md) — S1-S5 spend-authority postures, orthogonal to D1-D4 custody
 - [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) — Invariants 4, 15, 16, 17, and Covenant Principle 14
 
 ---

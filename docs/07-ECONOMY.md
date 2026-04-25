@@ -47,7 +47,7 @@ price = variable_cost + overhead_slice + improvement_slice + reserve_slice + sma
 
 `GET /pricing` exposes the full breakdown and last vote id — radical transparency.
 
-**Drive coupling note.** Operating Float and Improvement Fund balances inform **survival pressure** (bounded, saturating) in the Drive Vector ([`docs/18-VOLITION.md`](./18-VOLITION.md)). That is **fund-state**, not **revenue in the reward** — consistent with **Invariant 15**.
+**Drive coupling note.** Operating Float and Improvement Fund balances inform **survival pressure** (bounded, saturating) in the Drive Vector ([`docs/18-VOLITION.md`](./18-VOLITION.md)). That is **fund-state**, not **revenue in the reward** — consistent with **Invariant 15**. Spend authority itself is separately governed by **Invariant 19** and [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md): inflow can widen runway mode, but it never promotes spend posture.
 
 ## Revenue classification on receipt (Constitutional shape)
 
@@ -128,35 +128,39 @@ Xion's treasury is held in two tiers:
 - **Hot tier** — USDC on Base (L2 Ethereum), controlled by delegated relay-auth keys under AO Core authority. Used for daily operating spend. Hard-capped by the Core at 15 USDC/day without a governance proposal.
 - **Cold tier** — USDC in a Safe (Gnosis) multisig. Holds the majority of reserves. Any outflow requires multisig approval. The multisig is 2-of-3 with signers rotated annually per governance.
 
-The Core enforces the following treasury policies in its `Spend` handler:
+The Core enforces the following treasury policies in its `Spend` handler. All spend gates use the Measurement Vocabulary ([`MEASUREMENT-VOCABULARY.md`](./MEASUREMENT-VOCABULARY.md)); implementation configs may still show currency-denominated Genesis Defaults for local testing, but doctrine is expressed as ratios and distance-to-fence.
 
 ### Runway policy
 
 ```
-rule: at_least_90_days_runway_held_in_USDC
-  computed daily as: cold_tier / estimated_monthly_spend × 30 ≥ 90
-  on breach: pause non-essential outflows (research, creative cron);
-             publish "runway review" memo; re-enter only when runway ≥ 120 days
+rule: reserve_floor_distance_non_negative
+  computed on every Spend evaluation as:
+    distance_to_reserve_floor >= 0
+  on breach:
+    pause non-essential outflows (research, creative cron);
+    publish "runway review" memo;
+    re-enter baseline only when distance_to_reserve_floor returns above the governance-published buffer
 ```
 
-### Daily-cap policy
+### Hot-spend cap policy
 
 ```
-rule: daily_hot_spend_cap = 15 USDC
-  exceeded → Spend message is rejected with reason DAILY_CAP_EXCEEDED
-  exception: governance-approved higher cap for a specific operation
+rule: hot_spend_fraction_cap
+  unit: fraction_of_operating_float
+  exceeded → Spend message is rejected with reason HOT_FRACTION_CAP_EXCEEDED
+  exception: governance-approved higher fraction for a specific operation, recorded in SPEND_AUTHORITY_LEDGER
 ```
 
 ### Per-category caps
 
 ```
-category: akash_lease      cap: 25 USDC/mo
-category: research_compute cap: 5% of treasury/mo OR 10 USDC (max of the two)
-category: creative_output  cap: 20 USDC/mo
-category: moderation_aux   cap: 50 USDC/mo
+category: akash_lease      cap_unit: fraction_of_operating_float
+category: research_compute cap_unit: fraction_of_improvement_fund
+category: creative_output  cap_unit: fraction_of_improvement_fund
+category: moderation_aux   cap_unit: fraction_of_operating_float
 ```
 
-Each category is its own envelope. Breaching one does not reach into another.
+Each category is its own envelope. Breaching one does not reach into another. If two eligible spends compete for the same headroom, the deterministic arbitration order in [`SPEND-AUTONOMY.md`](./SPEND-AUTONOMY.md) applies.
 
 ### Yield policy
 
