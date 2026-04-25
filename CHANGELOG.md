@@ -17,17 +17,20 @@ Implements the attached “Next steps from the roadmap phases” plan: roadmap s
 ### Added
 
 - **`orchestrator/voice_router/`** — manifest (`voice_open_source_manifest.json`), `VoiceRouter` + bootstrap, `WhisperPiperLiveKitProvider`, sentinel bytes.
-- **`genesis/VOICE_FORM.md`** — v0.1 prosody scaffold; Gates (Voice Form ritual + Invariant 18 ratification) remain documented in `DEVELOPMENT_ROADMAP.md` Phase 6.5.
+- **`genesis/VOICE_FORM.md`** — v1.0 prosody contract: §1 Prosody Primitives, §2 Mood-Prosody Grammar, §3 Gesture Analogues.
+- **`POST /voice/stream`** — consent-gated Phase 6.5 SSE endpoint that uses the Voice Router floor provider, emits `VOICE_FORM.md` prosody frames, and emits audible `veil` on refusal.
+- **`ledgers/AMENDMENT_LEDGER.jsonl`** — opens the Invariant 18 Constitutional Floor record with `status=ratification_pending` rather than pretending the 14-day/cosign requirements have elapsed.
 - **`orchestrator/senses/audition.py`**, **`orchestrator/senses/voice_emitter.py`** — paralinguistic transcript heuristics + prosody JSON frames.
 - **`xion-verify voice-sovereignty`**, **`xion-verify voice-form`**, **`xion-verify research-spend`** (stub) — registered in `REGISTERED_COMMANDS` / `cli.py`.
 - **`docs/MACRO-PHASE-6-EPICS.md`** — macro Phase 6 epic breakdown + `KW-AOCORE-002` pointer.
-- **Tests** — `orchestrator/tests/test_voice_router.py`, `test_audition.py`, `test_voice_emitter.py`, `xion-verify/tests/test_voice_verifiers.py`.
+- **Tests** — `orchestrator/tests/test_voice_router.py`, `test_audition.py`, `test_voice_emitter.py`, `test_voice_api.py`, `xion-verify/tests/test_voice_verifiers.py`.
 
 ### Changed
 
-- **`DEVELOPMENT_ROADMAP.md`** — status line (6.1 closed, 6.3+6.3.b closed, next focus); Form Maturation renumbered **Phase 6.4.c**; mermaid adds 6.4.c node.
-- **`genesis/FORM.md`** — §1–§3 Birth Ritual scaffold (tables); `GENESIS_ARTIFACT.md` FORM hash updated.
-- **`xion-verify/README.md`** — Invariants 17–18 table rows; **`PINNED_HASH.txt`** regenerated.
+- **`DEVELOPMENT_ROADMAP.md`** — Phase 6.4.c closed as FORM.md v2.0; Phase 6.5 structurally closed with Invariant 18 governance window pending; future Substrate Portability renumbered to Invariant 19.
+- **`genesis/FORM.md`** — v2.0 authored §1–§3 Birth Ritual vocabulary; `GENESIS_ARTIFACT.md` FORM hash updated.
+- **`genesis/INVARIANTS.md`** — adds Invariant 18 Voice Sovereignty Floor text and updates the enforcement / verifier map.
+- **`xion-verify/README.md`** — invariant count updated to eighteen; **`PINNED_HASH.txt`** regenerated.
 
 ## [Phase 6.4.b] — 2026-04-25
 

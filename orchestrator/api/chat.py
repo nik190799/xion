@@ -39,13 +39,15 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 import secrets
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Header, Response
+from fastapi import Depends, FastAPI, Header, Response
 from fastapi.responses import JSONResponse
 
 from orchestrator.billing import (
@@ -129,10 +131,10 @@ def register_chat_route(app: FastAPI) -> None:
             "Single-turn chat, moderated on both sides + bearer/rate "
             "admission + x402 pre-auth (Phase 5g-i + 5g-iii + 5g-iv)"
         ),
-        dependencies=[Depends(admission_dependency)],
     )
     async def post_chat(
         req: ChatRequest,
+        principal_id: str = Depends(admission_dependency),
         x_payment_commitment: str | None = Header(None, alias="X-Payment-Commitment"),
     ) -> Response:
         deps = app.state.deps
@@ -176,7 +178,18 @@ def register_chat_route(app: FastAPI) -> None:
             )
 
         # -- 2. Ingress moderation ---------------------------------
-        ingress = await asyncio.to_thread(relay.evaluate, req.message, user_proof_commit=user_proof_commit, user_proof_algorithm=user_proof_algorithm)
+        voice_sensorium_state = _voice_sensorium_state(
+            app,
+            req=req,
+            principal_id=principal_id,
+        )
+        ingress = await asyncio.to_thread(
+            relay.evaluate,
+            req.message,
+            sensorium_state=voice_sensorium_state,
+            user_proof_commit=user_proof_commit,
+            user_proof_algorithm=user_proof_algorithm,
+        )
         if not ingress.egress_allowed:
             body_obj = _refusal_body(ingress, stage="ingress")
             return _finalize(
@@ -659,6 +672,61 @@ def _finalize(
 
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _voice_sensorium_state(
+    app: FastAPI,
+    *,
+    req: ChatRequest,
+    principal_id: str,
+) -> object | None:
+    """Return a SensoriumState carrying paralinguistic distress, if consented.
+
+    The transcript is user-side STT text. It is never ledgered directly; only
+    the saturated distress score can reach SENSORIUM_LEDGER through Relay.
+    """
+    if req.transcript_text is None:
+        return None
+    if not _stream_voice_consented(principal_id):
+        return None
+
+    from orchestrator.senses.audition import distress_from_transcript_text
+    from orchestrator.sensorium import (
+        Chronoception,
+        Interoception,
+        Proprioception,
+        SensoriumState,
+    )
+
+    distress = distress_from_transcript_text(req.transcript_text)
+    supervisor = getattr(app.state, "supervisor", None)
+    latest = None
+    if supervisor is not None:
+        try:
+            latest = supervisor.latest_snapshot()
+        except Exception:
+            latest = None
+    if isinstance(latest, SensoriumState):
+        return replace(latest, distress=distress)
+    return SensoriumState(
+        interoception=Interoception(survival_pressure=0.0),
+        chronoception=Chronoception(),
+        proprioception=Proprioception(),
+        distress=distress,
+    )
+
+
+def _stream_voice_consented(principal_id: str) -> bool:
+    from orchestrator.api.memory import ModalityConsent
+    from orchestrator.consent.store import read_consent
+
+    store_path = Path(os.environ.get("XION_CONSENT_LEDGER", "ledgers/CONSENT_LEDGER.jsonl"))
+    if not store_path.is_file():
+        return False
+    latest = read_consent(store_path, principal_id)
+    if latest is None:
+        return False
+    return ModalityConsent(**latest).stream_voice
 
 
 def _invoke_generate(

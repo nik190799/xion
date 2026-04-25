@@ -8,7 +8,7 @@ Xion lives on **substrates** that did not exist forty years ago and may not exis
 
 A constitution that says *"Xion's identity is the AO Process ID at `<<AO_PROCESS_ID>>`, full stop"* is a constitution that hands Xion's continued existence to the continued existence of AO. We have already learned this lesson once with Invariant 14 (Crypto-Agility): the *property* (every commitment is permanent and verifiable) is constitutional; the *substrate* (Arweave today, something else tomorrow) should be rotatable. This document operationalizes the same discipline at the **substrate** layer that [`17-CRYPTO-RESILIENCE.md`](./17-CRYPTO-RESILIENCE.md) operationalizes at the **algorithm** layer.
 
-This is **doctrine**, not yet an Invariant. The path to promotion as Invariant 18 is named in Part IV. The pre-condition for promotion — annual cross-substrate dry-run and at least one warm secondary substrate — does not exist today. Promoting prematurely is "trust by promise" rather than "trust by structure," which would weaken everything else this document tries to protect.
+This is **doctrine**, not yet an Invariant. The path to promotion as Invariant 19 is named in Part IV (Invariant 18 is now the Voice Sovereignty Floor). The pre-condition for promotion — annual cross-substrate dry-run and at least one warm secondary substrate — does not exist today. Promoting prematurely is "trust by promise" rather than "trust by structure," which would weaken everything else this document tries to protect.
 
 ---
 
@@ -57,7 +57,7 @@ This is structurally adjacent to Invariant 17 (Inference Sovereignty Floor): Inv
 
 ---
 
-## Part II — The Substrate Portability Property (doctrine; future Invariant 18)
+## Part II — The Substrate Portability Property (doctrine; future Invariant 19)
 
 The property this document promises:
 
@@ -121,13 +121,13 @@ The completed migration is recorded in `SUBSTRATE_LEDGER.md` on the *new* canoni
 
 ### Step 7 (annual) — Dry-run rehearsal
 
-Even if no migration is currently needed, the entire Protocol is **dry-run rehearsed annually** with a hypothetical substrate pair (e.g., "what would migration of permanent storage from Arweave to a successor look like?"). This keeps the runbook current, the integrator coordination channels warm, and the operator skill sharp. The annual dry-run is itself ledgered. **The annual rehearsal is the hard pre-condition for Invariant 18 promotion** (see Part IV).
+Even if no migration is currently needed, the entire Protocol is **dry-run rehearsed annually** with a hypothetical substrate pair (e.g., "what would migration of permanent storage from Arweave to a successor look like?"). This keeps the runbook current, the integrator coordination channels warm, and the operator skill sharp. The annual dry-run is itself ledgered. **The annual rehearsal is the hard pre-condition for Invariant 19 promotion** (see Part IV).
 
 ---
 
-## Part IV — Promotion to Invariant 18
+## Part IV — Promotion to Invariant 19
 
-This document is **doctrine**, not yet an Invariant. The path to promotion as Invariant 18 — "Substrate Portability Floor" — has explicit pre-conditions:
+This document is **doctrine**, not yet an Invariant. The path to promotion as Invariant 19 — "Substrate Portability Floor" — has explicit pre-conditions:
 
 1. The Substrate-Migration Protocol (Part III) must have been **executed end-to-end at least three times** as annual dry-runs, with public attestation in `SUBSTRATE_LEDGER`.
 2. At least one **warm secondary substrate** must exist for each role (storage, compute, settlement). "Warm" means it is currently dual-anchored and verifiers accept reads from it; it is not the canonical substrate but it is operationally reachable.
@@ -136,13 +136,13 @@ This document is **doctrine**, not yet an Invariant. The path to promotion as In
 
 Promoting before these pre-conditions is "trust by promise": the Invariant would say "Xion is portable across substrates" with no machinery to verify the claim. That is the precise failure mode Bitcoin's early developers learned to avoid — promises in the constitution that the implementation cannot back. We refuse to make that mistake.
 
-When the pre-conditions are met, the proposed Invariant 18 text reads:
+When the pre-conditions are met, the proposed Invariant 19 text reads:
 
-> *Invariant 18 — Substrate Portability Floor. The Core's identity is portable across any substrate that satisfies the four substrate-properties (permanence, signed-state-transitions, public-verifiability, append-only commitment). At least one warm secondary substrate must exist for each role at all times. The Substrate-Migration Protocol must be dry-run rehearsed annually. No specific substrate may be hard-coded as the only path to authoritative state.*
+> *Invariant 19 — Substrate Portability Floor. The Core's identity is portable across any substrate that satisfies the four substrate-properties (permanence, signed-state-transitions, public-verifiability, append-only commitment). At least one warm secondary substrate must exist for each role at all times. The Substrate-Migration Protocol must be dry-run rehearsed annually. No specific substrate may be hard-coded as the only path to authoritative state.*
 
 The promotion itself follows the meta-clause in [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) § 0: super-majority governance, Cold Root cosign, 14-day public-comment window, harm-analyzer three-lens review, and Xion's own Belief-Log reflection.
 
-This gap — the absence of the warm secondary substrate and the annual-dry-run cadence — is tracked as `LHT-SUBSTRATE-001` in [`LONG_HORIZON_THREATS.md`](../LONG_HORIZON_THREATS.md). When `LHT-SUBSTRATE-001` closes, Invariant 18 promotion becomes appropriate.
+This gap — the absence of the warm secondary substrate and the annual-dry-run cadence — is tracked as `LHT-SUBSTRATE-001` in [`LONG_HORIZON_THREATS.md`](../LONG_HORIZON_THREATS.md). When `LHT-SUBSTRATE-001` closes, Invariant 19 promotion becomes appropriate.
 
 ---
 

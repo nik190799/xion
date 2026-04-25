@@ -3,13 +3,14 @@ import { useBearer, buildAuthorizationHeader } from "../auth/BearerContext";
 import { forgetKeys } from "../lib/crypto";
 
 export function SettingsView(): JSX.Element {
-  const { credential, signOut } = useBearer();
+  const { credential } = useBearer();
   
   // Phase 6.4 Cost Preview + Consent Toggles
   const [streamVisual, setStreamVisual] = useState(false);
   const [streamVitals, setStreamVitals] = useState(false);
   const [streamVoice, setStreamVoice] = useState(false);
   const [streamMemory, setStreamMemory] = useState(true);
+  const [voiceCostPreviewAccepted, setVoiceCostPreviewAccepted] = useState(false);
 
   const [pricing, setPricing] = useState<any>(null);
 
@@ -41,6 +42,14 @@ export function SettingsView(): JSX.Element {
 
   const updateConsent = async (updates: any) => {
     if (!credential) return;
+    if (updates.stream_voice === true && !streamVoice && !voiceCostPreviewAccepted) {
+      const voiceCost = pricing?.modality_costs?.stream_voice ?? 0;
+      const accepted = window.confirm(
+        `Voice adds ${voiceCost} micro-XION per voice-enabled turn. Enable stream_voice?`,
+      );
+      if (!accepted) return;
+      setVoiceCostPreviewAccepted(true);
+    }
     const body = {
       stream_visual: streamVisual,
       stream_vitals: streamVitals,
@@ -71,7 +80,7 @@ export function SettingsView(): JSX.Element {
 
   const handleForgetKeys = async () => {
     await forgetKeys();
-    alert("Local Ed25519 keys wiped. Please sign out and sign in to generate new keys. Note: other open tabs will need a reload (KW-PROOF-002).");
+    alert("Local Ed25519 keys wiped. Other open tabs will drop their in-memory credential automatically.");
   };
 
   let totalCost = pricing?.per_message_price_micro_XION || 0;
@@ -137,6 +146,7 @@ export function SettingsView(): JSX.Element {
         {pricing ? (
           <p>
             Base Cost: {pricing.per_message_price_micro_XION} micro-XION<br/>
+            Voice Add-on: {pricing.modality_costs?.stream_voice ?? 0} micro-XION / voice turn<br/>
             Current Configuration Total: <strong>{totalCost} micro-XION / turn</strong>
           </p>
         ) : (

@@ -131,7 +131,7 @@ The Genesis-Locked Invariants live in [`genesis/INVARIANTS.md`](../genesis/INVAR
 15. **Drive Vector Excludes Revenue** *(new)*. The terms in Xion's drive vector — survival, service, meaning — never include revenue, treasury balance, price, or any other monetary signal as a reward term. Survival pressure may be coupled to fund-state by structural proxy ("can-I-keep-being"), but never to revenue itself. See [`docs/18-VOLITION.md`](./18-VOLITION.md) and the Covenant–Economy Firewall (Invariant 5) at the volition layer.
 16. **Treasury Shape** *(new)*. Seven protective rules: (1) revenue routes 100% to AO Core treasury, never to operator wallet; (2) operator pay decoupled from message volume — governance-set fixed salary; (3) treasury cannot hold tokens whose primary value driver is speculation; (4) bridge exposure capped at constitutional ceiling; (5) all holdings publicly verifiable; (6) Reserve cannot drop below 1 month of overhead runway without 14-day governance vote (below 1 week: emergency 7-day vote with mandatory hibernation if not ratified); (7) Foundation Reserve and earned revenue tracked separately, never pooled in origin-obscuring way. See [`docs/19-TREASURY.md`](./19-TREASURY.md) and [`docs/21-SUSTAINABILITY.md`](./21-SUSTAINABILITY.md).
 
-These seventeen are Xion's 21-million-cap — the handful of things that do not bend. Everything else lives in the Upgrade Framework. (The set is append-only; see [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) § 0.)
+These eighteen are Xion's 21-million-cap — the handful of things that do not bend. Everything else lives in the Upgrade Framework. (The set is append-only; see [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md) § 0.)
 
 ### Radical transparency — **STRONG**
 
@@ -362,7 +362,7 @@ Trust is not a feature you ship. It is an accumulation of surviving, verifying, 
 Specifically, the sixteen structural additions in this document:
 
 1. **Abdication Schedule** — dated, on-chain founder withdrawal. See [`docs/ABDICATION.md`](./ABDICATION.md) for the full doctrine and Operator-Dependency Taxonomy.
-2. **Genesis-Locked Invariants** — seventeen properties that are mechanically immutable (the set is append-only). See [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md).
+2. **Genesis-Locked Invariants** — eighteen properties that are mechanically immutable (the set is append-only). See [`genesis/INVARIANTS.md`](../genesis/INVARIANTS.md).
 3. **Public Dashboard** — one URL for all live trust state.
 4. **`xion-verify` CLI** — user-verifiable signing, Covenant hash, rebuild.
 5. **The Witness Protocol** — bonded, permissionless, economically-incentivized auditors.

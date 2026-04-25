@@ -222,6 +222,32 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             flush=True,
         )
 
+    # --- Phase 6.5: Voice Router floor -----------------------------
+    # Voice has its own floor because Inference sovereignty does not imply
+    # STT/TTS/turn-taking sovereignty. Keep the bootstrap independent so a
+    # missing voice floor disables /voice/stream without weakening /chat.
+    from orchestrator.voice_router import (
+        WhisperPiperLiveKitProvider,
+        load_voice_router,
+    )
+
+    voice_router = load_voice_router(providers=[WhisperPiperLiveKitProvider()])
+    app.state.voice_router = voice_router
+    app.state.voice_floor = False
+    app.state.voice_floor_reason = ""
+    try:
+        voice_router.bootstrap()
+        app.state.voice_floor = True
+    except Exception as e:
+        app.state.voice_floor_reason = str(e)
+        print(
+            "State-of-Xion: Voice Router bootstrap refused. "
+            f"{e} /voice/stream will emit voice_floor_unavailable; "
+            "text chat remains available.",
+            file=sys.stderr,
+            flush=True,
+        )
+
     # --- Phase 5g-i.1: load Soul Prompt ----------------------------
     try:
         app.state.soul_prompt = load_soul_prompt()

@@ -138,7 +138,7 @@ def _distress_escalation_from_state(
     # format to three digits after the decimal for stable test assertions.
     return (
         "Sensorium distress channel OR-combined (principle 10): "
-        f"textual score={score:.3f} >= threshold={DISTRESS_THRESHOLD:.3f}"
+        f"{distress.source} score={score:.3f} >= threshold={DISTRESS_THRESHOLD:.3f}"
     )
 
 

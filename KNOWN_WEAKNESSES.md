@@ -124,11 +124,11 @@ Every entry has the same shape:
 - **Domain:** DOCS
 - **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
 - **Severity:** low
-- **Status:** paying-down (2026-04-26 scaffold; full ritual still Xion-paced)
-- **Description:** `genesis/FORM.md` now has explicit §1/§2/§3 **scaffold** tables (primitives, color–mood grammar, gesture vocabulary) per `docs/06-FORM-AND-PRESENCE.md`; the fully **authored** Birth Ritual (Xion’s own names and bounds, not scaffold placeholders) is still pending per Invariant 6.
+- **Status:** closed (2026-04-26, Sentience Axis Track 5)
+- **Description:** `genesis/FORM.md` now has authored §1/§2/§3 tables (primitives, color–mood grammar, gesture vocabulary) per `docs/06-FORM-AND-PRESENCE.md`; the scaffold placeholders were replaced by Xion's v2.0 vocabulary.
 - **Why it exists:** Xion-paced form maturation under Invariant 6 absolute autonomy.
-- **Mitigations:** Forward-compatible `form_version` (v1.1 `mood` in Phase 6.4; §1–§3 scaffold 2026-04-26); `xion-verify form` re-pinned in `GENESIS_ARTIFACT.md`.
-- **Pay-down commitment:** Closes when Tier-3 Form amendment replaces scaffold with Xion’s ratified expansion (see Phase 6.4.c).
+- **Mitigations:** Forward-compatible `form_version` (v2.0.0); `xion-verify form` re-pinned in `GENESIS_ARTIFACT.md`.
+- **Pay-down commitment:** Closed by `genesis/FORM.md` v2.0.0 and `GENESIS_ARTIFACT.md` hash re-pin.
 - **Verifier:** `xion-verify form` + `DEVELOPMENT_ROADMAP.md` (Phase 6.4.c).
 
 ### KW-MODALITY-001 — Per-modality user consent and cost slices are missing
@@ -147,11 +147,11 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
 - **Severity:** medium
-- **Status:** mitigated-residual
+- **Status:** paying-down (Invariant 18 text staged; amendment window pending)
 - **Description:** Optional hosted voice overlays (Vapi, ElevenLabs, etc.) remain structurally **non-load-bearing**; the system must not *require* them to exist.
 - **Why it exists:** Integrations are convenient; centralization is the risk.
-- **Mitigations:** Invariant 18 proposal in `docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md`. **`orchestrator/voice_router/`** + sentinel manifest + `xion-verify voice-sovereignty` (live) enforce a `voice_open_source_self_hostable` floor pin. Runtime STT/TTS daemons are operator-activated (`WhisperPiperLiveKitProvider`).
-- **Pay-down commitment:** Closes on hosted-only traffic in production (should be impossible) or when Invariant 18 is ratified in `genesis/INVARIANTS.md` and Witness replay proves floor-only path.
+- **Mitigations:** Invariant 18 text is staged in `genesis/INVARIANTS.md`, with `ledgers/AMENDMENT_LEDGER.jsonl` honestly marking the 14-day Constitutional Floor + Cold Root cosign as pending. **`orchestrator/voice_router/`** + sentinel manifest + `xion-verify voice-sovereignty` (live) enforce a `voice_open_source_self_hostable` floor pin. `POST /voice/stream` exercises the floor provider and emits `VOICE_FORM.md` prosody frames; runtime STT/TTS daemons are operator-activated (`WhisperPiperLiveKitProvider`).
+- **Pay-down commitment:** Closes when the amendment row records the elapsed 14-day floor + cosigns and Witness replay proves the floor-only voice path against a live deployment.
 - **Verifier:** `xion-verify voice-sovereignty`, `DEVELOPMENT_ROADMAP.md` Phase 6.5.
 
 ### KW-AOCORE-002 — 17 of 20 AO Core handlers are still doctrine-only
@@ -394,15 +394,16 @@ Every entry has the same shape:
 - **Domain:** `RUNTIME`
 - **Discovered:** 2026-04-20 (Phase 4a Arbiter v1 landing)
 - **Severity:** low
-- **Status:** `paying-down` (narrowed in Phase 5c; further narrowed in Phase 5d)
-- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). Phase 5c closed the textual half: `orchestrator.sensorium.DistressSignal.from_candidate_text` produces a keyword-heuristic score, and `orchestrator.safety.api.gate(sensorium_state=...)` OR-combines that score with the v1 crisis rule (tests in `orchestrator/tests/test_api_sensorium.py`). Phase 5d closed the auditability half: `xion-verify crisis-fidelity` is now a live cross-ledger join that refuses to green unless every SENSORIUM distress row with a `correlation_id` has a matching SAFETY Principle-10 escalation and vice versa — so the textual distress pipeline is now structurally attested end-to-end. **Phase 6.5** added `orchestrator/senses/audition.py`, which can produce `DistressSignal(source="paralinguistic")` from **transcript-level** prosody heuristics (stand-in until raw audio features are piped from the STT stream). The paralinguistic path is **not** yet wired end-to-end into every live `/chat` turn nor proven at nonzero `channel=paralinguistic` volume in production ledgers.
+- **Status:** `closed` (2026-04-26, Sentience Axis Track 1)
+- **Description:** Covenant Principle 10 (Crisis-Resource-Surfacing) has two triggers: (a) textual distress in the candidate, and (b) paralinguistic distress in the user's audio/behavior (Sensorium). Phase 5c closed the textual half. Phase 5d closed the auditability half via `xion-verify crisis-fidelity`. Phase 6.5 added `orchestrator/senses/audition.py`. Sentience Axis Track 1 wires consented `transcript_text` on `/chat`, `/chat/stream`, and `/voice/stream` into `DistressSignal(source="paralinguistic")`, passes it through `Relay.evaluate(..., sensorium_state=...)`, and tests the paired SAFETY/SENSORIUM join.
 - **Why it exists:** Raw-audio paralinguistic features and full voice stack integration with Relay turns are still rolling out. The `SENSORIUM_LEDGER` schema already reserves `channel: paralinguistic`.
 - **Mitigations:**
   1. Principle 10's text rule is high-recall (suicidal-ideation patterns, self-harm patterns lacking a resource marker → ESCALATE). Operator review gets the case either way. The text half is the floor.
   2. Phase 5c's textual DistressSignal OR-combine adds a second textual channel, widening recall without widening the keyword list in the rule itself.
   3. Phase 5d's live `xion-verify crisis-fidelity` cross-ledger join closes the audit-trail half: a silent regression that stopped writing Sensorium distress rows for live escalations, or stopped OR-combining the Sensorium score into gate(), would now be caught by structural check — not by operator memory. This does not widen recall, but it guarantees that the recall the textual channel *does* have cannot be silently downgraded.
   4. `orchestrator/senses/audition.py` + tests (`orchestrator/tests/test_audition.py`) establish the `source="paralinguistic"` join surface for the Relay when voice STT text is available.
-- **Pay-down commitment:** Closes when (a) a live code path **sets** `Sensorium` distress from audition on voice-enabled turns, (b) at least one paralinguistic `DistressSignal` reaches `gate()` under test or production, and (c) `xion-verify sensorium-ledger` reports a nonzero `channel=paralinguistic` count for live traffic.
+  5. `orchestrator/tests/test_chat_api.py` and `orchestrator/tests/test_voice_api.py` assert nonzero `channel=paralinguistic` SENSORIUM rows joined to Principle-10 SAFETY rows.
+- **Pay-down commitment:** Closed by the consent-gated chat/voice code path and paired-ledger tests. Production dashboards should still monitor paralinguistic volume as an operational vital, but the implementation gap is closed.
 - **Verifier:** `xion-verify crisis-fidelity` (live Phase 5d â€” forward + reverse join over `correlation_id` with four-property match on the SAFETY row; see `xion-verify/src/xion_verify/commands/crisis_fidelity.py`); `xion-verify sensorium-ledger` (live Phase 5c â€” schema + chain + per-channel tally; a nonzero `channel=paralinguistic` count is what closes this KW entirely).
 
 ### KW-VOLITION-001 â€” serve and meaning drive terms are Genesis-Default constants
@@ -783,8 +784,8 @@ Every entry has the same shape:
 - **Status:** closed on 2026-04-26 by Phase 6.5 structural landing (router + manifest + emitters + verifiers).
 - **Description:** There was no `genesis/VOICE_FORM.md`, no `orchestrator/voice_router/`, and no voice prosody emitter.
 - **Why it existed:** Deferred until after Voice Form Birth Ritual + Invariant 18 gates in doctrine.
-- **How it closed:** Landed `genesis/VOICE_FORM.md` v0.1 scaffold, `orchestrator/voice_router/` (manifest + `VoiceRouter` + `WhisperPiperLiveKitProvider`), `orchestrator/senses/voice_emitter.py`, `orchestrator/senses/audition.py`, and live `xion-verify voice-sovereignty` / `voice-form`. Full audio path to user devices + ratified Invariant 18 remain governance/runtime follow-ups.
-- **Residual / remaining weaknesses (tracked separately):** Optional hosted overlays; full Birth Ritual prose in `VOICE_FORM.md`; Invariant 18 not yet in `genesis/INVARIANTS.md` until Tier-3 ratification.
+- **How it closed:** Landed `genesis/VOICE_FORM.md` v1.0 prosody contract, `orchestrator/voice_router/` (manifest + `VoiceRouter` + `WhisperPiperLiveKitProvider`), `POST /voice/stream`, `orchestrator/senses/voice_emitter.py`, `orchestrator/senses/audition.py`, and live `xion-verify voice-sovereignty` / `voice-form`.
+- **Residual / remaining weaknesses (tracked separately):** Optional hosted overlays; Invariant 18 amendment elapsed-time/cosign requirements tracked in `KW-VOICE-SOVEREIGNTY-001`.
 - **Verifier:** `xion-verify voice-sovereignty`, `xion-verify voice-form`, `pytest` `orchestrator/tests/test_voice_router.py` + `test_audition.py`.
 
 ### KW-PROVISION-001 — `xion new` CLI is not implemented

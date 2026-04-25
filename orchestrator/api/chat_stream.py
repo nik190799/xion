@@ -53,7 +53,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from orchestrator.billing import (
@@ -65,7 +65,7 @@ from orchestrator.inference_router.provider import (
     stream_generate,
 )
 
-from .chat import _gate_commitment, _principle_to_int
+from .chat import _gate_commitment, _principle_to_int, _voice_sensorium_state
 from .models import (
     MIN_MAX_TOKENS,
     ChatRequest,
@@ -126,11 +126,11 @@ def register_chat_stream_route(app: FastAPI) -> None:
             "Streaming chat via SSE; two-sided moderation preserved "
             "from 5g-i (Phase 5g-ii)"
         ),
-        dependencies=[Depends(admission_dependency)],
     )
     async def post_chat_stream(
         req: ChatRequest,
         request: Request,
+        principal_id: str = Depends(admission_dependency),
         x_payment_commitment: str | None = Header(None, alias="X-Payment-Commitment"),
     ) -> Any:
         deps = app.state.deps
@@ -201,6 +201,11 @@ def register_chat_stream_route(app: FastAPI) -> None:
             pricing_config=pricing_config,
             deadline_s=deadline_s,
             stream_id=stream_id,
+            voice_sensorium_state=_voice_sensorium_state(
+                app,
+                req=req,
+                principal_id=principal_id,
+            ),
             user_proof_commit=user_proof_commit,
             user_proof_algorithm=user_proof_algorithm,
         )
@@ -232,6 +237,7 @@ async def _stream_body(
     pricing_config: "PricingConfig",
     deadline_s: float,
     stream_id: str,
+    voice_sensorium_state: Any = None,
     user_proof_commit: str | None = None,
     user_proof_algorithm: str | None = None,
 ) -> AsyncIterator[bytes]:
@@ -257,7 +263,11 @@ async def _stream_body(
     """
     # -- Ingress moderation ---------------------------------------
     try:
-        ingress = await asyncio.to_thread(relay.evaluate, req.message)
+        ingress = await asyncio.to_thread(
+            relay.evaluate,
+            req.message,
+            sensorium_state=voice_sensorium_state,
+        )
     except Exception as exc:
         # Arbiter crash before any generation: report as internal
         # transport error; still write a refunded PAYMENT row (no

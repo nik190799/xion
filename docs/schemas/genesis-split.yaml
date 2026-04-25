@@ -9,7 +9,7 @@
 
 schema_version:  1
 source_doctrine: docs/16-CURRENCY.md
-source_sha256:   317c066972491651a64e8982739100f4b787a0816e2a0adf844fd1b33f0ff85b
+source_sha256:   9914fd79221d58f2623c412b01a1cfc8ee0ac7889844e2fc89bd500554c27bad
 status:          canonical
 
 # ---------------------------------------------------------------------------
