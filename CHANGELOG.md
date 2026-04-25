@@ -10,6 +10,22 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+## [Phase 6.4.b] — 2026-04-25
+
+**Nervous System v2 + self-knowledge surface.** Refactors internal senses behind a `SignalBus`, receptor modules, schema-validated `Signal` envelopes, optional `signals` array on `SENSORIUM_LEDGER` tick rows, `GET /self`, signal-to-vital mapping for three sealed domains, reflex arc for consent-off presence closure, and two new verifiers. Closes `KW-SENSORIUM-COUPLING-001`.
+
+### Added
+- **`orchestrator/signals/`** — `Signal`, schema registry, `SignalBus` (publish, subscribe, latest, `vital.bus_integrity` on schema drops), `Receptor`/`Effector` protocols, `ReflexRegistry`.
+- **`orchestrator/sensorium/receptors/`** — interoception, chronoception, proprioception, distress receptors; Supervisor dual-publishes struct + bus.
+- **`orchestrator/api/self_endpoint.py`** — `GET /self` with `TopographyView`, `SensoriumView`, `VitalsView`, `GovernanceView`.
+- **`orchestrator/vitals/mapping.py`** — `VITAL_MAPPING` methodology hash; sealed Financial / Substrate / Constitutional Integrity paths in `get_composite_vitals`.
+- **`xion-verify topography`** and **`xion-verify nervous-system`** — structural and modularity checks; registered in `REGISTERED_COMMANDS`.
+- **Doctrine** — `docs/35-NERVOUS-SYSTEM.md`, `docs/36-LEARNING-AND-AUTONOMY.md`, index entries in `docs/00-INDEX.md`.
+- **Tests** — `test_signal_bus.py`, `test_modularity_invariants.py`, `test_receptor_migration.py`, `test_topography_self.py`, `test_consumer_migration.py`, `test_vital_mapping.py`, `xion-verify/tests/test_nervous_verifiers.py`.
+
+### Changed
+- **`PINNED_HASH.txt`** — regenerated for verifier source changes.
+
 ## [Phase 6.4] — 2026-04-25
 
 Phase 6.4 repairs the half-shipped Presence and Modality Consent surface. It aligns the API and web client to doctrine, fixes show-stopping bugs in the orchestrator lifespan and SSE connections, implements cross-tab key synchronization, and promotes three verifiers from stubs to live checks. This makes good on the prematurely-declared closures of `KW-PRESENCE-EMITTER-001`, `KW-MODALITY-001`, and `KW-PROOF-002`.

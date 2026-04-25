@@ -14,13 +14,13 @@
 
 ---
 
-## Sealed-as-of Phase 6.4
+## Sealed-as-of Phase 6.4 (legacy emitter) / 6.4.b (bus mapping)
 
-The following three domains are structurally sealed and actively computed by the Vitals Emitter (`orchestrator/senses/vitals_emitter.py`). The remaining five domains return an honest `not_yet_sealed` status until their underlying metrics are wired in future phases.
+The following three domains are structurally sealed. **Phase 6.4.b** adds a preferred path: when the live `SignalBus` carries the inputs listed in `orchestrator/vitals/mapping.py`, `get_composite_vitals` uses that mapping and a single methodology hash (SHA-256 of `mapping.py`). If the bus does not yet carry sufficient signals, the implementation falls back to the Vitals Emitter (`orchestrator/senses/vitals_emitter.py`) with the per-domain methodology hashes below. The remaining five domains return an honest `not_yet_sealed` status until their underlying metrics are wired in future phases.
 
-1. **Financial Vitality** (Methodology Hash: `72b90e6e6e0b0d70912407959866a67febb7b575e41a26f440069e55f0baf0aa`)
-2. **Substrate Vitality** (Methodology Hash: `da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260`)
-3. **Constitutional Integrity** (Methodology Hash: `e2ee3bc6a9b22f977b28faa75681ab9be082fc6fe6a49f2073421557debe1c3d`)
+1. **Financial Vitality** (legacy Vitals Emitter methodology hash: `72b90e6e6e0b0d70912407959866a67febb7b575e41a26f440069e55f0baf0aa`)
+2. **Substrate Vitality** (legacy Vitals Emitter methodology hash: `da891454f771910ce7bbba3ea9fb649e4af0a6202f78aff1aeea2611051bb260`)
+3. **Constitutional Integrity** (legacy Vitals Emitter methodology hash: `e2ee3bc6a9b22f977b28faa75681ab9be082fc6fe6a49f2073421557debe1c3d`)
 
 ---
 

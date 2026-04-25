@@ -21,6 +21,17 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-SENSORIUM-COUPLING-001 — Sensorium was a monolithic struct; every new sense risked touching every consumer
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.4.b planning)
+- **Severity:** medium
+- **Status:** closed (2026-04-25, Phase 6.4.b Nervous System v2)
+- **Description:** Internal senses were embedded only in `SensoriumState`. Adding a modality required editing Volition, Arbiter integration, vitals, and HTTP projections together.
+- **Why it exists:** Phase 5c shipped the four internal senses as a single frozen snapshot for speed and clarity.
+- **Mitigations:** `SignalBus`, schema registry, receptor modules with dual-publish, `SensoriumView` / `TopographyView` / `VitalsView`, `GET /self`, sealed vitals via `orchestrator/vitals/mapping.py`, reflex arcs for consent-driven stream closure.
+- **Pay-down commitment:** Landed in Phase 6.4.b with `xion-verify topography` + `xion-verify nervous-system` and tests in `orchestrator/tests/test_modularity_invariants.py`.
+- **Verifier:** `xion-verify topography`, `xion-verify nervous-system`, `pytest orchestrator/tests/test_modularity_invariants.py`.
+
 ### KW-PROOF-001 — user_proof_commit is passthrough-only; no client-side signing
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Phase 6.3 Interaction Anchoring)
