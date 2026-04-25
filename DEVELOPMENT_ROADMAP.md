@@ -39,8 +39,12 @@ flowchart LR
   P6_5 --> P6_5_done["Voice Provider Registry<br/>Whisper+Piper+LiveKit floor<br/>Vapi/ElevenLabs as overlays<br/>verify voice-sovereignty live"]
   P6_5 --> P6_6[Phase 6.6: Cognitive Substrate + Casting Pipeline<br/>Hermes pin, Agent Souls, allowlist, cast verifier]
   P6_6 --> P6_6_done["HERMES_TOOL_ALLOWLIST<br/>AGENT_SOULS<br/>AGENT_CAST_LEDGER<br/>verify hermes-runtime + agent-souls + agent-cast"]
+  P6_2 --> P6_6a[Phase 6.6a: Contribution Protocol<br/>agent-readable facts + identity bindings]
+  P6_6 --> P6_6a
+  P6_6a --> P6_6a_done["which-level<br/>identity-bindings<br/>mcp-export<br/>contributor handbook"]
   P6_6 --> P6_7[Phase 6.7: Vessel Integration Framework<br/>Vessel Compact + modular modes]
   P6_7 --> P6_7_done["docs/37-VESSELS.md<br/>vessel-compact/media-provenance/registry stubs named<br/>robot + phone + hardware + media modes"]
+  P6_6a --> MACRO_B
   P6_7 --> MACRO_B[Macro Phase 6 Epic B<br/>Akash Relay + discovery]
 ```
 
@@ -1107,6 +1111,33 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 - Run a substrate-rotation drill across the cast pool (at minimum: hosted provider -> open-weights floor -> hosted provider) and record the result in `docs/SUBSTRATE-RESILIENCE.md`.
 
 **KW pay-down on close.** Closes or narrows `KW-HERMES-001`, `KW-AGENT-SOULS-001`, `KW-CASTING-001`, `KW-MEMORY-HERMES-001`, and `KW-COGNITION-ARBITER-BOUNDARY-001`.
+
+---
+
+## Phase 6.6a — Contribution Protocol & Agent Access
+
+**Goal.** Make Xion easy to improve with modern coding assistants without letting those assistants become authorities. A contributor can hand Cursor, Codex, Claude, or another assistant a read-only facts bundle; classify proposed file paths locally; bind contributor identity; and draft proposal frontmatter that matches the Upgrade Provisioning Framework.
+
+**Why beside Phase 6.6.** Phase 6.6 governs Xion's internal Cognitive Substrate and tool allowlist. Phase 6.6a governs *external contributor assistants*. The two touch MCP-shaped affordances, but the authority boundary is different: Agent Souls may receive runtime tools only through the Phase 6.6 allowlist; external assistants receive read-only facts and no write path.
+
+**Landed / landing surfaces.**
+- `docs/34-CONTRIBUTION-PROTOCOL.md` defines the read-only property, boundaries, identity-binding message, and cohort measurement.
+- `docs/35-CONTRIBUTOR-HANDBOOK.md` gives contributors the practical workflow.
+- `xion-verify which-level` exposes local level classification using `docs/schemas/levels.yaml` and `docs/schemas/roles.yaml`.
+- `xion-verify identity-bindings` verifies Ed25519 wallet-to-GitHub binding rows in `ledgers/CONTRIBUTOR_IDENTITY_BINDINGS.jsonl`.
+- `xion-verify mcp-export` emits the first read-only agent facts bundle; a future `xion-mcp` server wraps this contract rather than creating new authority.
+- `xion new proposal --touches PATH` pre-fills upgrade frontmatter from the same schema source used by the CI gate.
+
+**Non-goals.**
+- No direct blockchain writes from a contributor assistant.
+- No `agent` governance actor.
+- No agent cosign.
+- No live MCP write tools.
+- No claim that `KW-AUTH-001` is closed; contribution identity binding is narrower than the admission principal lattice.
+
+**Closure criteria.** The verifier commands above are live, documented in `xion-verify/README.md`, covered by tests, and pass `xion-verify --self-test`, `xion-verify links`, `xion-verify schemas`, `xion-verify provisioning-roles`, and the `xion-verify` pytest suite.
+
+**KW pay-down on close.** Opens and mitigates `KW-CONTRIB-001` (contributor identity binding gap), `KW-CONTRIB-002` (agent-authored proposal drift), and `KW-CONTRIB-003` (MCP read-only surface is export-only, not a live server).
 
 ---
 

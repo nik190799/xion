@@ -10,6 +10,24 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Phase 6.6a — Contribution Protocol & Agent Access — 2026-04-25
+
+Adds the first verifier-backed contribution protocol slice: read-only agent facts, level classification, contributor identity bindings, and proposal scaffolding without granting coding assistants any write authority.
+
+### Added
+
+- **`docs/34-CONTRIBUTION-PROTOCOL.md`** and **`docs/35-CONTRIBUTOR-HANDBOOK.md`** — canonical doctrine and practical contributor workflow.
+- **`xion-verify which-level`** — local path-to-upgrade-level classifier using `docs/schemas/levels.yaml` and `docs/schemas/roles.yaml`.
+- **`xion-verify identity-bindings`** — Ed25519 verification for contributor wallet-to-GitHub binding rows.
+- **`xion-verify mcp-export`** — read-only JSON facts bundle for MCP wrappers and coding assistants.
+- **Contribution protocol tests** — coverage for level classification, mixed-level failure, identity-binding signatures, and read-only facts export.
+
+### Changed
+
+- **`xion new proposal --touches PATH`** now pre-fills upgrade frontmatter from the same level schemas used by the CI gate.
+- **Roadmap / Macro Phase 6 docs** now place this as Phase 6.6a before broader Akash/discovery and governance-ledger work.
+- **`KNOWN_WEAKNESSES.md`** names the remaining contribution gaps: export-only MCP access, unmeasured agent-authored cohort drift, and contributor identity binding narrower than full admission identity.
+
 ### Macro Phase 6 Epic A — AO Core handler completion — 2026-04-25
 
 Implements the remaining AO Core handler families on the sealed localnet substrate and closes `KW-AOCORE-002`.

@@ -43,13 +43,13 @@ from xion_verify.commands.cost_pressure import cost_pressure
 from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
+from xion_verify.commands.identity_bindings import identity_bindings
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
-from xion_verify.commands.voice_sovereignty import voice_sovereignty
-from xion_verify.commands.voice_form import voice_form
 from xion_verify.commands.interaction_anchor import cli as interaction_anchor
 from xion_verify.commands.ledgers import ledgers
 from xion_verify.commands.links import links
 from xion_verify.commands.local import local_cmd
+from xion_verify.commands.mcp_export import mcp_export
 from xion_verify.commands.modality_consent import modality_consent
 from xion_verify.commands.nervous_system import nervous_system_cli
 from xion_verify.commands.new import new_cmd
@@ -78,8 +78,11 @@ from xion_verify.commands.substrates import substrates
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
 from xion_verify.commands.topography import topography_cli
 from xion_verify.commands.vitals import vitals
+from xion_verify.commands.voice_form import voice_form
 from xion_verify.commands.voice_property import voice_property
+from xion_verify.commands.voice_sovereignty import voice_sovereignty
 from xion_verify.commands.web_client import web_client
+from xion_verify.commands.which_level import which_level
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.exit_codes import name as exit_code_name
 
@@ -135,6 +138,9 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "ao-handlers": verify_ao_handlers,
     "provisioning": provisioning,
     "provisioning-roles": provisioning_roles,
+    "which-level": which_level,
+    "identity-bindings": identity_bindings,
+    "mcp-export": mcp_export,
     "presence": presence,
     "modality-consent": modality_consent,
     "nervous-system": nervous_system_cli,

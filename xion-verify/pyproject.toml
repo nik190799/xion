@@ -31,6 +31,10 @@ dependencies = [
     # the first release safe under CVE-2020-14343 and with libyaml bindings
     # available on all our matrix OSes.
     "PyYAML>=6.0,<7",
+    # Used only by `xion-verify identity-bindings` to verify Ed25519
+    # contributor wallet signatures. This closes the pre-Genesis
+    # GitHub-handle-to-wallet gap without inventing a new governance actor.
+    "cryptography>=42,<47",
 ]
 
 [project.optional-dependencies]

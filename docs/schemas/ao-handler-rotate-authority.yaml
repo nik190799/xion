@@ -3,7 +3,7 @@ family: authority
 schema_version: 1
 status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: ca0c441c2ef1a1abf2479ad224806e11f324b474182cb22d947b54f49cb0aef1
+source_sha256: a678a996aa30340d44c1fb17e654d2883a8b349e2b987b46f316ef2ac5f7cc40
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:

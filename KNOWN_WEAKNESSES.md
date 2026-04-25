@@ -21,6 +21,39 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-CONTRIB-003 — MCP access is export-only; no live `xion-mcp` server exists
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.6a Contribution Protocol)
+- **Severity:** low
+- **Status:** mitigated-residual
+- **Description:** External coding assistants can consume `xion-verify mcp-export`, but there is not yet a long-running MCP server with Cursor / Claude Desktop install snippets.
+- **Why it exists:** The first safe slice keeps the surface read-only and verifier-backed before adding server lifecycle, packaging, and client-specific config.
+- **Mitigations:** `xion-verify mcp-export` emits the same read-only facts a future MCP server must serve, with explicit `no_state_writes`, `no_proposal_submission`, `no_key_custody`, and `no_agent_governance_actor` guardrails.
+- **Pay-down commitment:** Close when a packaged `xion-mcp` server wraps the same facts contract, ships read-only tool descriptors, has tests, and is documented for Cursor and Claude Desktop.
+- **Verifier:** `xion-verify mcp-export`; future close requires package-local tests plus `xion-verify links`.
+
+### KW-CONTRIB-002 — Agent-authored proposal cohort drift is not yet measured
+- **Domain:** GOVERNANCE
+- **Discovered:** 2026-04-25 (Phase 6.6a Contribution Protocol)
+- **Severity:** medium
+- **Status:** open
+- **Description:** Proposal frontmatter can disclose assistant use, but there is not yet a quarterly cohort-drift verifier comparing agent-assisted proposals against unaided proposals.
+- **Why it exists:** Measurement requires enough proposal history to make the cohort meaningful; shipping the disclosure field first is the smallest correct precursor.
+- **Mitigations:** `docs/34-CONTRIBUTION-PROTOCOL.md` forbids assistant authority, defines assistant disclosure as measurement rather than trust, and leaves review / Arbiter / Witness gates intact.
+- **Pay-down commitment:** After 90 days of contribution-protocol use, add `xion-verify proposal-cohort-drift` or fold the metric into `xion-verify provisioning-roles`, then publish the first result to `META_LEDGER.md` once that ledger exists.
+- **Verifier:** Not yet live; tracked by `DEVELOPMENT_ROADMAP.md` Phase 6.6a follow-on.
+
+### KW-CONTRIB-001 — Contributor identity binding is narrower than the full principal lattice
+- **Domain:** GOVERNANCE
+- **Discovered:** 2026-04-25 (Phase 6.6a Contribution Protocol)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** `xion-verify identity-bindings` verifies contributor wallet-to-GitHub binding rows for proposal and PR discipline, but it does not close the broader `KW-AUTH-001` admission-control gap.
+- **Why it exists:** The contribution protocol needs accountable proposal authors before the full on-chain principal lattice is ready. Collapsing those two problems would either delay contribution tooling or over-claim authentication maturity.
+- **Mitigations:** The binding message is canonical and Ed25519-verified; accepted rows can be mirrored into `docs/schemas/roles.yaml` only through the existing governance path. The docs explicitly state that assistants are tools, not actors.
+- **Pay-down commitment:** Narrow this entry once `github_identity_map` has at least one verified non-operator binding and close it only when contributor identity rows are ledger-backed and included in the 90-day governance retrospective.
+- **Verifier:** `xion-verify identity-bindings`; `xion-verify provisioning-roles`.
+
 ### KW-VESSEL-001 — Vessel Compact is doctrine-only; no machine-readable manifest or verifier exists
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
