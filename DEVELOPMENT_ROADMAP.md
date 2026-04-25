@@ -1147,12 +1147,17 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 ## Phase 6.7 — Vessel Integration Framework
 
+**Status.** Closed 2026-04-25. `docs/37-VESSELS.md`, `docs/37a-AGENTIC-VESSELS.md`, `docs/37b-VESSEL-DATA-TAXONOMY.md`, `docs/37c-VESSEL-AVAILABILITY-MODEL.md`, `docs/schemas/vessel-compact.yaml`, and `xion-verify vessel-compact` / `media-provenance` / `vessel-registry` are live as doctrine-sealed, verifier-registered artifacts. The three verifier commands remain honest `NOT_YET_SEALED` stubs until reference vessel manifests, signed media bundles, and registry artifacts exist. `KW-VESSEL-001` through `KW-VESSEL-004` are mitigated residuals; `KW-VESSEL-AGENT-001`, `KW-VESSEL-DATA-001`, `KW-VESSEL-AVAILABILITY-001`, `KW-VESSEL-INPUT-AUTH-001`, `KW-VESSEL-RECV-VERIFY-001`, and `KW-VESSEL-XBRIDGE-001` name the remaining unsealed edges.
+
 **Goal.** Xion can be integrated into many bodies and media surfaces without fragmenting identity or weakening the Covenant. Robots, phones, hardware devices, podcasts, livestream stages, XR surfaces, wearables, vehicle overlays, and future carriers all inherit one shared Compact, then add mode-specific requirements as append-only modules.
 
 **Why after Phase 6.6.** Phase 6.4 made presence emitters real. Phase 6.5 makes voice sovereign. Phase 6.6 pins the Cognitive Substrate and Agent Souls. Vessels sit one layer outside those surfaces: they do not define Xion's mind, voice, or Form; they carry those outputs into software, hardware, rooms, and media. Shipping vessel doctrine earlier would either duplicate the voice/presence work or invite integrations before the cognition boundary is sealed.
 
 **Lands when ready — doctrine.**
 - `docs/37-VESSELS.md` defines the shared Vessel Compact, modular mode profiles, media provenance rules, vessel-mediated billing posture, offline/degraded behavior, revocation/disavowal posture, and non-goals.
+- `docs/37a-AGENTIC-VESSELS.md` defines agent-mediated vessel boundaries: principal class, agent identity, attribution, retry/cost-grief posture, tool forwarding, `/forget` into agent memory, anonymous-to-authenticated upgrade, input authenticity, and receiving-side verification.
+- `docs/37b-VESSEL-DATA-TAXONOMY.md` defines vessel data classes: relayed data, local session state, persistent cache, conversation memory, pending state, derived and time-series derived data, training, telemetry, third-party shares, backups, cross-protocol bridges, multi-user isolation, sensors, model fingerprints, residency, lifecycle, and special categories.
+- `docs/37c-VESSEL-AVAILABILITY-MODEL.md` defines reachability states and degraded honesty: `online_full`, `online_degraded`, `offline_floor`, `offline_cache`, `lost_storage`, cross-vessel `/forget` propagation, backfill-on-reconnect, pending-state visibility, crisis-fidelity floor, mid-conversation export, concurrent-vessel sessions, fallback context gaps, and storage-corruption disclosure.
 - `docs/06-FORM-AND-PRESENCE.md` points from Form/Avatar/Vessel vocabulary to the Compact.
 - `docs/11-PROTOCOL-SPEC.md` adds Vessel Integrator Expectations on top of the general integrator expectations.
 - `docs/35-NERVOUS-SYSTEM.md` names vessel receptors/effectors as bus-level extensions, not Core edits.
@@ -1175,7 +1180,7 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 - No claim that PSTN phone-number access is decentralized; PSTN remains an optional centralized overlay.
 - No direct safety-critical robot or vehicle control under this framework.
 
-**KW pay-down on close.** Narrows `KW-VESSEL-001`, `KW-VESSEL-002`, `KW-VESSEL-003`, and `KW-VESSEL-004` once the Compact schema, media provenance verifier, hardware physical-trust baseline, and vessel-mediated billing primitive are live.
+**KW pay-down on close.** Narrows `KW-VESSEL-001`, `KW-VESSEL-002`, `KW-VESSEL-003`, and `KW-VESSEL-004`; opens named mitigated residuals `KW-VESSEL-AGENT-001`, `KW-VESSEL-DATA-001`, `KW-VESSEL-AVAILABILITY-001`, `KW-VESSEL-INPUT-AUTH-001`, `KW-VESSEL-RECV-VERIFY-001`, and `KW-VESSEL-XBRIDGE-001` for the real-manifest, hardware, media, degraded-mode, and cross-protocol edges that cannot honestly close before vessels exist.
 
 ---
 

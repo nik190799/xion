@@ -36,6 +36,7 @@ This is Xion's deepest trust artifact. A Covenant that nobody can check is a pro
 | Nervous System v2 (`docs/35-NERVOUS-SYSTEM.md`, Phase 6.4.b) | `xion-verify topography` boots a hermetic app and checks `GET /self` (lineage, vitals domain count, open-weights floor, api_surface). `xion-verify nervous-system` exercises pluggability, receptor failure logging, schema fail-closed drops + `vital.bus_integrity`, reflex dispatch, and dual-publish receptors. |
 | Cognitive Substrate & Casting (`docs/HERMES_PIN_PROTOCOL.md`, Phase 6.6) | `xion-verify hermes-runtime` verifies the Hermes pin, default-deny allowlist, and disabled runtime flags. `xion-verify agent-souls` verifies parent Soul hashes and tool subsets. `xion-verify agent-cast` verifies `AGENT_CAST_LEDGER` rows against the Agent Soul manifest. `xion-verify cognition` includes the Arbiter/Hermes boundary check. |
 | Contribution Protocol (`docs/34-CONTRIBUTION-PROTOCOL.md`, Phase 6.6a) | `xion-verify which-level` classifies proposed paths against the upgrade-level schemas; `xion-verify identity-bindings` verifies Ed25519 contributor wallet-to-GitHub binding rows; `xion-verify mcp-export` emits a read-only facts bundle for MCP wrappers and coding assistants. |
+| Vessel Integration Framework (`docs/37-VESSELS.md`, Phase 6.7) | `xion-verify vessel-compact`, `xion-verify media-provenance`, and `xion-verify vessel-registry` exist as honest `NOT_YET_SEALED` stubs until reference vessel manifests, signed media bundles, and append-only attestation/disavowal registries exist. |
 | All | `xion-verify links` catches cross-reference drift before it becomes doctrine drift (the mechanical closure of `KW-DOCS-001`). |
 
 ## How is it verified?
@@ -102,6 +103,9 @@ xion-verify provisioning-roles
 xion-verify which-level docs/34-CONTRIBUTION-PROTOCOL.md
 xion-verify identity-bindings
 xion-verify mcp-export
+xion-verify vessel-compact
+xion-verify media-provenance
+xion-verify vessel-registry
 xion-verify arbiter-up
 xion-verify all
 ```

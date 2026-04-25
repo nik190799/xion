@@ -10,6 +10,25 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Phase 6.7 — Vessel Integration Framework — 2026-04-25
+
+Closes the Vessel Integration Framework as a doctrine-sealed, verifier-registered phase: many carriers may render or transmit Xion, but none may become Xion, hide Xion's refusals, trap user data, or pretend degraded/local output is full Core-connected Xion.
+
+### Added
+
+- **`docs/37a-AGENTIC-VESSELS.md`** — agent-mediated vessel doctrine for principal classes, agent identity, attribution, retry/cost-grief posture, tool forwarding, `/forget` into agent memory, anonymous-to-authenticated upgrade, input authenticity, and receiving-side verification.
+- **`docs/37b-VESSEL-DATA-TAXONOMY.md`** — data taxonomy for relayed data, local session state, persistent caches, conversation memory, pending state, derivations, training, telemetry, third-party sharing, backup retention, cross-protocol bridges, multi-user isolation, sensors, model fingerprints, residency, lifecycle, and special categories.
+- **`docs/37c-VESSEL-AVAILABILITY-MODEL.md`** — degraded-state and data-availability doctrine for reachability states, cross-vessel `/forget` propagation, backfill on reconnect, pending-state visibility, crisis-fidelity under degradation, mid-conversation export, concurrent vessels, fallback context gaps, and storage corruption.
+- **`docs/schemas/vessel-compact.yaml`** — doctrine-only schema pinned to `37-VESSELS.md` and the three addenda.
+- **`xion-verify vessel-compact`**, **`xion-verify media-provenance`**, and **`xion-verify vessel-registry`** — honest `NOT_YET_SEALED` stubs registered in the verifier surface.
+- **Vessel verifier tests** — schema pin checks, command registration, help visibility, and `NOT_YET_SEALED` behavior.
+
+### Changed
+
+- **`docs/37-VESSELS.md`**, **`docs/06-FORM-AND-PRESENCE.md`**, **`docs/11-PROTOCOL-SPEC.md`**, **`docs/12-LEXICON.md`**, **`docs/35-NERVOUS-SYSTEM.md`**, **`docs/36-LEARNING-AND-AUTONOMY.md`**, and **`docs/99-GLOSSARY.md`** now point at the Vessel doctrine quartet.
+- **`KNOWN_WEAKNESSES.md`** narrows `KW-VESSEL-001` through `KW-VESSEL-004` and names the remaining unsealed agentic, data, availability, input-authenticity, receiving-side verification, and cross-protocol bridge surfaces.
+- **`DEVELOPMENT_ROADMAP.md`** marks Phase 6.7 closed while preserving honest `NOT_YET_SEALED` status for real vessel-manifest verification.
+
 ### Phase 6.6 — Cognitive Substrate & Casting Pipeline — 2026-04-25
 
 Closes the pre-epic gate before Akash/discovery: Hermes is now doctrine-pinned with a default-deny allowlist, the first five Agent Souls are content-addressed under `genesis/`, and the cast ledger/verifier surface is live.

@@ -37,7 +37,7 @@ Kinds are registered with type and bounds; `validate_signal` fail-closes on mism
 - `Receptor` protocol and `ReceptorContext` in `receptor.py`.
 - `ReceptorRegistry` discovers concrete classes under `orchestrator/sensorium/receptors/`.
 - The Supervisor calls every receptor’s `tick` after building `SensoriumState` (**dual-publish**: legacy struct + bus).
-- Vessel-facing receptors added by robots, hardware devices, wearables, vehicle overlays, or XR surfaces must enter through the same registry and carry a Vessel Compact reference as provenance. A vessel may add a receptor; it may not bypass the bus or write directly into Volition, the Arbiter, or Core state.
+- Vessel-facing receptors added by robots, hardware devices, wearables, vehicle overlays, or XR surfaces must enter through the same registry and carry a Vessel Compact reference as provenance. If an agent summarizes the signal, the receptor inherits [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md); if it stores or derives user data, it inherits [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md); if it operates while degraded, it inherits [`37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md). A vessel may add a receptor; it may not bypass the bus or write directly into Volition, the Arbiter, or Core state.
 
 ### 2.5 Effectors and reflex arcs
 
@@ -96,5 +96,5 @@ Documented in the Phase 6.4.b plan: `interoception.*`, `chronoception.*`, `propr
 - Vital domains and bands: [`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)
 - HTTP / Supervisor: [`docs/04-ARCHITECTURE.md`](./04-ARCHITECTURE.md)
 - Learning tiers and autonomy: [`docs/36-LEARNING-AND-AUTONOMY.md`](./36-LEARNING-AND-AUTONOMY.md) (this phase’s reflection loop remains future work)
-- Vessel Integration Framework: [`docs/37-VESSELS.md`](./37-VESSELS.md)
+- Vessel Integration Framework: [`docs/37-VESSELS.md`](./37-VESSELS.md), [`docs/37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md), [`docs/37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md), [`docs/37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md)
 - Upgrade paths: [`docs/14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md)

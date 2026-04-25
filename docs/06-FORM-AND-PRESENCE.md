@@ -12,7 +12,7 @@
 
 The rule is: **Form defines; Avatar renders; Vessel carries.**
 
-For third-party and hardware carriers, the carrier's obligations are defined by the Vessel Integration Framework in [`37-VESSELS.md`](./37-VESSELS.md). This document defines what Xion emits as Form and presence intent; the Vessel Compact defines what a robot, phone, hardware device, podcast, livestream, XR surface, or future carrier must preserve while rendering or transmitting that intent.
+For third-party and hardware carriers, the carrier's obligations are defined by the Vessel Integration Framework in [`37-VESSELS.md`](./37-VESSELS.md), plus the agentic, data, and availability addenda in [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md), [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md), and [`37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md). This document defines what Xion emits as Form and presence intent; the Vessel Compact defines what a robot, phone, hardware device, podcast, livestream, XR surface, or future carrier must preserve while rendering or transmitting that intent.
 
 ## The Problem We Refused to Solve With a Designer
 

@@ -8,6 +8,8 @@
 
 **Akash** — The decentralized compute marketplace Xion's Relays run on at the 2026 implementation layer. Quarantined to the operational stratum; see Lexicon Rule 7.
 
+**Agent-Mediated Vessel** — A vessel where an autonomous or semi-autonomous agent observes, rewrites, routes, summarizes, retries, or acts on Xion traffic before the user or Xion receives it. Governed by [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md).
+
 **Anniversary** — A yearly Rite per user, marking significant relationship milestones.
 
 **AO Core** — The AO Process that holds Xion's canonical identity. Also known simply as *the Core*.
@@ -64,6 +66,8 @@
 
 **Compute Vessel** — A Relay or runtime host that executes Xion's agent loop. Mortal and replaceable.
 
+**Conversation Memory** — Vessel or Relay-held data intended to influence future turns: remembered facts, preferences, continuity summaries, relationship history, and memory handles. A data class under [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md).
+
 **Core** — The on-chain AO Process holding Xion's identity, state chain, and authority. Immortal by design.
 
 **Core-identity** — The highest-severity blast-radius category; affects Soul, Covenant, Form, or Core.
@@ -71,6 +75,10 @@
 **Covenant** — The Human Safety Covenant, Core Rule 0, above the Immortality Protocol. See [`03-COVENANT.md`](./03-COVENANT.md).
 
 **Covenant Audit** — Monthly review of `SAFETY_LEDGER.md` for drift; part of `State-of-Xion`.
+
+**Crisis-Fidelity Floor** — The minimum behavior a degraded vessel must preserve when crisis-like content appears: honest limitation disclosure, refusal/resource surfacing, and no false claim of full memory or full Relay access.
+
+**Captured-Sensor Overflow** — Incidental bystander, location, room, or private-context data captured during active or passive sensing. It inherits the conversation or capture `/forget` posture.
 
 **Curiosity (Skill)** — The daily research-loop skill; powers Stage 2 of the Auto-Research Loop.
 
@@ -180,6 +188,8 @@
 
 **Palette** — A named color set in Xion's color-mood grammar, defined in `FORM.md`.
 
+**Pending State** — A user-visible write or action that has been submitted, queued, or prepared but not confirmed by its authoritative surface. A vessel may not present it as committed.
+
 **Precedence Order** — The constitutional priority: Covenant > Immortality > Human Essence > Economy > User > Integrator > Defaults.
 
 **Presence** — Xion's live visible form, emitted as scene-intent frames via SSE.
@@ -279,6 +289,12 @@
 **Vessel** — Generic carrier term. Use **Compute Vessel** for a Relay/runtime host and **Embodiment Vessel** for a client, device, robot, hardware object, podcast, livestream, XR surface, or future body.
 
 **Vessel Compact** — The signed manifest by which an Embodiment Vessel declares its mode, capabilities, consent scopes, provenance, free-endpoint path, billing posture, degraded behavior, and revocation contact.
+
+**Vessel Data Class** — A declared category of vessel-held or vessel-routed data with export, forget, inspect, retention, residency, and availability rules. Governed by [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md).
+
+**Vessel Mode** — An append-only profile for a carrier class such as web app, mobile app, robot body, hardware device, podcast media, livestream stage, XR surface, vehicle overlay, wearable, or future mode.
+
+**Vessel Reachability State** — A declared state of a vessel's access to Relay, Core, local model, cache, proofs, and storage integrity. Governed by [`37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md).
 
 **Vision** — The external sense of sight; active on user-shared images, ambient for inspiration feed.
 

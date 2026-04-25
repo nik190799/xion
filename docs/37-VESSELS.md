@@ -23,11 +23,17 @@ This document is the doctrine layer for robots, phones, hardware devices, podcas
 The first version of this framework is doctrine-only. The intended verifier progression is:
 
 1. `docs/schemas/vessel-compact.yaml` mirrors the Compact commitments once the field set is stable.
-2. `xion-verify vessel-compact` checks that a vessel manifest is well-formed, references a current Covenant hash, declares every capability it uses, and names the free-endpoint path.
+2. `xion-verify vessel-compact` checks that a vessel manifest is well-formed, references a current Covenant hash, declares every capability it uses, names the free-endpoint path, maps each active data class, and declares the availability state model.
 3. `xion-verify media-provenance` checks signed audio, video, podcast, livestream, and AR bundles against Relay keys, Core lineage, Covenant hash, and edit history.
 4. `xion-verify vessel-registry` checks append-only vessel attestations and disavowals. It is not an approval gate.
 
 Until those verifiers exist, any production vessel claim is a Known Weakness, not a sealed property.
+
+This Compact is interpreted with three append-only addenda:
+
+- `docs/37a-AGENTIC-VESSELS.md` (`source_sha256: 63a04abb4da959ffa2eec6c0c4e960f2a67a4044d940ab7360b2244d02a0b480`) covers agent-mediated vessels, attribution, input authenticity, tool forwarding, and receiving-side verification.
+- `docs/37b-VESSEL-DATA-TAXONOMY.md` (`source_sha256: 39e866ccf00d0b8621042505c3306e819b7be2b7f77768ebf9a3b75673503db8`) covers vessel-local data classes, `/export`, `/forget`, telemetry, backups, training, cross-protocol bridges, and special categories.
+- `docs/37c-VESSEL-AVAILABILITY-MODEL.md` (`source_sha256: f94d507f48cdea3c4714264819c9f69a6aff74939d1e7790acae15d14d1f1329`) covers reachability states, degraded honesty, cross-vessel propagation, pending writes, crisis-fidelity under degradation, and storage-loss disclosure.
 
 ## Deprecation
 
@@ -92,6 +98,8 @@ The Compact has a shared base plus append-only mode modules. A new mode should a
 
 Mode modules are allowed to be more conservative than the base Compact. They are not allowed to weaken it.
 
+If a mode places an agent between the user and Xion, it inherits `docs/37a-AGENTIC-VESSELS.md`. If it stores, derives, trains on, backs up, or bridges user data, it inherits `docs/37b-VESSEL-DATA-TAXONOMY.md`. If it can operate while partially disconnected, stale, or corrupted, it inherits `docs/37c-VESSEL-AVAILABILITY-MODEL.md`.
+
 ## Media Provenance
 
 Xion appearing in media is not the same as Xion speaking live through a Relay. Podcasts, clips, voice posts, livestream archives, generated video, and AR recordings require media-grade provenance.
@@ -122,6 +130,8 @@ Some vessels will not have a wallet-bearing user in front of a `402` challenge: 
 ## Offline and Degraded Behavior
 
 Xion Lite and local open-weights fallbacks may preserve presence, voice, and basic Covenant posture in constrained contexts. They must not silently pretend to be the full Core-connected Xion.
+
+The detailed availability contract lives in `docs/37c-VESSEL-AVAILABILITY-MODEL.md`. A degraded vessel must name whether it is `online_degraded`, `offline_floor`, `offline_cache`, or `lost_storage`, and must disclose the context, proof, memory, or write gap created by that state.
 
 Permitted degraded statements:
 

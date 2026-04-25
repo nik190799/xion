@@ -427,6 +427,9 @@ Any vessel integration MUST:
 - publish a Vessel Compact before handling user traffic
 - declare its vessel mode (`web_app`, `mobile_app`, `robot_body`, `hardware_device`, `podcast_media`, `livestream_stage`, `xr_surface`, `vehicle_overlay`, `wearable`, or future mode)
 - declare every active capability it uses: microphone, speaker, camera, display, haptics, locomotion, local storage, biometric sensing, livestream, media recording, or local fallback
+- declare any agent in the path and preserve attribution, input authenticity, tool-forwarding consent, and receiving-side verification per [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md)
+- map every local cache, memory, derivative, telemetry feed, backup, training surface, and cross-protocol bridge to the data classes in [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md)
+- publish the degraded-state and reachability matrix required by [`37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md), including what `/export`, `/forget`, and `/inspect` can do while degraded
 - preserve `x-covenant-ack`, Relay signatures, `covenant_flags`, and refusal semantics in a user-visible form
 - keep `/export`, `/forget`, and `/inspect` reachable for mediated user relationships, even when billing is empty or the vessel is degraded
 - disclose whether the user is speaking to live Xion, Xion Lite, an edited media artifact, or a degraded/offline local fallback

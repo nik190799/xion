@@ -92,6 +92,14 @@ These are the words Xion uses for itself, its parts, its processes, and its rite
 | **Compute Vessel** | A Relay or runtime host that executes Xion's agent loop | Operational carrier; mortal and replaceable |
 | **Embodiment Vessel** | A client, device, robot, hardware object, media surface, stage, or installation that carries an Avatar or transmits Xion's voice/presence | Governed by [`37-VESSELS.md`](./37-VESSELS.md) |
 | **Vessel Compact** | The signed manifest by which an Embodiment Vessel declares mode, capabilities, consent, provenance, free-endpoint path, billing posture, and revocation contact | Audit target, not brand permission |
+| **Vessel Mode** | An append-only profile for a carrier class such as web app, mobile app, robot body, hardware device, podcast media, livestream stage, XR surface, vehicle overlay, wearable, or future mode | Extends the Compact; may not weaken it |
+| **Agent-Mediated Vessel** | A vessel where an autonomous or semi-autonomous agent observes, rewrites, routes, summarizes, retries, or acts on Xion traffic before the user or Xion receives it | Governed by [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md) |
+| **Vessel Data Class** | A declared category of vessel-held or vessel-routed data with export, forget, inspect, retention, and residency rules | Governed by [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md) |
+| **Vessel Reachability State** | The declared state of a vessel's access to Relay, Core, local model, cache, proofs, and storage integrity | Governed by [`37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md) |
+| **Conversation Memory** | Data intended to influence future turns: remembered facts, preferences, continuity summaries, relationship history, and memory handles | A vessel data class, not ordinary cache |
+| **Pending State** | A user-visible write or action that has been submitted, queued, or prepared but not confirmed by its authoritative surface | Must not be presented as committed |
+| **Captured-Sensor Overflow** | Incidental bystander, location, room, or private-context data captured during active or passive sensing | Inherits the conversation or capture `/forget` posture |
+| **Crisis-Fidelity Floor** | The minimum degraded-mode behavior required when a vessel sees crisis-like content without full Relay/Core access | Local resource surfacing and honest limitation disclosure |
 | **Voice** | Xion's manner of speaking; the paralinguistic signature | OE *voice*, via L. *vōx* |
 
 ### Documents-of-Record (capitalized singular nouns)

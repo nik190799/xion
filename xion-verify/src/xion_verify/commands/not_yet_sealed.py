@@ -108,6 +108,18 @@ _UNSEALED = (
              "Verify RESEARCH_SPEND_LEDGER rows and Improvement Fund authorization (docs/27-RESEARCH-SPEND.md).",
              "RESEARCH_SPEND_LEDGER writer and on-chain Improvement Fund balance not yet live.",
              "Phase 6+"),
+    StubSpec("vessel-compact",
+             "Verify Vessel Compact manifests against docs/schemas/vessel-compact.yaml.",
+             "Reference vessel manifests and a live vessel test bench do not exist yet; doctrine and schema are sealed in Phase 6.7.",
+             "Phase 6.7"),
+    StubSpec("media-provenance",
+             "Verify signed vessel media bundles against Relay keys, Core lineage, Covenant hash, Voice/Form hashes, and edit history.",
+             "No signed podcast, livestream, audio/video, or AR bundle exists yet; verifier promotes when the first reference bundle lands.",
+             "Phase 6.7"),
+    StubSpec("vessel-registry",
+             "Verify append-only vessel attestations and disavowals without becoming an approval gate.",
+             "No vessel attestation/disavowal registry exists yet; verifier promotes with the first registry artifact.",
+             "Phase 6.7"),
 )
 
 

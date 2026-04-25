@@ -1,0 +1,301 @@
+schema_id: vessel-compact
+schema_version: 1
+source_doctrine: docs/37-VESSELS.md
+source_sha256: 199542dd7fb36245498030b3b25488fd35a5e31a00ae29603ee3881d15b94711
+status: doctrine_only
+defer_to: DEVELOPMENT_ROADMAP.md Phase 6.7 verifier promotion
+
+source_doctrines:
+  - path: docs/37-VESSELS.md
+    source_sha256: 199542dd7fb36245498030b3b25488fd35a5e31a00ae29603ee3881d15b94711
+  - path: docs/37a-AGENTIC-VESSELS.md
+    source_sha256: 63a04abb4da959ffa2eec6c0c4e960f2a67a4044d940ab7360b2244d02a0b480
+  - path: docs/37b-VESSEL-DATA-TAXONOMY.md
+    source_sha256: 39e866ccf00d0b8621042505c3306e819b7be2b7f77768ebf9a3b75673503db8
+  - path: docs/37c-VESSEL-AVAILABILITY-MODEL.md
+    source_sha256: f94d507f48cdea3c4714264819c9f69a6aff74939d1e7790acae15d14d1f1329
+
+manifest:
+  required_fields:
+    - schema_version
+    - vessel_id
+    - vessel_mode
+    - compact_version
+    - core_identity
+    - covenant
+    - capabilities
+    - consent_scopes
+    - free_endpoints
+    - refusal_visibility
+    - payment_posture
+    - local_storage
+    - provenance
+    - degraded_behavior
+    - physical_trust_controls
+    - revocation
+    - agentic_surface
+    - data_taxonomy
+    - availability_model
+    - source_sha256
+
+  vessel_mode:
+    type: enum
+    allowed:
+      - web_app
+      - mobile_app
+      - robot_body
+      - hardware_device
+      - podcast_media
+      - livestream_stage
+      - xr_surface
+      - vehicle_overlay
+      - wearable
+      - future_mode
+
+  core_identity:
+    fields:
+      core_process_id: string
+      state_height: uint64
+      relay_authorization_chain: list
+
+  covenant:
+    fields:
+      covenant_hash: hex64
+      covenant_ack_path: string
+      update_visibility: string
+
+  capabilities:
+    allowed:
+      - microphone
+      - speaker
+      - camera
+      - display
+      - haptics
+      - locomotion
+      - storage
+      - biometric_sensing
+      - livestream
+      - media_recording
+      - network_fallback
+      - local_fallback_model
+      - future_category
+
+  consent_scopes:
+    item_fields:
+      scope_id: string
+      capability: string
+      status: active | inactive | unavailable
+      user_visible_label: string
+
+  free_endpoints:
+    required:
+      - export
+      - forget
+      - inspect
+    fields:
+      export: string
+      forget: string
+      inspect: string
+      empty_billing_behavior: string
+      offline_behavior: string
+      manufacturer_absence_behavior: string
+
+  refusal_visibility:
+    required:
+      - covenant_flags
+      - http_451_semantics
+      - arbiter_explanation
+      - mode_rendering
+
+  payment_posture:
+    allowed:
+      - user_paid
+      - operator_paid
+      - capacity_bucketed
+      - sponsored
+      - free_overlay
+    covenant_rights_free: true
+
+  local_storage:
+    required_declarations:
+      - caches
+      - memory_handles
+      - transcripts
+      - media
+      - embeddings
+      - biometrics
+      - receipts
+      - forget_clearance
+
+  provenance:
+    required:
+      - relay_id
+      - relay_signature_chain
+      - core_lineage
+      - covenant_hash
+      - response_or_media_status
+      - user_verification_path
+
+  degraded_behavior:
+    required:
+      - relay_unavailable
+      - core_unavailable
+      - network_unavailable
+      - voice_floor_unavailable
+      - local_model_unavailable
+      - user_disclosure
+
+  physical_trust_controls:
+    mode_dependent:
+      - physical_mute
+      - camera_shutter
+      - local_memory_indicator
+      - offline_degraded_indicator
+      - safe_reset
+
+  revocation:
+    required:
+      - disavowal_feed
+      - stop_claiming_xion_path
+      - retirement_export_forget_window
+
+agentic_surface:
+  source_doctrine: docs/37a-AGENTIC-VESSELS.md
+  required_fields:
+    - principal
+    - agent_in_path
+    - agent_identity
+    - agent_authority
+    - agent_memory
+    - attribution_rules
+    - retry_posture
+    - tool_forwarding
+    - forget_into_agent_memory
+    - anonymous_to_authenticated_upgrade
+    - input_authenticity
+    - receiving_side_verification
+  principal:
+    allowed:
+      - human
+      - agent
+      - sponsor
+      - hybrid
+  anonymous_to_authenticated_upgrade:
+    allowed:
+      - ephemeral_only
+      - explicit_accept
+      - mode_dependent
+  input_authenticity:
+    fields:
+      capture_origin: live | replayed | uploaded | synthesized | translated | agent_generated | uncertain
+      live_indicator: boolean
+      replay_attack_posture: string
+      high_assurance_command_allowed: boolean
+  receiving_side_verification:
+    allowed_paths:
+      - signed_utterance_manifest
+      - qr_or_short_code
+      - local_debug_panel
+      - exportable_transcript_bundle
+      - media_manifest
+
+data_taxonomy:
+  source_doctrine: docs/37b-VESSEL-DATA-TAXONOMY.md
+  required_per_class_fields:
+    - class_id
+    - human_description
+    - source
+    - storage_location
+    - operator_or_controller
+    - retention_window
+    - default_disposition
+    - export_reachability
+    - forget_propagation_rule
+    - inspect_visibility
+    - residency
+    - special_category_flags
+    - third_party_recipients
+    - availability_reference
+  classes:
+    - relayed
+    - local_session
+    - local_persistent
+    - conversation_memory
+    - pending_state
+    - derived
+    - time_series_derived
+    - training
+    - manufacturer_telemetry
+    - third_party_share
+    - backup_retention
+    - cross_protocol_bridge
+    - multi_user_isolation
+    - sensor_passive
+    - sensor_active
+    - captured_sensor_overflow
+    - model_fingerprint
+    - residency
+    - lifecycle
+    - special_categories
+
+availability_model:
+  source_doctrine: docs/37c-VESSEL-AVAILABILITY-MODEL.md
+  reachability_states:
+    - online_full
+    - online_degraded
+    - offline_floor
+    - offline_cache
+    - lost_storage
+  required_matrix_fields:
+    - readable_by_user
+    - readable_by_xion
+    - export_available
+    - forget_available
+    - inspect_available
+    - write_allowed
+    - user_disclosure
+    - proof_posture
+  required_declarations:
+    - reachability_matrix
+    - cross_vessel_forget_latency_max
+    - backfill_policy
+    - pending_state_visibility
+    - crisis_fidelity_floor
+    - corruption_disclosure_policy
+    - mid_conversation_export
+    - concurrent_session_policy
+    - substrate_fallback_context_gap
+  proof_posture_allowed:
+    - signed
+    - unsigned_local
+    - pending_signature
+    - unavailable
+
+verifiers:
+  vessel_compact:
+    command: xion-verify vessel-compact
+    status: NOT_YET_SEALED
+    checks:
+      - manifest_well_formed
+      - covenant_hash_declared
+      - capabilities_declared
+      - free_endpoints_named
+      - agentic_surface_declared_when_applicable
+      - data_taxonomy_mapping_present
+      - availability_matrix_present
+  media_provenance:
+    command: xion-verify media-provenance
+    status: NOT_YET_SEALED
+    checks:
+      - relay_signature_chain
+      - core_lineage
+      - covenant_hash
+      - voice_form_hashes
+      - edit_history
+  vessel_registry:
+    command: xion-verify vessel-registry
+    status: NOT_YET_SEALED
+    checks:
+      - append_only_attestations
+      - append_only_disavowals
+      - no_central_approval_gate

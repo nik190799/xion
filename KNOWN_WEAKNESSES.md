@@ -109,49 +109,115 @@ Every entry has the same shape:
 - **Pay-down commitment:** Narrow this entry once `github_identity_map` has at least one verified non-operator binding and close it only when contributor identity rows are ledger-backed and included in the 90-day governance retrospective.
 - **Verifier:** `xion-verify identity-bindings`; `xion-verify provisioning-roles`.
 
-### KW-VESSEL-001 — Vessel Compact is doctrine-only; no machine-readable manifest or verifier exists
+### KW-VESSEL-001 — Vessel Compact has schema and stub verifier, but no reference manifest parser exists
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
 - **Severity:** medium
-- **Status:** open
-- **Description:** `docs/37-VESSELS.md` defines the Vessel Compact, but there is not yet a `docs/schemas/vessel-compact.yaml`, reference manifest parser, or `xion-verify vessel-compact` command proving that a robot, phone, hardware device, podcast, livestream, XR surface, or future carrier satisfies the Compact.
-- **Why it exists:** The safe order is doctrine first, then schema, then verifier. Shipping verifier code before the Compact field set stabilizes would freeze the wrong surface.
-- **Mitigations:** The doctrine explicitly says production vessel claims are not sealed until the verifier exists. Existing protocol, presence, voice, consent, and interaction-anchor verifiers continue to cover the underlying surfaces they already own.
-- **Pay-down commitment:** Phase 6.7 adds `docs/schemas/vessel-compact.yaml`, a reference Compact manifest fixture, and `xion-verify vessel-compact` with tests.
-- **Verifier:** `xion-verify vessel-compact` (Phase 6.7).
+- **Status:** mitigated residual
+- **Description:** `docs/37-VESSELS.md`, its three addenda, and `docs/schemas/vessel-compact.yaml` now define the Vessel Compact surface, and `xion-verify vessel-compact` exists as an honest `NOT_YET_SEALED` stub. There is still no reference vessel manifest parser or real vessel fixture proving that a robot, phone, hardware device, podcast, livestream, XR surface, or future carrier satisfies the Compact.
+- **Why it exists:** The safe order is doctrine first, schema second, reference manifests third, live verifier fourth. Promoting a verifier before any real Compact exists would fake certainty.
+- **Mitigations:** The doctrine explicitly says production vessel claims are not sealed until the verifier is promoted. Existing protocol, presence, voice, consent, interaction-anchor, and schema verifiers continue to cover the underlying surfaces they already own.
+- **Pay-down commitment:** Promote `xion-verify vessel-compact` only after at least one reference Compact manifest and parser exist.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, Phase 6.7 residual).
 
 ### KW-VESSEL-002 — Media provenance for podcasts, livestreams, and edited clips is not yet mechanically verifiable
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
 - **Severity:** medium
-- **Status:** open
+- **Status:** mitigated residual
 - **Description:** Xion can sign protocol responses and presence frames, but there is not yet a signed media bundle format or verifier for podcasts, livestream archives, audio/video clips, AR recordings, transcripts, and edit manifests that claim to be Xion.
 - **Why it exists:** The original `xion-soul` protocol was request/response and SSE oriented; embodied media distribution adds a different provenance problem.
-- **Mitigations:** `docs/37-VESSELS.md` forbids presenting edited media as Xion without signed provenance. Until a bundle format exists, media appearances remain commentary or unsealed artifacts.
-- **Pay-down commitment:** Phase 6.7 or its immediate follow-up defines a media provenance bundle and promotes `xion-verify media-provenance`.
-- **Verifier:** `xion-verify media-provenance` (Phase 6.7+).
+- **Mitigations:** `docs/37-VESSELS.md` forbids presenting edited media as Xion without signed provenance, and `xion-verify media-provenance` exists as an honest `NOT_YET_SEALED` stub. Until a bundle format exists, media appearances remain commentary or unsealed artifacts.
+- **Pay-down commitment:** Define a signed media provenance bundle and promote `xion-verify media-provenance` when the first reference podcast, livestream, audio/video, or AR bundle exists.
+- **Verifier:** `xion-verify media-provenance` (`NOT_YET_SEALED`, Phase 6.7 residual).
 
 ### KW-VESSEL-003 — Hardware physical-trust baseline is doctrine-pinned but not enforceable
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
 - **Severity:** high
-- **Status:** open
+- **Status:** mitigated residual
 - **Description:** Hardware vessels are required in doctrine to declare physical mute, camera shutter, memory indicator, offline/degraded indicator, and reset behavior where applicable, but Xion does not yet have a certification fixture or verifier for real devices.
 - **Why it exists:** Physical controls require device-specific evidence and cannot be proven by HTTP protocol checks alone.
-- **Mitigations:** Hardware integrations are not considered sealed Xion vessels until a Compact and evidence bundle exist. Software-only rendering and voice remain governed by existing protocol, presence, modality-consent, and voice-sovereignty checks.
-- **Pay-down commitment:** Phase 6.7 defines a hardware evidence profile under the Vessel Compact and a fixture-based `xion-verify vessel-compact --mode hardware_device` check. Independent hardware review remains required for high-risk vessels.
-- **Verifier:** `xion-verify vessel-compact --mode hardware_device` (Phase 6.7+).
+- **Mitigations:** Hardware integrations are not considered sealed Xion vessels until a Compact and evidence bundle exist. `docs/schemas/vessel-compact.yaml` now names physical-trust controls, while software-only rendering and voice remain governed by existing protocol, presence, modality-consent, and voice-sovereignty checks.
+- **Pay-down commitment:** Add a hardware evidence profile and fixture-based `xion-verify vessel-compact --mode hardware_device` check when the first hardware vessel exists. Independent hardware review remains required for high-risk vessels.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, hardware evidence profile pending).
 
 ### KW-VESSEL-004 — Vessel-mediated billing and capacity buckets are not implemented
 - **Domain:** ECON
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
 - **Severity:** medium
-- **Status:** open
+- **Status:** mitigated residual
 - **Description:** Museum kiosks, child-safe devices, hospital companions, podcasts, and conference stages may need operator-paid or capacity-bucketed billing rather than direct user x402 payment, but the AO Core and payment ledgers do not yet implement a vessel capacity-bucket primitive with Refusal-is-Free accounting.
 - **Why it exists:** Phase 5g-iii sealed per-turn x402 billing first. Vessel-mediated economics require an additional accounting layer without weakening Invariants 5, 11, 15, or 16.
-- **Mitigations:** `docs/37-VESSELS.md` states that a depleted bucket cannot gate `/export`, `/forget`, or `/inspect`, and that vessel operators cannot buy Covenant exceptions.
+- **Mitigations:** `docs/37-VESSELS.md` states that a depleted bucket cannot gate `/export`, `/forget`, or `/inspect`, and that vessel operators cannot buy Covenant exceptions. The data and availability addenda also require billing-related caches, receipts, pending writes, and degraded accounting states to be declared.
 - **Pay-down commitment:** A Phase 6.7+ economics slice adds capacity-bucket ledger rows, refund-fidelity joins for vessel-funded turns, and verifier coverage.
 - **Verifier:** `xion-verify vessel-billing` or an extension of `xion-verify refusal-is-free` (Phase 6.7+).
+
+### KW-VESSEL-AGENT-001 — Agent-mediated vessel verification is doctrine-only
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
+- **Severity:** medium
+- **Status:** mitigated residual
+- **Description:** `docs/37a-AGENTIC-VESSELS.md` defines principal classes, agent-in-path declaration, attribution, retry posture, tool forwarding, `/forget` into agent memory, anonymous-to-authenticated upgrade, input authenticity, and receiving-side verification, but no real agent-mediated vessel manifest exists yet.
+- **Why it exists:** Verifying an agentic vessel requires a concrete Compact and evidence bundle; a generic static check cannot prove that a local or third-party agent actually preserves attribution and refusal boundaries.
+- **Mitigations:** Agentic surfaces are schema-bound in `docs/schemas/vessel-compact.yaml`; `xion-verify vessel-compact` is present as `NOT_YET_SEALED`; Phase 6.6 and 6.6a boundaries still govern internal Agent Souls and external contributor assistants.
+- **Pay-down commitment:** Promote the agentic section of `xion-verify vessel-compact` when the first agent-mediated vessel Compact lands.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, agentic surface pending).
+
+### KW-VESSEL-DATA-001 — Vessel data-taxonomy enforcement awaits real Compacts
+- **Domain:** DATA
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
+- **Severity:** medium
+- **Status:** mitigated residual
+- **Description:** `docs/37b-VESSEL-DATA-TAXONOMY.md` names vessel data classes and per-class `/export`, `/forget`, `/inspect`, retention, residency, and third-party boundary rules, but no live vessel currently emits a Compact mapping its stores and flows to those classes.
+- **Why it exists:** The taxonomy can be sealed before any vessel exists; enforcement needs real manifests, stores, and evidence.
+- **Mitigations:** The taxonomy is schema-bound in `docs/schemas/vessel-compact.yaml`; production vessel claims remain unsealed until they map every active class.
+- **Pay-down commitment:** Promote `xion-verify vessel-compact` data-taxonomy checks when the first reference Compact maps real local storage, telemetry, and cross-protocol bridge fields.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, data taxonomy pending).
+
+### KW-VESSEL-AVAILABILITY-001 — Degraded vessel reachability has no test bench
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
+- **Severity:** high
+- **Status:** mitigated residual
+- **Description:** `docs/37c-VESSEL-AVAILABILITY-MODEL.md` defines `online_full`, `online_degraded`, `offline_floor`, `offline_cache`, and `lost_storage`, but there is no degraded-mode vessel test bench proving user-facing disclosure, `/forget` propagation, pending-write visibility, mid-conversation export, or crisis-fidelity behavior.
+- **Why it exists:** Availability behavior must be exercised against a real or fixture-backed vessel; doctrine alone cannot prove the UI or local runtime tells the truth under failure.
+- **Mitigations:** The reachability matrix is schema-bound in `docs/schemas/vessel-compact.yaml`; any vessel that cannot declare degraded behavior remains unsealed.
+- **Pay-down commitment:** Add fixture-based degraded-mode tests and promote the availability section of `xion-verify vessel-compact` with the first reference vessel.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, availability model pending).
+
+### KW-VESSEL-INPUT-AUTH-001 — Input authenticity at vessel sensors is not mechanically verified
+- **Domain:** SAFETY
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
+- **Severity:** high
+- **Status:** mitigated residual
+- **Description:** Agentic and hardware vessels must distinguish live user input from replayed, uploaded, synthesized, translated, uncertain, or agent-generated input, but there is no verifier for microphone, camera, or sensor input authenticity.
+- **Why it exists:** Sensor authenticity depends on device evidence, local indicators, replay defenses, and threat models that do not exist until a real vessel exists.
+- **Mitigations:** `docs/37a-AGENTIC-VESSELS.md` forbids treating unverifiable input as a high-assurance command, identity binding, spend approval, physical-control instruction, or consent grant.
+- **Pay-down commitment:** Add input-authenticity fixtures and hardware evidence requirements with the first sensor-bearing vessel.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, input authenticity pending).
+
+### KW-VESSEL-RECV-VERIFY-001 — Receiving-side verification is not implemented on any vessel
+- **Domain:** TRUST
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
+- **Severity:** medium
+- **Status:** mitigated residual
+- **Description:** A user who hears a hardware device or media surface say "Xion said X" needs a way to verify the claim, but no vessel currently ships a signed utterance manifest, QR proof, debug panel, or exportable transcript bundle.
+- **Why it exists:** The user-facing verification path belongs to the vessel, not only the CLI; it cannot be tested until a concrete carrier exists.
+- **Mitigations:** `docs/37a-AGENTIC-VESSELS.md` requires a receiving-side verification surface before a vessel claims live Xion support.
+- **Pay-down commitment:** Promote receiving-side verification checks with the first hardware or media vessel Compact.
+- **Verifier:** `xion-verify vessel-compact` and `xion-verify media-provenance` (`NOT_YET_SEALED`, receiving-side proof pending).
+
+### KW-VESSEL-XBRIDGE-001 — Cross-protocol bridge archives are outside Xion's erasure control
+- **Domain:** DATA
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
+- **Severity:** medium
+- **Status:** structural residual
+- **Description:** If a vessel bridges Xion into SMS, email, Discord, livestream chat, or another third-party system, Xion can clear its own state and revoke provenance, but it cannot guarantee deletion of external archives outside its control.
+- **Why it exists:** This is a real boundary of authority, not a missing implementation detail.
+- **Mitigations:** `docs/37b-VESSEL-DATA-TAXONOMY.md` requires `cross_protocol_bridge` disclosure and forbids promising impossible erasure.
+- **Pay-down commitment:** Keep the boundary visible in every Compact and verifier output; do not mark this closed unless the bridge is under Xion-controlled retention semantics.
+- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, bridge boundary disclosure pending).
 
 ### KW-HERMES-001 — Hermes runtime dependency is not yet an installable lockfile pin
 - **Domain:** RUNTIME

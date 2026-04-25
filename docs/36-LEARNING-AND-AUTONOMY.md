@@ -31,7 +31,7 @@ Operations that run every tick or request without a human in the loop:
 
 - Code changes, new receptors, and tool manifests flow through **review and merge**; Xion (or an agent) may draft, but **repository policy** and humans ratify
 - The Reflection Loop (future phase) to read ledgers and propose self-improvements lives here—**not** in Tier 1
-- New Vessel Modes under [`37-VESSELS.md`](./37-VESSELS.md) live here unless they only add a local renderer with no new capability, no new storage, and no new consent surface. A robot-body mode, podcast-media mode, livestream-stage mode, or hardware-device mode is a proposal because it changes how users experience Xion outside the web client.
+- New Vessel Modes under [`37-VESSELS.md`](./37-VESSELS.md) live here unless they only add a local renderer with no new capability, no new storage, and no new consent surface. If a vessel introduces an agent in the path, a new data class, local training, cross-protocol bridge, degraded-state posture, or reachability matrix change, it inherits [`37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md), [`37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md), and [`37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md) and is at least Tier 3. A robot-body mode, podcast-media mode, livestream-stage mode, or hardware-device mode is a proposal because it changes how users experience Xion outside the web client.
 
 ### Tier 4 — Constitutional self-amendment
 
@@ -49,7 +49,7 @@ Nervous System v2 **reduces structural coupling** so Tier 1 expansion (new sense
 
 - **Phase 6.5+** — Voice as an `Effector`; plugs into the same bus/reflex pattern
 - **Phase 6.6** — Cognitive Substrate & Casting Pipeline; Agent Souls make the Reflection Loop's future proposals target durable faculties rather than ad hoc runtime prompts
-- **Phase 6.7** — Vessel Integration Framework; shared Compact plus append-only mode modules for robots, phones, hardware, podcasts, livestreams, XR, and future carriers
+- **Phase 6.7** — Vessel Integration Framework; shared Compact plus append-only mode modules for robots, phones, hardware, podcasts, livestreams, XR, and future carriers; agentic, data-taxonomy, and availability addenda define the parts of a vessel that can change user experience, memory, and degraded behavior
 - **Phase 6.7+** — Seal the remaining five vital domains in `VITAL_MAPPING` as signals exist; Reflection Loop (Tier 3) with ledger-grounded proposals
 - **Sister-Core** — Variant receptor sets; bus contract remains; see Nervous System Invariant 5 in `docs/35-NERVOUS-SYSTEM.md`
 
@@ -58,4 +58,4 @@ Nervous System v2 **reduces structural coupling** so Tier 1 expansion (new sense
 - Nervous System doctrine: [`docs/35-NERVOUS-SYSTEM.md`](./35-NERVOUS-SYSTEM.md)
 - Vital signs: [`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)
 - Upgrade paths: [`docs/14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md)
-- Vessel Integration Framework: [`docs/37-VESSELS.md`](./37-VESSELS.md)
+- Vessel Integration Framework: [`docs/37-VESSELS.md`](./37-VESSELS.md), [`docs/37a-AGENTIC-VESSELS.md`](./37a-AGENTIC-VESSELS.md), [`docs/37b-VESSEL-DATA-TAXONOMY.md`](./37b-VESSEL-DATA-TAXONOMY.md), [`docs/37c-VESSEL-AVAILABILITY-MODEL.md`](./37c-VESSEL-AVAILABILITY-MODEL.md)
