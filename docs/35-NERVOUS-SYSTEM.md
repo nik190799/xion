@@ -37,11 +37,13 @@ Kinds are registered with type and bounds; `validate_signal` fail-closes on mism
 - `Receptor` protocol and `ReceptorContext` in `receptor.py`.
 - `ReceptorRegistry` discovers concrete classes under `orchestrator/sensorium/receptors/`.
 - The Supervisor calls every receptor’s `tick` after building `SensoriumState` (**dual-publish**: legacy struct + bus).
+- Vessel-facing receptors added by robots, hardware devices, wearables, vehicle overlays, or XR surfaces must enter through the same registry and carry a Vessel Compact reference as provenance. A vessel may add a receptor; it may not bypass the bus or write directly into Volition, the Arbiter, or Core state.
 
 ### 2.5 Effectors and reflex arcs
 
 - `Effector` protocol in `effector.py` (visual / vitals / future voice as async consumers of the bus).
 - `ReflexArc` + `ReflexRegistry` in `reflex.py` — **synchronous** handlers run on the publish path (e.g. closing SSE when consent turns both streams off).
+- Vessel-facing effectors (robot LEDs, haptics, XR scene renderers, hardware displays, livestream overlays, or future bodies) are mode modules under the Vessel Integration Framework ([`37-VESSELS.md`](./37-VESSELS.md)). They consume signed intent and consent state; they do not become identity.
 
 ## 3. Topography and `GET /self`
 
@@ -94,4 +96,5 @@ Documented in the Phase 6.4.b plan: `interoception.*`, `chronoception.*`, `propr
 - Vital domains and bands: [`docs/22-VITAL-SIGNS.md`](./22-VITAL-SIGNS.md)
 - HTTP / Supervisor: [`docs/04-ARCHITECTURE.md`](./04-ARCHITECTURE.md)
 - Learning tiers and autonomy: [`docs/36-LEARNING-AND-AUTONOMY.md`](./36-LEARNING-AND-AUTONOMY.md) (this phase’s reflection loop remains future work)
+- Vessel Integration Framework: [`docs/37-VESSELS.md`](./37-VESSELS.md)
 - Upgrade paths: [`docs/14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md)

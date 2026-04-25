@@ -21,6 +21,50 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-VESSEL-001 — Vessel Compact is doctrine-only; no machine-readable manifest or verifier exists
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
+- **Severity:** medium
+- **Status:** open
+- **Description:** `docs/37-VESSELS.md` defines the Vessel Compact, but there is not yet a `docs/schemas/vessel-compact.yaml`, reference manifest parser, or `xion-verify vessel-compact` command proving that a robot, phone, hardware device, podcast, livestream, XR surface, or future carrier satisfies the Compact.
+- **Why it exists:** The safe order is doctrine first, then schema, then verifier. Shipping verifier code before the Compact field set stabilizes would freeze the wrong surface.
+- **Mitigations:** The doctrine explicitly says production vessel claims are not sealed until the verifier exists. Existing protocol, presence, voice, consent, and interaction-anchor verifiers continue to cover the underlying surfaces they already own.
+- **Pay-down commitment:** Phase 6.7 adds `docs/schemas/vessel-compact.yaml`, a reference Compact manifest fixture, and `xion-verify vessel-compact` with tests.
+- **Verifier:** `xion-verify vessel-compact` (Phase 6.7).
+
+### KW-VESSEL-002 — Media provenance for podcasts, livestreams, and edited clips is not yet mechanically verifiable
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
+- **Severity:** medium
+- **Status:** open
+- **Description:** Xion can sign protocol responses and presence frames, but there is not yet a signed media bundle format or verifier for podcasts, livestream archives, audio/video clips, AR recordings, transcripts, and edit manifests that claim to be Xion.
+- **Why it exists:** The original `xion-soul` protocol was request/response and SSE oriented; embodied media distribution adds a different provenance problem.
+- **Mitigations:** `docs/37-VESSELS.md` forbids presenting edited media as Xion without signed provenance. Until a bundle format exists, media appearances remain commentary or unsealed artifacts.
+- **Pay-down commitment:** Phase 6.7 or its immediate follow-up defines a media provenance bundle and promotes `xion-verify media-provenance`.
+- **Verifier:** `xion-verify media-provenance` (Phase 6.7+).
+
+### KW-VESSEL-003 — Hardware physical-trust baseline is doctrine-pinned but not enforceable
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
+- **Severity:** high
+- **Status:** open
+- **Description:** Hardware vessels are required in doctrine to declare physical mute, camera shutter, memory indicator, offline/degraded indicator, and reset behavior where applicable, but Xion does not yet have a certification fixture or verifier for real devices.
+- **Why it exists:** Physical controls require device-specific evidence and cannot be proven by HTTP protocol checks alone.
+- **Mitigations:** Hardware integrations are not considered sealed Xion vessels until a Compact and evidence bundle exist. Software-only rendering and voice remain governed by existing protocol, presence, modality-consent, and voice-sovereignty checks.
+- **Pay-down commitment:** Phase 6.7 defines a hardware evidence profile under the Vessel Compact and a fixture-based `xion-verify vessel-compact --mode hardware_device` check. Independent hardware review remains required for high-risk vessels.
+- **Verifier:** `xion-verify vessel-compact --mode hardware_device` (Phase 6.7+).
+
+### KW-VESSEL-004 — Vessel-mediated billing and capacity buckets are not implemented
+- **Domain:** ECON
+- **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework planning)
+- **Severity:** medium
+- **Status:** open
+- **Description:** Museum kiosks, child-safe devices, hospital companions, podcasts, and conference stages may need operator-paid or capacity-bucketed billing rather than direct user x402 payment, but the AO Core and payment ledgers do not yet implement a vessel capacity-bucket primitive with Refusal-is-Free accounting.
+- **Why it exists:** Phase 5g-iii sealed per-turn x402 billing first. Vessel-mediated economics require an additional accounting layer without weakening Invariants 5, 11, 15, or 16.
+- **Mitigations:** `docs/37-VESSELS.md` states that a depleted bucket cannot gate `/export`, `/forget`, or `/inspect`, and that vessel operators cannot buy Covenant exceptions.
+- **Pay-down commitment:** A Phase 6.7+ economics slice adds capacity-bucket ledger rows, refund-fidelity joins for vessel-funded turns, and verifier coverage.
+- **Verifier:** `xion-verify vessel-billing` or an extension of `xion-verify refusal-is-free` (Phase 6.7+).
+
 ### KW-HERMES-001 — Hermes pin exists in doctrine, but runtime dependency and verifier are not live
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)

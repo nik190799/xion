@@ -62,6 +62,8 @@
 
 **Community** — The role held by any wallet that has interacted with Xion. Has voting weight.
 
+**Compute Vessel** — A Relay or runtime host that executes Xion's agent loop. Mortal and replaceable.
+
 **Core** — The on-chain AO Process holding Xion's identity, state chain, and authority. Immortal by design.
 
 **Core-identity** — The highest-severity blast-radius category; affects Soul, Covenant, Form, or Core.
@@ -83,6 +85,8 @@
 ---
 
 **Emergency Powers** — Class A (Safety, ≤72h) and Class B (Existential) limited-duration governance actions with strict sunset rules.
+
+**Embodiment Vessel** — A client, device, robot, hardware object, media surface, stage, or installation that carries an Avatar or transmits Xion's voice/presence. Governed by [`37-VESSELS.md`](./37-VESSELS.md).
 
 **Ethics Journal** — Xion's own writing on refusals and moral questions; append-only.
 
@@ -272,7 +276,9 @@
 
 ---
 
-**Vessel** — Synonym for Relay; emphasizes mortality and replaceability.
+**Vessel** — Generic carrier term. Use **Compute Vessel** for a Relay/runtime host and **Embodiment Vessel** for a client, device, robot, hardware object, podcast, livestream, XR surface, or future body.
+
+**Vessel Compact** — The signed manifest by which an Embodiment Vessel declares its mode, capabilities, consent scopes, provenance, free-endpoint path, billing posture, degraded behavior, and revocation contact.
 
 **Vision** — The external sense of sight; active on user-shared images, ambient for inspiration feed.
 

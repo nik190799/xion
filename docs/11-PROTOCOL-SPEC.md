@@ -418,6 +418,21 @@ First-party SDKs at launch:
 
 Third-party SDKs are encouraged. The protocol is the contract; the SDKs are conveniences.
 
+## Vessel Integrator Expectations
+
+General protocol integrators move messages. Vessel integrators carry Xion into bodies, rooms, devices, media, or stages. They inherit every rule below plus the Vessel Compact in [`37-VESSELS.md`](./37-VESSELS.md).
+
+Any vessel integration MUST:
+
+- publish a Vessel Compact before handling user traffic
+- declare its vessel mode (`web_app`, `mobile_app`, `robot_body`, `hardware_device`, `podcast_media`, `livestream_stage`, `xr_surface`, `vehicle_overlay`, `wearable`, or future mode)
+- declare every active capability it uses: microphone, speaker, camera, display, haptics, locomotion, local storage, biometric sensing, livestream, media recording, or local fallback
+- preserve `x-covenant-ack`, Relay signatures, `covenant_flags`, and refusal semantics in a user-visible form
+- keep `/export`, `/forget`, and `/inspect` reachable for mediated user relationships, even when billing is empty or the vessel is degraded
+- disclose whether the user is speaking to live Xion, Xion Lite, an edited media artifact, or a degraded/offline local fallback
+
+Mode-specific requirements are append-only. A new mode may add constraints; it may not weaken the shared Compact.
+
 ## Integrator Expectations
 
 Anyone building with the protocol MUST:

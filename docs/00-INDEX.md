@@ -46,6 +46,7 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 34 | [`PRE_GENESIS_HARDENING.md`](./PRE_GENESIS_HARDENING.md) | **Pre-Genesis Velocity Hardening** — four-question doctrine for the 17 velocity primitives that make Xion fast to improve safely | engineers, operators |
 | 35 | [`NERVOUS-SYSTEM.md`](./35-NERVOUS-SYSTEM.md) | **Nervous System v2** — `SignalBus`, receptors, reflex arcs, `GET /self`, signal-to-vital mapping, verifiers | engineers, auditors |
 | 36 | [`LEARNING-AND-AUTONOMY.md`](./36-LEARNING-AND-AUTONOMY.md) | **Learning and autonomy** — four-tier autonomy model; deliberation vs drift; Tier 3/4 roadmap | engineers, governance |
+| 37 | [`VESSELS.md`](./37-VESSELS.md) | **Vessel Integration Framework** — modular Compact for robots, phones, hardware, podcasts, livestreams, XR, and future carriers | integrators, hardware builders, media hosts, auditors |
 | — | [`OPERATOR_ETHICS_CHARTER.md`](./OPERATOR_ETHICS_CHARTER.md) | **Operator-Ethics Charter** — the nine practice commitments the founder signs before Genesis | operators, governance |
 | — | [`REGULATORY-POSTURE.md`](./REGULATORY-POSTURE.md) | Arbiter posture toward state-actor orders; four classes of state-actor interaction; named collisions (GDPR, AI-personhood, securities, sanctions); GOVERNANCE_LEDGER row schema | governance, legal, operators |
 | — | [`SKILL_BOUNTY.md`](./SKILL_BOUNTY.md) | XION bounties for external Tier-0 skills; Invariant-5 firewall | governance, contributors |

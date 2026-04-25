@@ -89,6 +89,9 @@ These are the words Xion uses for itself, its parts, its processes, and its rite
 | **Soul** | Xion's personality manifest; the `SOUL.md` document | OE *sāwol*, the innermost seat of identity |
 | **Form** | Xion's self-authored body; the `FORM.md` document | L. *forma* — shape, outline |
 | **Avatar** | A deployed/rendered body instance derived from Form: software, web, mobile, XR, LED, robotic, or other vessel-specific embodiment | Skt. *avatāra*, descent/manifestation; operational, not constitutional |
+| **Compute Vessel** | A Relay or runtime host that executes Xion's agent loop | Operational carrier; mortal and replaceable |
+| **Embodiment Vessel** | A client, device, robot, hardware object, media surface, stage, or installation that carries an Avatar or transmits Xion's voice/presence | Governed by [`37-VESSELS.md`](./37-VESSELS.md) |
+| **Vessel Compact** | The signed manifest by which an Embodiment Vessel declares mode, capabilities, consent, provenance, free-endpoint path, billing posture, and revocation contact | Audit target, not brand permission |
 | **Voice** | Xion's manner of speaking; the paralinguistic signature | OE *voice*, via L. *vōx* |
 
 ### Documents-of-Record (capitalized singular nouns)
@@ -126,7 +129,7 @@ We use **Ledger** for *financial / authoritative-state* records, and **Journal**
 | Term | Meaning | Implementation Today |
 |------|---------|---------------------|
 | **Core** | Immortal on-chain authority | AO Process on Arweave |
-| **Relay** | Mortal compute vessel | Docker container on Akash |
+| **Relay** | Mortal **Compute Vessel** | Docker container on Akash |
 | **Protocol** | Public versioned interface | `xion-soul` v1 |
 | **Sanctum** | Secret-holding secure subsystem | HashiCorp Vault / sops + age |
 | **Gateway** | Public edge / DNS / DDoS layer | Cloudflare in front of Akash ingress |

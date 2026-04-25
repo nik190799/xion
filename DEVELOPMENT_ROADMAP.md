@@ -39,7 +39,9 @@ flowchart LR
   P6_5 --> P6_5_done["Voice Provider Registry<br/>Whisper+Piper+LiveKit floor<br/>Vapi/ElevenLabs as overlays<br/>verify voice-sovereignty live"]
   P6_5 --> P6_6[Phase 6.6: Cognitive Substrate + Casting Pipeline<br/>Hermes pin, Agent Souls, allowlist, cast verifier]
   P6_6 --> P6_6_done["HERMES_TOOL_ALLOWLIST<br/>AGENT_SOULS<br/>AGENT_CAST_LEDGER<br/>verify hermes-runtime + agent-souls + agent-cast"]
-  P6_6 --> MACRO_B[Macro Phase 6 Epic B<br/>Akash Relay + discovery]
+  P6_6 --> P6_7[Phase 6.7: Vessel Integration Framework<br/>Vessel Compact + modular modes]
+  P6_7 --> P6_7_done["docs/37-VESSELS.md<br/>vessel-compact/media-provenance/registry stubs named<br/>robot + phone + hardware + media modes"]
+  P6_7 --> MACRO_B[Macro Phase 6 Epic B<br/>Akash Relay + discovery]
 ```
 
 ---
@@ -1105,6 +1107,40 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 - Run a substrate-rotation drill across the cast pool (at minimum: hosted provider -> open-weights floor -> hosted provider) and record the result in `docs/SUBSTRATE-RESILIENCE.md`.
 
 **KW pay-down on close.** Closes or narrows `KW-HERMES-001`, `KW-AGENT-SOULS-001`, `KW-CASTING-001`, `KW-MEMORY-HERMES-001`, and `KW-COGNITION-ARBITER-BOUNDARY-001`.
+
+---
+
+## Phase 6.7 — Vessel Integration Framework
+
+**Goal.** Xion can be integrated into many bodies and media surfaces without fragmenting identity or weakening the Covenant. Robots, phones, hardware devices, podcasts, livestream stages, XR surfaces, wearables, vehicle overlays, and future carriers all inherit one shared Compact, then add mode-specific requirements as append-only modules.
+
+**Why after Phase 6.6.** Phase 6.4 made presence emitters real. Phase 6.5 makes voice sovereign. Phase 6.6 pins the Cognitive Substrate and Agent Souls. Vessels sit one layer outside those surfaces: they do not define Xion's mind, voice, or Form; they carry those outputs into software, hardware, rooms, and media. Shipping vessel doctrine earlier would either duplicate the voice/presence work or invite integrations before the cognition boundary is sealed.
+
+**Lands when ready — doctrine.**
+- `docs/37-VESSELS.md` defines the shared Vessel Compact, modular mode profiles, media provenance rules, vessel-mediated billing posture, offline/degraded behavior, revocation/disavowal posture, and non-goals.
+- `docs/06-FORM-AND-PRESENCE.md` points from Form/Avatar/Vessel vocabulary to the Compact.
+- `docs/11-PROTOCOL-SPEC.md` adds Vessel Integrator Expectations on top of the general integrator expectations.
+- `docs/35-NERVOUS-SYSTEM.md` names vessel receptors/effectors as bus-level extensions, not Core edits.
+- `docs/36-LEARNING-AND-AUTONOMY.md` places vessel mode additions in Tier 3 or higher unless they are purely local rendering changes.
+- `docs/12-LEXICON.md` and `docs/99-GLOSSARY.md` disambiguate Compute Vessel from Embodiment Vessel.
+
+**Lands when ready — schema and verifier stubs.**
+- `docs/schemas/vessel-compact.yaml` mirrors the Compact after the field set stabilizes.
+- `xion-verify vessel-compact` starts as an honest `NOT_YET_SEALED` stub, then promotes when a manifest parser and reference Compact exist.
+- `xion-verify media-provenance` verifies signed podcast, livestream, audio/video, and AR bundles against Relay keys, Covenant hash, Core lineage, and edit history.
+- `xion-verify vessel-registry` verifies append-only vessel attestations and disavowals; it does not grant licenses or become a central approval gate.
+
+**Mode discipline.** New vessel modes are append-only modules on top of the shared Compact. A mode may add requirements for microphones, cameras, haptics, locomotion, biometric sensing, storage, livestreaming, or local fallback. A mode may not weaken `/forget`, `/export`, `/inspect`, refusal visibility, provenance, billing firewall, or disavowal posture.
+
+**Non-goals.**
+- No `Covenant Lite` mode for manufacturers or media hosts.
+- No private branded fork that claims to be Xion.
+- No hidden suppression of `451`, `402`, `429`, `covenant_flags`, or Arbiter refusal explanations.
+- No vessel-local cache exempt from `/forget`.
+- No claim that PSTN phone-number access is decentralized; PSTN remains an optional centralized overlay.
+- No direct safety-critical robot or vehicle control under this framework.
+
+**KW pay-down on close.** Narrows `KW-VESSEL-001`, `KW-VESSEL-002`, `KW-VESSEL-003`, and `KW-VESSEL-004` once the Compact schema, media provenance verifier, hardware physical-trust baseline, and vessel-mediated billing primitive are live.
 
 ---
 
