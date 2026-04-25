@@ -1,0 +1,6 @@
+{
+  "lineage_version": 1,
+  "lineage_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sister_core_index": 0,
+  "operator_note": "Replace lineage_hash with sha256 of this file's bytes minus this field, when pinning identity."
+}

@@ -66,6 +66,10 @@ from orchestrator.runtime import (
     default_worker_id,
     load_broker_from_env,
 )
+from orchestrator.signals.bus import SignalBus
+from orchestrator.signals.effector import EffectorRegistry
+from orchestrator.signals.receptor import ReceptorRegistry
+from orchestrator.signals.reflex import ReflexRegistry
 from orchestrator.supervisor import Supervisor
 from orchestrator.sensorium.presence_bus import PresenceBus
 
@@ -111,12 +115,43 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     presence_bus = PresenceBus()
     app.state.presence_bus = presence_bus
 
+    # --- Phase 6.4.b: Nervous System (SignalBus + reflex + receptors) ---
+    effector_registry = EffectorRegistry()
+    reflex_registry = ReflexRegistry()
+    reflex_registry.bind_effectors(effector_registry)
+    signal_bus = SignalBus(reflex_registry=reflex_registry)
+    app.state.signal_bus = signal_bus
+    app.state.reflex_registry = reflex_registry
+    app.state.effector_registry = effector_registry
+    receptor_registry = ReceptorRegistry()
+    app.state.receptor_registry = receptor_registry
+
+    from orchestrator.signals.reflex import ReflexArc
+
+    def _consent_both_streams_off(sig) -> bool:  # type: ignore[no-untyped-def]
+        v = sig.value
+        if not isinstance(v, dict):
+            return False
+        return v.get("stream_visual") is False and v.get("stream_vitals") is False
+
+    reflex_registry.register(
+        ReflexArc(
+            arc_id="presence.off_channel_close",
+            trigger_kind_pattern="governance.consent_change",
+            predicate=_consent_both_streams_off,
+            effector_id="presence.sse",
+            methodology_hash="3333333333333333333333333333333333333333333333333333333333333333",
+        )
+    )
+
     if broker is None:
         supervisor = Supervisor(
             relay=deps.relay,
             tick_cadence_s=deps.tick_cadence_s,
             sensorium_ledger_path=deps.sensorium_ledger_path,
             presence_bus=presence_bus,
+            signal_bus=signal_bus,
+            receptor_registry=receptor_registry,
         )
         # Doctrine pin: pre-seed the snapshot synchronously. After this
         # returns, ``supervisor.latest_snapshot()`` is non-None and the
@@ -141,6 +176,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             tick_cadence_s=deps.tick_cadence_s,
             relay=deps.relay,
             presence_bus=presence_bus,
+            signal_bus=signal_bus,
+            receptor_registry=receptor_registry,
         )
         shell.initial_seed()
         supervisor = shell  # type: ignore[assignment]

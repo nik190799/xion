@@ -28,7 +28,7 @@ content-bearing field added to ``SensoriumState``.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -241,6 +241,21 @@ class VitalsResponse(BaseModel):
     domains: list[VitalDomainResponse] = Field(
         description="The eight vital domains."
     )
+
+
+# ----------------------------------------------------------------- /self
+
+
+class SelfResponse(BaseModel):
+    """Phase 6.4.b self-knowledge aggregate (topography + sensorium + vitals + governance)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    topography: dict[str, Any] = Field(description="Worker, lineage, inference, and API surface signals.")
+    sensorium: dict[str, Any] = Field(description="Latest bus-backed legacy sense projections.")
+    vitals: dict[str, Any] = Field(description="Composite vitals (domains list).")
+    governance: dict[str, Any] = Field(description="Open KW estimate and roadmap pointers.")
+    as_of_utc_ns: int = Field(ge=0, description="Wall clock at assembly time.")
 
 
 # ------------------------------------------------------------------ /chat

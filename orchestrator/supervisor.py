@@ -68,6 +68,8 @@ from orchestrator.sensorium.ledger import append_tick_commit
 
 if TYPE_CHECKING:
     from orchestrator.relay import Relay
+    from orchestrator.signals.bus import SignalBus
+    from orchestrator.signals.receptor import ReceptorRegistry
 
 
 _DEFAULT_TICK_CADENCE_S = 10.0
@@ -126,6 +128,8 @@ class Supervisor:
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
         publish: Callable[[Mapping[str, Any]], None] | None = None,
         presence_bus: Any | None = None,
+        signal_bus: "SignalBus | None" = None,
+        receptor_registry: "ReceptorRegistry | None" = None,
     ) -> None:
         if tick_cadence_s <= 0:
             raise ValueError("Supervisor: tick_cadence_s must be > 0")
@@ -155,6 +159,13 @@ class Supervisor:
         self._baseline_drift_ns = self._clock_ns() - self._monotonic_ns()
 
         self._presence_bus = presence_bus
+        self._signal_bus = signal_bus
+        if receptor_registry is None:
+            from orchestrator.signals.receptor import ReceptorRegistry
+
+            self._receptor_registry = ReceptorRegistry()
+        else:
+            self._receptor_registry = receptor_registry
 
         # Degraded-since bookkeeping, stored as wall-clock UTC ns so the
         # Phase-5e state machine (KW-SUPERVISOR-001) can serialise it
@@ -203,14 +214,31 @@ class Supervisor:
         it before re-raising so operators get a clear signal.
         """
         state = self._build_sensorium_state()
+        from orchestrator.signals.receptor import ReceptorContext
+
+        ctx = ReceptorContext(state=state, extra={})
+        sig_list: list = []
+        for r in self._receptor_registry.instances():
+            try:
+                sig_list.extend(r.tick(ctx))
+            except Exception as exc:  # noqa: BLE001
+                if self._signal_bus is not None:
+                    self._signal_bus.report_receptor_failure(r.receptor_id, exc)
+        accepted: list
+        if self._signal_bus is not None:
+            accepted = self._signal_bus.publish(sig_list)
+        else:
+            accepted = sig_list
+        sig_payload = [s.to_dict() for s in accepted] if accepted else None
         append_tick_commit(
             self._sensorium_ledger_path,
             state=state,
             relay_id=self._relay.relay_id,
+            signals=sig_payload,
         )
         with self._snapshot_lock:
             self._latest_snapshot = state
-            
+
         if getattr(self, "_presence_bus", None) is not None:
             try:
                 self._presence_bus.publish(state)

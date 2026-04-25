@@ -76,13 +76,18 @@ async def get_presence_stream(
 
         try:
             while True:
-                # Wait for next payload from any active stream
+                consent = _get_consent(principal_id)
+                serve_visual = consent.stream_visual and bool(visual)
+                serve_vitals = consent.stream_vitals and bool(vitals)
                 if not serve_visual and not serve_vitals:
+                    for t in tasks:
+                        t.cancel()
                     yield "event: closed\ndata: {}\n\n"
                     break
-
-                payload = await queue.get()
-                # SSE format
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    continue
                 yield f"data: {payload}\n\n"
         finally:
             for t in tasks:

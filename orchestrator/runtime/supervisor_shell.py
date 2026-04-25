@@ -144,6 +144,8 @@ class BrokerSupervisorShell:
         relay: "Relay",
         follower_poll_s: float = _DEFAULT_FOLLOWER_POLL_S,
         presence_bus: Any | None = None,
+        signal_bus: Any | None = None,
+        receptor_registry: Any | None = None,
     ) -> None:
         if not worker_id:
             raise ValueError("worker_id must be non-empty")
@@ -160,6 +162,8 @@ class BrokerSupervisorShell:
         self._tick_cadence_s = float(tick_cadence_s)
         self._relay = relay
         self._presence_bus = presence_bus
+        self._signal_bus = signal_bus
+        self._receptor_registry = receptor_registry
 
         self._stop_event = threading.Event()
         self._role_lock = threading.Lock()
@@ -383,6 +387,8 @@ class BrokerSupervisorShell:
             sensorium_ledger_path=self._sensorium_ledger_path,
             publish=lambda payload: self._broker.publish_snapshot(payload),
             presence_bus=self._presence_bus,
+            signal_bus=self._signal_bus,
+            receptor_registry=self._receptor_registry,
         )
 
 

@@ -54,7 +54,22 @@ def post_consent(
     
     # Write to append-only JSONL
     write_consent(store_path, principal_id, consent.model_dump())
-    
+
+    bus = getattr(req.app.state, "signal_bus", None)
+    if bus is not None:
+        from orchestrator.sensorium.receptors._util import sense_signal
+
+        bus.publish(
+            [
+                sense_signal(
+                    kind="governance.consent_change",
+                    receptor_id="memory_consent",
+                    value=consent.model_dump(),
+                    methodology_hash="2222222222222222222222222222222222222222222222222222222222222222",
+                )
+            ]
+        )
+
     return consent
 
 __all__ = ["router", "ModalityConsent"]

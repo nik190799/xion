@@ -257,10 +257,14 @@ def append_tick_commit(
     *,
     state: SensoriumState,
     relay_id: str,
+    signals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Append a ``tick_commit`` row pinning the canonical hash of
     ``state``. Useful for forensic continuity of the Sensorium's
     observed readings without publishing the state bytes themselves.
+
+    Phase 6.4.b: optional ``signals`` carries JSON-serialised ``Signal`` dicts
+    for the Nervous System v2 bus (dual-write with legacy ``snapshot_hash``).
     """
     body: dict[str, Any] = {
         "as_of_utc_ns": int(state.as_of_utc_ns),
@@ -271,6 +275,8 @@ def append_tick_commit(
         "correlation_id": None,
         "relay_id": str(relay_id),
     }
+    if signals is not None and len(signals) > 0:
+        body["signals"] = signals
     return _append_row(path, body)
 
 
@@ -376,6 +382,30 @@ def verify_chain(path: Path) -> tuple[int, str]:
                 raise ChainBroken(
                     f"seq={seq}: event_type=tick_commit requires distress_score=null"
                 )
+            sigs = row.get("signals", None)
+            if sigs is not None:
+                if not isinstance(sigs, list):
+                    raise ChainBroken(
+                        f"seq={seq}: tick_commit `signals` must be a list, got {type(sigs).__name__}"
+                    )
+                for j, s in enumerate(sigs):
+                    if not isinstance(s, dict):
+                        raise ChainBroken(
+                            f"seq={seq}: signals[{j}] must be object, got {type(s).__name__}"
+                        )
+                    for k in (
+                        "kind",
+                        "source",
+                        "value",
+                        "timestamp_utc_ns",
+                        "methodology_hash",
+                        "confidence",
+                        "schema_version",
+                    ):
+                        if k not in s:
+                            raise ChainBroken(
+                                f"seq={seq}: signals[{j}] missing {k!r}"
+                            )
 
         # correlation_id is a presence-optional field; type-check if present.
         corr = row.get("correlation_id")

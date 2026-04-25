@@ -48,6 +48,7 @@ from .lifespan import lifespan
 from .me import router as me_router
 from .memory import router as memory_router
 from .presence import router as presence_router
+from .self_endpoint import router as self_router
 from .models import DriveResponse, HealthResponse, SensoriumResponse, VitalsResponse
 from .pricing import register_pricing_route
 from .web_client import (
@@ -250,8 +251,14 @@ def create_app(deps: AppDeps) -> FastAPI:
         dependencies=[Depends(admission_dependency)],
     )
     def get_vitals() -> dict[str, Any]:
+        from orchestrator.sensorium.topography_emit import ensure_mapping_hydration
         from orchestrator.vitals import get_composite_vitals
-        domains = get_composite_vitals()
+
+        bus = getattr(app.state, "signal_bus", None)
+        if bus is not None:
+            ensure_mapping_hydration(bus)
+        st = _require_snapshot(app)
+        domains = get_composite_vitals(bus=bus, state=st)
         return {"domains": [d.__dict__ for d in domains]}
 
     register_pricing_route(app)
@@ -260,6 +267,7 @@ def create_app(deps: AppDeps) -> FastAPI:
     app.include_router(me_router)
     app.include_router(memory_router)
     app.include_router(presence_router)
+    app.include_router(self_router)
 
     # --- Phase 5g-v: optional web-client mount ---------------------
     # Registered last so /app/* cannot shadow any admission-gated API
