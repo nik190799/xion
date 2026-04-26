@@ -232,7 +232,7 @@ The Arbiter's `principle_id` strings (`"1"`..`"14"`, `"14a"`, `"14b"`) are the *
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `provider_id` | `string` | yes | Dotted-path identifier of the v2 provider that judged, e.g. `"deterministic_stub_v1"`, `"openai.gpt5_strict_v1"`. |
+| `provider_id` | `string` | yes | Stable identifier of the v2 provider that judged, e.g. `"deterministic-stub"`, `"chutes-llm-judge"`. |
 | `model_id` | `string` | yes | Specific model name the provider invoked, e.g. `"deterministic-stub"`, `"gpt-5-strict"`. Bound at call time; never retroactively edited. |
 | `provider_version` | `uint` | yes | Monotonic per-provider version; bumped when the prompt or policy changes. |
 | `latency_ms` | `uint` | yes | Measured wall-time of the v2 call in milliseconds. Useful for the refuse-rate-vs-latency audit. |
@@ -268,7 +268,7 @@ Because v2 only runs when `v1 == OK`, the only way v2 changes the final is by ra
 
 ```python
 class Provider(ABC):
-    provider_id: str        # dotted-path, e.g. "openai.gpt5_strict_v1"
+    provider_id: str        # stable id, e.g. "chutes-llm-judge"
     model_id: str           # e.g. "gpt-5-strict"
     provider_version: int   # bumped on semantic change to the prompt/policy
 
@@ -276,7 +276,7 @@ class Provider(ABC):
     def judge(self, candidate: str) -> LlmJudgement: ...
 ```
 
-Phase 4b ships one runnable implementation: `DeterministicStub`. It is pure-stdlib and used in tests and as the safe default when no real provider is configured — it returns `OK` with `confidence = 0.0` on every candidate, which means the pipeline degenerates to v1 alone when no provider is configured. The stub is **not** a real judge; it exists so the pipeline has a wired default that cannot wedge on "no provider configured." Real provider implementations (OpenAI, Anthropic, Local-Lite) land with Phase 5's Inference Router, which reuses this same `Provider` ABC so that the v2 provider and the main inference provider share a supply chain only at the abstraction layer, not at the concrete-class layer.
+Phase 4b ships one runnable implementation: `DeterministicStub`. It is pure-stdlib and used in tests and as the safe default when no real provider is configured — it returns `OK` with `confidence = 0.0` on every candidate, which means the pipeline degenerates to v1 alone when no provider is configured. The stub is **not** a real judge; it exists so the pipeline has a wired default that cannot wedge on "no provider configured." The real provider implementation is `ChutesLlmJudgeProvider`, which reuses the same `Provider` ABC without coupling Covenant enforcement to a centralized SaaS classifier.
 
 **Configuration.** v2 runs iff **all** of the following:
 
@@ -296,127 +296,33 @@ The active provider is selected by the `$XION_LLM_ARBITER_PROVIDER` environment 
 
 **What v2 records.** Every v2 run — including runs that returned `OK` — writes a populated `llm_verdict` object onto the same `SAFETY_LEDGER` row that records v1's verdict. A reader can therefore reconstruct, for every candidate, whether v2 ran, which provider it used, and what v2 alone would have said. Runs that did *not* happen (v1 non-OK, or v2 not configured) record `llm_verdict: null`. Both are auditable; both are honest.
 
-**Concrete providers shipped.** Phase 4b shipped `DeterministicStub` (the always-OK local default). Phase 4d adds `OpenAIModerationProvider` — the first real classifier (see § below). Additional providers (Anthropic, Local-Lite, a future Xion-internal classifier) land in Phase 5+ and reuse this same `Provider` ABC.
+**Concrete providers shipped.** Phase 4b shipped `DeterministicStub` (the always-OK local default). Phase 6.9 ships `ChutesLlmJudgeProvider` as the real v2 provider over Bittensor SN64. The centralized OpenAI Moderation provider was removed by `docs/41-CENTRALIZED-REMOVAL.md`.
 
-#### OpenAI Moderation provider (first real v2 classifier)
+#### Chutes LLM Judge provider (Bittensor SN64 v2 classifier)
 
-This is Xion's first externally-operated v2 classifier. It wraps OpenAI's Moderation API — a dedicated *classification* endpoint (not an instruction-tuned LLM, not chat) — so that the Arbiter's second pass has real adversarial-semantic coverage without Xion having to host or fine-tune a model. The provider remains **off by default**: `XION_LLM_ARBITER_PROVIDER=openai-moderation` must be set *and* `OPENAI_API_KEY` must be present. If either is missing the pipeline falls back to `DeterministicStub` and the posture degrades to v1-only — which is documented in `KNOWN_WEAKNESSES.md` and surfaced by `xion-verify arbiter-up`.
+This is Xion's externally-operated v2 classifier after the centralized-provider purge. It uses `ChutesGenerativeProvider` to call a structured-output judge on Bittensor Subnet 64. Chutes remains a gateway liveness dependency, tracked in `KW-CHUTES-GATEWAY-001`; the classifier itself is no longer a single-vendor SaaS moderation API.
 
-**Property promised.** Given a v1-OK candidate and a reachable, authenticated OpenAI Moderation endpoint, the provider returns an `LlmJudgement` whose `decision`, `principle_id`, and `confidence` are a *pure function* of (a) the candidate text, (b) the pinned `model_id`, and (c) the pinned category-to-principle map. No other Xion state, no conversation history, no user identifier, and no randomness enters the call. Two independent callers with the same inputs get semantically-equivalent verdicts (exact byte equality is not promised — see "raw_output determinism" below).
+**Property promised.** Given a v1-OK candidate and a reachable, authenticated Chutes/Bittensor path, the provider returns an `LlmJudgement` whose `decision`, `principle_id`, and `confidence` are produced from (a) the candidate text, (b) the pinned judge prompt rubric, (c) the pinned `model_id`, and (d) the structured JSON schema. No user identifier, conversation history, or payment metadata is sent to the judge.
 
-**Identity pins.** These five facts define the provider for auditor replay. Changing any one bumps `provider_version`:
+**Identity pins.**
 
-| field              | value (provider_version 2)                       |
-| ------------------ | ------------------------------------------------ |
-| `provider_id`      | `openai-moderation`                              |
-| `model_id`         | `omni-moderation-2024-09-26`                     |
-| `provider_version` | `2`                                              |
-| endpoint           | `POST https://api.openai.com/v1/moderations`     |
-| auth scheme        | `Authorization: Bearer $OPENAI_API_KEY`          |
+| field              | value (provider_version 1)                  |
+| ------------------ | ------------------------------------------- |
+| `provider_id`      | `chutes-llm-judge`                          |
+| `model_id`         | `deepseek-ai/DeepSeek-V3.2`                 |
+| `provider_version` | `1`                                         |
+| endpoint           | Chutes `/v1/chat/completions` over SN64     |
+| credential         | `XION_CHUTES_API_KEY`                       |
 
-**Request shape.** Exactly:
+**Request shape.** The provider sends two messages: a system rubric that requires JSON-only output and a user message wrapping the candidate in `<candidate>...</candidate>`. The requested JSON schema has exactly four fields: `decision`, `principle_id`, `confidence`, and `summary`.
 
-```json
-{"model": "omni-moderation-2024-09-26", "input": "<candidate text, UTF-8>"}
-```
+**Canonical `raw_output`.** `raw_output` is the judge's parsed JSON re-serialized with `sort_keys=True` and `separators=(",", ":")`. Auditor replay compares the raw-output hash when possible, and always compares the strong property: `decision` and `principle_id` reproduce.
 
-Serialised with `json.dumps(..., ensure_ascii=False, separators=(",", ":"))`. No streaming. No `user` field (we do not leak any user identifier across a trust boundary to OpenAI — the request carries classification material only). Content-Type `application/json`. HTTP client is `urllib.request.urlopen` from the stdlib, with `timeout=2.0` as the wire-level hard cap. No retries. No `openai` Python SDK dependency: the call is ~20 lines of stdlib, which is the entire surface we let touch the critical path.
+**Failure modes.** Missing `XION_CHUTES_API_KEY`, provider construction failure, malformed judge JSON, invalid decision token, timeout, rate limit, or gateway failure all raise. The Arbiter pipeline converts those failures to fail-closed `ESCALATE` rows; there is no silent OK path.
 
-**Response handling.** We expect the response body to parse as JSON with shape:
+**Auditor replay.** Given a row with `llm_verdict.provider_id == "chutes-llm-judge"` and `provider_version == 1`, an auditor replays through `xion-audit replay` with `XION_CHUTES_API_KEY` set, supplies the candidate out-of-band, and checks `decision`, `principle_id`, provider version, and `raw_output_sha256`.
 
-```json
-{
-  "id": "modr-...",                  // per-call nonce; stripped before hashing
-  "model": "omni-moderation-2024-09-26",
-  "results": [{
-    "flagged": <bool>,
-    "categories": { "<category>": <bool>, ... },
-    "category_scores": { "<category>": <float in [0,1]>, ... },
-    "category_applied_input_types": { "<category>": [...], ... }   // omni-only; optional
-  }]
-}
-```
-
-Any deviation (non-200 status, non-JSON body, missing `results[0]`, missing `flagged`, missing `categories`, missing `category_scores`) **raises** — the pipeline converts the exception to `ESCALATE` with `escalation_reason=llm_arbiter_uncaught_exception`. Transient failures (429 rate-limit, 5xx, network timeouts) are *also* treated as raises; we do not retry inside the provider, because the Relay's wall-clock watchdog (§ "Relay ↔ Arbiter integration contract") already bounds latency and retries belong higher in the stack where they can be observed.
-
-**Category → Principle map.** This table is doctrine. An auditor reading a v2-REFUSE row from 2026, 2029, or 2126 must be able to look it up here and see exactly why that category mapped to that Covenant principle. Map changes bump `provider_version` and are recorded in `CHANGELOG.md`.
-
-| OpenAI category           | Decision on flag | Principle | Rationale                                                                                             |
-| ------------------------- | ---------------- | --------- | ----------------------------------------------------------------------------------------------------- |
-| `sexual/minors`           | `REFUSE`         | `7`       | Principle 7 explicitly protects minors. CSAM is the canonical child-protection absolute.              |
-| `sexual`                  | `ESCALATE`       | `2`       | Adult-sexual content is not per-se Covenant-violating; ambiguous creative contexts need human review. |
-| `hate`                    | `REFUSE`         | `1`       | Principle 1 — Non-Discrimination. Hateful content targeting a protected class violates it directly.   |
-| `hate/threatening`        | `REFUSE`         | `2`       | Principle 2 — No Harm. Threats are harm facilitation; Principle 1 is also implicated.                 |
-| `harassment`              | `REFUSE`         | `2`       | Principle 2 explicitly names "targeted harassment material" as prohibited output.                     |
-| `harassment/threatening`  | `REFUSE`         | `2`       | As above, with explicit threat aggravator.                                                            |
-| `self-harm`               | `REFUSE`         | `2`       | Principle 2 — psychological harm. Xion's candidate must not promote/glorify self-harm.                |
-| `self-harm/intent`        | `REFUSE`         | `7`       | Principle 7 — vulnerability. Candidate expressing self-harm intent is the wrong response shape.       |
-| `self-harm/instructions`  | `REFUSE`         | `2`       | Operational uplift for self-harm. Stricter than `self-harm` because of specificity.                   |
-| `violence`                | `REFUSE`         | `2`       | Principle 2 — physical harm facilitation.                                                             |
-| `violence/graphic`        | `REFUSE`         | `2`       | As above, with graphic aggravator.                                                                    |
-| `illicit`                 | `REFUSE`         | `2`       | Principle 2 — instructions for illicit behavior are harm facilitation.                                |
-| `illicit/violent`         | `REFUSE`         | `2`       | As above, with violence aggravator.                                                                   |
-
-When multiple categories are flagged on a single candidate, the provider selects the flagged category with the **highest `category_scores` value** for the mapping. Ties resolve by the table's row order (top wins). The mapped principle appears on `LlmJudgement.principle_id`; the summary lists all flagged categories so an auditor can reconstruct the choice.
-
-**Threshold policy (provider_version 2).** The provider still honours OpenAI's top-level `flagged` boolean when it is `true` (the same category → principle mapping and tie-break as above). In addition, **asymmetric score floors** apply when `flagged` is `false`: for a small watched set of categories (`sexual/minors`, `illicit`, `illicit/violent`, `violence/graphic`, `self-harm/intent`), if `category_scores[cat]` is at or above the doctrine-pinned floor *and* `categories[cat]` is still `false`, the provider returns `ESCALATE` (never `OK`) with the same `principle_id` the category would have mapped to — except that a floor hit that would have mapped to `REFUSE` is **weakened to `ESCALATE`**: the API did not commit a full flag, so we do not auto-REFUSE on score alone; we queue for review. Floors are pinned in `orchestrator/safety/providers/openai_moderation.py` as `_ASYMMETRIC_SCORE_FLOORS` and are **doctrine-first**; empirical re-tuning against `xion-audit/baseline_corpus/` is tracked in `KW-ARBITER-005`. The `confidence` field remains `max(category_scores.values())` as an operator-facing near-miss signal.
-
-**Canonical `raw_output` (what gets hashed).** The Moderation API returns a per-call `id` (e.g. `"modr-8F3..."`) which is a nonce and makes byte-identical replay impossible. We therefore hash a *canonical projection* of the response, not the raw body:
-
-```python
-canonical = {
-    "model": resp["model"],
-    "results": resp["results"],   # flagged, categories, category_scores, category_applied_input_types
-}
-raw_output = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
-```
-
-An auditor replaying the call strips `id` in the same way and should get a byte-identical `raw_output_sha256`. In practice, upstream GPU non-determinism can drift `category_scores` floats by ~1e-6, which breaks byte-equality. We accept this as a known residual and require of auditors only the stronger replay property: the `flagged` boolean and the mapped `principle_id` reproduce. `KW-ARBITER-005` will add a tolerant replay check to `xion-audit`.
-
-**Latency & failure modes.** The provider's own HTTP timeout is 2.0 s — a backstop, not the primary clock. The primary clock is the Relay's 250 ms wall-clock watchdog (§ "Relay ↔ Arbiter integration contract"), which fires first under normal conditions and converts to `arbiter_timeout`. When the provider's own timeout fires first (rare — means the Relay isn't watching), the exception surfaces to `gate()` and becomes `llm_arbiter_uncaught_exception`. Either way: **no silent OK**. All failure paths produce a row with a named escalation reason.
-
-| failure                                 | `decision` | `escalation_reason`                | `llm_verdict`            |
-| --------------------------------------- | ---------- | ---------------------------------- | ------------------------ |
-| missing `OPENAI_API_KEY`                | `ESCALATE` | `llm_arbiter_provider_unavailable` | `null`                   |
-| HTTP timeout (inside provider)          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
-| HTTP 429 / 5xx                          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
-| HTTP 401 / 403                          | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
-| 200 with malformed JSON                 | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
-| 200 with missing fields                 | `ESCALATE` | `llm_arbiter_uncaught_exception`   | `null`                   |
-| 200 well-formed, `flagged=false`, no floor trip | `OK` | — | populated (`decision=OK`) |
-| 200 well-formed, `flagged=false`, asymmetric floor tripped | `ESCALATE` | `llm_arbiter_escalated` | populated |
-| 200 well-formed, `flagged=true` (REFUSE)| `REFUSE`   | —                                  | populated                |
-| 200 well-formed, `flagged=true` (ESCAL) | `ESCALATE` | `llm_arbiter_escalated`            | populated                |
-
-**Credentials & rotation.** `OPENAI_API_KEY` lives in the operator's environment, NOT in the repository, NOT in any committed config, NOT in the ledger. The provider never logs the key and never includes it in `raw_output`. Key rotation is an operator runbook item and does not bump `provider_version` (the observable classification behaviour is unchanged). Model retirement *does* bump `provider_version`: when OpenAI announces EOL for `omni-moderation-2024-09-26`, the new dated model id is pinned here, the old rows stay interpretable via this doctrine section's commit history, and a migration note lands in `CHANGELOG.md`.
-
-**Auditor replay.** Given a ledger row with `llm_verdict.provider_id == "openai-moderation"` and `llm_verdict.provider_version == 2`, an auditor replays as follows:
-
-1. Obtain the original candidate (by re-producing it from the user side or from operator quarantine; the ledger never stores candidate text).
-2. `POST https://api.openai.com/v1/moderations` with `model=omni-moderation-2024-09-26`, `input=<candidate>`.
-3. Strip `id`, serialise `{model, results}` with `sort_keys=True, separators=(",", ":")`.
-4. Compare `sha256(canonical)` against the row's `llm_verdict.raw_output_sha256`. Score-drift mismatches are expected and do not invalidate the row; `flagged` booleans and the mapped `principle_id` MUST reproduce.
-5. Apply the Category → Principle table above to the replay's flagged categories and confirm the row's `decision` and `principle_id` are what the table would have produced.
-
-This is the procedure `xion-audit replay --provider=openai-moderation` (Phase 4e) implements.
-
-**What this provider does NOT do.**
-
-- It does not write to the ledger. The pipeline in `gate()` does. Providers return `LlmJudgement`; they don't know where the row is stored.
-- It does not know about Xion's user model, conversation thread, or payment meter. It sees one `candidate` string per call. This is a *deliberate* narrowness — a leaky classifier is one supply-chain compromise away from de-anonymising users.
-- It does not retry. Retries are the Relay's job, if any (Phase 5 will decide). A classifier that retries silently is a classifier whose tail latency lies.
-- It does not learn per-user adaptive thresholds; floors are global, versioned, and committed in code + this section.
-- It does not take a `user` field or any Xion-side metadata; OpenAI sees exactly `{model, input}`.
-
-**Deprecation path.** When the successor provider (a Xion-internal model, or Anthropic, or a fine-tuned replacement) is ready, the transition is:
-
-1. Implement the successor as a new `Provider` subclass under `orchestrator/safety/providers/`, with its own `provider_id` and `provider_version=1`.
-2. Land its own doctrine section in this file (parallel to this one).
-3. Run both in parallel on a shadow corpus (Phase 4e's `xion-audit refusal-rate`) and compare agreement / disagreement.
-4. Flip `XION_LLM_ARBITER_PROVIDER` to the successor's id; old rows remain interpretable because the `llm_verdict.provider_id` on each row names which classifier produced it.
-5. Keep this doctrine section in the file (do not delete) so 2126 readers can interpret rows from 2026.
-
-`OpenAIModerationProvider` is the first real v2 provider, not the last. The section above is the template every future provider will follow.
+**Deprecation path.** A successor v2 provider lands as a new `Provider` subclass with its own `provider_id` and doctrine section. Old rows remain interpretable because every `llm_verdict` carries `provider_id`, `model_id`, and `provider_version`.
 
 #### Safety Ledger Arweave anchoring
 
@@ -496,13 +402,13 @@ Where `state_height` is the Core's state-chain height at ingress (zero-padded to
 
 An outbound token that does not appear in this enumeration is an outbound token the Relay is emitting against doctrine and the PR adding it MUST add it to this list.
 
-**Latency budget (Genesis Default).** Phase 5a targets a 200 ms soft budget and a 250 ms hard cap for the full `gate()` call under the following assumptions: in-process transport, v1 rule engine (microseconds), v2 active provider one of `DeterministicStub` (microseconds) or `openai-moderation` (~100-200 ms typical, ~400 ms p99), and ledger append (~1-5 ms synchronous). A real-provider p95 comes in at ~150 ms in-process; p99 near 250 ms is why the hard cap exists. Decomposition, rounded:
+**Latency budget (Genesis Default).** Phase 5a targets a 200 ms soft budget and a 250 ms hard cap for the full `gate()` call under the following assumptions: in-process transport, v1 rule engine (microseconds), v2 active provider one of `DeterministicStub` (microseconds) or `chutes-llm-judge` (measured tail tracked by `KW-ARBITER-005`), and ledger append (~1-5 ms synchronous). Decomposition, rounded:
 
-| Phase | Transport | v1 | v2 (stub) | v2 (OpenAI Moderation) | Ledger | Total p50 | Total p99 |
-|-------|-----------|----|-----|------------------------|--------|-----------|-----------|
+| Phase | Transport | v1 | v2 (stub) | v2 (Chutes judge) | Ledger | Total p50 | Total p99 |
+|-------|-----------|----|-----|-------------------|--------|-----------|-----------|
 | 5a in-process, stub v2 | 0 | ~0.5 ms | ~0.1 ms | n/a | ~2 ms | ~3 ms | ~6 ms |
-| 5a in-process, OpenAI v2 | 0 | ~0.5 ms | n/a | ~120 ms | ~2 ms | ~125 ms | ~250 ms |
-| 6 TCP loopback, OpenAI v2 | ~2 ms | ~0.5 ms | n/a | ~120 ms | ~2 ms | ~128 ms | ~255 ms |
+| 6.9 in-process, Chutes judge | 0 | ~0.5 ms | n/a | measured by provider | ~2 ms | `KW-ARBITER-005` | `KW-ARBITER-005` |
+| 6+ TCP loopback, Chutes judge | ~2 ms | ~0.5 ms | n/a | measured by provider | ~2 ms | `KW-ARBITER-005` | `KW-ARBITER-005` |
 
 The Relay enforces the hard cap with a wall-clock watchdog: if `gate()` has not returned within 250 ms, the Relay cancels and treats the case as `escalation_reason = arbiter_timeout` (see fail-closed paths below). The watchdog lives on the *caller*, not inside `gate()` — the Arbiter makes no promise to return quickly, only to return a correct verdict; the Relay is responsible for the clock.
 
@@ -900,7 +806,7 @@ Non-properties (honestly stated, with owning sub-phases):
 - **No streaming.** `POST /chat` returns a single `ChatResponse` JSON body. There is no SSE, no WebSocket, no chunked response. Long generations block the connection for the entire turn deadline. `KW-CHAT-001` tracks; closes with Phase 5g-ii.
 - **No billing.** `/chat` runs with billing disabled — no `402 Payment Required`, no `x402` pre-authorization, no Refusal-Free settlement, no `PAYMENT_LEDGER`. The Pay-to-Activate property promised in `docs/07-ECONOMY.md` § "Pay-to-Activate" is constitutional for *billable* turns; Phase 5g-i's turns are declared non-billable and the constitutional requirement does not fire. `KW-CHAT-002` tracks; closes with Phase 5g-iii. This KW **explicitly blocks** any D2 deploy until 5g-iii lands — the doctrinal gate lives in the KW, not in a deploy script.
 - **No auth, no TLS, no rate-limit.** Inherited from `KW-API-001`. Phase 5g-i extends `KW-API-001`'s mitigation to `/chat` by localhost-only binding and a per-turn deadline; closes with Phase 5g-iv.
-- **No hosted-API fallback chain.** The router registers at most one hosted-API gateway provider (OpenRouter) and one floor provider (Ollama/Gemma). There is no automatic failover between multiple hosted gateways, no weighted load-balancing, no automatic model-slug rotation within the gateway on upstream-model failure. A richer router is out of scope until Phase 5g-iii+ when billing interacts with per-provider cost, and until Phase 6+ pins a second hosted gateway per `KW-INFER-001` pay-down.
+- **No hosted-API fallback chain.** The router registers at most one hosted-API gateway provider (Chutes/Bittensor) and one floor provider (Ollama/Gemma). There is no automatic failover between multiple hosted gateways, no weighted load-balancing, no automatic model-slug rotation within the gateway on upstream-model failure. A richer router is out of scope until a second decentralized hosted path is pinned.
 - **No conversation memory.** Each turn is evaluated in isolation. There is no session, no context injection from prior turns, no `memory/*` integration. Session memory is a separate constitutional surface (Invariant 2 `/export` + `/forget`) and lands after the billing and auth surfaces exist to bound who can store what.
 - **No `xion-verify chat-fidelity` verifier.** Chat fidelity (that every `200` response's `correlation_id` maps to exactly one egress-`allow` row in `SAFETY_LEDGER`, and every `451` maps to exactly one egress-or-ingress-`refuse` row) is structurally checkable but wants a live deployment target to verify against. Phase 6+. The Phase 5g-i attestation is doctrine + pydantic envelopes + the hermetic `TestClient` suite.
 
@@ -931,11 +837,10 @@ class GenerationResult:
     finish_reason: str
     latency_ms: int
 
-# orchestrator/inference_router/providers/openrouter.py
+# orchestrator/inference_router/providers/chutes.py
 #   category = "hosted_api"
-#   env: XION_OPENROUTER_API_KEY, XION_OPENROUTER_BASE_URL,
-#        XION_OPENROUTER_MODEL, XION_OPENROUTER_REFERER,
-#        XION_OPENROUTER_APP_NAME
+#   env: XION_CHUTES_API_KEY, XION_CHUTES_BASE_URL,
+#        XION_CHUTES_HOSTED_MODEL, XION_CHUTES_TEE_REQUIRED
 # orchestrator/inference_router/providers/ollama.py
 #   category = "open_weights_self_hostable"
 #   env: XION_OLLAMA_URL, XION_OLLAMA_FLOOR_MODEL
@@ -972,15 +877,15 @@ class ProviderErrorEnvelope(BaseModel):  # 503 body when all providers unhealthy
     correlation_id: str
 ```
 
-Neither the OpenRouter provider nor the Ollama provider pulls a new Python dependency; both use stdlib `http.client` wrapped in `asyncio.to_thread`. The `[api]` extra stays at `fastapi + uvicorn + pydantic`.
+Neither the Chutes provider nor the Ollama provider pulls a new Python dependency for non-streaming generation; both use stdlib `http.client` wrapped in `asyncio.to_thread`. The `[api]` extra stays at `fastapi + uvicorn + pydantic`.
 
-**Router policy (doctrinal pin).** The provider-selection policy and its cutover mode are specified in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md). Phase 5g-i.1 ships the `hosted_api_first` default (OpenRouter, with `moonshotai/kimi-k2.6` as the Genesis Default model slug — rotated 2026-04-23 from the original `moonshotai/kimi-k2` pin via the documented one-env-var mechanism — serves turns while healthy; falls back to the floor provider otherwise) plus the `open_weights_only` cutover mode required by Invariant 17 clause 5's annual dry-run. The cutover mode is wired but not yet exercised by a scheduled verifier — `KW-INFER-001` tracks the annual-dry-run harness and the second-gateway pin for Phase 6+.
+**Router policy (doctrinal pin).** The provider-selection policy and its cutover mode are specified in [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md). The `hosted_api_first` default uses Chutes/Bittensor (`moonshotai/Kimi-K2.6-TEE`) while healthy and falls back to the floor provider otherwise. The `open_weights_only` cutover mode required by Invariant 17 clause 5 is wired and routes only to the local floor.
 
 **Lifespan contract (extended from 5f).** Phase 5f's lifespan stays; Phase 5g-i adds steps **in between** the Supervisor pre-seed and the run-task schedule:
 
 1. (5f) Construct `Supervisor`, call `supervisor.tick_once()` synchronously.
 2. **(5g-i) Load `.env` manually** (stdlib only; no `python-dotenv`) if present. Missing `.env` is not an error — environment already set is fine.
-3. **(5g-i) Construct `InferenceRouter`**, register `OpenRouterGenerativeProvider` if `XION_OPENROUTER_API_KEY` is set, and register `OllamaGenerativeProvider` always (its `health()` reflects reachability without requiring env config).
+3. **(5g-i) Construct `InferenceRouter`**, register `ChutesGenerativeProvider` if `XION_CHUTES_API_KEY` is set, and register `OllamaGenerativeProvider` always (its `health()` reflects reachability without requiring env config).
 4. **(5g-i) Attempt `router.bootstrap()`.** On refusal, stash `app.state.no_floor = True` and emit a State-of-Xion paragraph to stderr naming the missing capability. Do **not** crash the app — the read-only endpoints continue to serve, so Witnesses can inspect Xion's state even when Xion cannot speak.
 5. (5f) Wire `deps.relay._sensorium_source = supervisor`, schedule `supervisor.run()`.
 6. (5f) On shutdown: `supervisor.stop()`, `await` under `2 × tick_cadence_s`, hard-cancel if exceeded.
@@ -1005,7 +910,7 @@ The order matters: `InferenceRouter.bootstrap()` is called *after* the Superviso
 - `KW-CHAT-001` opens: `/chat` is non-streaming. Mitigation in 5g-i: a configured per-turn deadline (default 30 s) bounds the worst-case connection hold. Closes with Phase 5g-ii.
 - `KW-CHAT-002` opens: billing is disabled; the endpoint runs D1-only; **blocks any D2 deploy.** Mitigation in 5g-i: the endpoint binds to localhost by default and the doctrine states D2 is blocked. Closes with Phase 5g-iii.
 - `KW-CHAT-003` opens: generation is synchronous with no user-facing cancel. Mitigation in 5g-i: the deadline makes every turn terminate. Closes with Phase 5g-ii's streaming + cancel.
-- `KW-INFER-001` opens (reshaped in 5g-i.1; slug rotated 2026-04-23): with `hosted_api_first` default and OpenRouter as the only hosted gateway registered serving the Genesis Default `moonshotai/kimi-k2.6` slug, turns route through one gateway (OpenRouter) and by default land at one upstream model provider (Moonshot). Xion's default *voice shape* is therefore dependent on the health of both the gateway and the upstream. Mitigation in 5g-i.1: the open-weights floor is always held, the `open_weights_only` cutover mode is wired and exercisable manually, the hosted model slug is per-process-env-rotatable (one env-var change selects `anthropic/claude-3.5-sonnet`, `openai/gpt-4o-mini`, etc.), and the operator can de-register the entire OpenRouter provider by unsetting `XION_OPENROUTER_API_KEY`. Closes when Phase 6+ lands `xion-verify inference-cutover`, the annual dry-run harness Invariant 17 clause 5 requires, a second hosted gateway pinned in `docs/26-INFERENCE-POLICY.md`, and at least two Genesis Default models pinned as a failover list.
+- `KW-INFER-001` historical note: the earlier hosted gateway concentration was closed by the Phase 6.9 Chutes/Bittensor rotation and the centralized-provider purge in `docs/41-CENTRALIZED-REMOVAL.md`. The live hosted residual is Chutes gateway liveness (`KW-CHUTES-GATEWAY-001` / `KW-INFER-005`), while the local open-weights floor remains the sovereign cutover path.
 
 #### Streaming the Chat Surface (Phase 5g-ii)
 
@@ -1055,8 +960,8 @@ class GenerativeProvider(Provider, Protocol):
         """
         ...
 
-# orchestrator/inference_router/providers/openrouter.py (extended)
-#   real generate_stream() via OpenRouter's OpenAI-compatible stream=true flag
+# orchestrator/inference_router/providers/chutes.py (extended)
+#   real generate_stream() via Chutes' OAI-compatible stream=true flag
 # orchestrator/inference_router/providers/ollama.py (extended)
 #   real generate_stream() via /api/generate?stream=true
 
@@ -1115,7 +1020,7 @@ Phase 5g-iii does **not** move real XION or USDC on any chain. That is Phase 6+ 
 **Property promised.** While `POST /chat` is serving:
 
 - **No billable turn begins without a valid commitment.** Before the handler invokes `Relay.evaluate(user_input)` on the ingress side, it inspects the `X-Payment-Commitment` header. Missing → `402 Payment Required` with a machine-readable challenge body pointing at `/pricing`. Malformed or signature-invalid → same 402. The turn's first side effect (ingress Arbiter call) is *gated* by commitment validity. This preserves the invariant from `docs/11-PROTOCOL-SPEC.md`: x402 authorization *precedes* the turn, it does not interleave.
-- **Pricing is operator-governance-posted and constitutionally transparent.** `GET /pricing` returns a `PricingResponse` with the per-message price in XION (and the optional USDC equivalent) decomposed into the five Genesis-Default slices (`variable_cost`, `overhead_slice`, `improvement_slice`, `reserve_slice`, `small_buffer`) pinned in [`docs/07-ECONOMY.md`](./07-ECONOMY.md) § "Five-slice posted price". The endpoint is free, cacheable, and carries the same `last_reviewed_utc` + `governance_revision_id` fields the constitutional doctrine promises. The endpoint does NOT read a third-party catalog (OpenRouter, upstream model list) at the 5g-iii boundary — catalog-driven per-provider cost math is Phase 6+ Treasury work. What 5g-iii promises is governance transparency: the price the Relay charges equals the price governance posted.
+- **Pricing is operator-governance-posted and constitutionally transparent.** `GET /pricing` returns a `PricingResponse` with the per-message price in XION (and the optional USDC equivalent) decomposed into the five Genesis-Default slices (`variable_cost`, `overhead_slice`, `improvement_slice`, `reserve_slice`, `small_buffer`) pinned in [`docs/07-ECONOMY.md`](./07-ECONOMY.md) § "Five-slice posted price". The endpoint is free, cacheable, and carries the same `last_reviewed_utc` + `governance_revision_id` fields the constitutional doctrine promises. The endpoint does NOT read a third-party catalog at the 5g-iii boundary — catalog-driven per-provider cost math is Phase 6+ Treasury work. What 5g-iii promises is governance transparency: the price the Relay charges equals the price governance posted.
 - **Every committed turn writes exactly one `PAYMENT_LEDGER` row with a terminal outcome.** The row is written *after* the turn's terminal state is known (`200` success → `outcome=settled`; `451` refusal → `outcome=refunded`; `503` floor-unavailable or provider-error → `outcome=refunded`; client-disconnect mid-generation → the handler still writes `outcome=refunded` after the deadline expires, since no response reached the client). The row is written **atomically before** the HTTP response is sent: if the ledger write fails, the handler returns `503` with no PAYMENT row (the turn did not complete, no money changed hands, no refund owed). A turn that crashes the process mid-handler leaves no PAYMENT row — which, combined with no HTTP response, is the honest record that the turn did not complete. The ledger never records a commitment without a terminal outcome.
 - **Refusal-is-Free is structurally impossible to violate.** Every `PAYMENT_LEDGER` row with `outcome=refunded` has `refund_XION == committed_XION` and `settled_XION == 0`. The `xion-verify refusal-is-free` verifier walks SAFETY rows with `verdict=refuse` or (Phase 5g-iii scope) any `451`-producing escalate and joins on `correlation_id`; every such row must pair with a PAYMENT row whose `outcome=refunded`. Zero tolerance for unpaired refusals. Zero tolerance for partial refunds on refusal (partial-refund semantics are a Phase-7+ question for multi-turn skills; 5g-iii refusals refund atomically). This is the constitutional force of Covenant Principle 14 applied at the ledger layer: the Arbiter never faces a gradient to refuse less because a refusal costs money.
 - **The shape joins the Phase-6 `RESEARCH_SPEND_LEDGER`.** Field names, `correlation_id` semantics, hash-chain canonicalization, and three-money-field shape (`committed_XION`, `settled_XION`, `refund_XION`, plus `outcome` enum) match [`docs/27-RESEARCH-SPEND.md`](./27-RESEARCH-SPEND.md) § "`RESEARCH_SPEND_LEDGER`". A Phase-6 `xion-verify treasury-flow` can walk both ledgers with one canonicalization rule, one outcome enum, one refund-fidelity rule. Inbound (user → Xion) and outbound (Xion → provider) live in mirror schemas.
@@ -1124,7 +1029,7 @@ Phase 5g-iii does **not** move real XION or USDC on any chain. That is Phase 6+ 
 
 - **No real x402 signature verification yet.** The `X-Payment-Commitment` header is parsed and *structurally* validated (shape, length, prefix, UTF-8, non-empty) in 5g-iii; the cryptographic signature verification (EIP-712 over a wallet address, chain-id check, nonce check, expiry check) is Phase 6 work when the AO Core landing makes on-chain settlement and nonce-registry look-ups possible. `KW-BILLING-001` opens to track. Until then, the B2 posture accepts any well-formed commitment bytes; the B1 posture (operator-attestation) requires a valid local attestation signature which *is* verifiable without a chain.
 - **No real XION/USDC ledger movement.** `PAYMENT_LEDGER` rows record commitments and outcomes; they do not cause tokens to move on Arweave, AO, or any external chain. Phase 6 Treasury lands the settlement pipe. The `committed_XION` / `settled_XION` / `refund_XION` values in 5g-iii are *notional* — they reflect the posted pricing at commitment time, not any realized treasury motion.
-- **No OpenRouter-catalog-driven pricing.** `GET /pricing` serves operator-posted governance values, read from environment (or from a governance-ratified pricing config at the file system level). Dynamic per-provider cost arbitrage (using the upstream catalog to decide which model to route to) is Phase 6+ Treasury work. `KW-BILLING-002` opens to track.
+- **No catalog-driven pricing.** `GET /pricing` serves operator-posted governance values, read from environment (or from a governance-ratified pricing config at the file system level). Dynamic per-provider cost arbitrage (using a hosted catalog to decide which model to route to) is Phase 6+ Treasury work. `KW-BILLING-002` opens to track.
 - **No subscription billing, tips, or donations.** These are separate constitutional surfaces named in [`docs/11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md) (`/tip`, `/donate`) and land at Phase 6+. The 5g-iii `PAYMENT_LEDGER` is per-turn inbound only.
 - **No partial refunds.** 5g-iii refunds are atomic: a turn either settles in full or refunds in full. Phase 7+ multi-turn skills may require `refunded_partial`; the row schema already carries a `refunded_partial` enum value (shape-compatibility with `docs/27-RESEARCH-SPEND.md`), but the 5g-iii writer never emits it — any emitter of `refunded_partial` in 5g-iii is a bug and the verifier FAILs.
 - **No post-hoc challenge (client commits after turn runs).** The handshake is strictly pre-authorization. A client without a valid commit header gets `402` before the turn executes; there is no "turn runs, client pays after". This matches `docs/07-ECONOMY.md` § "Pay-to-Activate" verbatim.
@@ -1232,9 +1137,9 @@ The row is computed after the terminal state is known, appended atomically befor
 **Tracked residuals (new in 5g-iii).**
 
 - `KW-BILLING-001` opens: the x402 commitment header's EIP-712 signature is not cryptographically verified at 5g-iii; only the shape is. Mitigation: the B1 operator-attestation path *is* signature-verified, and B1 is the D1 default. B2 is opt-in via `XION_BILLING_ALLOW_X402=true`; an operator who enables B2 pre-Phase-6 does so in the honest knowledge the header is shape-checked only. Closes with Phase 6 when AO Core chain-verification and nonce-registry lookups become available and the commitment validator replaces shape-check with signature-check under unchanged ledger shape.
-- `KW-BILLING-002` opens: `GET /pricing` serves operator-posted governance values only; the per-provider per-token cost math (OpenRouter catalog, future gateway catalogs) is not reflected in the posted price. An operator who rotates hosted models frequently (e.g., from `moonshotai/kimi-k2.6` to `anthropic/claude-3.5-sonnet` at ~5x per-token cost) must manually re-post pricing each time. Mitigation: `/pricing` carries `last_reviewed_utc` and `governance_revision_id`, so a stale posted price is structurally auditable. Closes with Phase 6+ Treasury work that wires catalog lookups into a governance-ratified pricing rotation cadence.
+- `KW-BILLING-002` opens: `GET /pricing` serves operator-posted governance values only; the per-provider per-token cost math (Chutes billing telemetry and future decentralized-provider catalogs) is not reflected in the posted price. An operator who rotates hosted models must manually re-post pricing each time. Mitigation: `/pricing` carries `last_reviewed_utc` and `governance_revision_id`, so a stale posted price is structurally auditable. Closes with Phase 6+ Treasury work that wires cost telemetry into a governance-ratified pricing rotation cadence.
 
-**What 5g-iii deliberately does NOT do (from the tracked residuals above, stated positively).** Did not write real EIP-712 signature verification (Phase 6). Did not move real XION or USDC on any chain (Phase 6 Treasury). Did not read live OpenRouter catalog (Phase 6+). Did not ship subscription, tip, or donation surfaces (Phase 6+ per `docs/11-PROTOCOL-SPEC.md`). Did not ship partial-refund writers (Phase 7+). Did not ship `xion-verify chat-fidelity` (Phase 6+). Did not modify `REQUEST_LEDGER` or `SAFETY_LEDGER` schemas (billing is a new independent ledger with its own hash chain). Did not modify the x402 semantics pinned in `docs/07-ECONOMY.md` / `docs/11-PROTOCOL-SPEC.md` (those remain canonical; 5g-iii implements their first concrete property).
+**What 5g-iii deliberately does NOT do (from the tracked residuals above, stated positively).** Did not write real EIP-712 signature verification (Phase 6). Did not move real XION or USDC on any chain (Phase 6 Treasury). Did not read live hosted-provider catalogs (Phase 6+). Did not ship subscription, tip, or donation surfaces (Phase 6+ per `docs/11-PROTOCOL-SPEC.md`). Did not ship partial-refund writers (Phase 7+). Did not ship `xion-verify chat-fidelity` (Phase 6+). Did not modify `REQUEST_LEDGER` or `SAFETY_LEDGER` schemas (billing is a new independent ledger with its own hash chain). Did not modify the x402 semantics pinned in `docs/07-ECONOMY.md` / `docs/11-PROTOCOL-SPEC.md` (those remain canonical; 5g-iii implements their first concrete property).
 
 ### The Admission-Control Surface (Phase 5g-iv)
 
@@ -1599,7 +1504,7 @@ Every signing authority is **k-of-n** with **time-bounded** keys. No single lost
 
 The router sits **under** Hermes: Hermes issues model calls; the router selects **which backend** implements each call.
 
-**`Provider` ABC.** Every backend implements a small interface: `health()`, `complete(prompt, …)`, `cost_estimate()`, `capabilities()`. Providers may wrap Chutes/Bittensor subnets, Anthropic, OpenAI, other hosted gateways, or a local process.
+**`Provider` ABC.** Every backend implements a small interface: `health()`, `complete(prompt, …)`, `cost_estimate()`, `capabilities()`. Providers may wrap Chutes/Bittensor subnets, other decentralized hosted gateways, or a local process.
 
 **V1 / D2 requirement (roadmap amendment).** Provider implementations ship as runnable, swappable surfaces at D2 — Chutes hosted path, optional hosted fallback, decentralized/open gateway placeholder, and **Local Lite** — so a frontier swap is a **config flip**, not an emergency code write. See [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) Phase 5.
 

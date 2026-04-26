@@ -93,7 +93,7 @@ anchor = [
 #     surface (dozens of transitive pins); moving them behind this
 #     extra preserves the "core runtime deps = 0" posture declared in
 #     `dependencies = []` above.
-#   - Phase 5g-i.1 adds POST /chat plus OpenRouter (gateway) + Ollama
+#   - Phase 5g-i.1 adds POST /chat plus Chutes (gateway) + Ollama
 #     generative providers behind this same extra; both providers use
 #     stdlib http.client in asyncio.to_thread, so no additional pins
 #     land here. The operator-facing env surface is pinned in
@@ -117,7 +117,7 @@ api = [
     # Phase 5g-ii (streaming) — httpx.AsyncClient is the async HTTP
     # transport the streaming generative-provider paths use. Pinned
     # explicitly here (even though FastAPI's TestClient pulls it in
-    # transitively) because the Phase 5g-ii OpenRouter and Ollama
+    # transitively) because the Phase 5g-ii Chutes and Ollama
     # providers depend on it at runtime for native cancel-propagation
     # (closing the stream context cleanly terminates the upstream HTTP
     # request, which closes upstream billing — KW-CHAT-003 closure).

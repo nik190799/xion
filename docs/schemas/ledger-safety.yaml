@@ -35,7 +35,7 @@
 schema_version: 2
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: dda5d78f6d79a233dbd8966e2c9024f9c8ffd5587ee2dfceb48cbe7e257e5034
+source_sha256: 688f679a2d62e28e7e119657aa0fb84febfe2a22674e352ac3c5adc5f9e285cf
 
 status: canonical
 
@@ -93,7 +93,7 @@ row:
       null_when: "v2 did not run (v1 non-OK, or v2 not configured)"
       nested_object_fields:
         required:
-          - provider_id       # string; dotted-path, e.g. 'openai.gpt5_strict_v1'
+          - provider_id       # string; stable provider id, e.g. 'chutes-llm-judge'
           - model_id          # string; specific model name
           - provider_version  # uint; monotonic
           - latency_ms        # uint; wall-time of v2 call
@@ -182,15 +182,15 @@ pay_down_commitment_history:
     closed_on: 2026-04-21
   extended_thrice_in:
     phase: Phase 4d
-    artifact: docs/04-ARCHITECTURE.md § "OpenAI Moderation provider (first real v2 classifier)"
+    artifact: docs/04-ARCHITECTURE.md § "Chutes LLM Judge provider (Bittensor SN64 v2 classifier)"
     schema_version_bump: "none — field set unchanged; first real v2 provider implementation"
     no_new_fields: >-
       This tranche lands the first concrete Provider subclass behind the Arbiter v2 ABC
-      (orchestrator/safety/providers/openai_moderation.py). The ledger row shape is
+      (orchestrator/safety/providers/chutes_llm_judge.py). The ledger row shape is
       unchanged — every llm_verdict field already existed. What changed is that
-      llm_verdict.provider_id may now be "openai-moderation" (in addition to
+      llm_verdict.provider_id may now be "chutes-llm-judge" (in addition to
       "deterministic-stub") when the operator has set XION_LLM_ARBITER_PROVIDER and
-      OPENAI_API_KEY. The auditor replay procedure for that provider_id is pinned in
+      XION_CHUTES_API_KEY. The auditor replay procedure for that provider_id is pinned in
       the new doctrine section. See KW-ARBITER-001 (narrowed) and KW-ARBITER-005
       (newly opened for baseline-corpus + refusal-rate + asymmetric-thresholds).
     closed_on: 2026-04-21

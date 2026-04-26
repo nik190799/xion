@@ -759,7 +759,7 @@ The other nine threats live in [`LONG_HORIZON_THREATS.md`](./LONG_HORIZON_THREAT
 
 **What this landing shipped:**
 
-- [`orchestrator/inference_router/providers/openrouter.py`](./orchestrator/inference_router/providers/openrouter.py) code default (`_DEFAULT_MODEL = "moonshotai/kimi-k2.6"`) and two doctrinally-anchored docstring spots (header doctrine anchor; `ChatResponse.model_id` example updated to the dated snapshot).
+- [`orchestrator/inference_router/providers/openrouter.py`] code default (`_DEFAULT_MODEL = "moonshotai/kimi-k2.6"`) and two doctrinally-anchored docstring spots (header doctrine anchor; `ChatResponse.model_id` example updated to the dated snapshot).
 - [`docs/26-INFERENCE-POLICY.md`](./docs/26-INFERENCE-POLICY.md) five slug pins (Genesis Defaults table, § "The hosted-provider choice" heading and its five bullets, § "Gateway vs direct" KW-INFER-001 reshape note) plus a new three-sentence "Genesis Default rotation, 2026-04-23" paragraph. Per-token pricing differential recorded (`$0.75/M` prompt + `$3.50/M` completion for `kimi-k2.6` vs `$0.57/M` + `$2.30/M` for `kimi-k2` — ~30 % higher rack rate, neutralised for BYOK-routed operators). Context-window advance recorded (`131,072` → `262,144` tokens).
 - [`.env.example`](./.env.example) Genesis Default comment block rewritten with the rotation provenance and three new one-env-var rotation examples (including a rollback line to `moonshotai/kimi-k2` and a reasoning-forward variant `moonshotai/kimi-k2-thinking`).
 - [`docs/04-ARCHITECTURE.md`](./docs/04-ARCHITECTURE.md) three slug references updated (Router-policy pin in § "Inference Router"; `KW-INFER-001` summary in the Chat Surface KW block; `KW-BILLING-002` rotation example).

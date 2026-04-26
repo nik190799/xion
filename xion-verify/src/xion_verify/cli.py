@@ -110,6 +110,7 @@ from xion_verify.commands.spend_discipline import spend_discipline
 from xion_verify.commands.spend_posture import spend_posture
 from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.spof import spof
+from xion_verify.commands.sovereign_profile import sovereign_profile
 from xion_verify.commands.substrate_portability import substrate_portability
 from xion_verify.commands.substrates import substrates
 from xion_verify.commands.sustainability import sustainability
@@ -225,6 +226,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "spend-posture": spend_posture,
     "spend-discipline": spend_discipline,
     "inference-provider-chutes": inference_provider_chutes,
+    "sovereign-profile": sovereign_profile,
     "billing-credits-floor": billing_credits_floor,
     "chutes-topup-multisig": chutes_topup_multisig,
     "model-promotion-discipline": model_promotion_discipline,

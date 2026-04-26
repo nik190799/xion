@@ -169,14 +169,14 @@ The reason admission and x402 failures are HTTP-level but ingress-refuse is SSE-
 The handler polls `request.is_disconnected()` between chunks. On detected disconnect:
 
 1. The provider task is cancelled via `asyncio.Task.cancel()`.
-2. The provider's `httpx.AsyncClient` stream is closed — this terminates the upstream HTTP/1.1 chunked response, which signals the upstream (OpenRouter, Ollama) to stop generating and stop billing.
+2. The provider's `httpx.AsyncClient` stream is closed — this terminates the upstream HTTP/1.1 chunked response, which signals the upstream (Chutes, Ollama) to stop generating and stop billing.
 3. The handler runs the finalize tail synchronously (it is not inside the cancelled task) and writes exactly one `PAYMENT_LEDGER` row with `outcome=cancelled`, `refund_XION == committed_XION`, `settled_XION == 0`.
 4. No `done` event is emitted. The client is already gone; there is no one to receive it.
 5. No `SAFETY_LEDGER` egress row is written. Egress moderation does not run on a partial / cancelled candidate.
 
 This matches the doctrine from [`docs/29-BILLING-X402.md`](./29-BILLING-X402.md) § "Refusal is Free": a turn that did not deliver value does not bill. Cancellation is structurally equivalent to refusal for billing; the `xion-verify refusal-is-free` verifier's C2 check was extended in Phase 5g-ii to recognize `outcome=cancelled` as refund-equivalent.
 
-Why is the provider guaranteed to stop billing on cancel? Because the upstream's billing surface is the duration of the open HTTP connection. Closing the client-side `httpx` connection returns TCP FIN, which the upstream sees as "the caller has hung up," which terminates the generation and the billable work. Phase 5g-ii migrated both shipped providers (OpenRouter, Ollama) from stdlib `http.client` to `httpx.AsyncClient` precisely because the stdlib path does not propagate cancellation cleanly. The migration is a small runtime-dep addition (`httpx` is already pulled in transitively by FastAPI's `[api]` extra via `starlette.testclient`); no new top-level dependency is introduced for operators who already have the `[api]` extra installed.
+Why is the provider guaranteed to stop billing on cancel? Because the upstream's billing surface is the duration of the open HTTP connection. Closing the client-side `httpx` connection returns TCP FIN, which the upstream sees as "the caller has hung up," which terminates the generation and the billable work. The shipped hosted/floor providers (Chutes, Ollama) use `httpx.AsyncClient` for native streaming so cancellation propagates cleanly. The migration is a small runtime-dep addition (`httpx` is already pulled in transitively by FastAPI's `[api]` extra via `starlette.testclient`); no new top-level dependency is introduced for operators who already have the `[api]` extra installed.
 
 ## Reconnect posture (no reconnect)
 

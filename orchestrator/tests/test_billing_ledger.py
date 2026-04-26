@@ -41,8 +41,8 @@ def _settled_row_kwargs() -> dict:
         settled_XION=1000,
         refund_XION=0,
         posted_price_XION=1000,
-        provider_id="openrouter",
-        model_id="moonshotai/kimi-k2",
+        provider_id="chutes",
+        model_id="moonshotai/Kimi-K2.6-TEE",
         authorization_reference="b" * 64,
         source_sha256=_DUMMY_SHA,
     )
@@ -77,8 +77,8 @@ def _disabled_row_kwargs() -> dict:
         settled_XION=0,
         refund_XION=0,
         posted_price_XION=1000,
-        provider_id="openrouter",
-        model_id="moonshotai/kimi-k2",
+        provider_id="chutes",
+        model_id="moonshotai/Kimi-K2.6-TEE",
         authorization_reference="",
         source_sha256=_DUMMY_SHA,
     )
@@ -286,8 +286,8 @@ def test_verify_chain_raises_on_settled_with_refund_inconsistency(
         "settled_XION": 999,   # tamper
         "refund_XION": 1,      # tamper
         "posted_price_XION": 1000,
-        "provider_id": "openrouter",
-        "model_id": "moonshotai/kimi-k2",
+        "provider_id": "chutes",
+        "model_id": "moonshotai/Kimi-K2.6-TEE",
         "authorization_reference": "b" * 64,
         "source_sha256": _DUMMY_SHA,
     }

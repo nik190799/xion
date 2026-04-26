@@ -102,7 +102,7 @@ class Provider(ABC):
     `enabled()` / `judge()` time.
 
     `provider_id` is a short stable handle ("deterministic-stub",
-    "openai-moderation", "anthropic-claude-3-haiku"). `model_id` is
+    "chutes-llm-judge"). `model_id` is
     the specific model name the provider called. `provider_version`
     is a monotonically-increasing int that bumps on ANY observable
     behaviour change (prompt-template, model-id, scoring threshold).
@@ -232,9 +232,9 @@ _DISABLE_V2_ENV = "XION_LLM_ARBITER_DISABLED"
 def register_provider(cls: type[Provider]) -> None:
     """Register a provider class under its `provider_id`.
 
-    Real providers (e.g., a future `OpenAIModerationProvider`) should
+    Real providers (e.g., `ChutesLlmJudgeProvider`) should
     call this at import time of their own module, so a downstream
-    consumer can `import orchestrator.safety.providers.openai` and
+    consumer can `import orchestrator.safety.providers.chutes_llm_judge` and
     then select it via `XION_LLM_ARBITER_PROVIDER`. This keeps the
     registry open without coupling the core to any specific provider.
     """

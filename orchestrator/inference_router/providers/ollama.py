@@ -111,7 +111,7 @@ class OllamaGenerativeProvider:
     def health(self) -> bool:
         """Probe ``GET /api/tags`` and check the floor model is present.
 
-        Cached 30s. The cache is shorter than OpenRouter's because
+        Cached 30s. The cache is deliberately short because
         Ollama is loopback and the check is cheap; operators who start
         or stop the daemon during dev expect the next ``/chat`` to
         notice promptly.
@@ -267,7 +267,7 @@ class OllamaGenerativeProvider:
         upstream HTTP connection promptly.
 
         Falls back to the same ``GenerationResult`` terminal convention
-        as the OpenRouter streaming path: yields ``str`` chunks, then
+        as the Chutes streaming path: yields ``str`` chunks, then
         exactly one ``GenerationResult`` with ``text=""`` and the full
         metadata.
         """

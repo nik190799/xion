@@ -46,8 +46,8 @@ Coverage (21 tests):
       - ``open_weights_only`` with a healthy hosted NEVER picks hosted
 
     Secret hygiene
-      - OpenRouter provider scrubs the API key, Bearer tokens, and
-        bare sk-or-... token fragments from transport-error messages
+      - Chutes provider scrubs the API key, Bearer tokens, and
+        bare cpk_... token fragments from transport-error messages
 """
 
 from __future__ import annotations
@@ -530,29 +530,29 @@ def test_open_weights_only_never_selects_hosted(
 # -------- Secret hygiene ------------------------------------------------------
 
 
-def test_openrouter_provider_scrubs_api_key_from_error_messages(
+def test_chutes_provider_scrubs_api_key_from_error_messages(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from orchestrator.inference_router.providers.openrouter import (
-        OpenRouterGenerativeProvider,
-        OpenRouterProviderError,
+    from orchestrator.inference_router.providers.chutes import (
+        ChutesGenerativeProvider,
+        ChutesProviderError,
         _scrub,
     )
 
     # Direct scrubber exercise — three independent defences must all fire:
     #   (a) the exact instance-held key is replaced;
     #   (b) any 'Bearer <tok>' pattern is replaced;
-    #   (c) any bare 'sk-or-...' token (e.g. leaked from an upstream log) is
+    #   (c) any bare 'cpk_...' token (e.g. leaked from an upstream log) is
     #       replaced even if it is not the exact key this provider holds.
     msg = (
-        "http error body: {'auth':'Bearer sk-or-v1-abcd.EFG-HIJ_klm', "
-        "'seen_key':'sk-or-v1-DIFFERENT-fragment-99'}; key=test-secret-xyz"
+        "http error body: {'auth':'Bearer cpk_abcd.EFG-HIJ_klm', "
+        "'seen_key':'cpk_DIFFERENT-fragment-99'}; key=test-secret-xyz"
     )
     scrubbed = _scrub(msg, "test-secret-xyz")
     assert "test-secret-xyz" not in scrubbed
-    assert "sk-or-v1-abcd.EFG-HIJ_klm" not in scrubbed
-    assert "sk-or-v1-DIFFERENT-fragment-99" not in scrubbed, (
-        "bare sk-or-... tokens must be scrubbed even when not equal to the "
+    assert "cpk_abcd.EFG-HIJ_klm" not in scrubbed
+    assert "cpk_DIFFERENT-fragment-99" not in scrubbed, (
+        "bare cpk_... tokens must be scrubbed even when not equal to the "
         "exact instance-held API key — defence in depth against upstream "
         "log leakage"
     )
@@ -560,6 +560,6 @@ def test_openrouter_provider_scrubs_api_key_from_error_messages(
     assert "Bearer <redacted>" in scrubbed
 
     # Construction refuses when no key is set:
-    monkeypatch.delenv("XION_OPENROUTER_API_KEY", raising=False)
-    with pytest.raises(OpenRouterProviderError):
-        OpenRouterGenerativeProvider()
+    monkeypatch.delenv("XION_CHUTES_API_KEY", raising=False)
+    with pytest.raises(ChutesProviderError):
+        ChutesGenerativeProvider()

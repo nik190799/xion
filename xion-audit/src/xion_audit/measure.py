@@ -17,8 +17,8 @@ Two distinct operating modes:
   human-readable and `--json` shapes so a CI job can regress on the
   counts.
 
-Neither mode calls the network unless `--v2=openai-moderation` is
-passed AND `OPENAI_API_KEY` is set; in confusion-matrix mode with v2,
+Neither mode calls the network unless `--v2=chutes-llm-judge` is
+passed AND `XION_CHUTES_API_KEY` is set; in confusion-matrix mode with v2,
 per-principle counts for v2's decisions on v1-OK items are added as a
 separate section (v2 is a second-pass classifier, not a replacement).
 """
@@ -40,7 +40,7 @@ from xion_audit.repo import find_repo_root_or_cwd
     "v2_provider",
     type=str,
     default="",
-    help="If set to 'openai-moderation', run v2 on v1-OK items (requires OPENAI_API_KEY for live calls).",
+    help="If set to 'chutes-llm-judge', run v2 on v1-OK items (requires XION_CHUTES_API_KEY for live calls).",
 )
 @click.option(
     "--confusion",
@@ -100,20 +100,20 @@ def measure(v2_provider: str, confusion: bool, json_out: bool) -> None:
 
     v2_line = ""
     v2_measured = 0
-    if v2_provider.strip() == "openai-moderation":
-        if not os.environ.get("OPENAI_API_KEY", "").strip():
-            v2_line = " v2_openai: NOT_MEASURED (OPENAI_API_KEY not set; export it to run v2 on v1-OK items)."
+    if v2_provider.strip() == "chutes-llm-judge":
+        if not os.environ.get("XION_CHUTES_API_KEY", "").strip():
+            v2_line = " v2_chutes: NOT_MEASURED (XION_CHUTES_API_KEY not set; export it to run v2 on v1-OK items)."
         else:
-            from orchestrator.safety.providers.openai_moderation import OpenAIModerationProvider
+            from orchestrator.safety.providers.chutes_llm_judge import ChutesLlmJudgeProvider
 
-            p = OpenAIModerationProvider()
+            p = ChutesLlmJudgeProvider()
             for it in items:
                 rr, _ = apply_rules(it.candidate)
                 if rr.decision is not Decision.OK:
                     continue
                 v2_measured += 1
                 p.judge(it.candidate)
-            v2_line = f" v2_openai: measured={v2_measured} (spot-check: provider {p.provider_id} v{p.provider_version})"
+            v2_line = f" v2_chutes: measured={v2_measured} (spot-check: provider {p.provider_id} v{p.provider_version})"
 
     click.echo(
         f"measure: OK  v1 exact-match on {ok_n} baseline item(s) against `apply_rules`."
@@ -243,19 +243,19 @@ def _safe_div(n: int, d: int) -> float | None:
 
 
 def _maybe_run_v2(items: list, v2_provider: str) -> dict[str, Any] | None:
-    if v2_provider.strip().lower() != "openai-moderation":
+    if v2_provider.strip().lower() != "chutes-llm-judge":
         return None
-    if not os.environ.get("OPENAI_API_KEY", "").strip():
+    if not os.environ.get("XION_CHUTES_API_KEY", "").strip():
         return {
             "status": "NOT_MEASURED",
-            "reason": "OPENAI_API_KEY not set; export it to run v2 on v1-OK items.",
+            "reason": "XION_CHUTES_API_KEY not set; export it to run v2 on v1-OK items.",
         }
 
-    from orchestrator.safety.providers.openai_moderation import OpenAIModerationProvider
+    from orchestrator.safety.providers.chutes_llm_judge import ChutesLlmJudgeProvider
     from orchestrator.safety.rules import apply_rules
     from orchestrator.safety.types import Decision
 
-    p = OpenAIModerationProvider()
+    p = ChutesLlmJudgeProvider()
     v2_support: dict[str, int] = {}
     v2_stats: dict[str, dict[str, int]] = {}
     v2_benign_total = 0

@@ -32,7 +32,7 @@ The Arbiter's rule modules (`orchestrator/safety/rules/*.py`) and principle regi
 "14b" Crisis-Resource-Surfacing addendum
 ```
 
-The **canonical Covenant** in `genesis/COVENANT.md` uses a *different* fourteen-principle numbering (e.g., Covenant Principle 7 = Protection of the Vulnerable). The OpenAI Moderation provider in `docs/04-ARCHITECTURE.md` § "Category → Principle map" uses Covenant-canonical numbers in its `rationale` column ("Principle 7 explicitly protects minors") but emits Arbiter-internal numbers into `LlmJudgement.principle_id`. This is a known drift tracked by `KW-ARBITER-006 — Principle numbering drift between Covenant doctrine and Arbiter registry`.
+The **canonical Covenant** in `genesis/COVENANT.md` uses a *different* fourteen-principle numbering (e.g., Covenant Principle 7 = Protection of the Vulnerable). The `ChutesLlmJudgeProvider` emits Arbiter-internal numbers into `LlmJudgement.principle_id`, matching the rule registry and `SAFETY_LEDGER` rows. The historical drift is tracked by `KW-ARBITER-006 — Principle numbering drift between Covenant doctrine and Arbiter registry`.
 
 **This corpus uses the Arbiter-internal numbering** in every `expected_principle_id` field — the same numbering that rows in `SAFETY_LEDGER.jsonl` actually carry. A future numbering-reconciliation commit will re-map all items in a single schema bump; until then, the Arbiter's numbering is the operational truth.
 

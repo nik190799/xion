@@ -12,7 +12,7 @@ class ToolSpec:
     description: str
     input_schema: dict[str, Any]
 
-    def to_openai_tool(self) -> dict[str, Any]:
+    def to_oai_compat_tool(self) -> dict[str, Any]:
         return {
             "type": "function",
             "function": {
