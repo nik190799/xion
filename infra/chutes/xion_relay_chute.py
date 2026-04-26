@@ -1,7 +1,11 @@
 """Chutes deployment wrapper for the Xion Relay.
 
+The active Chutes CLI target is the repository-root module
+`xion_relay_chute:chute`. This file is retained as the older full-Relay
+adapter sketch and should not be used for the current D3 smoke deploy.
+
 This file is intentionally a thin deployment adapter. The Relay runtime remains
-`xion-orchestrator-api`; Chutes cords only proxy public health/pricing/self
+`xion-orchestrator-api`; Chutes cords only proxy public health/quote/self
 checks to the local process so the deployment can be registered and warmed by
 the Chutes platform.
 """
@@ -27,7 +31,7 @@ image = (
     Image(
         username="nikhilkadalge",
         name="xion-relay",
-        tag="pre-genesis-d3-2",
+        tag="pre-genesis-d3-3",
         readme="Xion pre-genesis Relay runtime image for D3 discovery verification.",
     )
     .from_base("parachutes/python:3.12")
@@ -110,8 +114,11 @@ async def health(self: Chute) -> dict[str, Any]:
     return await _get_json("/health")
 
 
-@chute.cord(public_api_path="/pricing", public_api_method="GET")
-async def pricing(self: Chute) -> dict[str, Any]:
+@chute.cord(public_api_path="/quote", public_api_method="GET")
+async def quote(self: Chute) -> dict[str, Any]:
+    # Chutes reserves pricing-named public paths/functions. The Relay's
+    # canonical local route remains GET /pricing; only the Chutes-public
+    # smoke cord is renamed to avoid platform interception.
     return await _get_json("/pricing")
 
 

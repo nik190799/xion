@@ -27,9 +27,9 @@ Codifies the Gateway Pattern as the project-wide rule for load-bearing external 
 - **`orchestrator/tests/test_modularity_invariants.py`** — adds a no-network static provider-shape guard for existing `providers/` packages.
 - **`DEVELOPMENT_ROADMAP.md`** — names Phase 6.9.2 as the first Gateway Pattern implementation slice and orders the gap closures.
 
-### D3 Chutes Relay smoke build deployed — 2026-04-25
+### D3 Chutes Relay smoke build verified — 2026-04-25/26
 
-Closes plan item B4 (Chutes Relay image build + cord pipeline alive) for `d2_d3_closure_plan_a729f812` by shipping a *honest smoke build* against the live Chutes platform. Two of the three public cords (`/health`, `/self`) are 200 OK with the deterministic envelope on a verified miner-served instance; the third cord moved from pricing-like paths to `/quote` after Chutes returned 502s for `/xpricing`.
+Closes plan item B4 (Chutes Relay image build + cord pipeline alive) for `d2_d3_closure_plan_a729f812` by shipping an *honest smoke build* against the live Chutes platform. After WSL setup was fixed and the currently deployed `pre-genesis-d3-6` image warmed successfully, all three public cords (`/health`, `/quote`, `/self`) returned 200 OK with the deterministic envelope on a verified miner-served instance.
 
 ### Why was this needed?
 
@@ -52,7 +52,9 @@ The pre-genesis Relay registry (`ledgers/RELAY_REGISTRY.json`) has placeholder r
 
 - **End-to-end cord pipeline alive.** With `pre-genesis-d3-6` deployed (image id `971ea1ac-1850-5b26-86af-bc0aa23c7f06`, version `11f8f993-2852-52a0-8c40-0eda85a5f877`) and instance `02ad3583-f329-437e-b136-00388325a6d2` (`active=True verified=True last_verified_at=2026-04-26T06:31:50Z`):
   - `GET https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai/health` → `200 OK` with `{"status":"ok","service":"xion-relay-chutes-smoke","image_tag":"pre-genesis-d3-6","endpoint":"/health", …}`.
+  - `GET …/quote` → `200 OK` with the same envelope shape and `endpoint: /quote`.
   - `GET …/self` → `200 OK` with the same envelope shape and `endpoint: /self`.
+  - `EXPECTED_IMAGE_TAG=pre-genesis-d3-6 bash scripts/verify-chute-cords.sh` passed against the warmed deployment.
   - The Chutes warmup cycle worked: the chute went `HOT`, bounty climbed (peak observed: 928), and a verified miner picked it up after a single 240-second `chutes warmup` run.
 - **Three platform-routing facts proven (each with a live build):**
   - `GET *.chutes.ai/pricing` is intercepted by the Chutes platform proxy and returns the platform's GPU pricing payload (`{tao_usd, gpu_price_estimates: {3090, 4090, 5090, …}}`) regardless of what the chute serves at `/pricing`. Confirmed against `pre-genesis-d3-5` and `pre-genesis-d3-6`.
@@ -61,8 +63,8 @@ The pre-genesis Relay registry (`ledgers/RELAY_REGISTRY.json`) has placeholder r
 
 ### What is honestly *not yet* green
 
-- **The deployed metadata now uses `/quote`, but the platform is currently returning 429 capacity responses.** The source fix is in `xion_relay_chute.py` and pinned to image tag `pre-genesis-d3-7`; the actual image rebuild is still blocked by Chutes' 24-hour image-history rate limit. The next operator step is a single `chutes build xion_relay_chute:chute --wait` once that window clears, followed by `chutes deploy`, `chutes warmup`, and `scripts/verify-chute-cords.sh`.
-- **`ledgers/RELAY_REGISTRY.json`** is not yet updated with this Chutes row, and `xion-verify discovery` is not yet promoted against it. Both remain pending until `/health`, `/quote`, and `/self` are all green on the deployed Chutes endpoint.
+- **The newer image is not available yet.** The root deploy module `xion_relay_chute.py` is the actual Chutes CLI target (`xion_relay_chute:chute`) and is pinned to image tag `pre-genesis-d3-7`, but `chutes build xion_relay_chute:chute --wait` is still blocked by Chutes' 24-hour quota: `You may only update/create 24 imagehistorys per 24 hours.` Deploying that new tag fails until the image build exists. The current green verifier result is against the warmed `pre-genesis-d3-6` smoke image.
+- **`ledgers/RELAY_REGISTRY.json`** is not yet updated with this Chutes row, and `xion-verify discovery` is not yet promoted against it. Both remain pending on the operator publication step after the final image tag decision for this smoke closure.
 - **The Chutes deploy is *not* the live Relay surface.** It is an envelope that explicitly says so (`service: "xion-relay-chutes-smoke"`). The full `orchestrator.api.app` Relay (Arbiter + Hermes + ledgers) lands in a follow-up image once an `orchestrator/api/launcher.py` constructs a real `Relay` and a real `AppDeps`.
 
 ### Changed
