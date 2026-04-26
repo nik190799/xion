@@ -9,6 +9,8 @@
 #      502s if the chute function is named ``pricing`` (its internal
 #      upstream path defaults to the function name and the worker-side
 #      Aegis layer also intercepts ``/pricing``).  Relevant on d3-6.
+#   4. The current smoke cord uses ``/quote`` to stay out of the platform's
+#      pricing namespace entirely.
 # Keep this script handy when promoting the chute through new image
 # tags so each fact stays empirically pinned, not folklore.
 set -uo pipefail
@@ -33,4 +35,5 @@ probe() {
 
 probe "platform-reserved /pricing       " "/pricing"
 probe "stale d3-5 path  /xion/pricing  " "/xion/pricing"
-probe "current cord     /xpricing      " "/xpricing"
+probe "stale d3-6 path  /xpricing      " "/xpricing"
+probe "current cord     /quote         " "/quote"

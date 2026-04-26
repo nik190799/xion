@@ -12,7 +12,7 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ### D3 Chutes Relay smoke build deployed — 2026-04-25
 
-Closes plan item B4 (Chutes Relay image build + cord pipeline alive) for `d2_d3_closure_plan_a729f812` by shipping a *honest smoke build* against the live Chutes platform. Two of the three public cords (`/health`, `/self`) are 200 OK with the deterministic envelope on a verified miner-served instance; the third cord (`/xpricing`) is diagnosed and the function-name fix is in code awaiting a 24-hour Chutes image-history rate-limit window.
+Closes plan item B4 (Chutes Relay image build + cord pipeline alive) for `d2_d3_closure_plan_a729f812` by shipping a *honest smoke build* against the live Chutes platform. Two of the three public cords (`/health`, `/self`) are 200 OK with the deterministic envelope on a verified miner-served instance; the third cord moved from pricing-like paths to `/quote` after Chutes returned 502s for `/xpricing`.
 
 ### Why was this needed?
 
@@ -22,13 +22,13 @@ The pre-genesis Relay registry (`ledgers/RELAY_REGISTRY.json`) has placeholder r
 
 - **`xion_relay_chute.py`** — replaced the previous `Popen(uvicorn …)` shape with a self-contained smoke chute that returns a deterministic envelope from three public cords:
   - `GET /health` (function `health`, internal path `/health`).
-  - `GET /xpricing` (function `xpricing` in the d3-7 source, internal path `/xpricing`).
+  - `GET /quote` (function `quote` in the d3-7 source, internal path `/quote`).
   - `GET /self` (function `self_endpoint`, internal path `/self_endpoint`).
 - **Envelope shape** — `{status: "ok", service: "xion-relay-chutes-smoke", image_tag, endpoint, timestamp, note}`. The `service` field discloses the smoke status; `image_tag` correlates a probe response to a specific Chutes image without trust.
 - **`scripts/debug-chute-d3.sh`** — one-shot WSL debug script: prints chute id / version / image / hot / bounty / instances and probes `/health` (GET + POST forms) with a Bearer token sourced from `chutes.env`.
 - **`scripts/verify-chute-import.py`** — local smoke-imports the chute module under the chutes pipx venv to catch decorator / cord-shape regressions before a Chutes build slot is consumed.
 - **`scripts/verify-chute-cords.sh`** — runs the three public probes against the deployed chute and asserts the envelope shape; `EXPECTED_IMAGE_TAG` env var lets a probe assert against the actual deployed image.
-- **`scripts/probe-pricing-variants.sh`** — cross-checks `/pricing` (platform-intercepted) against `/xpricing` (chute cord) and prints the chutes-CLI surface for the same chute.
+- **`scripts/probe-pricing-variants.sh`** — cross-checks `/pricing` (platform-intercepted), stale pricing-like variants, and the current `/quote` chute cord.
 - **`scripts/probe-xion-pricing.sh`** — five-shot retry harness used to distinguish a one-shot upstream blip from a stable platform-routing miss.
 
 ### Verified against the live platform
@@ -40,12 +40,12 @@ The pre-genesis Relay registry (`ledgers/RELAY_REGISTRY.json`) has placeholder r
 - **Three platform-routing facts proven (each with a live build):**
   - `GET *.chutes.ai/pricing` is intercepted by the Chutes platform proxy and returns the platform's GPU pricing payload (`{tao_usd, gpu_price_estimates: {3090, 4090, 5090, …}}`) regardless of what the chute serves at `/pricing`. Confirmed against `pre-genesis-d3-5` and `pre-genesis-d3-6`.
   - The two-segment public path `/xion/pricing` returns a fast (<200 ms) `502 Bad Gateway` from the platform's nginx ingress on the same instance where `/health` and `/self` are 200 OK. Five-shot retry confirms this is stable, not a warmup blip.
-  - The Chutes `Cord` defaults the *internal upstream cord path* to the Python function name (`self.path = func.__name__` in `chutes/chute/cord.py:929`). So a function named `pricing` exposes internal upstream path `/pricing` even when the public path is renamed to single-segment `/xpricing`. The Chutes Aegis layer on the worker rejects the upstream `/pricing` path the same way the public proxy does, surfacing as a fast nginx 502. Confirmed against `pre-genesis-d3-6` (same five-shot pattern).
+  - The Chutes `Cord` defaults the *internal upstream cord path* to the Python function name (`self.path = func.__name__` in `chutes/chute/cord.py:929`). So a function named `pricing` exposes internal upstream path `/pricing` even when the public path is renamed. A metadata-only deploy later proved `/xpricing` can still 502, so the smoke cord now uses `/quote` to stay out of the platform's pricing namespace entirely.
 
 ### What is honestly *not yet* green
 
-- **`/xpricing` is still 502 on the deployed `pre-genesis-d3-6`.** The fix — renaming the Python function from `pricing` to `xpricing` so the *internal* upstream cord path is `/xpricing` (avoiding the worker-side `/pricing` interception) — is in `xion_relay_chute.py` source and pinned to image tag `pre-genesis-d3-7`. The actual rebuild is blocked by a Chutes platform rate limit: `You may only update/create 24 imagehistorys per 24 hours.` The next operator step is a single `chutes build xion_relay_chute:chute --wait` once that 24-hour window clears, followed by `chutes deploy` and a `chutes warmup` cycle.
-- **`ledgers/RELAY_REGISTRY.json`** is not yet updated with this Chutes row, and `xion-verify discovery` is not yet promoted against it. Both are still tracked under `KW-RELAY-CHUTES-D3-001` and remain pending until either (a) the d3-7 build closes `/xpricing` and we promote the row, or (b) we explicitly choose to publish a 2-of-3-cords-green row with `/xpricing` annotated as a known residual.
+- **The deployed metadata now uses `/quote`, but the platform is currently returning 429 capacity responses.** The source fix is in `xion_relay_chute.py` and pinned to image tag `pre-genesis-d3-7`; the actual image rebuild is still blocked by Chutes' 24-hour image-history rate limit. The next operator step is a single `chutes build xion_relay_chute:chute --wait` once that window clears, followed by `chutes deploy`, `chutes warmup`, and `scripts/verify-chute-cords.sh`.
+- **`ledgers/RELAY_REGISTRY.json`** is not yet updated with this Chutes row, and `xion-verify discovery` is not yet promoted against it. Both remain pending until `/health`, `/quote`, and `/self` are all green on the deployed Chutes endpoint.
 - **The Chutes deploy is *not* the live Relay surface.** It is an envelope that explicitly says so (`service: "xion-relay-chutes-smoke"`). The full `orchestrator.api.app` Relay (Arbiter + Hermes + ledgers) lands in a follow-up image once an `orchestrator/api/launcher.py` constructs a real `Relay` and a real `AppDeps`.
 
 ### Changed

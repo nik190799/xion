@@ -16,6 +16,7 @@ from xion_verify.repo import RepoRootNotFound, find_repo_root
 _LEDGER = "ledgers/SUBSTRATE_DRYRUN_LEDGER.jsonl"
 _ZERO = "0" * 64
 _NON_LAPTOP_SUBSTRATE_PREFIXES = ("akash", "aleph")
+_NON_LAPTOP_PROVIDERS = {"akash", "aleph"}
 _PLACEHOLDER_SECONDARY_IDS = {
     "",
     "secondary-placeholder",
@@ -54,6 +55,24 @@ def evaluate_substrate_portability(repo_root: Path, ledger_rel: str = _LEDGER) -
         if secondary_id not in _PLACEHOLDER_SECONDARY_IDS and secondary_id.startswith(
             _NON_LAPTOP_SUBSTRATE_PREFIXES
         ):
+            provider = str(row.get("secondary_provider", "")).strip().lower()
+            if provider not in _NON_LAPTOP_PROVIDERS:
+                errors.append(f"row {expected_seq}: secondary_provider must be akash or aleph")
+            health_url = str(row.get("secondary_health_url", "")).strip()
+            if not health_url.startswith(("http://", "https://")):
+                errors.append(f"row {expected_seq}: secondary_health_url must be http(s)")
+            try:
+                health_status_code = int(row.get("secondary_health_status_code"))
+            except (TypeError, ValueError):
+                errors.append(f"row {expected_seq}: secondary_health_status_code must be an integer")
+            else:
+                if not 200 <= health_status_code <= 299:
+                    errors.append(f"row {expected_seq}: secondary_health_status_code must be 2xx")
+            health_sha = str(row.get("secondary_health_sha256", "")).strip().lower()
+            if len(health_sha) != 64 or any(char not in "0123456789abcdef" for char in health_sha):
+                errors.append(f"row {expected_seq}: secondary_health_sha256 must be a sha256 hex digest")
+            if not str(row.get("deployment_evidence", "")).strip():
+                errors.append(f"row {expected_seq}: deployment_evidence is required")
             has_non_laptop_secondary = True
         prev = row.get("this_hash", "")
     if errors:

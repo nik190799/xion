@@ -8,10 +8,10 @@ What this module promises (Four Questions, per The-Xion-Builder):
 
 - *Property*: a public Chutes deployment exists for chute id
   ``89866bfc-5ddd-5382-b887-116d8901808f`` whose three cords (``GET /health``,
-  ``GET /xpricing``, ``GET /self``) return deterministic JSON without any
+  ``GET /quote``, ``GET /self``) return deterministic JSON without any
   external dependency.  This is the Relay registry's first honestly-served
   endpoint and the precondition for ``xion-verify discovery`` against
-  Chutes.  The public cord is ``/xpricing`` (not ``/pricing``) because
+  Chutes.  The public cord is ``/quote`` (not ``/pricing``) because
   ``/pricing`` is intercepted by the Chutes platform proxy itself; see
   the routing-facts comment block below for the full empirical history.
 - *Invariants touched*: none.  This is doctrine-bounded discovery surface
@@ -73,11 +73,12 @@ IMAGE_TAG = "pre-genesis-d3-7"
 #    rejects the upstream ``/pricing`` path the same way the public proxy
 #    does, surfacing as a fast nginx 502.
 #
-# The fix that closes B4 is therefore to (a) rename the *Python function*
-# off ``pricing`` to ``xpricing`` so the internal upstream cord path is
-# also ``/xpricing``, and (b) keep the public path at ``/xpricing``.  The
-# in-process FastAPI Relay (when the full surface lands) still serves
-# ``/pricing`` locally — only the Chutes-deployed cord is renamed.
+# A follow-up metadata-only deploy proved ``/xpricing`` still 502s even
+# after the internal path is also ``/xpricing``. The working rule is
+# therefore stricter: keep the Chutes-deployed smoke cord out of the
+# platform's pricing namespace entirely. ``/quote`` is the B4 smoke path;
+# the in-process FastAPI Relay (when the full surface lands) still serves
+# ``/pricing`` locally.
 # ``/health`` and ``/self`` are not reserved and route straight through,
 # so they keep their canonical Relay paths.
 
@@ -149,9 +150,9 @@ async def health(self) -> dict[str, Any]:
     return _smoke_envelope("/health")
 
 
-@chute.cord(public_api_path="/xpricing", public_api_method="GET")
-async def xpricing(self) -> dict[str, Any]:
-    return _smoke_envelope("/xpricing")
+@chute.cord(public_api_path="/quote", public_api_method="GET")
+async def quote(self) -> dict[str, Any]:
+    return _smoke_envelope("/quote")
 
 
 @chute.cord(public_api_path="/self", public_api_method="GET")

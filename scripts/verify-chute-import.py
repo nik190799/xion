@@ -25,7 +25,7 @@ def main() -> int:
         print("  -", method, path)
         public_paths.append(path)
 
-    expected_paths = {"/health", "/xpricing", "/self"}
+    expected_paths = {"/health", "/quote", "/self"}
     missing_paths = expected_paths - set(public_paths)
     if missing_paths:
         print("FAIL missing public cord paths:", sorted(missing_paths), file=sys.stderr)

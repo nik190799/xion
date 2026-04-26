@@ -54,7 +54,7 @@ print(f"OK {expected_path}: envelope shape valid")
 PY
 }
 
-for cord in /health /xpricing /self; do
+for cord in /health /quote /self; do
   probe "$cord" || failed=1
 done
 

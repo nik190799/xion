@@ -18,7 +18,7 @@ Run `xion-verify discovery`, `xion-verify inference-provider-chutes`, and `xion-
 2. Confirm the local floor is healthy with `xion-verify inference-sovereignty`.
 3. Set `XION_CHUTES_API_KEY`, `XION_CHUTES_BASE_URL`, `XION_CHUTES_API_BASE_URL`, `XION_CHUTES_HOSTED_MODEL`, and `XION_CHUTES_TEE_REQUIRED=true` from the encrypted credential vault.
 4. Deploy the verified Relay image to the Chutes deployment surface.
-5. Confirm `/health`, `/pricing`, and `/self` return OK over the Chutes endpoint.
+5. Confirm `/health`, `/quote`, and `/self` return OK over the Chutes endpoint. The Chutes platform reserves/intercepts pricing-like routes, so the smoke cord intentionally avoids `/pricing`.
 6. Publish the Relay row through `RelayRegistryPublisher` with `substrate="chutes"` and the verified image digest.
 7. Run `xion-verify discovery` from the operator laptop.
 8. Run `scripts/immortality-drill-rehearsal.sh` before Genesis ceremony to prove the laptop-secondary path still works.
