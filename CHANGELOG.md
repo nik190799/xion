@@ -10,6 +10,23 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Phase 6.9.1 — Gateway Pattern doctrine — 2026-04-26
+
+Codifies the Gateway Pattern as the project-wide rule for load-bearing external dependencies: callers depend on stable interfaces, concrete providers live behind registries/loaders, and every missing substitute is carried as a named `KW-` entry.
+
+### Added
+
+- **`docs/39-GATEWAY-PATTERN.md`** — canonical Gateway Pattern doctrine with conformance requirements, failure-vocabulary guidance, Arbiter exclusion, registry versioning, and deprecation path.
+- **`.cursor/rules/gateway-pattern.mdc`** — always-on agent rule requiring new external integrations to follow the Gateway Pattern.
+- **Gateway audit table** — `docs/38-MODULAR-SUBSTRATE.md` now maps every load-bearing external surface to its interface, concrete providers, substitute owed, and `KW-` gap.
+- **`xion-verify gateway-conformance`** — reserved as an honest `NOT_YET_SEALED` verifier listing the gateway audit gaps and closure bars.
+
+### Changed
+
+- **`KNOWN_WEAKNESSES.md`** — opens `KW-GATEWAY-001`, `KW-ALERT-001`, `KW-OBS-001`, `KW-AOCORE-CLIENT-001`, `KW-VAULT-001`, `KW-REGISTRY-001`, `KW-TREASURY-CHAIN-001`, and `KW-STATUS-001`.
+- **`orchestrator/tests/test_modularity_invariants.py`** — adds a no-network static provider-shape guard for existing `providers/` packages.
+- **`DEVELOPMENT_ROADMAP.md`** — names Phase 6.9.2 as the first Gateway Pattern implementation slice and orders the gap closures.
+
 ### D3 Chutes Relay smoke build deployed — 2026-04-25
 
 Closes plan item B4 (Chutes Relay image build + cord pipeline alive) for `d2_d3_closure_plan_a729f812` by shipping a *honest smoke build* against the live Chutes platform. Two of the three public cords (`/health`, `/self`) are 200 OK with the deterministic envelope on a verified miner-served instance; the third cord moved from pricing-like paths to `/quote` after Chutes returned 502s for `/xpricing`.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from orchestrator.relay import Relay
@@ -139,3 +140,94 @@ def test_inv8_drop_not_silent():
     )
     bus.publish([bad])
     assert bus.latest("vital.bus_integrity") is not None
+
+
+def test_gateway_provider_modules_match_protocol_shape():
+    """Provider modules expose the minimum Gateway Pattern surface.
+
+    This is intentionally static and no-network. Runtime conformance belongs to
+    `xion-verify gateway-conformance`; this guard prevents obvious drift such as
+    adding a provider without `provider_id` or the gateway's required methods.
+    """
+
+    repo = Path(__file__).resolve().parents[2]
+    checks = {
+        "orchestrator/inference_router/providers": {
+            "attrs": {"provider_id", "category"},
+            "methods": {"health", "generate"},
+        },
+        "orchestrator/billing/providers": {
+            "attrs": {"provider_id"},
+            "methods": {"balance", "recent_payments", "forecast_runway"},
+        },
+        "orchestrator/embeddings/providers": {
+            "attrs": {"provider_id", "model_id"},
+            "methods": {"health", "embed"},
+        },
+        "orchestrator/safety/providers": {
+            "attrs": {"provider_id", "model_id", "provider_version"},
+            "methods": {"enabled", "judge"},
+        },
+        "orchestrator/voice_router/providers": {
+            "attrs": {"provider_id", "category"},
+            "methods": {"health"},
+        },
+    }
+
+    failures: list[str] = []
+    for provider_dir, requirements in checks.items():
+        for path in sorted((repo / provider_dir).glob("*.py")):
+            if path.name == "__init__.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            concrete_classes = [
+                node
+                for node in tree.body
+                if isinstance(node, ast.ClassDef)
+                and not node.name.endswith("Error")
+                and not node.name.endswith("Exception")
+            ]
+            if not concrete_classes:
+                failures.append(f"{path}: no concrete provider class")
+                continue
+
+            if not any(
+                _class_satisfies_gateway_shape(
+                    cls,
+                    attrs=requirements["attrs"],
+                    methods=requirements["methods"],
+                )
+                for cls in concrete_classes
+            ):
+                failures.append(
+                    f"{path}: no class exposes attrs={sorted(requirements['attrs'])} "
+                    f"methods={sorted(requirements['methods'])}"
+                )
+
+    assert not failures, "\n".join(failures)
+
+
+def _class_satisfies_gateway_shape(
+    cls: ast.ClassDef,
+    *,
+    attrs: set[str],
+    methods: set[str],
+) -> bool:
+    names = {
+        node.target.id
+        for node in cls.body
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+    }
+    names.update(
+        node.targets[0].id
+        for node in cls.body
+        if isinstance(node, ast.Assign)
+        and node.targets
+        and isinstance(node.targets[0], ast.Name)
+    )
+    names.update(
+        node.name
+        for node in cls.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    )
+    return attrs.issubset(names) and methods.issubset(names)

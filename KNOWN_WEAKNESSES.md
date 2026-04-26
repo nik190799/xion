@@ -21,6 +21,94 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-GATEWAY-001 - Gateway conformance verifier is reserved but not live
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** `xion-verify gateway-conformance` is registered as a `NOT_YET_SEALED` verifier, but it does not yet walk the gateway audit table in `docs/38-MODULAR-SUBSTRATE.md` or statically prove that callers import gateway interfaces instead of concrete providers.
+- **Why it exists:** The doctrine needs to land before a verifier can honestly encode the rule. Promoting the verifier before the audit table and `KW-` closure bars exist would fake enforcement.
+- **Mitigations:** `docs/39-GATEWAY-PATTERN.md` defines the rule, `.cursor/rules/gateway-pattern.mdc` applies it to future agent work, and the Phase 6.9.1 audit table names every load-bearing surface and gap.
+- **Pay-down commitment:** Promote `xion-verify gateway-conformance` in Phase 6.9.2 once it checks the audit table, the registered `KW-` gaps, and provider-module conformance without network access.
+- **Verifier:** `xion-verify gateway-conformance` (`NOT_YET_SEALED` by design).
+
+### KW-STATUS-001 - Public status publishing is Arweave-only doctrine
+- **Domain:** OPS
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** low
+- **Status:** mitigated-residual
+- **Description:** The public status surface (`status.xion.ar`) is documented as an Arweave-hosted static page, but the orchestrator does not expose a `StatusPublisher` Protocol with replaceable publishing backends.
+- **Why it exists:** Status publishing was treated as operator convenience during D2/D3 rather than as a load-bearing gateway surface.
+- **Mitigations:** Status is observational only; it does not hold authority, funds, Covenant state, or user data. Core health and ledgers remain independently verifiable without the branded status page.
+- **Pay-down commitment:** Add a `StatusPublisher` Protocol with at least an Arweave static-page provider and a local/file or alternate-host provider, then include it in `xion-verify gateway-conformance --surface=status`.
+- **Verifier:** `xion-verify gateway-conformance --surface=status` (future); `xion-verify gateway-conformance` is `NOT_YET_SEALED` today.
+
+### KW-TREASURY-CHAIN-001 - Settlement chain integration is Base-first, not chain-gatewayed
+- **Domain:** SUBSTRATE
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** high
+- **Status:** mitigated-residual
+- **Description:** XION ERC-20, IMPRINT, treasury vaults, and related egress checks are Base/EVM-first. There is no `SettlementChain` Protocol that lets the orchestrator route token, reputation, and treasury reads/writes across future settlement chains.
+- **Why it exists:** The safe pre-Genesis path deployed and verified the EVM contracts first; abstracting a second settlement chain before one exists would risk designing around imagined semantics.
+- **Mitigations:** Xion's identity is AO Core, not Base. Base is a payment/token rail, daily egress caps bound bridge effects, and governance can route future payments to another chain. The bridge layer is already Protocol-bound by `BridgeAttestor`.
+- **Pay-down commitment:** Add a `SettlementChain` Protocol once the first non-Base payment or token rail is specified, with verifier coverage for supply cap, IMPRINT non-transferability, egress caps, and migration evidence.
+- **Verifier:** `xion-verify gateway-conformance --surface=settlement-chain` (future); existing `xion-verify supply`, `xion-verify liquidity-lock`, `xion-verify authorities`, and treasury verifiers cover the Base implementation only.
+
+### KW-REGISTRY-001 - Relay registry publishing is Arweave-only
+- **Domain:** SUBSTRATE
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** Relay registry publishing is currently shaped around `orchestrator/registry/arweave_publisher.py`; there is no `RelayRegistryPublisher` Protocol that can publish equivalent registry rows to a successor substrate or local test substrate.
+- **Why it exists:** Arweave is the Genesis registry substrate and the first deployment path needed a concrete publisher before a second publisher existed.
+- **Mitigations:** Discovery verification exists, the Core remains authoritative for relay authorization, and Arweave writes are append-only. The absence of a publisher Protocol affects portability, not immediate Core authority.
+- **Pay-down commitment:** Introduce `RelayRegistryPublisher` with Arweave and local-file/test-substrate providers, then include registry publication in `xion-verify gateway-conformance`.
+- **Verifier:** `xion-verify gateway-conformance --surface=relay-registry` (future); `xion-verify discovery` covers current registry shape.
+
+### KW-VAULT-001 - Credential vault unlock has no orchestrator Vault Protocol
+- **Domain:** KEYS
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** high
+- **Status:** mitigated-residual
+- **Description:** `genesis/CREDENTIALS.md` defines the threshold unlock ceremony and `xion-verify credentials-vault` verifies sealed-state posture, but the orchestrator does not import a `Vault` Protocol for credential retrieval at startup.
+- **Why it exists:** The doctrine and verifier landed before production credential custody. The runtime still reads credentials through environment variables and deployment posture rather than a replaceable vault provider.
+- **Mitigations:** Missing vault unlock leaves the Relay in degraded mode, secrets are not committed, and credential verification never prints secret material. Public traffic still requires admission and billing gates.
+- **Pay-down commitment:** Add a `Vault` Protocol with an environment/local development provider and a threshold-unlock provider, then require orchestrator startup to read load-bearing secrets through the Protocol.
+- **Verifier:** `xion-verify gateway-conformance --surface=vault` (future); `xion-verify credentials-vault` covers doctrine posture today.
+
+### KW-AOCORE-CLIENT-001 - AO Core client is not substrate-gatewayed
+- **Domain:** SUBSTRATE
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** high
+- **Status:** mitigated-residual
+- **Description:** `AOCoreClient` is exposed as a concrete AO client, but the orchestrator does not yet depend on an `AOCoreGateway` Protocol with legacynet, localnet, and future actor-model substrate implementations behind one interface.
+- **Why it exists:** Phase 6.1 needed a concrete AO seal path first. Substrate portability doctrine names the future migration property, but the client boundary has not been made mechanical.
+- **Mitigations:** `docs/SUBSTRATE-RESILIENCE.md` names the substrate-migration protocol, AO handler schemas are verified, and current deployments can target localnet or legacynet through operator configuration.
+- **Pay-down commitment:** Introduce an `AOCoreGateway` Protocol, move AO substrate selection into one loader, and include legacynet/localnet/future-substrate conformance in `xion-verify gateway-conformance`.
+- **Verifier:** `xion-verify gateway-conformance --surface=ao-core-client` (future); `xion-verify ao-handlers` covers handler shape today.
+
+### KW-OBS-001 - Observability providers are doctrine-only
+- **Domain:** OPS
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** Metrics, logs, and traces are documented as Prometheus, Grafana Cloud, Loki, and Tempo, but the orchestrator does not expose `MetricsEmitter`, `LogSink`, or `TraceExporter` interfaces with replaceable providers.
+- **Why it exists:** Observability was selected for solo-operator simplicity before the Gateway Pattern was codified as a cross-cutting rule.
+- **Mitigations:** Ledgers remain the source of truth for Covenant, payment, request, and sensorium evidence. Loss of Grafana/Loki/Tempo reduces operator visibility but does not mutate canonical state.
+- **Pay-down commitment:** Add observability gateway interfaces with stdout/local-file providers plus the current hosted stack, then include the surface in `xion-verify gateway-conformance`.
+- **Verifier:** `xion-verify gateway-conformance --surface=observability` (future).
+
+### KW-ALERT-001 - Alerting has no Alerter Protocol
+- **Domain:** OPS
+- **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** Operational alerts are documented around ntfy.sh with Pushover backup, but there is no `Alerter` Protocol and provider registry that lets the Supervisor or orchestrator emit alerts without knowing the concrete service.
+- **Why it exists:** Alerting was an operator runbook surface before it became a Gateway Pattern audit row.
+- **Mitigations:** Alerts are operator visibility, not authority. Incidents still append to ledgers, and the Supervisor can continue local fail-closed behavior without a hosted alert path.
+- **Pay-down commitment:** Add an `Alerter` Protocol with ntfy, Pushover, and local-log providers, then include alerting in `xion-verify gateway-conformance --surface=alerting`.
+- **Verifier:** `xion-verify gateway-conformance --surface=alerting` (future).
+
 ### KW-RESEARCH-SPEND-001 — Research-spend verifier is honest residual until first live spend row
 - **Domain:** ECON
 - **Discovered:** 2026-04-25 (D2/D3 closure planning)

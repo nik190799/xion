@@ -129,4 +129,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "cognition-loop-bounded",
     "bridge-attest",
     "bridge-egress-cap",
+    "gateway-conformance",
 )

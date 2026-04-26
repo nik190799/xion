@@ -64,6 +64,7 @@ from xion_verify.commands.discovery import discovery
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.embedder_health import embedder_health
+from xion_verify.commands.gateway_conformance import gateway_conformance
 from xion_verify.commands.hermes_runtime import hermes_runtime
 from xion_verify.commands.hermes_version import hermes_version
 from xion_verify.commands.image_digest import image_digest
@@ -239,6 +240,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "cognition-loop-bounded": cognition_loop_bounded,
     "bridge-attest": bridge_attest,
     "bridge-egress-cap": bridge_egress_cap,
+    "gateway-conformance": gateway_conformance,
 }
 
 

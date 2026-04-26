@@ -129,6 +129,7 @@ xion-verify prompt-isolation
 xion-verify cognition-loop-bounded
 xion-verify bridge-attest
 xion-verify bridge-egress-cap
+xion-verify gateway-conformance
 xion-verify arbiter-up
 xion-verify all
 ```

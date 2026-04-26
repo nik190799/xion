@@ -49,6 +49,7 @@ The documentation is organized as a layered reading path. If you read it in orde
 | 36 | [`LEARNING-AND-AUTONOMY.md`](./36-LEARNING-AND-AUTONOMY.md) | **Learning and autonomy** — four-tier autonomy model; deliberation vs drift; Tier 3/4 roadmap | engineers, governance |
 | 37 | [`VESSELS.md`](./37-VESSELS.md) | **Vessel Integration Framework** — modular Compact for robots, phones, hardware, podcasts, livestreams, XR, and future carriers | integrators, hardware builders, media hosts, auditors |
 | 38 | [`38-MODULAR-SUBSTRATE.md`](./38-MODULAR-SUBSTRATE.md) | **Modular Substrate** — swappable inference, billing, memory, tools, bridge, cache, and future trainer interfaces | engineers, auditors |
+| 39 | [`39-GATEWAY-PATTERN.md`](./39-GATEWAY-PATTERN.md) | **Gateway Pattern** — project-wide rule that every load-bearing external sits behind a stable interface, registry, and verifier-backed replacement path | engineers, auditors |
 | 40 | [`40-CHUTES-INTEGRATION.md`](./40-CHUTES-INTEGRATION.md) | **Chutes Integration** — Bittensor SN64 hosted inference, TEE default, TAO top-ups, and model-promotion ceremony | engineers, treasury ops |
 | — | [`AO-EVM-BRIDGE.md`](./AO-EVM-BRIDGE.md) | **AO ↔ EVM Bridge** — bridge attestor stack, multisig posture, light-client stub, and daily egress caps | engineers, auditors |
 | 38 | [`34-CONTRIBUTION-PROTOCOL.md`](./34-CONTRIBUTION-PROTOCOL.md) | **Contribution Protocol** — read-only agent facts, level classification, contributor identity bindings, and proposal-draft guardrails | contributors, assistant users, governance |

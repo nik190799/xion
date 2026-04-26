@@ -1,0 +1,23 @@
+---
+alwaysApply: true
+---
+
+# Gateway Pattern
+
+For any new or changed load-bearing external integration, read
+`docs/39-GATEWAY-PATTERN.md` first.
+
+Do not let orchestrator callers import or branch on a concrete provider such as
+Chutes, Ollama, Arweave, Base, ntfy, Grafana, or a future vendor directly.
+Callers import the gateway interface or loader. Concrete implementations live
+behind a `Protocol` or `ABC`, with provider selection centralized in one
+registry/loader.
+
+If a substitute provider is not wired yet, add or preserve a `KW-` entry naming
+the missing substitute, the closure bar, and the verifier path. Do not fake
+modularity by wrapping one hard-coded implementation in a thin class and calling
+it done.
+
+The Arbiter is the deliberate exception: it is a Covenant gate, not a general
+provider registry participant. It may call providers behind constrained
+interfaces, but the gate itself must remain structurally separate.
