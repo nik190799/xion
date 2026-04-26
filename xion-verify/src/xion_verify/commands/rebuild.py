@@ -31,19 +31,6 @@ def _get_current_sha(repo_root: Path) -> str:
     return result.stdout.strip()
 
 
-def _get_remote_url(repo_root: Path) -> str:
-    result = subprocess.run(
-        ["git", "remote", "get-url", "origin"],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError("Failed to get git remote URL")
-    return result.stdout.strip()
-
-
 @click.command(
     name="rebuild",
     help="Verify reproducible Docker build against genesis/RELAY_IMAGE_DIGEST.txt.",
@@ -67,17 +54,16 @@ def rebuild() -> None:
 
     try:
         sha = _get_current_sha(repo_root)
-        remote_url = _get_remote_url(repo_root)
     except RuntimeError as e:
         click.echo(f"rebuild: FAIL: {e}", err=True)
         sys.exit(FAIL)
 
     click.echo(f"rebuild: Exporting {sha} to temp directory...")
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         clone_dir = Path(temp_dir) / "xion-os"
         clone_dir.mkdir()
-        
+
         # Export the committed state
         res = subprocess.run(
             f"git archive {sha} | tar -x -C {clone_dir}",
@@ -89,11 +75,11 @@ def rebuild() -> None:
         if res.returncode != 0:
             click.echo(f"rebuild: FAIL: git archive failed: {res.stderr}", err=True)
             sys.exit(FAIL)
-            
+
         # Run docker build
         click.echo("rebuild: Running docker build...")
         res = subprocess.run(
-            ["docker", "build", "-q", "."],
+            ["docker", "build", "--provenance=false", "-q", "."],
             cwd=str(clone_dir),
             capture_output=True,
             text=True,
@@ -101,12 +87,12 @@ def rebuild() -> None:
         if res.returncode != 0:
             click.echo(f"rebuild: FAIL: docker build failed: {res.stderr}", err=True)
             sys.exit(FAIL)
-            
+
         actual_digest = res.stdout.strip()
-        
+
         if actual_digest != expected_digest:
             click.echo(f"rebuild: FAIL: digest mismatch. Expected {expected_digest}, got {actual_digest}", err=True)
             sys.exit(FAIL)
-            
+
     click.echo("rebuild: OK (reproducible build verified)")
     sys.exit(OK)

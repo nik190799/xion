@@ -1,0 +1,41 @@
+schema_id: ledger-substrate-dryrun
+schema_version: 1
+source_doctrine: docs/SUBSTRATE-RESILIENCE.md
+source_sha256: 77adf295a1e545fe710059230c6cb37f82d23fd43ec46e3f5c3488b85196745b
+status: canonical
+row_type: substrate_dryrun_v1
+
+required_fields:
+  - schema_version
+  - seq
+  - prev_hash
+  - this_hash
+  - as_of_utc_ns
+  - secondary_substrate_id
+  - primary_tip
+  - secondary_tip
+  - replayed_rows
+  - tip_parity
+
+non_laptop_secondary_required_fields:
+  applies_when_secondary_substrate_id_prefix:
+    - akash
+    - aleph
+  fields:
+    - secondary_provider
+    - secondary_health_url
+    - secondary_health_status_code
+    - secondary_health_sha256
+    - deployment_evidence
+
+hashing:
+  canonical_json: sort_keys_true_separators_comma_colon
+  row_hash_field: this_hash
+  row_hash_excludes:
+    - this_hash
+
+verification:
+  command: xion-verify substrate-portability
+  notes:
+    - Placeholder and operator-laptop rows keep the verifier NOT_YET_SEALED.
+    - Akash/Aleph rows must include live health evidence and matching tips.

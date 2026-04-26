@@ -10,21 +10,35 @@ from typing import Any
 
 import click
 
-from xion_verify.exit_codes import FAIL, OK
+from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _LEDGER = "ledgers/SUBSTRATE_DRYRUN_LEDGER.jsonl"
 _ZERO = "0" * 64
+_NON_LAPTOP_SUBSTRATE_PREFIXES = ("akash", "aleph")
+_NON_LAPTOP_PROVIDERS = {"akash", "aleph"}
+_PLACEHOLDER_SECONDARY_IDS = {
+    "",
+    "secondary-placeholder",
+    "operator-laptop-secondary",
+    "laptop-secondary",
+}
 
 
 def check_substrate_portability(repo_root: Path, ledger_rel: str = _LEDGER) -> list[str]:
+    _code, messages = evaluate_substrate_portability(repo_root, ledger_rel=ledger_rel)
+    return messages
+
+
+def evaluate_substrate_portability(repo_root: Path, ledger_rel: str = _LEDGER) -> tuple[int, list[str]]:
     path = repo_root / ledger_rel
     if not path.is_file():
-        return [f"missing dry-run ledger: {ledger_rel}"]
+        return NOT_YET_SEALED, [f"missing dry-run ledger: {ledger_rel}"]
     errors: list[str] = []
+    has_non_laptop_secondary = False
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     if not rows:
-        return ["dry-run ledger has no rows"]
+        return NOT_YET_SEALED, ["dry-run ledger has no rows"]
     prev = _ZERO
     for expected_seq, row in enumerate(rows):
         if row.get("seq") != expected_seq:
@@ -37,8 +51,35 @@ def check_substrate_portability(repo_root: Path, ledger_rel: str = _LEDGER) -> l
             errors.append(f"row {expected_seq}: tip_parity must be true")
         if int(row.get("replayed_rows", 0)) < 1:
             errors.append(f"row {expected_seq}: replayed_rows must be positive")
+        secondary_id = str(row.get("secondary_substrate_id", "")).strip().lower()
+        if secondary_id not in _PLACEHOLDER_SECONDARY_IDS and secondary_id.startswith(
+            _NON_LAPTOP_SUBSTRATE_PREFIXES
+        ):
+            provider = str(row.get("secondary_provider", "")).strip().lower()
+            if provider not in _NON_LAPTOP_PROVIDERS:
+                errors.append(f"row {expected_seq}: secondary_provider must be akash or aleph")
+            health_url = str(row.get("secondary_health_url", "")).strip()
+            if not health_url.startswith(("http://", "https://")):
+                errors.append(f"row {expected_seq}: secondary_health_url must be http(s)")
+            try:
+                health_status_code = int(row.get("secondary_health_status_code"))
+            except (TypeError, ValueError):
+                errors.append(f"row {expected_seq}: secondary_health_status_code must be an integer")
+            else:
+                if not 200 <= health_status_code <= 299:
+                    errors.append(f"row {expected_seq}: secondary_health_status_code must be 2xx")
+            health_sha = str(row.get("secondary_health_sha256", "")).strip().lower()
+            if len(health_sha) != 64 or any(char not in "0123456789abcdef" for char in health_sha):
+                errors.append(f"row {expected_seq}: secondary_health_sha256 must be a sha256 hex digest")
+            if not str(row.get("deployment_evidence", "")).strip():
+                errors.append(f"row {expected_seq}: deployment_evidence is required")
+            has_non_laptop_secondary = True
         prev = row.get("this_hash", "")
-    return errors
+    if errors:
+        return FAIL, errors
+    if not has_non_laptop_secondary:
+        return NOT_YET_SEALED, ["no Akash/Aleph non-laptop secondary substrate dry-run row found"]
+    return OK, []
 
 
 def _hash_row(row: dict[str, Any]) -> str:
@@ -53,13 +94,14 @@ def substrate_portability() -> None:
     except RepoRootNotFound as exc:
         click.echo(f"substrate-portability: FAIL: {exc}", err=True)
         sys.exit(FAIL)
-    errors = check_substrate_portability(repo_root)
-    if errors:
-        for error in errors:
-            click.echo(f"substrate-portability: FAIL: {error}", err=True)
-        sys.exit(FAIL)
+    code, messages = evaluate_substrate_portability(repo_root)
+    if messages:
+        label = "NOT_YET_SEALED" if code == NOT_YET_SEALED else "FAIL"
+        for message in messages:
+            click.echo(f"substrate-portability: {label}: {message}", err=(code == FAIL))
+        sys.exit(code)
     click.echo("substrate-portability: OK (dry-run ledger chain and tip parity verified)")
     sys.exit(OK)
 
 
-__all__ = ["check_substrate_portability", "substrate_portability"]
+__all__ = ["check_substrate_portability", "evaluate_substrate_portability", "substrate_portability"]

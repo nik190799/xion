@@ -22,13 +22,18 @@ import click
 from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.ao_handlers import verify_ao_handlers
+from xion_verify.commands.abdication import abdication_schedule, abdication_status
+from xion_verify.commands.amendments import amendments
+from xion_verify.commands.ao_deploy import identity, sister_fork_readiness, state_tip
 from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.arbiter_determinism import arbiter_determinism
 from xion_verify.commands.arbiter_up import arbiter_up
 from xion_verify.commands.auto_research import auto_research
+from xion_verify.commands.benchmark import benchmark
 from xion_verify.commands.billing_credits_floor import billing_credits_floor
 from xion_verify.commands.bridge_attest import bridge_attest
 from xion_verify.commands.bridge_egress_cap import bridge_egress_cap
+from xion_verify.commands.cadence_audit import cadence_audit
 from xion_verify.commands.cast import cast_cmd
 from xion_verify.commands.charter_signed import charter_signed
 from xion_verify.commands.chat_streaming_fidelity import chat_streaming_fidelity
@@ -48,13 +53,20 @@ from xion_verify.commands.constitutional import (
     soul,
     unknowns,
 )
+from xion_verify.commands.covenant_addenda import covenant_addenda
+from xion_verify.commands.contracts_deployed import authorities, liquidity_lock, supply
 from xion_verify.commands.cost_pressure import cost_pressure
+from xion_verify.commands.credentials_vault import credentials_vault
+from xion_verify.commands.crypto_currency import crypto_currency
 from xion_verify.commands.crisis_fidelity import crisis_fidelity
+from xion_verify.commands.cutoff_events import cutoff_events
 from xion_verify.commands.discovery import discovery
 from xion_verify.commands.drive import drive
 from xion_verify.commands.drive_vector import drive_vector
 from xion_verify.commands.embedder_health import embedder_health
 from xion_verify.commands.hermes_runtime import hermes_runtime
+from xion_verify.commands.hermes_version import hermes_version
+from xion_verify.commands.image_digest import image_digest
 from xion_verify.commands.identity_bindings import identity_bindings
 from xion_verify.commands.inference_provider_chutes import inference_provider_chutes
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
@@ -97,12 +109,15 @@ from xion_verify.commands.soul_prompt import soul_prompt
 from xion_verify.commands.spend_discipline import spend_discipline
 from xion_verify.commands.spend_posture import spend_posture
 from xion_verify.commands.state_chain import state_chain
+from xion_verify.commands.spof import spof
 from xion_verify.commands.substrate_portability import substrate_portability
 from xion_verify.commands.substrates import substrates
+from xion_verify.commands.sustainability import sustainability
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
 from xion_verify.commands.tool_resolver_mcp import tool_resolver_mcp
 from xion_verify.commands.topography import topography_cli
 from xion_verify.commands.treasury import treasury
+from xion_verify.commands.treasury_buckets import foundation_reserve, improvement_fund, reserve, treasury_flow
 from xion_verify.commands.vitals import vitals
 from xion_verify.commands.vessel_compact import vessel_compact
 from xion_verify.commands.voice_form import voice_form
@@ -139,11 +154,22 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "discovery": discovery,
     "drive-vector": drive_vector,
     "state-chain": state_chain,
+    "state-tip": state_tip,
+    "identity": identity,
+    "sister-fork-readiness": sister_fork_readiness,
+    "supply": supply,
+    "liquidity-lock": liquidity_lock,
+    "authorities": authorities,
     "arbiter-up": arbiter_up,
+    "image-digest": image_digest,
     "arbiter-determinism": arbiter_determinism,
     "refusal-rate": refusal_rate,
     "pricing": pricing,
     "treasury": treasury,
+    "treasury-flow": treasury_flow,
+    "improvement-fund": improvement_fund,
+    "reserve": reserve,
+    "foundation-reserve": foundation_reserve,
     "refund-fidelity": refund_fidelity,
     "refusal-is-free": refusal_is_free,
     "crisis-fidelity": crisis_fidelity,
@@ -153,16 +179,28 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "voice-form": voice_form,
     "substrate-portability": substrate_portability,
     "regulatory-ledger": regulatory_ledger,
+    "abdication-status": abdication_status,
+    "abdication-schedule": abdication_schedule,
+    "amendments": amendments,
+    "covenant-addenda": covenant_addenda,
+    "cadence-audit": cadence_audit,
     "sensorium-ledger": sensorium_ledger,
+    "spof": spof,
+    "credentials-vault": credentials_vault,
+    "hermes-version": hermes_version,
+    "cutoff-events": cutoff_events,
     "api-tokens": api_tokens,
     "web-client": web_client,
     "chat-streaming-fidelity": chat_streaming_fidelity,
     "supervisor-singleton": supervisor_singleton,
     "vitals": vitals,
+    "sustainability": sustainability,
     "new": new_cmd,
     "local": local_cmd,
     "cast": cast_cmd,
     "operator-dependency": operator_dependency,
+    "benchmark": benchmark,
+    "crypto-currency": crypto_currency,
     "research-sources": research_sources,
     "pre-genesis": pre_genesis,
     "shadow-relay": shadow_relay,

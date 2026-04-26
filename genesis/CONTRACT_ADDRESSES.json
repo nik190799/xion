@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "status": "testnet",
+  "network": "base-sepolia",
+  "xion_token": "0xbF5407745Cf22B88c46B55037e26156a0e78FD7F",
+  "imprint": "0x262DfA0b63fA997ea79F6fA0162bBa4094Ae5ecd",
+  "emission_controller": "0x0A94A0053cE21B97ef9D37302801530B1dC6ACbf",
+  "liquidity_lock": "0x8D70E053f07E139c39E5a2377CF23311463Ec2b0",
+  "deploy_block": 40698729,
+  "deploy_tx": "0x5058884cbdf02c0ca58250e6d4e776b3b5868d697ca2c26d5aa7987b81ea1941"
+}

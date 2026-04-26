@@ -21,6 +21,28 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-RESEARCH-SPEND-001 — Research-spend verifier is honest residual until first live spend row
+- **Domain:** ECON
+- **Discovered:** 2026-04-25 (D2/D3 closure planning)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** `xion-verify research-spend` remains `NOT_YET_SEALED` because no Auto-Research-approved `RESEARCH_SPEND_LEDGER` row exists yet.
+- **Why it exists:** Promoting the verifier before a real outbound research-spend event would fake certainty about a property that depends on live spend evidence.
+- **Mitigations:** `docs/27-RESEARCH-SPEND.md` defines the rail, `PAYMENT_LEDGER` shape symmetry is live, and spend authority verifiers cover local posture discipline.
+- **Pay-down commitment:** Promote `xion-verify research-spend` when the first Auto-Research-approved proposal produces a real `RESEARCH_SPEND_LEDGER` row and Improvement Fund authorization evidence.
+- **Verifier:** `xion-verify research-spend` (`NOT_YET_SEALED` by design).
+
+### KW-VESSEL-REGISTRY-001 — No vessel attestation/disavowal registry row exists yet
+- **Domain:** RUNTIME
+- **Discovered:** 2026-04-25 (D2/D3 closure planning)
+- **Severity:** medium
+- **Status:** mitigated-residual
+- **Description:** `xion-verify vessel-registry` remains `NOT_YET_SEALED` because no production vessel has created an attestation or disavowal row.
+- **Why it exists:** The registry should verify real vessel evidence; creating an empty green registry before a vessel exists would turn the verifier into a promise.
+- **Mitigations:** `docs/37-VESSELS.md` and addenda define the Compact and disavowal posture. `xion-verify vessel-compact` covers the reference Compact shape.
+- **Pay-down commitment:** Promote `xion-verify vessel-registry` with the first vessel attestation/disavowal artifact.
+- **Verifier:** `xion-verify vessel-registry` (`NOT_YET_SEALED` by design).
+
 ### KW-BRIDGE-001 — AO to EVM bridge still depends on multisig attestation
 - **Domain:** SUBSTRATE
 - **Discovered:** 2026-04-25 (Phase 6.9 Decentralization & Modular Substrate)
@@ -900,7 +922,7 @@ Every entry has the same shape:
 - **Description:** The earlier `contracts/xion-token/EmissionController.sol` stored `aoCoreAuthority` as `immutable` and `contracts/imprint/Imprint.sol` stored `engagementAttestor` as `immutable`. If the corresponding key were ever lost, compromised, or rotated, the contract would have become either bricked or hostile, and there was no recovery path inside the contract itself.
 - **Why it existed:** "Immutable" was used as shorthand for "constitutional" by the original author. The two are not the same: a constitutional property is a promise that *some* authorized key always controls the contract; an immutable address is a promise that *one specific* key always controls it.
 - **How it was closed:** Both contracts now implement a two-role authority lattice: an `engagementAttestor` / `aoCoreAuthority` (operational, rotatable on a 7-day timelock by `governance`) and a `governance` address (constitutional, rotatable by itself on a 30-day timelock). Rotations are three-phase: `proposeXRotation(addr)` â†’ wait for `eta` â†’ `executeXRotation()`; cancellable by governance while pending. `governance` is expected to be the Cold Root multisig (3-of-5 Shamir) on mainnet.
-- **Verifier:** Tests `test_attestorRotation_*` (Imprint), `test_governanceRotation_*` (Imprint), `test_authorityRotation_*` (EmissionController), and `test_governanceRotation_*` (EmissionController) in `contracts/test/`. `xion-verify authorities` will promote from `NOT_YET_SEALED` after mainnet and cross-check the on-chain `engagementAttestor` / `aoCoreAuthority` / `governance` values against `CONTRACTS_LEDGER.md`.
+- **Verifier:** Tests `test_attestorRotation_*` (Imprint), `test_governanceRotation_*` (Imprint), `test_authorityRotation_*` (EmissionController), and `test_governanceRotation_*` (EmissionController) in `contracts/test/`. `xion-verify authorities` is now promoted against the Base Sepolia deployment manifest in `genesis/CONTRACT_ADDRESSES.json`; mainnet cross-checks against the Cold Root/governance addresses remain a Phase 7 ceremony gate.
 
 ### KW-CONTRACTS-002 â€” `EmissionController.emitGenesis` does not commit to the seven-way split
 
@@ -910,7 +932,7 @@ Every entry has the same shape:
 - **Status:** `closed` â€” Phase 3 (2026-04-20)
 - **Description:** The earlier `emitGenesis(uint256[7] amounts, ...)` accepted any seven amounts summing to `GENESIS_ALLOC`. The constitutional per-pool split was not enforced on-chain; a compromised or careless operator could have routed the entire 84B genesis to a single pool.
 - **How it was closed:** (1) `docs/16-CURRENCY.md` gained a new "Genesis emission split" subsection making the seven-way split canonical â€” all 84B routes to the FAIR_LAUNCH pool, and indices 1..6 start at zero and accumulate via `scheduledMint`. (2) `docs/schemas/genesis-split.yaml` mirrors the split machine-readably and pins to the doctrine via `source_sha256`, enforced by `xion-verify schemas`. (3) `EmissionController.sol` now declares the split inline via `_genesisSplit(i)` / `GENESIS_SPLIT(i)` public accessor; `emitGenesis(address[7] recipients)` takes only recipient addresses and allocates per the hash-locked constant. Tests `test_emitGenesis_*` and `test_genesisSplit_*` cover the happy path, indices 1..6 = 0, sum = 84B, and the non-authority / idempotency / zero-recipient reverts.
-- **Verifier:** `xion-verify schemas` (pre-deploy, live) + `xion-verify supply` (post-deploy, promoted from `NOT_YET_SEALED` after mainnet). The deploy script (`contracts/script/Deploy.s.sol`) also performs a constitutional sanity check on `GENESIS_SPLIT(i)` at the end of the deployment run.
+- **Verifier:** `xion-verify schemas` (pre-deploy, live) + `xion-verify supply` (promoted against the Base Sepolia deployment manifest). The deploy script (`contracts/script/Deploy.s.sol`) also performs a constitutional sanity check on `GENESIS_SPLIT(i)` at the end of the deployment run; mainnet supply verification remains Phase 7.
 
 ### KW-CONTRACTS-003 â€” `Imprint.DECAY_BPS_PER_30D` conflicts with documented decay rate
 
@@ -1016,6 +1038,30 @@ Every entry has the same shape:
   - Target: 3-host substrate within 30 days post-Genesis (Chutes + operator laptop + Akash standby, Aleph.im, Fleek, or community bare-metal). Failure to reach this target is itself a governance signal (the Auto-Research Loop or drive vector needs tuning, not the operator).
 - **Pay-down commitment:** Closed when `xion-verify discovery` confirms three independent Relay endpoints resolving and the Substrate Vitality vital sign reads `healthy`.
 - **Verifier:** `xion-verify discovery`, `xion-verify provisioning`, `xion-verify vitals`.
+
+### KW-RELAY-CHUTES-D3-001 — Chutes Relay D3 deploy is a static-cord smoke build, not the full Relay surface
+
+- **Domain:** `RELAY`
+- **Discovered:** 2026-04-25 (during D2/D3 closure plan B4 execution from WSL)
+- **Severity:** medium (D3 discovery is verifier-honest about the smoke status; full surface lands before mainnet)
+- **Status:** `paying-down`
+- **Description:** The pre-genesis Chutes Relay deployment at `https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai` (chute id `89866bfc-5ddd-5382-b887-116d8901808f`) currently runs a *smoke build*. The latest deployed image is `pre-genesis-d3-6` (image id `971ea1ac-1850-5b26-86af-bc0aa23c7f06`). Two public cords (`GET /health`, `GET /self`) have returned deterministic envelopes tagged `service="xion-relay-chutes-smoke"` on verified miner instances. The third smoke cord has now been renamed to `GET /quote` to avoid Chutes platform pricing-route interception; the live metadata reports function/path `/quote`, but the platform is currently returning transient `429 Infrastructure is at maximum capacity` responses during probing. This remains an honest B4 smoke closure attempt, not the full Relay surface.
+- **Why it exists:** The previous build (`pre-genesis-d3-3`) tried to `Popen` `uvicorn` against `orchestrator.api.app.create_app` with a hand-rolled `AppDeps(cast_pool_on_boot=False)`. That call raises `TypeError: AppDeps.__init__() missing required positional argument: 'relay'` immediately on boot; the subprocess died, `_wait_for_relay()` timed out, and the Chutes platform deactivated the instance every time. The plan's Likely-Next-Fix path was to ship the smoke build first so the cord pipeline is not the unknown when we wire the real Relay later.
+- **Discovered facts (recorded so the next maintainer does not relearn them, each tied to a specific build):**
+  1. (`pre-genesis-d3-4` / `pre-genesis-d3-5`) `GET *.chutes.ai/pricing` is intercepted by the Chutes platform proxy itself and returns the platform's GPU pricing payload (`{tao_usd, gpu_price_estimates: {3090, 4090, 5090, …}}`). It never reaches the chute cord.
+  2. (`pre-genesis-d3-5`) The two-segment public path `/xion/pricing` returns a stable fast (<200 ms) `502 Bad Gateway` from the platform's nginx ingress on an instance where `/health` and `/self` simultaneously return 200 OK. Five-shot retry confirms this is not a warmup blip.
+  3. (`pre-genesis-d3-6`) The Chutes `Cord` class defaults the *internal upstream cord path* to the Python function name (`self.path = func.__name__` in `chutes/chute/cord.py:929`). So a function named `pricing` exposes internal upstream path `/pricing` even when the *public* path is renamed to single-segment `/xpricing`. The Chutes Aegis layer on the worker rejects the upstream `/pricing` the same way the public proxy does — surfacing as the same fast nginx 502 we saw on d3-5.
+  4. (`pre-genesis-d3-7` build attempt) The Chutes platform enforces `You may only update/create 24 imagehistorys per 24 hours.` Once we hit that ceiling on a single day's iteration we cannot push another image until the rolling 24-hour window clears.
+  5. (`2026-04-26` metadata-only deploy) Renaming both public and internal paths to `/xpricing` still returned nginx 502. The source now uses `/quote` so the smoke cord stays out of the platform's pricing namespace entirely; the live metadata reflects `/quote`, but public probes are currently blocked by platform capacity 429s.
+- **Mitigations:**
+  - Smoke envelope discloses `service="xion-relay-chutes-smoke"` and `image_tag` so a third party reading the cord output can see what is and is not promised.
+  - `scripts/debug-chute-d3.sh`, `scripts/verify-chute-cords.sh` (now `EXPECTED_IMAGE_TAG`-overridable), `scripts/verify-chute-import.py`, `scripts/probe-pricing-variants.sh`, and `scripts/probe-xion-pricing.sh` give the solo operator a complete one-command WSL loop for (re)building, importing, deploying, warming, and probing this chute.
+  - The cord pipeline itself is now proven end-to-end on the live Chutes platform: build → push → schedule → miner assignment (verified instance) → public 200 OK on two cords.
+  - The remaining smoke cord has been moved to `/quote`; current failure mode is platform capacity 429, not the earlier route-level 502.
+- **Pay-down commitment:** Closes in two steps.
+  1. **Cord pipeline closure (next 24 hours):** rebuild as `pre-genesis-d3-7` once the Chutes image-history rate limit clears (`chutes build xion_relay_chute:chute --wait` → `chutes deploy` → `chutes warmup`), confirm `scripts/verify-chute-cords.sh` reports `/health`, `/quote`, and `/self` green, then update `ledgers/RELAY_REGISTRY.json` with the chute id / public URL / image id row and publish to Arweave.
+  2. **Live-surface closure (Phase 6.x integration step):** ship `orchestrator/api/launcher.py` that constructs a real `Relay` and a real `AppDeps`, run that under `uvicorn` inside the Chutes image, and have all three public cords return live Relay payloads instead of the smoke envelope. `xion-verify discovery` is then promoted against the published `RELAY_REGISTRY.json` row.
+- **Verifier:** `scripts/verify-chute-cords.sh` (envelope shape on the smoke build, image-tag overridable so the same script works against d3-6 and d3-7); future `xion-verify discovery` against `ledgers/RELAY_REGISTRY.json` once the registry row is populated and the live surface lands.
 
 ### KW-AUDIT-001 â€” No external contract audit (applies if Sprint Mode is chosen)
 

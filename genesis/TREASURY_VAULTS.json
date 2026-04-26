@@ -1,28 +1,30 @@
 {
   "schema_version": 1,
-  "status": "testnet_placeholder",
+  "status": "testnet",
   "bridge_exposure_cap_bps": 1000,
-  "master_treasury": null,
+  "master_treasury": "0xFAAa1A20f07249316BdB33A9eA44522260Ed7E45",
+  "master_treasury_deploy_block": 40699177,
+  "master_treasury_deploy_tx": "0x80de7f870876f45a88a7bc6e93477f3b25bca04ea035ce6b96cff01f0dab870a",
   "tier1_operating_tokens": [
     {
       "asset": "AR",
       "purpose": "Arweave permanent storage",
-      "status": "operator_action_required"
+      "status": "testnet_routed_to_base_sepolia_vault"
     },
     {
       "asset": "USDC",
       "purpose": "fiat-pegged operations",
-      "status": "operator_action_required"
+      "status": "testnet_routed_to_base_sepolia_vault"
     },
     {
       "asset": "ETH",
       "purpose": "gas",
-      "status": "operator_action_required"
+      "status": "testnet_routed_to_base_sepolia_vault"
     },
     {
       "asset": "TAO",
       "purpose": "Bittensor / Chutes inference credits",
-      "status": "operator_action_required"
+      "status": "testnet_routed_to_base_sepolia_vault"
     }
   ],
   "excluded_tier1_assets": [
@@ -31,6 +33,15 @@
       "reason": "Akash is standby blueprint only at Genesis; add by Tier-2 migration if activated as third-party secondary."
     }
   ],
-  "vaults": [],
-  "residual": "Real testnet/mainnet vault addresses require operator deployment and external audit."
+  "vaults": [
+    {
+      "network": "base-sepolia",
+      "chain_id": 84532,
+      "vault": "0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc",
+      "ao_core_authority": "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A",
+      "deploy_block": 40699211,
+      "deploy_tx": "0xf0fadec686d79a77efb2c17a35949bb9bfbabe8d4e12d2ea294984dfe59c0b51"
+    }
+  ],
+  "residual": "Mainnet treasury and vault addresses require Phase 7 external audit and Cold Root authority wiring."
 }

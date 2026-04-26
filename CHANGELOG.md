@@ -10,6 +10,72 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### D3 Chutes Relay smoke build deployed — 2026-04-25
+
+Closes plan item B4 (Chutes Relay image build + cord pipeline alive) for `d2_d3_closure_plan_a729f812` by shipping a *honest smoke build* against the live Chutes platform. Two of the three public cords (`/health`, `/self`) are 200 OK with the deterministic envelope on a verified miner-served instance; the third cord moved from pricing-like paths to `/quote` after Chutes returned 502s for `/xpricing`.
+
+### Why was this needed?
+
+The pre-genesis Relay registry (`ledgers/RELAY_REGISTRY.json`) has placeholder rows. Plan item B4 promises a real Chutes Relay endpoint that `xion-verify discovery` can resolve. Before wiring the full Relay surface (Arbiter + Hermes + ledgers) into a Chutes image, we needed to prove the Chutes cord pipeline (build → push → schedule → public-cord routing) end-to-end against the live platform. The previous full-Relay attempt (`pre-genesis-d3-3`) crashed on boot with `TypeError: AppDeps.__init__() missing required positional argument: 'relay'` — Chutes deactivated the instance every time, leaving us unable to tell whether the platform side was working at all.
+
+### What changed?
+
+- **`xion_relay_chute.py`** — replaced the previous `Popen(uvicorn …)` shape with a self-contained smoke chute that returns a deterministic envelope from three public cords:
+  - `GET /health` (function `health`, internal path `/health`).
+  - `GET /quote` (function `quote` in the d3-7 source, internal path `/quote`).
+  - `GET /self` (function `self_endpoint`, internal path `/self_endpoint`).
+- **Envelope shape** — `{status: "ok", service: "xion-relay-chutes-smoke", image_tag, endpoint, timestamp, note}`. The `service` field discloses the smoke status; `image_tag` correlates a probe response to a specific Chutes image without trust.
+- **`scripts/debug-chute-d3.sh`** — one-shot WSL debug script: prints chute id / version / image / hot / bounty / instances and probes `/health` (GET + POST forms) with a Bearer token sourced from `chutes.env`.
+- **`scripts/verify-chute-import.py`** — local smoke-imports the chute module under the chutes pipx venv to catch decorator / cord-shape regressions before a Chutes build slot is consumed.
+- **`scripts/verify-chute-cords.sh`** — runs the three public probes against the deployed chute and asserts the envelope shape; `EXPECTED_IMAGE_TAG` env var lets a probe assert against the actual deployed image.
+- **`scripts/probe-pricing-variants.sh`** — cross-checks `/pricing` (platform-intercepted), stale pricing-like variants, and the current `/quote` chute cord.
+- **`scripts/probe-xion-pricing.sh`** — five-shot retry harness used to distinguish a one-shot upstream blip from a stable platform-routing miss.
+
+### Verified against the live platform
+
+- **End-to-end cord pipeline alive.** With `pre-genesis-d3-6` deployed (image id `971ea1ac-1850-5b26-86af-bc0aa23c7f06`, version `11f8f993-2852-52a0-8c40-0eda85a5f877`) and instance `02ad3583-f329-437e-b136-00388325a6d2` (`active=True verified=True last_verified_at=2026-04-26T06:31:50Z`):
+  - `GET https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai/health` → `200 OK` with `{"status":"ok","service":"xion-relay-chutes-smoke","image_tag":"pre-genesis-d3-6","endpoint":"/health", …}`.
+  - `GET …/self` → `200 OK` with the same envelope shape and `endpoint: /self`.
+  - The Chutes warmup cycle worked: the chute went `HOT`, bounty climbed (peak observed: 928), and a verified miner picked it up after a single 240-second `chutes warmup` run.
+- **Three platform-routing facts proven (each with a live build):**
+  - `GET *.chutes.ai/pricing` is intercepted by the Chutes platform proxy and returns the platform's GPU pricing payload (`{tao_usd, gpu_price_estimates: {3090, 4090, 5090, …}}`) regardless of what the chute serves at `/pricing`. Confirmed against `pre-genesis-d3-5` and `pre-genesis-d3-6`.
+  - The two-segment public path `/xion/pricing` returns a fast (<200 ms) `502 Bad Gateway` from the platform's nginx ingress on the same instance where `/health` and `/self` are 200 OK. Five-shot retry confirms this is stable, not a warmup blip.
+  - The Chutes `Cord` defaults the *internal upstream cord path* to the Python function name (`self.path = func.__name__` in `chutes/chute/cord.py:929`). So a function named `pricing` exposes internal upstream path `/pricing` even when the public path is renamed. A metadata-only deploy later proved `/xpricing` can still 502, so the smoke cord now uses `/quote` to stay out of the platform's pricing namespace entirely.
+
+### What is honestly *not yet* green
+
+- **The deployed metadata now uses `/quote`, but the platform is currently returning 429 capacity responses.** The source fix is in `xion_relay_chute.py` and pinned to image tag `pre-genesis-d3-7`; the actual image rebuild is still blocked by Chutes' 24-hour image-history rate limit. The next operator step is a single `chutes build xion_relay_chute:chute --wait` once that window clears, followed by `chutes deploy`, `chutes warmup`, and `scripts/verify-chute-cords.sh`.
+- **`ledgers/RELAY_REGISTRY.json`** is not yet updated with this Chutes row, and `xion-verify discovery` is not yet promoted against it. Both remain pending until `/health`, `/quote`, and `/self` are all green on the deployed Chutes endpoint.
+- **The Chutes deploy is *not* the live Relay surface.** It is an envelope that explicitly says so (`service: "xion-relay-chutes-smoke"`). The full `orchestrator.api.app` Relay (Arbiter + Hermes + ledgers) lands in a follow-up image once an `orchestrator/api/launcher.py` constructs a real `Relay` and a real `AppDeps`.
+
+### Changed
+
+- **`KNOWN_WEAKNESSES.md`** — extends `KW-RELAY-CHUTES-D3-001` with the function-name internal-path discovery and the `pre-genesis-d3-7` pay-down step.
+
+### D3 Base Sepolia contract deploy — 2026-04-25
+
+Deploys the pre-genesis XION/IMPRINT/LiquidityLock contract suite to Base Sepolia for third-party testnet verification.
+
+### Added
+
+- **Base Sepolia deployment manifest** — `genesis/CONTRACT_ADDRESSES.json` now records the testnet `XionToken`, `EmissionController`, `Imprint`, and `LiquidityLock` addresses from block `40698729`, rooted at deploy tx `0x5058884cbdf02c0ca58250e6d4e776b3b5868d697ca2c26d5aa7987b81ea1941`.
+
+### Changed
+
+- **Contract deployment verifiers** — `xion-verify supply`, `xion-verify liquidity-lock`, and `xion-verify authorities` now resolve against the populated Base Sepolia manifest. Mainnet deployment, Cold Root authority wiring, and external audit remain Phase 7 blockers.
+
+### D3 Base Sepolia treasury deploy — 2026-04-25
+
+Deploys the D3 treasury spine to Base Sepolia and binds a per-chain vault so treasury-bucket verifiers can check a real testnet artifact.
+
+### Added
+
+- **Treasury deployment manifest** — `genesis/TREASURY_VAULTS.json` now records `MasterTreasury` at `0xFAAa1A20f07249316BdB33A9eA44522260Ed7E45` and the Base Sepolia vault at `0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc`.
+
+### Changed
+
+- **Treasury bucket verifiers** — `xion-verify treasury-flow`, `xion-verify foundation-reserve`, `xion-verify reserve`, and `xion-verify improvement-fund` now resolve against the populated testnet treasury manifest. Mainnet treasury custody remains Phase 7 and audit-gated.
+
 ### Complete Phase 6 code-completable residuals — 2026-04-25
 
 Implements the code-completable Phase 6 closure plan while keeping ceremony/procurement blockers explicit for Phase 7 preflight.

@@ -1,0 +1,14 @@
+.git
+.venv
+.pytest_cache
+**/__pycache__
+**/*.pyc
+.cursor
+clients
+contracts
+docs
+genesis/RELAY_IMAGE_DIGEST.txt
+ledgers
+node_modules
+xion-verify
+xion-audit
