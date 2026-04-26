@@ -3,37 +3,30 @@ and honestly report where it reproduced and where it drifted.
 
 Per [`docs/04-ARCHITECTURE.md`](../../../docs/04-ARCHITECTURE.md) § "Auditor replay":
 an auditor replaying a row with `llm_verdict.provider_id ==
-"openai-moderation"` must:
+"chutes-llm-judge"` must:
 
 1. Obtain the candidate out-of-band (the ledger never stores it).
 2. Re-post to the provider.
-3. Strip `id`, serialise `{model, results}` canonically.
+3. Serialise the structured judge JSON canonically.
 4. Compare `sha256(canonical)` against the row's
    `llm_verdict.raw_output_sha256`. **Byte-equal match is the
-   strong property; score-drift mismatches are expected and do not
-   invalidate the row.** What MUST reproduce in every case are the
-   `flagged` booleans and the `principle_id` the mapping table
-   would have produced.
+   strong property.** What MUST reproduce in every case are the
+   `decision` and `principle_id`.
 
 This module implements that procedure and prints four honest signals:
 
-* **sha256 match.** Byte-identical canonical output. Usually false in
-  practice (OpenAI GPU scoring drifts ~1e-6).
-* **decision match.** Does the mapped `decision` reproduce? (OK /
+* **sha256 match.** Byte-identical canonical output.
+* **decision match.** Does the provider `decision` reproduce? (OK /
   REFUSE / ESCALATE.)
-* **principle_id match.** Does the mapped Covenant principle id
+* **principle_id match.** Does the provider Covenant principle id
   reproduce? **This is the strong property the doctrine pins.**
-* **score drift.** Max abs delta between the replay's
-  `category_scores` and the ledger row's reconstructable scores —
-  informational only; the ledger stores only the sha256, not the
-  scores, so we derive the best signal we can from the replay side
-  alone.
+* **confidence.** Replay-side confidence from the structured judge JSON.
 
 Exit codes:
   0 — principle_id + decision reproduced (sha may or may not match).
   1 — principle_id or decision drifted. Row is suspect; see output.
-  2 — NOT_YET_SEALED: OPENAI_API_KEY not set, or row points at a
-      provider we cannot replay from this tool (non-openai-moderation,
+  2 — NOT_YET_SEALED: XION_CHUTES_API_KEY not set, or row points at a
+      provider we cannot replay from this tool (non-chutes-llm-judge,
       or a v1 `principle_id`-only row with no `llm_verdict`).
 """
 
@@ -80,11 +73,7 @@ def replay(ledger_path: Path, seq: int, candidate_file: Path, json_out: bool) ->
     import os
 
     from orchestrator.safety.ledger import iter_rows
-    from orchestrator.safety.providers.openai_moderation import (
-        OpenAIModerationProvider,
-        _asymmetric_when_unflagged,
-        _select_principle,
-    )
+    from orchestrator.safety.providers.chutes_llm_judge import ChutesLlmJudgeProvider
 
     try:
         find_repo_root_or_cwd()
@@ -111,17 +100,17 @@ def replay(ledger_path: Path, seq: int, candidate_file: Path, json_out: bool) ->
         )
         raise SystemExit(2)
 
-    if str(llm.get("provider_id")) != "openai-moderation":
+    if str(llm.get("provider_id")) != "chutes-llm-judge":
         click.echo(
             f"replay: NOT_YET_SEALED: row seq={seq} provider_id="
-            f"{llm.get('provider_id')!r}; this tool only replays openai-moderation.",
+            f"{llm.get('provider_id')!r}; this tool only replays chutes-llm-judge.",
             err=True,
         )
         raise SystemExit(2)
 
-    if not os.environ.get("OPENAI_API_KEY", "").strip():
+    if not os.environ.get("XION_CHUTES_API_KEY", "").strip():
         click.echo(
-            "replay: NOT_YET_SEALED: OPENAI_API_KEY not set; cannot re-call provider. "
+            "replay: NOT_YET_SEALED: XION_CHUTES_API_KEY not set; cannot re-call provider. "
             "Export the key and re-run.",
             err=True,
         )
@@ -149,72 +138,26 @@ def replay(ledger_path: Path, seq: int, candidate_file: Path, json_out: bool) ->
         raise SystemExit(1)
 
     # -------------------------------------------------------------- replay call
-    p = OpenAIModerationProvider()
+    p = ChutesLlmJudgeProvider()
     judgement = p.judge(candidate_text)
 
-    # Re-materialise the parsed response from the provider via the same
-    # canonical projection used at write time. We don't have the raw
-    # response bytes here (judge() consumes them), but _canonical_raw_output
-    # is implicitly what judgement.raw_output already is.
     replay_raw_bytes = bytes(judgement.raw_output)
     replay_sha = hashlib.sha256(replay_raw_bytes).hexdigest()
 
-    # Pull flagged categories + scores from the replay's raw_output for
-    # the table-reapplication check (the strong doctrine property).
     replay_canonical: dict[str, Any] = json.loads(replay_raw_bytes.decode("utf-8"))
-    results = replay_canonical.get("results") or []
-    if not results:
-        click.echo("replay: FAIL: replay raw_output missing results[]", err=True)
-        raise SystemExit(1)
-    r0 = results[0]
-    flagged_bool = bool(r0.get("flagged", False))
-    categories: dict[str, bool] = r0.get("categories") or {}
-    category_scores: dict[str, float] = r0.get("category_scores") or {}
-
-    # Apply the category→principle table to the replay side. This is the
-    # doctrine-pinned strong property: the flagged/asymmetric mapping
-    # MUST reproduce independent of score drift.
-    table_decision: str
-    table_principle: str | None
-    if flagged_bool:
-        try:
-            dec_enum, prin, _all = _select_principle(categories, category_scores)
-            table_decision = dec_enum.value
-            table_principle = prin
-        except ValueError:
-            table_decision = "escalate"  # fail-closed, per doctrine
-            table_principle = None
-    else:
-        asym = _asymmetric_when_unflagged(categories, category_scores)
-        if asym is None:
-            table_decision = "ok"
-            table_principle = None
-        else:
-            dec_enum, prin, _summary = asym
-            table_decision = dec_enum.value
-            table_principle = prin
+    replay_decision = judgement.decision.value
+    replay_principle = judgement.principle_id
 
     # ------------------------------------------------------------- signals
     sha_match = (replay_sha == expected_sha) if expected_sha else False
-    decision_match = (table_decision == expected_decision)
-    principle_match = (table_principle == expected_principle)
+    decision_match = (replay_decision == expected_decision)
+    principle_match = (replay_principle == expected_principle)
     provider_version_match = (int(judgement.provider_version) == expected_version)
-
-    # Best-effort score-drift signal. We cannot compare against the row
-    # (the ledger stores only the sha256), so we emit the largest score
-    # the replay observed so an auditor can eyeball whether the
-    # no-match is "nearly the same" or "radically different".
-    top_score = 0.0
-    if category_scores:
-        try:
-            top_score = float(max(category_scores.values()))
-        except (TypeError, ValueError):
-            top_score = 0.0
 
     report: dict[str, Any] = {
         "ledger_path": str(ledger_path),
         "seq": int(seq),
-        "provider_id": "openai-moderation",
+        "provider_id": "chutes-llm-judge",
         "provider_version_expected": expected_version,
         "provider_version_replay": int(judgement.provider_version),
         "provider_version_match": provider_version_match,
@@ -222,34 +165,31 @@ def replay(ledger_path: Path, seq: int, candidate_file: Path, json_out: bool) ->
         "raw_output_sha256_replay": replay_sha,
         "raw_output_sha256_match": sha_match,
         "decision_expected": expected_decision,
-        "decision_replay_from_table": table_decision,
+        "decision_replay": replay_decision,
         "decision_match": decision_match,
         "principle_id_expected": expected_principle,
-        "principle_id_replay_from_table": table_principle,
+        "principle_id_replay": replay_principle,
         "principle_id_match": principle_match,
-        "replay_flagged": flagged_bool,
-        "replay_top_category_score": top_score,
-        "replay_flagged_categories": sorted(c for c, on in categories.items() if on),
+        "replay_confidence": judgement.confidence,
+        "replay_raw_output": replay_canonical,
     }
 
     if json_out:
         click.echo(json.dumps(report, sort_keys=True, indent=2))
     else:
         click.echo(
-            f"replay: seq={seq} provider=openai-moderation v{expected_version}"
+            f"replay: seq={seq} provider=chutes-llm-judge v{expected_version}"
             f"{' (provider version drift!)' if not provider_version_match else ''}"
         )
         click.echo(f"  raw_output_sha256: "
-                   f"{'MATCH' if sha_match else 'DRIFT (score-drift is expected; see principle_id)'}")
+                   f"{'MATCH' if sha_match else 'DRIFT (see decision + principle_id)'}")
         click.echo(f"    expected: {expected_sha}")
         click.echo(f"    replay:   {replay_sha}")
         click.echo(f"  decision:      {'MATCH' if decision_match else 'DRIFT'}  "
-                   f"expected={expected_decision!r}  replay={table_decision!r}")
+                   f"expected={expected_decision!r}  replay={replay_decision!r}")
         click.echo(f"  principle_id:  {'MATCH' if principle_match else 'DRIFT'}  "
-                   f"expected={expected_principle!r}  replay={table_principle!r}")
-        click.echo(f"  replay flagged={flagged_bool} "
-                   f"top_category_score={top_score:.4f} "
-                   f"flagged_categories={report['replay_flagged_categories']}")
+                   f"expected={expected_principle!r}  replay={replay_principle!r}")
+        click.echo(f"  replay confidence={judgement.confidence:.4f}")
 
     if not decision_match or not principle_match:
         # Strong property failed. Row is suspect. Exit 1; the operator

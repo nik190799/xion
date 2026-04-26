@@ -88,7 +88,7 @@ decomposition."""
 _DEFAULT_MAX_WORKERS = 8
 """Worker pool size for the watchdog executor. A stuck gate() call holds
 a worker until it naturally returns; sized so a sustained-latency outlier
-storm (rare under the OpenAI Moderation provider's typical ~120ms p50)
+storm (provider tail latency is measured by the active Arbiter v2 provider)
 does not deadlock the Relay. See KW-RELAY-005."""
 
 _DEFAULT_RELAY_ID = "relay-local-d2"

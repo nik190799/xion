@@ -96,8 +96,8 @@ Append-only. One row per turn that made it past pre-authorization. Hash-chained 
 | `settled_XION` | uint; non-zero iff `outcome=settled` |
 | `refund_XION` | uint; non-zero iff `outcome=refunded` |
 | `posted_price_XION` | uint; the governance-posted price at commitment time (lets auditors reconstruct pricing history) |
-| `provider_id` | nullable string; the turn-serving provider (`openrouter`, `ollama`) or null if refused pre-selection |
-| `model_id` | nullable string; the specific model used (`moonshotai/kimi-k2.6`, `gemma3:4b`) or null if refused pre-selection |
+| `provider_id` | nullable string; the turn-serving provider (`chutes`, `ollama`) or null if refused pre-selection |
+| `model_id` | nullable string; the specific model used (`moonshotai/Kimi-K2.6-TEE`, `gemma4:e4b-it-q4_K_M`) or null if refused pre-selection |
 | `authorization_reference` | string; B1 operator-attestation payload hash, B2 x402 commitment hash, or `""` in disabled posture |
 | `source_sha256` | hex64; anchor hash of `docs/04-ARCHITECTURE.md` at row-write time |
 
@@ -183,11 +183,11 @@ Exit codes: `0` OK, `1` FAIL (with specific `correlation_id` and property named)
 |-------|--------------------------|
 | Phase 5g-i (closed) | `POST /chat` surface; `KW-CHAT-002` opened declaring Phase 5g-iii's scope |
 | Phase 5g-0 (closed) | `docs/27-RESEARCH-SPEND.md` pinned the mirror-symmetric outbound schema; 5g-iii inherits its three-money-field convention |
-| Phase 5g-i.1 (closed) | OpenRouter gateway posture — catalog-based pricing earned for 5g-iii (though 5g-iii defers the catalog read to Phase 6+) |
+| Phase 6.9 (closed) | Chutes/Bittensor hosted posture — billing telemetry replaces centralized catalog dependence |
 | Phase 5g-iii (this commit) | Doctrine + schema + code + two verifiers; `KW-CHAT-002` closed; `KW-BILLING-001` and `KW-BILLING-002` opened |
 | Phase 5g-iv (next) | Auth / TLS / rate-limit — the remaining half of `KW-API-001` ends when external traffic becomes safe |
 | Phase 6 (treasury + AO Core) | B1/B2 commitment validator grows chain-verified signature check; B3 posture goes live; real XION / USDC movement; `KW-BILLING-001` closes |
-| Phase 6+ (catalog-driven pricing) | `GET /pricing` reads live OpenRouter catalog; governance rotation cadence wired to a verifier; `KW-BILLING-002` closes |
+| Phase 6+ (catalog-driven pricing) | `GET /pricing` reads Chutes billing telemetry / decentralized-provider cost feeds; governance rotation cadence wired to a verifier; `KW-BILLING-002` closes |
 | Phase 7+ (multi-turn skills) | `refunded_partial` writers land; `stranded` reconciliation tooling lands |
 
 ## Verification posture (at 5g-iii)

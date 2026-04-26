@@ -75,7 +75,7 @@ def run_turn(
                     Message.text("user", prompt),
                 ],
                 max_tokens=min(max_tokens, budget.reasoning_tokens),
-                tools=_openai_tools()[: budget.tool_rounds],
+                tools=_chat_tools()[: budget.tool_rounds],
                 response_format={"type": "text"},
                 reasoning_effort="high",
                 deadline_s=remaining_s,
@@ -144,8 +144,8 @@ async def stream_run_turn(
         journal.append(correlation_id, "xion", "".join(full_text), principal_id=principal_id)
 
 
-def _openai_tools() -> list[dict[str, Any]]:
-    return [spec.to_openai_tool() for spec in _tool_resolver().list_tools()]
+def _chat_tools() -> list[dict[str, Any]]:
+    return [spec.to_oai_compat_tool() for spec in _tool_resolver().list_tools()]
 
 
 def _journal() -> Journal:

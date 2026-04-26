@@ -29,11 +29,11 @@ def cost_pressure() -> None:
 
     ladder = CostPressureLadder(repo_root)
     
-    # Synthetic price drop: OpenAI GPT-4 drops from 30.0 to 10.0
+    # Synthetic price drop: Chutes hosted model cost drops from 30.0 to 10.0.
     synthetic_prices = [
         PriceSnapshot(
-            provider="openai",
-            model="gpt-4",
+            provider="chutes",
+            model="moonshotai/Kimi-K2.6-TEE",
             input_cpm=10.0,
             output_cpm=30.0,
             timestamp=0.0,

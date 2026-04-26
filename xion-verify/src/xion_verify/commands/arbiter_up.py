@@ -28,11 +28,6 @@ monitors the daemon; this verifier's job is "is the Arbiter artifact
 sound", not "is my daemon running".
 
 Not yet implemented (tracked in KNOWN_WEAKNESSES):
-  - `--gateway <URL>` mode for cross-Arweave-gateway re-fetch of each
-    anchor's `ar_tx_id` (KW-ANCHOR-002). Semantics: fetch the stored
-    bytes from multiple gateways, canonical-hash them, and require
-    every gateway to agree with the row's `this_hash`. Disagreement
-    is a hard FAIL.
   - Refund-fidelity ledger-to-ledger join (Phase 5).
   - Sensorium / CRS pairing (Phase 5).
 """
@@ -56,7 +51,13 @@ def _fail(message: str) -> None:
 
 
 @click.command(name="arbiter-up")
-def arbiter_up() -> None:
+@click.option(
+    "--gateway",
+    "gateways",
+    multiple=True,
+    help="Arweave gateway URL. Provide at least two to re-fetch arweave anchor payloads by quorum.",
+)
+def arbiter_up(gateways: tuple[str, ...]) -> None:
     """Verify the Arbiter library, its local ledger, and its anchors."""
 
     # 1. Library importable.
@@ -142,6 +143,12 @@ def arbiter_up() -> None:
                 f"anchors(rows={a_count}, tip={a_tip[:16]}..., "
                 f"covers={rows_covered}/{_ledger_rows_from_summary(ledger_paths_checked)})"
             )
+            if gateways:
+                gateway_summary = _verify_arweave_gateway_quorum(
+                    anchors_path,
+                    gateways,
+                )
+                anchors_summary += f"; {gateway_summary}"
         else:
             # Anchors file exists but no ledger. That is a schema violation
             # in itself — anchors commit to a ledger that is not present.
@@ -168,6 +175,57 @@ def arbiter_up() -> None:
         f"ledger: {ledger_summary}; {anchors_summary}"
     )
     raise SystemExit(OK)
+
+
+def _verify_arweave_gateway_quorum(anchors_path: Path, gateways: tuple[str, ...]) -> str:
+    if len(gateways) < 2:
+        _fail("--gateway requires at least two gateways for quorum verification")
+    try:
+        from orchestrator.data.multi_gateway_arweave import MultiGatewayArweaveReader
+        from orchestrator.safety.anchor import iter_anchor_rows
+    except Exception as exc:
+        _fail(f"cannot import Arweave quorum reader: {type(exc).__name__}: {exc}")
+
+    reader = MultiGatewayArweaveReader(tuple(gateways))
+    checked = 0
+    for row in iter_anchor_rows(anchors_path):
+        if row.get("submitted_to") != "arweave":
+            continue
+        tx_id = str(row.get("ar_tx_id") or "")
+        if not tx_id:
+            _fail("arweave anchor row missing ar_tx_id")
+        expected = _anchor_submit_payload(row)
+        try:
+            result = reader.tx_data(tx_id)
+        except Exception as exc:
+            _fail(f"gateway quorum failed for ar_tx_id={tx_id}: {exc}")
+        if result.value != expected:
+            _fail(
+                f"gateway quorum payload mismatch for ar_tx_id={tx_id}; "
+                "Arweave payload does not match anchor row body"
+            )
+        checked += 1
+    return f"gateway-quorum={checked} arweave anchor(s) checked across {len(gateways)} gateways"
+
+
+def _anchor_submit_payload(row: dict) -> bytes:
+    import json
+
+    excluded = {
+        "seq",
+        "prev_hash",
+        "this_hash",
+        "submitted_to",
+        "ar_tx_id",
+        "wallet_address",
+    }
+    body = {k: v for k, v in row.items() if k not in excluded}
+    return json.dumps(
+        body,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
 
 
 def _ledger_rows_from_summary(entries: list[str]) -> int:

@@ -3,7 +3,7 @@ family: provisioning
 schema_version: 1
 status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: dda5d78f6d79a233dbd8966e2c9024f9c8ffd5587ee2dfceb48cbe7e257e5034
+source_sha256: 688f679a2d62e28e7e119657aa0fb84febfe2a22674e352ac3c5adc5f9e285cf
 operational_doctrine: docs/28-AO-CORE.md
 operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
 args:

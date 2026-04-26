@@ -199,13 +199,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # An explicitly-supplied router is treated as fully configured;
     # the env loader + env-driven provider registration is skipped.
     # Tests rely on this to keep themselves hermetic from the operator
-    # shell's environment (and from any live Ollama / OpenRouter endpoint).
+    # shell's environment (and from any live Ollama endpoint).
     if deps.router is not None:
         router = deps.router
     else:
         _load_dotenv_if_present()
         router = _build_router_from_env()
         _register_env_providers(router)
+    _enforce_sovereign_profile()
 
     app.state.router = router
     app.state.no_floor = False
@@ -511,8 +512,7 @@ def _build_router_from_env() -> InferenceRouter:
 
 
 def _register_env_providers(router: InferenceRouter) -> None:
-    """Register Chutes/OpenRouter (if their API keys are set) and Ollama
-    (always).
+    """Register Chutes (if its API key is set) and Ollama (always).
 
     Failures in provider construction (e.g., malformed URL) are
     surfaced to stderr but do NOT crash the lifespan — a missing or
@@ -525,16 +525,12 @@ def _register_env_providers(router: InferenceRouter) -> None:
     from orchestrator.inference_router.providers import (
         ChutesGenerativeProvider,
         OllamaGenerativeProvider,
-        OpenRouterGenerativeProvider,
     )
     from orchestrator.inference_router.providers.chutes import (
         ChutesProviderError,
     )
     from orchestrator.inference_router.providers.ollama import (
         OllamaProviderError,
-    )
-    from orchestrator.inference_router.providers.openrouter import (
-        OpenRouterProviderError,
     )
 
     if os.environ.get("XION_CHUTES_API_KEY", "").strip():
@@ -567,20 +563,6 @@ def _register_env_providers(router: InferenceRouter) -> None:
                         flush=True,
                     )
 
-    # OpenRouter remains a 30-day parity-window fallback/shadow provider
-    # when the operator keeps its credential configured.
-    if os.environ.get("XION_OPENROUTER_API_KEY", "").strip():
-        try:
-            openrouter = OpenRouterGenerativeProvider()
-        except OpenRouterProviderError as e:
-            print(
-                f"State-of-Xion: OpenRouter provider not registered: {e}",
-                file=sys.stderr,
-                flush=True,
-            )
-        else:
-            router.register(openrouter)
-
     try:
         ollama = OllamaGenerativeProvider()
     except OllamaProviderError as e:
@@ -591,6 +573,76 @@ def _register_env_providers(router: InferenceRouter) -> None:
         )
     else:
         router.register(ollama)
+
+
+def _enforce_sovereign_profile() -> None:
+    """Fail closed when the sovereign profile sees centralized surfaces."""
+    from orchestrator.profile import ProfileConfigError, current_profile
+
+    try:
+        profile = current_profile()
+    except ProfileConfigError:
+        raise
+    if profile.name != "sovereign":
+        return
+
+    forbidden_env = {
+        "XION_OPENROUTER_API_KEY": "OpenRouter is a centralized SaaS fallback",
+        "OPENAI_API_KEY": "OpenAI Moderation is a centralized SaaS classifier",
+    }
+    for key, reason in forbidden_env.items():
+        if os.environ.get(key, "").strip():
+            raise RuntimeError(
+                f"sovereign profile refused: {key} is set ({reason}). "
+                "Unset it or leave XION_PROFILE=local_only for non-sovereign development."
+            )
+
+    provider = os.environ.get("XION_LLM_ARBITER_PROVIDER", "").strip()
+    if provider and provider not in {"deterministic-stub", "chutes-llm-judge"}:
+        raise RuntimeError(
+            "sovereign profile refused: XION_LLM_ARBITER_PROVIDER must be "
+            "'deterministic-stub' or 'chutes-llm-judge'."
+        )
+
+    ao_gateway = os.environ.get("XION_AO_GATEWAY_URL", "").strip()
+    if ao_gateway and not (
+        ao_gateway.startswith("http://localhost:")
+        or ao_gateway.startswith("http://127.0.0.1:")
+    ):
+        raise RuntimeError(
+            "sovereign profile refused: XION_AO_GATEWAY_URL must point at local AO localnet."
+        )
+
+    if os.environ.get("XION_ANCHOR_WALLET_JWK_PATH", "").strip():
+        raise RuntimeError(
+            "sovereign profile refused: XION_ANCHOR_WALLET_JWK_PATH is set; "
+            "pre-Genesis sovereign mode allows read/quorum paths, not Arweave writes."
+        )
+
+    anchor_sink = os.environ.get("XION_ANCHOR_SINK", "").strip().lower()
+    if anchor_sink == "ao_core" and ao_gateway and not (
+        ao_gateway.startswith("http://localhost:")
+        or ao_gateway.startswith("http://127.0.0.1:")
+    ):
+        raise RuntimeError(
+            "sovereign profile refused: XION_ANCHOR_SINK=ao_core requires AO localnet."
+        )
+
+    rpc_urls = [x.strip() for x in os.environ.get("XION_BASE_RPC_URLS", "").split(",") if x.strip()]
+    if rpc_urls and len(rpc_urls) < 3:
+        raise RuntimeError(
+            "sovereign profile refused: XION_BASE_RPC_URLS must contain at least 3 endpoints."
+        )
+
+    arweave_gateways = [
+        x.strip()
+        for x in os.environ.get("XION_ARWEAVE_GATEWAYS", "").split(",")
+        if x.strip()
+    ]
+    if arweave_gateways and len(arweave_gateways) < 2:
+        raise RuntimeError(
+            "sovereign profile refused: XION_ARWEAVE_GATEWAYS must contain at least 2 gateways."
+        )
 
 
 async def _poll_chutes_billing_forever() -> None:

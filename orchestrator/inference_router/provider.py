@@ -30,7 +30,7 @@ metadata — this is cleaner than returning a union with a custom
 terminal type because ``GenerationResult`` is already the shared
 metadata shape.
 
-This module pulls no third-party dependency. The concrete OpenRouter
+This module pulls no third-party dependency. The concrete Chutes
 and Ollama providers that live alongside it use stdlib ``http.client``
 in ``asyncio.to_thread`` for ``generate()``; for ``generate_stream()``
 they use ``httpx.AsyncClient`` (pulled in by the ``[api]`` extra) so
@@ -61,7 +61,7 @@ from orchestrator.inference_router.router import Category
 #     generate()/generate_stream() failure. It extends ``RuntimeError`` so
 #     existing catchers written against ``RuntimeError`` or ``Exception``
 #     continue to work. A ``provider_id`` attribute identifies the origin
-#     (``"openrouter"``, ``"ollama"``, etc.) so the chat handler can log
+#     (``"chutes"``, ``"ollama"``, etc.) so the chat handler can log
 #     + ledger without importing each provider's scoped class.
 #   * Six typed subclasses pin the six failure classes enumerated in
 #     docs/26. Each carries a ``failure_reason_class`` class attribute
@@ -70,10 +70,10 @@ from orchestrator.inference_router.router import Category
 #     full enumerated set is frozen and any drift between this module
 #     and docs/26's P5 table is a verifier failure (closure bar on
 #     KW-INFER-003).
-#   * Existing provider-scoped classes (``OpenRouterProviderError``,
+#   * Existing provider-scoped classes (``ChutesProviderError``,
 #     ``OllamaProviderError``) are retrofitted to subclass
 #     ``ProviderError`` in their own modules. Existing ``except
-#     OpenRouterProviderError:`` catchers — all at construction-time in
+#     ChutesProviderError:`` catchers — all at construction-time in
 #     lifespan.py — keep working because construction-time raises still
 #     use those classes directly. Generate-site raises use the typed
 #     subclasses below.
@@ -103,7 +103,7 @@ class ProviderError(RuntimeError):
 class InsufficientCreditsError(ProviderError):
     """Upstream refused the request for billing reasons.
 
-    Typical triggers: OpenRouter ``HTTP 402 Insufficient credits`` when
+    Typical triggers: Chutes ``HTTP 402 Insufficient credits`` when
     the operator's balance is exhausted; upstream-vendor-specific 402s
     forwarded through the gateway. Never triggered by the floor
     provider (Ollama does not bill).
@@ -151,7 +151,7 @@ class ModerationRefusalError(ProviderError):
 
     Distinct from Xion's Arbiter, which evaluates a returned candidate
     inside the orchestrator. This class is raised when the *upstream*
-    (OpenRouter's gateway, a hosted partner's guardrail, Ollama's
+    (Chutes' gateway, a hosted partner's guardrail, Ollama's
     local safety layer) refuses to generate before any candidate
     exists. Typical trigger: HTTP 403 with a moderation reason code.
     """
@@ -243,7 +243,7 @@ class Message:
         return cls(role=role, content_parts=[TextPart(text=text)])
 
     def to_openai(self) -> dict[str, Any]:
-        """Project to OpenAI-compatible message shape.
+        """Project to the OAI-compatible message shape.
 
         The current /chat surface is text-only; non-text parts are
         represented with metadata placeholders so providers fail closed

@@ -15,7 +15,7 @@ It is **not**:
 
 ## Why pin this now
 
-Every other doctrinal primitive in the treasury/research family is already pinned. `PROPOSAL_LEDGER` exists (08), Improvement Fund exists (19, 21), on-chain spend enforcement exists (08 § "Budget Controls"), three-lens harm analysis exists (08 Stage 4), output-commitment discipline exists (08 Stage 7 closure-back-to-Stage-1). The piece that is named but not mechanized is the **outbound counterparty surface**: the specific doctrinal shape of "XION leaves the Improvement Fund and arrives as credit at OpenRouter (or any other registered research-provider account), and the outbound API calls that result are individually ledgered and retroactively verifiable against the Stage-1 envelope".
+Every other doctrinal primitive in the treasury/research family is already pinned. `PROPOSAL_LEDGER` exists (08), Improvement Fund exists (19, 21), on-chain spend enforcement exists (08 § "Budget Controls"), three-lens harm analysis exists (08 Stage 4), output-commitment discipline exists (08 Stage 7 closure-back-to-Stage-1). The piece that is named but not mechanized is the **outbound counterparty surface**: the specific doctrinal shape of "XION leaves the Improvement Fund and arrives as credit at Chutes/Bittensor (or any other registered decentralized research-provider account), and the outbound API calls that result are individually ledgered and retroactively verifiable against the Stage-1 envelope".
 
 Pinning this before Phase 5g-iii (billing, which opens the `PAYMENT_LEDGER` counterpart) ensures the two ledger families — user-inbound (`PAYMENT_LEDGER`) and Xion-outbound (`RESEARCH_SPEND_LEDGER`) — are designed together and cannot cross-contaminate. [Invariant 16](../genesis/INVARIANTS.md#invariant-16--treasury-shape) rule 7 (origin-obscuring merges are forbidden) is the constitutional parent of that separation. This document is the operational honoring of it.
 
@@ -36,7 +36,7 @@ These D-postures are orthogonal to the S-postures in [`SPEND-AUTONOMY.md`](./SPE
 
 ### D1 — Operator-Custody (Phase 5g-i present; trivial rail)
 
-The operator personally holds the OpenRouter / Kimi / provider API key, funds it from personal account, runs Xion locally or on operator-owned infrastructure. The "Improvement Fund" has no on-chain accounting surface yet — it is a conceptual ledger entry only. Research-spend is whatever the operator chooses to fund as aux-LLM cost, and the "rail" is `operator pays invoice; Xion uses credit`. `RESEARCH_SPEND_LEDGER` rows are optional but strongly encouraged — writing them in D1 tests the schema before the fund is live.
+The operator personally holds the Chutes/provider API key, funds it from personal account, runs Xion locally or on operator-owned infrastructure. The "Improvement Fund" has no on-chain accounting surface yet — it is a conceptual ledger entry only. Research-spend is whatever the operator chooses to fund as aux-LLM cost, and the "rail" is `operator pays invoice; Xion uses credit`. `RESEARCH_SPEND_LEDGER` rows are optional but strongly encouraged — writing them in D1 tests the schema before the fund is live.
 
 *Constitutional status:* vacuously satisfied. The operator is a trusted party under the Abdication Schedule ([`docs/ABDICATION.md`](./ABDICATION.md)); research-spend at this tier is indistinguishable from any other operator-subsidized development cost.
 
@@ -78,7 +78,7 @@ Append-only, one row per outbound API call funded from Improvement Fund. Field l
 | `custody_posture` | `D1` \| `D2` \| `D3` \| `D4` — which rail this row travelled |
 | `proposal_id` | UUID matching a row in `PROPOSAL_LEDGER`; required for all spend except Stage-1 envelope aux-LLM summarization |
 | `stage_anchor` | `1` \| `2` \| `3` \| `4` \| `5` — which Auto-Research stage this spend funded |
-| `provider_id` | Registered research-provider identifier (e.g., `openrouter`, future `openrouter-backup`) |
+| `provider_id` | Registered research-provider identifier (e.g., `chutes`, future validator-direct path) |
 | `provider_model_id` | Specific model hit (e.g., `moonshotai/kimi-k2`) |
 | `authorization_reference` | On-chain Core Spend message hash (D2+) or operator manifest SHA (D1) |
 | `committed_XION` | Amount reserved before outbound call |
@@ -115,7 +115,7 @@ Listed as `NOT_YET_SEALED` until Phase 6+ lands both the Improvement Fund on-cha
 - **The Auto-Research cognitive loop itself.** Covered by [`docs/08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). This document is the payment rail under that loop; the loop's semantics are not re-litigated.
 - **User-paid turn billing (`PAYMENT_LEDGER`).** Covered by Phase 5g-iii doctrine (`docs/29-BILLING-X402.md`, future). User → Xion flow. This document is Xion → provider flow.
 - **Skill-bounty payouts.** Covered by [`docs/SKILL_BOUNTY.md`](./SKILL_BOUNTY.md). Different ledger, different line item in the Improvement Fund, different purpose (pay a human contributor, not buy a provider call).
-- **Operator-subsidy accounting.** Not Xion's money; not this doctrine's concern. The operator's personal Kimi/OpenRouter bill is an operator expense until D2.
+- **Operator-subsidy accounting.** Not Xion's money; not this doctrine's concern. The operator's personal Chutes bill is an operator expense until D2.
 - **Treasury swaps (XION ↔ stable ↔ fiat).** Covered by [`docs/19-TREASURY.md`](./19-TREASURY.md) § "Settlement and swap discipline". The rail consumes the output of those swaps; it does not re-define them.
 - **Per-provider credit reconciliation.** A provider's monthly invoice reconciling to the sum of `RESEARCH_SPEND_LEDGER` rows for that provider is an operator-side bookkeeping task; `orchestrator/bookkeeping.py` (see [`docs/07-ECONOMY.md`](./07-ECONOMY.md)) owns it.
 - **The specific schema file `docs/schemas/ledger-research-spend.yaml`.** Landed in the Phase 6 commit that promotes `research-spend` to live. This doctrine pins the properties; the schema pins the wire shape.
@@ -125,7 +125,7 @@ Listed as `NOT_YET_SEALED` until Phase 6+ lands both the Improvement Fund on-cha
 | Phase | Contribution to the rail |
 |-------|--------------------------|
 | Phase 5g-0 (this commit) | Doctrine pinned; no code |
-| Phase 5g-i.1 (OpenRouter refactor) | Outbound provider becomes OpenRouter, whose catalog-based pricing makes `settled_XION` computation tractable at runtime |
+| Phase 6.9 (Chutes refactor) | Outbound provider becomes Chutes/Bittensor; credit telemetry makes `settled_XION` computation tractable at runtime |
 | Phase 5g-iii (x402 billing) | `PAYMENT_LEDGER` lands; inflow side of the treasury gets its ledger, which lets 6+ start accruing real Improvement Fund balance |
 | Phase 6 (treasury vaults + improvement fund live) | `docs/schemas/ledger-research-spend.yaml` lands; `RESEARCH_SPEND_LEDGER` writer lands; D2 custody posture exercisable |
 | Phase 7+ (cognition action layer) | Auto-Research Stage 3 can originate proposals without operator-in-the-loop authoring; research-spend volume grows |

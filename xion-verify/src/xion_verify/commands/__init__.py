@@ -114,6 +114,7 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "spend-posture",
     "spend-discipline",
     "inference-provider-chutes",
+    "sovereign-profile",
     "billing-credits-floor",
     "chutes-topup-multisig",
     "arbiter-determinism",

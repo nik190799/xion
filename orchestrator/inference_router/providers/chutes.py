@@ -5,9 +5,9 @@ GPU subnet with on-chain TAO billing, and the Genesis Default hosted
 path is TEE-by-default when the configured Chutes model advertises
 ``confidential_compute=true``.
 
-Implementation note. Chutes exposes an OpenAI-compatible API at
+Implementation note. Chutes exposes an OAI-compatible API at
 ``https://llm.chutes.ai/v1``. This provider intentionally mirrors the
-existing OpenRouter implementation: stdlib ``http.client`` for the
+repo's narrow provider discipline: stdlib ``http.client`` for the
 non-streaming path, ``httpx`` only inside the native streaming method,
 and aggressive credential scrubbing before any error escapes.
 """
@@ -83,7 +83,7 @@ def _error_for_status(status: int, message: str) -> ProviderError:
 
 @dataclass
 class ChutesGenerativeProvider:
-    """OpenAI-compatible Chutes hosted provider."""
+    """OAI-compatible Chutes hosted provider."""
 
     provider_id: str = "chutes"
     category: ClassVar[Category] = "hosted_api"

@@ -12,7 +12,7 @@ from xion_verify.exit_codes import FAIL, OK
 @click.command(name="cognition-loop-bounded")
 def cognition_loop_bounded() -> None:
     try:
-        from orchestrator.cognition.loop import DEFAULT_BUDGET, _openai_tools
+        from orchestrator.cognition.loop import DEFAULT_BUDGET, _chat_tools
 
         if DEFAULT_BUDGET.delegation_depth != 1:
             raise RuntimeError("delegation depth is not pinned to 1")
@@ -20,7 +20,7 @@ def cognition_loop_bounded() -> None:
             raise RuntimeError("iteration/tool-round budgets are not pinned to 3")
         if DEFAULT_BUDGET.reasoning_tokens != 4096 or DEFAULT_BUDGET.wall_clock_s != 8.0:
             raise RuntimeError("reasoning/wall-clock budgets drifted")
-        tools = _openai_tools()
+        tools = _chat_tools()
         names = {tool.get("function", {}).get("name") for tool in tools}
         required = {"read_constitution", "query_journal", "query_sensorium", "read_ledger", "run_verifier"}
         if not required <= names:
