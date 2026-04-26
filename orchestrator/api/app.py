@@ -52,6 +52,7 @@ from .self_endpoint import router as self_router
 from .voice import router as voice_router
 from .models import DriveResponse, HealthResponse, SensoriumResponse, VitalsResponse
 from .pricing import register_pricing_route
+from .sustainability import register_sustainability_route
 from .web_client import (
     WebClientConfig,
     load_web_client_config_from_env,
@@ -269,6 +270,7 @@ def create_app(deps: AppDeps) -> FastAPI:
         return {"domains": [d.__dict__ for d in domains]}
 
     register_pricing_route(app)
+    register_sustainability_route(app)
     register_chat_route(app)
     register_chat_stream_route(app)
     app.include_router(me_router)

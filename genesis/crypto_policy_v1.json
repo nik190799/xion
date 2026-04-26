@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy_id": "crypto_policy_v1",
+  "status": "genesis_default",
+  "hash_algorithm": "sha256",
+  "signature_algorithms": [
+    "ed25519"
+  ],
+  "migration_property": "Algorithms are rotatable under Invariant 14; properties, not implementations, are constitutional.",
+  "source_doctrine": "docs/17-CRYPTO-RESILIENCE.md"
+}
