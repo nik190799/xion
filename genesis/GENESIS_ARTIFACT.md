@@ -80,7 +80,7 @@ The agent **runtime** layer pinned for reproducible builds and verifier drift ch
 hermes_agent_repo:    https://github.com/nousresearch/hermes-agent
 hermes_agent_tag:     v2026.4.16
 hermes_agent_commit:  4a0358d2e741eb049a6ffb9b8e610db946a4fec5
-hermes_tool_allowlist_sha256: 08a944b41994e7cb2da7f6acc84c4138f5275f7aee505ee171b1cf3b9c4c1c9b
+hermes_tool_allowlist_sha256: b757242110abc2434b4ec6950d9740c33e0e751e10b8a040e508da93df3c84ec
 ```
 
 Hermes is **not** part of the constitutional quartet hash slots above; it is **implementation**, upgraded through governance + Auto-Research per [`docs/08-AUTO-RESEARCH.md`](../docs/08-AUTO-RESEARCH.md). This pin is still recorded here so a reader in 2126 can reproduce "what ran at genesis-era maturity."
@@ -90,7 +90,7 @@ Hermes is **not** part of the constitutional quartet hash slots above; it is **i
 The Genesis-era cast faculties are content-addressed by `genesis/AGENT_SOULS/MANIFEST.txt`:
 
 ```
-agent_souls_manifest_sha256: 277d643acb400f0dcd3224002f273099d032d0b67685aaf228afd96bde7646eb
+agent_souls_manifest_sha256: 5b7ff8d0d7826cc44785576697612767f5b365b32c513fc2036e2f9a201fb428
 agent_souls_manifest_path:   genesis/AGENT_SOULS/MANIFEST.txt
 agent_souls_manifest_rule:   sorted byte-concatenation of _SCHEMA.md and *.yaml Soul files
 ```

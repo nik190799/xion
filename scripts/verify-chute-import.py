@@ -38,19 +38,14 @@ def main() -> int:
         )
         return 1
 
-    sample = xion_relay_chute._smoke_envelope("/health")
-    expected_keys = {"status", "service", "image_tag", "endpoint", "timestamp", "note"}
-    missing = expected_keys - set(sample)
-    if missing:
-        print("FAIL missing envelope keys:", missing, file=sys.stderr)
+    if xion_relay_chute.SERVICE_NAME != "xion-relay-chutes":
+        print(
+            "FAIL service name should advertise the live Relay surface, got:",
+            xion_relay_chute.SERVICE_NAME,
+            file=sys.stderr,
+        )
         return 1
-    if sample["status"] != "ok":
-        print("FAIL envelope status not 'ok':", sample, file=sys.stderr)
-        return 1
-    if sample["endpoint"] != "/health":
-        print("FAIL envelope endpoint not '/health':", sample, file=sys.stderr)
-        return 1
-    print("envelope_ok:", sample)
+    print("live_surface_ok:", xion_relay_chute.SERVICE_NAME)
     return 0
 
 

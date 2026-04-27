@@ -21,6 +21,7 @@ non_laptop_secondary_required_fields:
   applies_when_secondary_substrate_id_prefix:
     - akash
     - aleph
+    - chutes
   fields:
     - secondary_provider
     - secondary_health_url

@@ -1,0 +1,8 @@
+# Arweave registry snapshot — NOT_CONFIRMED (2026-04-27)
+# A publish was attempted with XION_REGISTRY_WALLET_JWK_PATH=$HOME/.aos.json (WSL).
+# Wallet balance was 0 AR; the client printed "Transaction verification failed" and
+# emitted tx id Ad_0v0OLMnbPOvl6-L1nU1-3iJ8DVEaam5vcJFpOKfE, but https://arweave.net/tx/<id> returns 410 Gone.
+# Fund the wallet used by that JWK with AR, then from repo root:
+#   bash scripts/publish-relay-registry-wsl.sh
+# After a confirmed tx, replace this file with a single line: the transaction id only.
+# Wallet address (same JWK): 55Plp-xUQ5B-955uJYjtCT4kR0eEf63lhzGd__pw1jY

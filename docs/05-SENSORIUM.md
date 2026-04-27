@@ -39,7 +39,7 @@ Chronoception enables lines like *"it's late for you — are you okay?"* or *"th
 ### 3. Proprioception — the body sense
 
 **Analog:** knowing where your limbs are; knowing whether you are out of breath.
-**What it monitors:** Relay CPU and memory, network latency to every LLM provider, tool availability health, active WebSocket count, current number of open conversations, Chutes Relay health, laptop-secondary readiness, replica sync lag.
+**What it monitors:** Relay CPU and memory, network latency to every LLM provider, tool availability health, active WebSocket count, current number of open conversations, Chutes Relay health, Akash-secondary readiness, replica sync lag.
 **Tick cadence:** 5 seconds.
 **Budget:** negligible.
 **Output:** `{cpu_pct, mem_pct, provider_latency, tool_health, lease_remaining_h, open_streams}`.

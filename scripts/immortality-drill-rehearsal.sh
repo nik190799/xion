@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Doctrine: Chutes primary, Akash secondary. A full run must set
+# XION_SECONDARY_HEALTH_URL and XION_DEPLOYMENT_EVIDENCE (see docs/runbooks/AKASH_RELAY_DEPLOY.md).
+# For offline substrate-portability ledger mechanics only, override with
+# XION_SECONDARY_SUBSTRATE_ID=operator-laptop-secondary.
+
 cd "$(dirname "$0")/.."
 
 PYTHON_BIN="${PYTHON:-}"
@@ -23,7 +28,7 @@ fi
 
 export XION_CHUTES_BASE_URL="${XION_CHUTES_BASE_URL:-http://127.0.0.1:9/unreachable}"
 export XION_CHUTES_API_BASE_URL="${XION_CHUTES_API_BASE_URL:-http://127.0.0.1:9/unreachable}"
-export XION_SECONDARY_SUBSTRATE_ID="${XION_SECONDARY_SUBSTRATE_ID:-operator-laptop-secondary}"
+export XION_SECONDARY_SUBSTRATE_ID="${XION_SECONDARY_SUBSTRATE_ID:-akash-mainnet-secondary}"
 export XION_PRIMARY_STATE_TIP="${XION_PRIMARY_STATE_TIP:-local-pre-genesis-tip}"
 export XION_SECONDARY_STATE_TIP="${XION_SECONDARY_STATE_TIP:-local-pre-genesis-tip}"
 
@@ -36,6 +41,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 import uuid
 from pathlib import Path
@@ -55,7 +61,7 @@ row = {
     "run_id": str(uuid.uuid4()),
     "as_of_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     "primary_substrate": "chutes-simulated-blackhole",
-    "secondary_substrate": "operator-laptop-secondary",
+    "secondary_substrate": os.environ.get("XION_SECONDARY_SUBSTRATE_ID", "akash-mainnet-secondary"),
     "status": "passed",
     "residual_closed": False,
     "residual": "LHT-SUBSTRATE-001",

@@ -25,7 +25,7 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 
 ## Epic B — Relay on Chutes + discovery
 
-- **Goal:** Chutes-primary Relay substrate, operator-laptop secondary for Genesis rehearsal, `xion-verify discovery` green against the current posture, registry on Arweave, Cloudflare out of the critical path per doctrine. `infra/akash/relay-deployment.yaml` remains a standby third-substrate blueprint.
+- **Goal:** Chutes-primary Relay substrate, **Akash secondary** for Genesis redundancy, `xion-verify discovery` green against the current posture, registry on Arweave, Cloudflare out of the critical path per doctrine. `infra/akash/relay-deployment.yaml` is the canonical secondary SDL.
 - **Depends on:** Epic A's AO provisioning event surface plus Phase 6.6's cast cognition pool and Phase 6.6a's contribution/access tooling, so the deployed Relay serves the real agent substrate and the work can be safely reviewed by a broader contributor base.
 
 ## Epic C — Multi-chain treasury

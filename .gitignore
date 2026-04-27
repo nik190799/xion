@@ -51,6 +51,7 @@ htmlcov/
 dmypy.json
 .python-version
 .venv/
+.venv-arweave/
 venv/
 env/
 ENV/

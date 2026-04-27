@@ -110,8 +110,9 @@ Xion's costs, in order of typical monthly magnitude:
 |---------|--------------:|---------|
 | Inference APIs | $30–120 | Chutes hosted calls plus optional provider fallbacks for chat + creative |
 | Chutes primary relay | TBD | Genesis primary Relay substrate; paid through the Chutes/TAO posture when applicable |
-| Operator-laptop secondary | operator-borne | Layer-1 Genesis fallback; not a third-party secondary |
-| Third-substrate standby buffer | TBD | Post-Genesis Akash/Aleph/Fleek/community redeploy budget once `LHT-SUBSTRATE-001` is paid down |
+| Akash secondary relay | TBD (ACT lease / escrow) | Named Genesis redundant Relay path on Akash |
+| Local rehearsal (`xion local`) | operator-borne | Procedure rehearsal only; not the doctrine secondary |
+| Tertiary substrate buffer | TBD | Post-Genesis Aleph/Fleek/community redeploy budget once `LHT-SUBSTRATE-001` is paid down |
 | Moderation aux-LLM | $10–40 | Covenant classifier runs on every response |
 | Arweave commits (state, creative) | $1–8 | Via Turbo SDK, pay-per-byte |
 | Voice router (hosted overlays) | $10–30 | Only charged when users call using optional hosted providers |

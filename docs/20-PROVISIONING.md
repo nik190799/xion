@@ -16,7 +16,7 @@
 
 | Handler | Purpose |
 |---------|---------|
-| `Provision-Relay` | Deploy or migrate Relay on Chutes / operator laptop / Akash standby / Aleph / Fleek per signed substrate manifest |
+| `Provision-Relay` | Deploy or migrate Relay on Chutes / Akash (secondary) / local rehearsal / Aleph / Fleek per signed substrate manifest |
 | `Provision-Inference` | Add Chutes/Bittensor subnet endpoint, non-Bittensor hosted fallback, or additional provider route |
 | `Provision-Storage` | Scale Arweave bundle / Turbo allocation |
 | `Provision-Bandwidth` | Add CDN/edge capacity (optional path) |
@@ -34,7 +34,7 @@ Each handler:
 
 **Constitutional.** Provisioning spend cannot breach the governance-set fraction caps, cannot drive `distance_to_reserve_floor` below the constitutional reserve gate, and cannot be authorized by an authority class outside the active Spend Autonomy posture. Changes that would alter the provisioning cap shape require the constitutional ratification cadence in [`14-UPGRADE-PATHS.md`](./14-UPGRADE-PATHS.md).
 
-**Genesis Defaults.** Per-proposal fraction cap, rolling provisioning-window fraction cap, provider whitelist (Chutes primary, operator laptop secondary, Akash standby blueprint, Aleph, Fleek, Bittensor at genesis); redundancy floor and auto-provision ceiling are expressed as topology targets, not money caps, and can be retuned by governance. `LHT-SUBSTRATE-001` remains open until a third-party secondary is provisioned post-Genesis.
+**Genesis Defaults.** Per-proposal fraction cap, rolling provisioning-window fraction cap, provider whitelist (Chutes primary, Akash secondary, local rehearsal path, Aleph, Fleek, Bittensor at genesis); redundancy floor and auto-provision ceiling are expressed as topology targets, not money caps, and can be retuned by governance. `LHT-SUBSTRATE-001` remains open until substrate-portability promotion pre-conditions in `docs/SUBSTRATE-RESILIENCE.md` Part IV are met.
 
 ---
 

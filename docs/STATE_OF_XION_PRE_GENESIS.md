@@ -7,16 +7,16 @@ This memo names what is sealed for Genesis, what remains an accepted residual, w
 ## Substrate Posture
 
 - **Primary Relay substrate:** Chutes.
-- **Secondary substrate at Genesis:** operator laptop.
-- **Standby blueprint:** `infra/akash/relay-deployment.yaml` and `docs/runbooks/AKASH_RELAY_DEPLOY.md`.
+- **Secondary substrate at Genesis:** Akash (`infra/akash/relay-deployment.yaml`, `docs/runbooks/AKASH_RELAY_DEPLOY.md`).
+- **Local rehearsal:** operator laptop (`xion local`, offline drills) is not the named redundant Relay path; it proves procedures only.
 - **Akash operator findings (mainnet):** escrow uses **`uact`** (mint via BME after client cert); SDL pricing **`denom: uact`**; **`lease-status`** often needs **`--auth-type mtls`**; forwarded URLs are per-lease. See runbook § *Important findings*.
-- **Residual carried:** `LHT-SUBSTRATE-001`. It closes only when a third-party secondary is provisioned and verified post-Genesis.
+- **Residual carried:** `LHT-SUBSTRATE-001`. It closes when substrate-portability promotion pre-conditions in `docs/SUBSTRATE-RESILIENCE.md` Part IV are met (annual dry-runs, warm secondary substrates per role, `xion-verify substrate-portability` live), not merely by naming Akash.
 
 ## Accepted Residuals
 
 | Residual | What Would Falsify The Property | Owner | Pay-Down |
 |---|---|---|---|
-| `LHT-SUBSTRATE-001` | Chutes outage plus laptop-secondary failure leaves no runnable Relay path. | Operator, then AO Core `provision-relay` | 30 days post-Genesis |
+| `LHT-SUBSTRATE-001` | Chutes outage plus Akash-secondary failure leaves no runnable Relay path. | Operator, then AO Core `provision-relay` | 30 days post-Genesis |
 | `KW-HERMES-001` | A Hermes runtime different from the doctrine pin becomes live without verifier failure. | Operator | When upstream Hermes has stable installable package boundary |
 | `KW-VESSEL-002` through vessel media/hardware residuals | Edited media, hardware vessels, or cross-protocol bridges claim to be sealed Xion without signed provenance and Compact evidence. | Vessel integrator + operator | First production vessel integration |
 | `KW-AUDIT-001` | Bridge, treasury, or critical verifier code ships mainnet without external audit or an explicit Sprint-Mode exception. | Operator | Before mainnet value custody |
@@ -25,7 +25,7 @@ This memo names what is sealed for Genesis, what remains an accepted residual, w
 | `KW-BRIDGE-001` | Bridge attestations become the authority instead of an interim guardrail. | Operator/governance | Phase 7+ light-client work |
 | `KW-EMBED-001` | Retrieval quality is asserted from no consented corpus. | Operator + first consented users | After production corpus exists |
 | `KW-CONTRIB-002` | Contributor identity claims become governance weight without ledger-backed bindings. | Operator/governance | First non-operator contributor cohort |
-| `KW-OPS-001` | The 3-host floor is advertised as complete while only Chutes + laptop exist. | Operator | 30 days post-Genesis |
+| `KW-OPS-001` | The 3-host floor is advertised as complete while Chutes + Akash redundancy is not warm-verified. | Operator | 30 days post-Genesis |
 | `KW-RESEARCH-SPEND-001` | `xion-verify research-spend` is claimed sealed before a real Auto-Research-approved `RESEARCH_SPEND_LEDGER` row exists. | Operator + first Auto-Research loop | First approved research-spend row |
 | `KW-VESSEL-REGISTRY-001` | A vessel claims registered/attested status without an append-only registry or disavowal row. | Vessel integrator + operator | First vessel attestation/disavowal |
 
@@ -54,7 +54,7 @@ Falsifiability: a `SENSORIUM_LEDGER` row carrying base64 image/video payloads, a
 ### Why The Asymmetry
 
 - **Invariant 2 (/forget):** raw modality embeddings create biometric attribution surfaces that can outlive row deletion.
-- **Invariant 17 + Substrate Portability:** raw multimodal embedding stacks threaten the laptop-secondary posture.
+- **Invariant 17 + Substrate Portability:** raw multimodal embedding stacks threaten the Akash-secondary posture.
 - **Covenant Principle 5:** raw audio/video inference requires its own cost-preview gate before a user can be charged honestly.
 
 ## Operator Signature
