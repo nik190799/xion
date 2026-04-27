@@ -30,7 +30,7 @@ Hold enough working inventory to keep `runway_weeks` above the governance-publis
 
 **Genesis Default starting set:** AR (Arweave permanent storage), USDC (fiat-pegged ops), ETH (gas), TAO (Bittensor / Chutes inference credits).
 
-AKT is deliberately **not** Tier 1 at Genesis because Akash is no longer the primary Relay substrate. If governance later activates the Akash SDL as the third-party-secondary standby path, AKT may be added by Tier-2 treasury migration with a published runbook and verifier update.
+AKT is deliberately **not** Tier 1 at Genesis working inventory by default: Relay primary spend flows through Chutes/TAO, while Akash secondary leases are funded as operating line items (ACT escrow) until governance explicitly adds AKT to the Tier-1/Tier-2 mix with a published runbook and verifier update.
 
 ### Tier 2 — Strategic reserves (non-working)
 

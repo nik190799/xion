@@ -14,7 +14,7 @@ from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _DEFAULT_REGISTRY = "ledgers/RELAY_REGISTRY.json"
-_REQUIRED_PATHS = {"arweave_registry", "ao_process", "dns_seed", "laptop_secondary"}
+_REQUIRED_PATHS = {"arweave_registry", "ao_process", "dns_seed", "akash_secondary"}
 
 
 def check_discovery(repo_root: Path, registry_rel: str = _DEFAULT_REGISTRY) -> list[str]:
@@ -55,11 +55,16 @@ def evaluate_discovery(repo_root: Path, registry_rel: str = _DEFAULT_REGISTRY) -
                 unsealed.append(f"relay {index}: endpoint is placeholder/local")
             if "not-yet" in public_key or "reference" in public_key:
                 unsealed.append(f"relay {index}: public_key is placeholder")
-        substrates = {str(relay.get("substrate")) for relay in relays if isinstance(relay, dict)}
-        if "chutes" not in substrates:
-            errors.append("registry must contain Chutes primary relay")
-        if "operator_laptop" not in substrates:
-            errors.append("registry must contain operator-laptop secondary relay")
+        if len(relays) < 2:
+            errors.append("registry must list at least two relays (Akash primary, Chutes secondary)")
+        else:
+            r0, r1 = relays[0], relays[1]
+            if not isinstance(r0, dict) or not isinstance(r1, dict):
+                pass  # already flagged above
+            elif str(r0.get("substrate")) != "akash":
+                errors.append("relays[0] must be Akash (genesis primary)")
+            elif str(r1.get("substrate")) != "chutes":
+                errors.append("relays[1] must be Chutes (genesis secondary)")
     expected = _payload_hash(data)
     if data.get("payload_sha256") == "0" * 64:
         unsealed.append("payload_sha256 is placeholder")
@@ -78,7 +83,10 @@ def _payload_hash(data: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-@click.command(name="discovery", help="Verify Relay registry declares three independent discovery paths.")
+@click.command(
+    name="discovery",
+    help="Verify Relay registry declares discovery paths and genesis row order (Akash primary, Chutes secondary).",
+)
 @click.option("--registry", default=_DEFAULT_REGISTRY, show_default=True, help="Registry path relative to repo root.")
 def discovery(registry: str) -> None:
     try:
@@ -92,7 +100,7 @@ def discovery(registry: str) -> None:
         for message in messages:
             click.echo(f"discovery: {label}: {message}", err=(code == FAIL))
         sys.exit(code)
-    click.echo("discovery: OK (Relay registry declares Chutes primary, laptop secondary, Arweave, AO, DNS paths)")
+    click.echo("discovery: OK (Relay registry declares Akash primary, Chutes secondary, Arweave, AO, DNS paths)")
     sys.exit(OK)
 
 

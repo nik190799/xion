@@ -15,8 +15,8 @@ from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _LEDGER = "ledgers/SUBSTRATE_DRYRUN_LEDGER.jsonl"
 _ZERO = "0" * 64
-_NON_LAPTOP_SUBSTRATE_PREFIXES = ("akash", "aleph")
-_NON_LAPTOP_PROVIDERS = {"akash", "aleph"}
+_NON_LAPTOP_SUBSTRATE_PREFIXES = ("akash", "aleph", "chutes")
+_NON_LAPTOP_PROVIDERS = {"akash", "aleph", "chutes"}
 _PLACEHOLDER_SECONDARY_IDS = {
     "",
     "secondary-placeholder",
@@ -57,7 +57,7 @@ def evaluate_substrate_portability(repo_root: Path, ledger_rel: str = _LEDGER) -
         ):
             provider = str(row.get("secondary_provider", "")).strip().lower()
             if provider not in _NON_LAPTOP_PROVIDERS:
-                errors.append(f"row {expected_seq}: secondary_provider must be akash or aleph")
+                errors.append(f"row {expected_seq}: secondary_provider must be akash, aleph, or chutes")
             health_url = str(row.get("secondary_health_url", "")).strip()
             if not health_url.startswith(("http://", "https://")):
                 errors.append(f"row {expected_seq}: secondary_health_url must be http(s)")
@@ -78,7 +78,9 @@ def evaluate_substrate_portability(repo_root: Path, ledger_rel: str = _LEDGER) -
     if errors:
         return FAIL, errors
     if not has_non_laptop_secondary:
-        return NOT_YET_SEALED, ["no Akash/Aleph non-laptop secondary substrate dry-run row found"]
+        return NOT_YET_SEALED, [
+            "no Chutes/Akash/Aleph non-laptop secondary substrate dry-run row found with live health evidence"
+        ]
     return OK, []
 
 

@@ -75,6 +75,8 @@ def check_agent_cast(repo_root: Path) -> tuple[list[str], list[str], int]:
     allowlist = load_allowlist(repo_root)
     hermes_commit = allowlist.get("hermes_pin", {}).get("commit")
 
+    latest_by_agent: dict[str, tuple[int, dict[str, object]]] = {}
+
     for idx, row in enumerate(rows, start=1):
         missing = [field for field in _REQUIRED_FIELDS if field not in row]
         if missing:
@@ -88,6 +90,13 @@ def check_agent_cast(repo_root: Path) -> tuple[list[str], list[str], int]:
         if row.get("agent_id") == "arbiter":
             errors.append(f"{_CAST_LEDGER_REL}:{idx}: arbiter must not be cast")
 
+        agent_id = row.get("agent_id")
+        if isinstance(agent_id, str) and event == "cast_succeeded":
+            latest_by_agent[agent_id] = (idx, row)
+        if event == "cast_failed" and row.get("smoke_test_pass") is True:
+            errors.append(f"{_CAST_LEDGER_REL}:{idx}: cast_failed rows must not have smoke_test_pass=true")
+
+    for idx, row in latest_by_agent.values():
         agent_id = row.get("agent_id")
         expected_soul_hash = soul_hashes.get(agent_id)
         if expected_soul_hash is None:

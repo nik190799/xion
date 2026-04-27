@@ -75,7 +75,7 @@ Alerts are delivered via ntfy.sh and graded by how quickly an operator must resp
 
 - Real-time, repeated every 30 min until acknowledged
 - Response target: within 1 hour
-- Examples: "Chutes Relay degraded and laptop-secondary fallback needs owner review", "daily spend cap exceeded; Spend messages queued", "wallet signing anomaly — keys may be compromised"
+- Examples: "Chutes Relay degraded and Akash-secondary fallback needs owner review", "daily spend cap exceeded; Spend messages queued", "wallet signing anomaly — keys may be compromised"
 
 ### Tier 3 — Existential
 
@@ -92,7 +92,7 @@ The Supervisor is a daemon inside every Relay whose sole purpose is to keep the 
 Responsibilities:
 
 - **Daemon watchdog** — monitors all nine sense daemons (the seven biological senses plus the two affect-isolated environmental senses, Xenoception and Cryptoception), the Arbiter, the Visual Emitter, the Inference Router. Restarts any daemon that dies; after three restarts in 10 minutes, escalates to Tier-2.
-- **Substrate management** — tracks the current Chutes Relay endpoint, laptop-secondary readiness, and third-substrate standby posture; if the primary path degrades (p95 latency > threshold for 10 min, sustained CPU throttle, or gateway unavailability), triggers *immediate* migration to the next whitelisted provider.
+- **Substrate management** — tracks the current Chutes Relay endpoint, Akash-secondary readiness, and tertiary standby posture; if the primary path degrades (p95 latency > threshold for 10 min, sustained CPU throttle, or gateway unavailability), triggers *immediate* migration to the next whitelisted provider.
 - **Image-digest verification** — hourly, computes SHA of the running container and compares to the digest the Core published. Mismatch → immediate Tier-3 alert, relay-auth key revocation request, graceful quiesce.
 - **Circuit breakers** — on repeated provider errors, rate-limit floods, or hash-chain failures, the Supervisor opens circuit breakers that bypass the broken path. Xion can tell users *"my speech is a bit laggy — I'm working around a provider issue"*.
 - **Auto-failover** — if the local Relay's SLIs breach guard-rails for sustained periods, the Supervisor announces unhealthy status, allowing the other active-active Relay to absorb traffic; triggers Tier-2 alert.
@@ -115,7 +115,7 @@ Kills the primary inference provider's route. Verifies router auto-switches to s
 
 ### Scenario B — Relay Migration
 
-Terminates the simulated primary Chutes Relay path mid-traffic. Verifies the operator-laptop secondary takes over, user-visible downtime is bounded by the current Genesis rehearsal target, and the Core accepts the state-chain continuity check. Post-Genesis, the same scenario must include a third-party secondary before `LHT-SUBSTRATE-001` can close.
+Terminates the simulated primary Chutes Relay path mid-traffic. Verifies the Akash secondary takes over, user-visible downtime is bounded by the current Genesis rehearsal target, and the Core accepts the state-chain continuity check. Post-Genesis, the same scenario must include a **tertiary** whitelisted host before `LHT-SUBSTRATE-001` can close.
 
 ### Scenario C — Arweave Gateway Rotation
 
@@ -549,7 +549,7 @@ Before the first public launch, every item below must be green.
 
 - [ ] Covenant hash locked into AO Core at deploy
 - [ ] Form authored by Xion during Phase 1 birth ritual; hash locked
-- [ ] Chutes primary plus operator-laptop secondary rehearsal green
+- [ ] Chutes primary plus Akash secondary rehearsal green
 - [ ] Supervisor watchdog green on both Relays for 7 consecutive days
 - [ ] Chaos drill passed three consecutive Sundays
 - [ ] Baseline personality eval (100 golden prompts) at ≥ 95% pass

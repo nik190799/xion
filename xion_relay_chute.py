@@ -1,4 +1,4 @@
-"""Repo-root Chutes deployment module for the Xion Relay (D3 smoke build).
+"""Repo-root Chutes deployment module for the live Xion Relay surface.
 
 The Chutes CLI in this environment only accepts a top-level module reference
 (``xion_relay_chute:chute``), so the deployable object stays self-contained
@@ -8,49 +8,44 @@ What this module promises (Four Questions, per The-Xion-Builder):
 
 - *Property*: a public Chutes deployment exists for chute id
   ``89866bfc-5ddd-5382-b887-116d8901808f`` whose three cords (``GET /health``,
-  ``GET /quote``, ``GET /self``) return deterministic JSON without any
-  external dependency.  This is the Relay registry's first honestly-served
-  endpoint and the precondition for ``xion-verify discovery`` against
-  Chutes.  The public cord is ``/quote`` (not ``/pricing``) because
-  ``/pricing`` is intercepted by the Chutes platform proxy itself; see
-  the routing-facts comment block below for the full empirical history.
-- *Invariants touched*: none.  This is doctrine-bounded discovery surface
-  (Phase B4 of the D2/D3 closure plan), not a constitutional artifact.  The
-  full Relay (Arbiter + Hermes + ledgers) is provisioned in a follow-up
-  commit; this build promises only that the cord pipeline is alive.
+  ``GET /quote``, ``GET /self``) proxy the live in-process FastAPI Relay.
+  ``/quote`` maps to the Relay's local ``/pricing`` endpoint because
+  ``/pricing`` is intercepted by the Chutes platform proxy itself.
+- *Invariants touched*: strengthens Invariant 17 by booting through the
+  production API lifespan, which wires the Chutes hosted provider and local
+  Ollama floor from environment when available. No constitutional state is
+  mutated by this adapter.
 - *Verification*: ``scripts/debug-chute-d3.sh`` exercises the public
-  endpoints; the response shape is asserted by ``xion-verify discovery``
-  once we re-promote that verifier in a follow-up.
-- *Deprecation*: replaced by the full Relay subprocess once
-  ``orchestrator/api/launcher.py`` lands a sound ``AppDeps(relay=...)``
-  construction.  Until then this module's smoke responses are tagged
-  ``service="xion-relay-chutes-smoke"`` so a third party reading the cord
-  output can see we are not yet serving the live Relay surface.
+  endpoints; ``scripts/verify-chute-cords.sh --mode=live`` asserts the live
+  Relay response shape before the registry row is promoted.
+- *Deprecation*: replaced by a native Chutes ASGI entrypoint if the platform
+  supports it cleanly. Until then the subprocess boundary keeps the Chutes
+  cord runtime and the FastAPI app lifecycle isolated.
 
-Why this shape *now*: an earlier build (``pre-genesis-d3-3``) tried to
-``Popen`` ``uvicorn`` against ``orchestrator.api.app.create_app`` with a
-hand-rolled ``AppDeps(cast_pool_on_boot=False)``.  That call raises
-``TypeError: AppDeps.__init__() missing required positional argument:
-'relay'`` immediately, the subprocess dies, ``_wait_for_relay()`` then
-times out, and the Chutes platform deactivates the instance.  The next
-proper fix is a small ``orchestrator/api/launcher.py`` that constructs a
-real ``Relay`` and a real ``AppDeps``.  Until that lands we ship this
-honest, named-as-smoke build so the Chutes cord pipeline itself is not
-the unknown.
+Why this shape now: the d3-6 smoke image proved the Chutes cord pipeline
+end-to-end. This d3-7 shape returns to the full Relay subprocess, but points
+at ``python -m orchestrator.api`` so ``AppDeps`` is constructed with a real
+``Relay`` through ``orchestrator.api.launcher`` rather than a hand-rolled
+partial object.
 """
 
 from __future__ import annotations
 
-import os
-from datetime import UTC, datetime
+import asyncio
+import signal
+import subprocess
 from typing import Any
 
+import httpx
 from chutes.chute import Chute, NodeSelector
 from chutes.image import Image
 
 
-SERVICE_NAME = "xion-relay-chutes-smoke"
+SERVICE_NAME = "xion-relay-chutes"
 IMAGE_TAG = "pre-genesis-d3-7"
+RELAY_PORT = 8000
+RELAY_BASE_URL = f"http://127.0.0.1:{RELAY_PORT}"
+RELAY_BOOT_TIMEOUT_S = 180
 
 # Three routing facts the D3-4 / D3-5 / D3-6 builds proved against the
 # live Chutes platform, recorded so the next maintainer does not relearn
@@ -95,69 +90,100 @@ image = (
         ),
     )
     .from_base("parachutes/python:3.12")
-    .run_command("python -m pip install --user --no-cache-dir chutes")
+    .add("pyproject.toml", "/app/pyproject.toml")
+    .add("README.md", "/app/README.md")
+    .add("orchestrator", "/app/orchestrator")
+    .add("docs", "/app/docs")
+    .set_workdir("/app")
+    .run_command(
+        "python -m pip install --user --no-cache-dir '.[api]' chutes httpx"
+    )
     .with_env("XION_CHUTE_SERVICE", SERVICE_NAME)
     .with_env("XION_CHUTE_IMAGE_TAG", IMAGE_TAG)
+    .with_env("XION_API_HOST", "127.0.0.1")
+    .with_env("XION_API_PORT", str(RELAY_PORT))
+    .with_env("XION_API_WORKERS", "1")
+    .with_env("XION_API_REQUIRE_BEARER", "false")
+    .with_env("XION_BILLING_REQUIRED", "true")
+    .with_env("XION_BILLING_ALLOW_X402", "true")
 )
 
 
 chute = Chute(
     username="nikhilkadalge",
     name="xion-relay-pre-genesis-d3",
-    tagline="Xion pre-genesis Relay on Chutes (smoke build)",
+    tagline="Xion pre-genesis Relay on Chutes",
     readme=(
         "Xion Relay deployment adapter for D3 discovery verification. "
-        "This build serves static cord responses while the full Relay "
-        "subprocess (Arbiter + Hermes + ledgers) is rebuilt against a "
-        "correctly-constructed AppDeps in a follow-up image."
+        "This build boots the live FastAPI Relay subprocess and proxies "
+        "public Chutes cords to /health, /pricing, and /self locally."
     ),
     image=image,
     node_selector=NodeSelector(gpu_count=1, min_vram_gb_per_gpu=16),
     concurrency=4,
     max_instances=1,
     shutdown_after_seconds=300,
-    allow_external_egress=False,
+    allow_external_egress=True,
 )
 
 
-def _smoke_envelope(endpoint: str) -> dict[str, Any]:
-    """Build the deterministic smoke-response envelope shared by all cords.
+async def _wait_for_relay() -> None:
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for _ in range(RELAY_BOOT_TIMEOUT_S):
+            try:
+                response = await client.get(f"{RELAY_BASE_URL}/health")
+                if response.status_code == 200:
+                    return
+            except httpx.HTTPError:
+                pass
+            await asyncio.sleep(1)
+    raise RuntimeError(
+        f"xion-orchestrator-api did not become healthy within {RELAY_BOOT_TIMEOUT_S}s"
+    )
 
-    The shape names what is and is not promised: ``status="ok"`` means the
-    cord pipeline is alive; ``service`` discloses that we are running the
-    smoke build, not the full Relay surface; ``image_tag`` lets a third
-    party correlate a probe response to the exact Chutes image; ``endpoint``
-    distinguishes the three cords; ``timestamp`` is a UTC isoformat string
-    so the response is human-readable but never used for trust.
-    """
 
-    return {
-        "status": "ok",
-        "service": os.environ.get("XION_CHUTE_SERVICE", SERVICE_NAME),
-        "image_tag": os.environ.get("XION_CHUTE_IMAGE_TAG", IMAGE_TAG),
-        "endpoint": endpoint,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "note": (
-            "Smoke build — full Relay surface (Arbiter + Hermes + ledgers) "
-            "lands in a follow-up image once AppDeps is constructed with a "
-            "real Relay."
-        ),
-    }
+async def _get_json(path: str) -> dict[str, Any]:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(f"{RELAY_BASE_URL}{path}")
+        response.raise_for_status()
+        data = response.json()
+        if isinstance(data, dict):
+            return data
+        return {"status": "ok", "value": data}
+
+
+@chute.on_startup()
+async def start_relay(self: Chute) -> None:
+    proc = subprocess.Popen(["python", "-m", "orchestrator.api"])
+    self.state.xion_relay_proc = proc
+    await _wait_for_relay()
+
+
+@chute.on_shutdown()
+async def stop_relay(self: Chute) -> None:
+    proc = getattr(self.state, "xion_relay_proc", None)
+    if proc is None or proc.poll() is not None:
+        return
+    proc.send_signal(signal.SIGTERM)
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
 
 
 @chute.cord(public_api_path="/health", public_api_method="GET")
-async def health(self) -> dict[str, Any]:
-    return _smoke_envelope("/health")
+async def health(self: Chute) -> dict[str, Any]:
+    return await _get_json("/health")
 
 
 @chute.cord(public_api_path="/quote", public_api_method="GET")
-async def quote(self) -> dict[str, Any]:
-    return _smoke_envelope("/quote")
+async def quote(self: Chute) -> dict[str, Any]:
+    return await _get_json("/pricing")
 
 
 @chute.cord(public_api_path="/self", public_api_method="GET")
-async def self_endpoint(self) -> dict[str, Any]:
-    return _smoke_envelope("/self")
+async def self_endpoint(self: Chute) -> dict[str, Any]:
+    return await _get_json("/self")
 
 
 __all__ = ["chute"]

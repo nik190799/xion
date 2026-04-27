@@ -55,6 +55,41 @@ def test_substrate_portability_accepts_non_laptop_secondary(tmp_path) -> None:
     assert messages == []
 
 
+def test_substrate_portability_accepts_chutes_non_laptop_secondary(tmp_path) -> None:
+    ledger_dir = tmp_path / "ledgers"
+    ledger_dir.mkdir()
+    row = {
+        "schema_version": 1,
+        "seq": 0,
+        "prev_hash": "0" * 64,
+        "this_hash": "",
+        "as_of_utc_ns": 1,
+        "secondary_substrate_id": "chutes-d3-standby",
+        "secondary_provider": "chutes",
+        "secondary_health_url": "https://xion-relay.chutes.ai/health",
+        "secondary_health_status_code": 200,
+        "secondary_health_sha256": "a" * 64,
+        "deployment_evidence": "chutes://chute/89866bfc/02ad3583",
+        "primary_tip": "a",
+        "secondary_tip": "a",
+        "replayed_rows": 1000,
+        "tip_parity": True,
+    }
+    body = {key: value for key, value in row.items() if key != "this_hash"}
+    row["this_hash"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    ).hexdigest()
+    (ledger_dir / "SUBSTRATE_DRYRUN_LEDGER.jsonl").write_text(
+        json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+    code, messages = evaluate_substrate_portability(tmp_path)
+
+    assert code == OK
+    assert messages == []
+
+
 def test_substrate_portability_requires_non_laptop_evidence(tmp_path) -> None:
     ledger_dir = tmp_path / "ledgers"
     ledger_dir.mkdir()

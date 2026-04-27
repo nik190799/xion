@@ -1,26 +1,32 @@
 {
-  "as_of_utc_ns": 0,
+  "as_of_utc_ns": 1777250293007090619,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
-    "laptop_secondary"
+    "akash_secondary"
   ],
-  "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "payload_sha256": "fc3b3db0175087e8d70a6b8cde8d9021bd10cd94806fb13eacbee62990ec2b5c",
   "relays": [
     {
-      "endpoint": "https://relay.chutes.example",
-      "last_seen_utc_ns": 0,
-      "public_key": "ed25519:not-yet-deployed",
-      "relay_id": "chutes-primary-reference",
-      "substrate": "chutes"
+      "endpoint": "https://provider.161.97.85.20.nip.io:30564",
+      "last_seen_utc_ns": 1777250293007089919,
+      "public_key": "ed25519:akash-not-yet-deployed",
+      "relay_id": "akash-primary-mainnet",
+      "service": "xion-relay-akash",
+      "substrate": "akash"
     },
     {
-      "endpoint": "http://127.0.0.1:8000",
-      "last_seen_utc_ns": 0,
-      "public_key": "ed25519:operator-laptop-reference",
-      "relay_id": "operator-laptop-secondary",
-      "substrate": "operator_laptop"
+      "chute_id": "89866bfc-5ddd-5382-b887-116d8901808f",
+      "endpoint": "https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai",
+      "image_id": "971ea1ac-1850-5b26-86af-bc0aa23c7f06",
+      "image_tag": "pre-genesis-d3-6",
+      "instance_id": "02ad3583-f329-437e-b136-00388325a6d2",
+      "last_seen_utc_ns": 1777238987920272700,
+      "public_key": "ed25519:not-yet-deployed",
+      "relay_id": "chutes-secondary-d3-smoke",
+      "service": "xion-relay-chutes-smoke",
+      "substrate": "chutes"
     }
   ],
   "schema_version": 1

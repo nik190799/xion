@@ -15,7 +15,7 @@ mkdir -p "$(dirname "$LEDGER_PATH")"
 lower_secondary_id="$(printf '%s' "$SECONDARY_ID" | tr '[:upper:]' '[:lower:]')"
 is_non_laptop_secondary=0
 case "$lower_secondary_id" in
-  akash*|aleph*)
+  akash*|aleph*|chutes*)
     is_non_laptop_secondary=1
     ;;
 esac
@@ -37,7 +37,14 @@ if [[ "$is_non_laptop_secondary" -eq 1 ]]; then
   fi
   body_file="$(mktemp)"
   trap 'rm -f "$body_file"' EXIT
-  health_status_code="$(curl -sS -o "$body_file" -w "%{http_code}" "$SECONDARY_HEALTH_URL")"
+  curl_args=( -sS -o "$body_file" -w "%{http_code}" )
+  if [[ -n "${XION_SECONDARY_HEALTH_BEARER:-}" ]]; then
+    curl_args+=( -H "Authorization: Bearer $XION_SECONDARY_HEALTH_BEARER" )
+  fi
+  if [[ "${XION_SECONDARY_HEALTH_CURL_INSECURE:-0}" == "1" ]]; then
+    curl_args+=( -k )
+  fi
+  health_status_code="$(curl "${curl_args[@]}" "$SECONDARY_HEALTH_URL")"
   case "$health_status_code" in
     2*) ;;
     *)

@@ -206,7 +206,7 @@ The Dockerfile is reproducible; image digests are pinned on Arweave. But there i
 
 ### No single point of failure — **STRONG (technically), PARTIAL (operationally)**
 
-Technical: Arweave + Chutes primary + laptop-secondary rehearsal + AO Core decentralization. Strong enough for Genesis, but not yet the final 3-host substrate floor.
+Technical: Arweave + Chutes primary + Akash-secondary rehearsal + AO Core decentralization. Strong enough for Genesis, but not yet the final 3-host substrate floor.
 
 Operational: still depends on a small operator set, Shamir shareholders, legal-entity officers. The Upgrade Framework's Level 11 (Operators) addresses this via succession + dead-man's switch + rotation. Combined with the Abdication Schedule above, this gap closes over time.
 
@@ -293,7 +293,7 @@ There is no formal analysis of *who attacks Xion, with what budget, for what gai
 
 | Actor | Motive | Attack | Budget needed | What they gain | What it costs us | Defense |
 |---|---|---|---|---|---|---|
-| State actor | Censorship | Subpoena operators, pressure Chutes gateway or Relay hosts | Low | Silence on a topic | Operator legal costs, some relay churn | Portable provider set, laptop-secondary fallback, state-actor protocol (Level 9), Witness reports, Arweave permanence |
+| State actor | Censorship | Subpoena operators, pressure Chutes gateway or Relay hosts | Low | Silence on a topic | Operator legal costs, some relay churn | Portable provider set, Akash-secondary fallback, state-actor protocol (Level 9), Witness reports, Arweave permanence |
 | Competitor | Market damage | Smear campaign citing fabricated outputs | Medium | Reputation damage | User churn | Verifier tool (every claim testable), Safety Ledger transparency, Bounty Economy |
 | Rogue insider | Exfiltration | Abuse operator access | Low | Personal data | Massive breach | Shamir + multisig, no unilateral op, op-ethics charter, 24h auth rotation |
 | 51% governance attack | Policy capture | Buy enough weight to force proposals | Very high (Sybil-resistant weights + quadratic-ish + personhood multiplier) | Control over direction | Community fork via sister-Core | Level 7 design, conscientious-objector clause |

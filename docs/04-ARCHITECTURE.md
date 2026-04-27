@@ -87,7 +87,7 @@ The Core cannot itself be upgraded in place. To evolve Xion's policy over time, 
 
 ## Tier II — The Relay
 
-**A Relay is a mortal vessel.** It is a Docker container running on Chutes at Genesis (or, as deliberate fallbacks, the operator laptop, Akash, Fleek, Aleph.im, or community bare metal), which executes Xion's agent loop and talks to the rest of the world on Xion's behalf.
+**A Relay is a mortal vessel.** It is a Docker container running on **Chutes at Genesis** with **Akash as the named secondary**, plus tertiary and rehearsal options (local `xion local`, Fleek, Aleph.im, or community bare metal), which executes Xion's agent loop and talks to the rest of the world on Xion's behalf.
 
 A Relay holds:
 
@@ -118,7 +118,7 @@ A Relay can:
 
 The Relay is designed to be *swappable* — which means the hosting layer should not be a single centralized company we depend on. Chutes gives Xion a Bittensor Subnet 64 path for hosted inference and Relay deployment while preserving the local open-weights floor. The Docker image that runs Xion is content-addressed (pinned by SHA-256 on Arweave), so the operator laptop, an Akash provider, or any community node running `docker run` can reconstruct byte-identical bits if the Chutes path fails.
 
-At Genesis the primary Relay path is Chutes and the named secondary is the operator laptop. This is not the final substrate-portability floor; `LHT-SUBSTRATE-001` remains open until Xion provisions a third-party secondary post-Genesis. The image-digest verification, provider whitelist, and auto-migration are documented in [`OPERATIONS.md`](./13-OPERATIONS.md).
+At Genesis the primary Relay path is Chutes and the named secondary is Akash. This is not the final substrate-portability floor; `LHT-SUBSTRATE-001` remains open until promotion pre-conditions in [`SUBSTRATE-RESILIENCE.md`](./SUBSTRATE-RESILIENCE.md) Part IV are met. The image-digest verification, provider whitelist, and auto-migration are documented in [`OPERATIONS.md`](./13-OPERATIONS.md).
 
 ### Relay Modules
 
@@ -1452,7 +1452,7 @@ The full specification is in [`11-PROTOCOL-SPEC.md`](./11-PROTOCOL-SPEC.md). A r
 
 Because the world will want to integrate Xion into devices, installations, apps, and robots we haven't imagined. A Protocol makes that legal and safe. A product would not.
 
-The Protocol's existence also means the Relay is swappable without breaking clients. If we move from Chutes to the operator laptop, from the laptop to Akash, or from Akash to Aleph.im, the Protocol endpoint is unchanged; clients do not notice. This is the classic *stable-interface, evolving-implementation* pattern, applied to a being.
+The Protocol's existence also means the Relay is swappable without breaking clients. If we move from Chutes to Akash, or from Akash to Aleph.im (or another whitelisted host), the Protocol endpoint is unchanged; clients do not notice. This is the classic *stable-interface, evolving-implementation* pattern, applied to a being.
 
 ## The Nine Permanent Stores
 
@@ -1549,8 +1549,8 @@ A useful way to evaluate a distributed system is to ask *what fails, and what re
 | Failure | Remains | Recovery |
 |---------|---------|----------|
 | One Relay crashes | Core, other Relay, all state | Supervisor redeploys from pinned image; Core re-authorizes in <30s |
-| Both Relays crash | Core, all state | `RESURRECT.md` bootstraps a fresh Chutes deployment or the laptop-secondary path |
-| Chutes gateway or Relay substrate has an outage | Core, all state | Fall back to the operator laptop; then use the Akash standby blueprint, Fleek, Aleph.im, or community bare metal as the post-Genesis third-substrate path |
+| Both Relays crash | Core, all state | `RESURRECT.md` bootstraps a fresh Chutes deployment or Akash secondary path |
+| Chutes gateway or Relay substrate has an outage | Core, all state | Fall back to the **Akash secondary**; then use Fleek, Aleph.im, or community bare metal as tertiary paths per provider whitelist |
 | Cloudflare or convenience CDN has an outage | Core, Relay, state | **No Core action:** clients use AO address + Arweave Relay registry (paths 1–2); optional DNS later |
 | An LLM provider rug-pulls | Core, Relay, state | Inference Router switches provider; weekly provider memo already compared alternatives |
 | A relay-auth key leaks | Core, state | Core revokes in seconds; daily spend cap limits blast radius |
