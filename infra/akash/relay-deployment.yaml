@@ -28,15 +28,15 @@ profiles:
         memory:
           size: 2Gi
         storage:
-          size: 10Gi
+          - size: 10Gi
   placement:
-    dcloud:
+    akash:
       pricing:
         xion-relay:
-          denom: uakt
-          amount: 1000
+          denom: uact
+          amount: 100
 deployment:
   xion-relay:
-    dcloud:
+    akash:
       profile: xion-relay
       count: 1
