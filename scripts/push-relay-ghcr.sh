@@ -1,26 +1,24 @@
 #!/usr/bin/env bash
 # Build the Relay image from git archive (same extraction layout as
-# `xion-verify rebuild`) and push to GitHub Container Registry.
+# `xion-verify rebuild`) and push to a registry.
 #
-# Prerequisite auth:
-#   echo "$GITHUB_TOKEN" | docker login ghcr.io -u GITHUB_USERNAME --password-stdin
-# Use a classic PAT or fine-grained token with write:packages (and read:packages).
+# Modes (first match wins):
+#   1) RELAY_PUSH_IMAGE=name:tag — build and push this single reference (any registry).
+#   2) DOCKERHUB_USER=you — push to docker.io/you/xion-relay:TAG (needs `docker login`).
+#   3) Default — GHCR ghcr.io/<github-owner>/xion-relay:TAG (needs PAT + docker login ghcr.io).
 #
-# Override defaults:
-#   GHCR_IMAGE=ghcr.io/myorg/xion-relay GHCR_TAG=mytag bash scripts/push-relay-ghcr.sh
+# Examples:
+#   RELAY_PUSH_IMAGE=nikhilkadalge/xion-relay:pre-genesis-akash bash scripts/push-relay-ghcr.sh
+#   DOCKERHUB_USER=nikhilkadalge bash scripts/push-relay-ghcr.sh
+#   echo "$GITHUB_TOKEN" | docker login ghcr.io -u USER --password-stdin && bash scripts/push-relay-ghcr.sh
+#
+# Override tag for modes 2–3: GHCR_TAG=mytag
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 SHA="$(git rev-parse HEAD)"
-ORIGIN="$(git remote get-url origin 2>/dev/null || true)"
-OWNER="local"
-if [[ "$ORIGIN" =~ github\.com[:/]([^/]+)/ ]]; then
-  OWNER="${BASH_REMATCH[1]}"
-fi
-
-IMAGE="${GHCR_IMAGE:-ghcr.io/${OWNER}/xion-relay}"
 TAG="${GHCR_TAG:-pre-genesis-akash}"
 
 TMP="$(mktemp -d)"
@@ -32,11 +30,25 @@ trap cleanup EXIT
 mkdir -p "$TMP/xion-os"
 git archive "$SHA" | tar -x -C "$TMP/xion-os"
 
-echo "Building ${IMAGE}:${TAG} from git ${SHA} (xion-verify rebuild layout)..."
-docker build --provenance=false -t "${IMAGE}:${TAG}" "$TMP/xion-os"
+if [[ -n "${RELAY_PUSH_IMAGE:-}" ]]; then
+  REF="$RELAY_PUSH_IMAGE"
+elif [[ -n "${DOCKERHUB_USER:-}" ]]; then
+  REF="docker.io/${DOCKERHUB_USER}/xion-relay:${TAG}"
+else
+  ORIGIN="$(git remote get-url origin 2>/dev/null || true)"
+  OWNER="local"
+  if [[ "$ORIGIN" =~ github\.com[:/]([^/]+)/ ]]; then
+    OWNER="${BASH_REMATCH[1]}"
+  fi
+  IMAGE="${GHCR_IMAGE:-ghcr.io/${OWNER}/xion-relay}"
+  REF="${IMAGE}:${TAG}"
+fi
 
-echo "Pushing ${IMAGE}:${TAG} ..."
-docker push "${IMAGE}:${TAG}"
+echo "Building ${REF} from git ${SHA} (xion-verify rebuild layout)..."
+docker build --provenance=false -t "${REF}" "$TMP/xion-os"
 
-echo "OK — update infra/akash/relay-deployment.yaml if IMAGE or TAG differs from:"
-echo "  image: ${IMAGE}:${TAG}"
+echo "Pushing ${REF} ..."
+docker push "${REF}"
+
+echo "OK — ensure infra/akash/relay-deployment.yaml matches:"
+echo "  image: ${REF}"

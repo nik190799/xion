@@ -9,14 +9,22 @@ Deploy a Relay on Akash as a third-party-secondary substrate without making Akas
 ## Steps
 
 1. Build and verify the Relay image digest with `xion-verify rebuild`.
-2. Publish the image to GHCR (providers cannot pull a local-only tag):
+2. Publish the image (Akash providers must pull a public registry; not your laptop):
+
+   **Docker Hub** (if `docker login` is already configured for Docker Hub):
+
+   ```bash
+   DOCKERHUB_USER=your-dockerhub-username bash scripts/push-relay-ghcr.sh
+   ```
+
+   **GHCR** (classic PAT with `write:packages`, or fine-grained Packages write):
 
    ```bash
    echo "$GITHUB_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USER --password-stdin
    bash scripts/push-relay-ghcr.sh
    ```
 
-   The SDL pins `ghcr.io/nik190799/xion-relay:pre-genesis-akash` (from `origin` on this fork). Override with `GHCR_IMAGE` / `GHCR_TAG` if needed.
+   The SDL pins `nikhilkadalge/xion-relay:pre-genesis-akash` for this operator fork; override with `RELAY_PUSH_IMAGE`, `DOCKERHUB_USER`, or `GHCR_IMAGE` / `GHCR_TAG` as documented in `scripts/push-relay-ghcr.sh`.
 3. Create the Akash lease with the operator wallet.
 4. Inject only deployment secrets required for the Relay posture.
 5. Confirm `/health` returns OK over the lease endpoint (TLS uses the container entrypoint’s ephemeral cert unless you mount real `XION_TLS_*` material; use `curl -k` for quick checks).
