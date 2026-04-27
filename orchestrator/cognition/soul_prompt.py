@@ -27,9 +27,22 @@ _cached_mtime: float = 0.0
 
 
 def _find_repo_root() -> Path:
-    """Find the repository root by walking up from this file's location.
-    Mirrors the logic in xion_verify.repo.find_repo_root.
+    """Locate ``genesis/SOUL_PROMPT.md`` for hash verification.
+
+    Order: explicit ``XION_REPO_ROOT``, then walk from ``Path.cwd()`` (so
+    Docker ``WORKDIR=/app`` layouts with only ``genesis/SOUL_PROMPT.md``
+    copied in work), then walk from this file (editable installs / dev).
     """
+    env_root = os.environ.get("XION_REPO_ROOT", "").strip()
+    if env_root:
+        candidate = Path(env_root)
+        if (candidate / "genesis" / "SOUL_PROMPT.md").is_file():
+            return candidate
+
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        if (base / "genesis" / "SOUL_PROMPT.md").is_file():
+            return base
+
     current = Path(__file__).resolve().parent
     while current != current.parent:
         if (current / "genesis" / "SOUL_PROMPT.md").is_file():

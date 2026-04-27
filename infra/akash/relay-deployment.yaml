@@ -1,7 +1,7 @@
 version: "2.0"
 services:
   xion-relay:
-    image: xion/relay:pre-genesis-placeholder
+    image: xion/relay@sha256:9a0650e3602e38c4d4c1fbe475eae2279fad4dbeb1137300fcd973a84cccad1a
     expose:
       - port: 8443
         as: 443
@@ -11,6 +11,14 @@ services:
       - XION_API_HOST=0.0.0.0
       - XION_API_PORT=8443
       - XION_API_WORKERS=1
+      - XION_API_REQUIRE_BEARER=false
+      - XION_BILLING_REQUIRED=false
+      - XION_CAST_POOL_ON_BOOT=false
+      - XION_PAYMENT_LEDGER=/app/data/PAYMENT_LEDGER.jsonl
+      - XION_SENSORIUM_LEDGER=/app/data/SENSORIUM_LEDGER.jsonl
+      - XION_SAFETY_LEDGER=/app/data/SAFETY_LEDGER.jsonl
+      - XION_REQUEST_LEDGER=/app/data/REQUEST_LEDGER.jsonl
+      - XION_ANCHOR_DB_PATH=/app/data/ANCHOR_LEDGER.jsonl
 profiles:
   compute:
     xion-relay:

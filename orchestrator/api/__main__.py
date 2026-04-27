@@ -54,15 +54,13 @@ from __future__ import annotations
 import os
 import sys
 
-from orchestrator.relay import Relay
-
 from .admission import (
     AdmissionConfig,
     AdmissionConfigError,
     _is_loopback_host,
     load_admission_config_from_env,
 )
-from .app import AppDeps, create_app
+from .launcher import build_app
 
 
 _DEFAULT_API_WORKERS = 1
@@ -212,25 +210,6 @@ def _uvicorn_kwargs_for(config: AdmissionConfig, workers: int) -> dict:
     return kwargs
 
 
-def create_default_app():
-    """Module-level app factory used by ``uvicorn.run(..., factory=True)``
-    when running in multi-worker mode.
-
-    Each uvicorn worker process imports this factory, calls it once to
-    build its own ``Relay`` + ``AppDeps`` + ``FastAPI`` app, and then
-    serves requests from that app. The Phase 5g+ lifespan inside each
-    app constructs its own ``BrokerSupervisorShell`` and elects itself
-    leader or follower via the shared SQLite broker.
-    """
-    config = _resolve_admission_config()
-    relay = Relay()
-    deps = AppDeps(
-        relay=relay,
-        admission_config=config,
-    )
-    return create_app(deps)
-
-
 def main() -> int:
     """Launcher entry point. Returns the process exit code.
 
@@ -276,19 +255,14 @@ def main() -> int:
     kwargs = _uvicorn_kwargs_for(config, workers)
 
     if workers == 1:
-        relay = Relay()
-        deps = AppDeps(
-            relay=relay,
-            admission_config=config,
-        )
-        app = create_app(deps)
+        relay, app = build_app(admission_config=config)
         try:
             uvicorn.run(app, **kwargs)
         finally:
             relay.close()
     else:
         uvicorn.run(
-            "orchestrator.api.__main__:create_default_app",
+            "orchestrator.api.launcher:create_default_app",
             factory=True,
             **kwargs,
         )
