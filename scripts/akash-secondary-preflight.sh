@@ -4,6 +4,13 @@
 # This script is intentionally read-only. It does not create leases, spend AKT,
 # or append the dry-run ledger. It answers the solo-operator question:
 # "Can I attempt the Akash standby deploy from this machine right now?"
+#
+# Important findings it does NOT check (see docs/runbooks/AKASH_RELAY_DEPLOY.md):
+# - Wallet has funded uact (ACT) for deployment escrow — mint via bme mint-act and wait
+#   for ledger_record_status_executed; uakt balance alone is insufficient.
+# - Client cert PEM exists under ~/.akash for the signing address (cert generate/publish).
+# - SDL uses denom: uact in placement.pricing (not uakt); image is public in a registry.
+# - provider-services lease-status may need --auth-type mtls; forwarded_ports URLs are per-lease.
 set -euo pipefail
 
 RELAY_DIGEST_FILE="${XION_RELAY_DIGEST_FILE:-genesis/RELAY_IMAGE_DIGEST.txt}"

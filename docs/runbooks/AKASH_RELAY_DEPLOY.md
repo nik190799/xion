@@ -6,6 +6,22 @@
 
 Deploy a Relay on Akash as a third-party-secondary substrate without making Akash the only discovery path.
 
+## Important findings (verified mainnet, 2026-04-26)
+
+These are load-bearing for anyone repeating the CLI path; they are easy to misread from generic Akash docs.
+
+| Finding | Symptom if wrong | Mitigation |
+|--------|-------------------|------------|
+| Escrow is **`uact` (ACT)**, not `uakt` | `deposit invalid: insufficient balance` while wallet shows plenty of AKT | `tx bme mint-act …uakt`; wait until `query bme ledger --owner <addr>` is **`ledger_record_status_executed`** before `deployment create`. Pending mints do not credit `uact` yet. |
+| SDL pricing **`denom: uact`** | `Mismatched denominations (uact != uakt)` or deposit errors | Keep pricing block on **`uact`**; do not put `uakt` in `placement.*.pricing`. |
+| **`gas-prices`** too low | `insufficient fees` on `cert publish` / other txs | e.g. `--gas auto --gas-adjustment 2 --gas-prices 0.5uakt` (values drift with network). |
+| Client **cert** missing | `could not open certificate PEM file` on `deployment create` | `tx cert generate client` then `tx cert publish client` (same key / keyring). |
+| Provider status API **auth** | `JWT has invalid claims` on `lease-status` | Use **`--auth-type mtls`** (default JWT path failed in practice against provider gateway). |
+| Forwarded URL + TLS | Connection errors or cert warnings | Ingress uses **HTTPS** on forwarded port; Relay uses **ephemeral TLS** in image unless you mount real `XION_TLS_*` — use **`curl -k`** for smoke checks. |
+| Hostname / port | Stale bookmarks | `forwarded_ports` (**`host` + `externalPort`**) change per lease/provider; always re-read **`lease-status`**. |
+
+**Live proof (one deployment):** `dseq=26563373`, health reachable at forwarded `*.nip.io` after manifest `PASS` and image pull (allow several minutes for `ready_replicas`).
+
 ## Steps
 
 1. Build and verify the Relay image digest with `xion-verify rebuild`.

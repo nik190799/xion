@@ -10,6 +10,27 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Akash Relay mainnet deploy — operator findings recorded — 2026-04-26
+
+Documents verified CLI lessons in **`docs/runbooks/AKASH_RELAY_DEPLOY.md`** (uact escrow, BME mint timing, gas-prices, cert PEM, `lease-status --auth-type mtls`, ephemeral TLS + `curl -k`), **`infra/akash/relay-deployment.yaml`** (SDL comments), **`scripts/akash-secondary-preflight.sh`** (explicit non-checks), **`scripts/push-relay-ghcr.sh`** and **`xion-verify rebuild`** (build context path vs digest determinism).
+
+### D3 Chutes Relay live-surface preflight staged — 2026-04-26
+
+Stages the full Relay Chutes shape without claiming a live deployment. `orchestrator/api/launcher.py` now centralizes construction of a real `Relay` plus full `AppDeps`, and the repo-root `xion_relay_chute.py` boots `python -m orchestrator.api` and proxies `/health`, `/quote` (local `/pricing`), and `/self` to the FastAPI Relay.
+
+### Changed
+
+- **`scripts/verify-chute-cords.sh`** — adds smoke/live verification modes so d3-6 smoke envelopes and future d3-7 live Relay payloads are checked by one harness.
+- **`scripts/verify-chute-import.py`** — now asserts the root Chutes module exposes the live service marker and required cord paths.
+- **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`** — adds a local pre-flight section and records the current d3-6 smoke registry metadata.
+- **Agent cast content hashes** — refreshes Agent Soul parent hashes, manifest hash, and cast rows so production `python -m orchestrator.api` can pass its cast-pool boot gate.
+
+### Not Yet Green
+
+- The existing Chutes deployment is currently `COLD` with zero instances; public `/health`, `/quote`, and `/self` return Chutes `503 No instances available`.
+- A fresh WSL `chutes build xion_relay_chute:chute --wait` still hits Chutes' 24-hour image-history quota, so `pre-genesis-d3-7` is not deployed yet.
+- The d3-6 registry row is staged locally in `ledgers/RELAY_REGISTRY.json`, but Arweave publication and `xion-verify discovery` promotion remain blocked until the public endpoint is warm and a registry wallet/client are available in the operator environment.
+
 ### Phase 6.9.1 — Gateway Pattern doctrine — 2026-04-26
 
 Codifies the Gateway Pattern as the project-wide rule for load-bearing external dependencies: callers depend on stable interfaces, concrete providers live behind registries/loaders, and every missing substitute is carried as a named `KW-` entry.

@@ -3,6 +3,10 @@
 Clones the repository at the currently checked-out SHA into a temporary directory,
 runs `docker build` using the pinned base image, computes the image digest, and
 compares it to `genesis/RELAY_IMAGE_DIGEST.txt`.
+
+Important finding: the export extracts into ``temp_dir/xion-os`` (not ``temp_dir``).
+Ad-hoc ``docker build`` from a different context path can produce a different image
+ID with BuildKit; use the same layout as this command when pinning or publishing.
 """
 
 from __future__ import annotations

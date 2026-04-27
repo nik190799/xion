@@ -1,3 +1,14 @@
+# Xion Relay — Akash SDL (mainnet blueprint)
+#
+# Important findings (operator, 2026-04-26):
+# - placement.pricing.*.denom MUST be `uact` (compute credits). Using `uakt` yields
+#   deposit / denomination errors at `tx deployment create`; escrow spends `uact`.
+#   Fund via `provider-services tx bme mint-act <uakt>uakt --from ...` and wait until
+#   `query bme ledger` shows executed + `query bank balances` lists `uact`.
+# - `placement` name (`akash` here) must match `deployment.<service>.<same-name>`.
+# - `storage` for compute profiles should be a list (`- size: ...`) per SDL v2 syntax.
+# - `amount` under pricing is max bid per block in uact; tune for market (100 is an example).
+# - Image must be pullable by providers (public Docker Hub / GHCR); see docs/runbooks/AKASH_RELAY_DEPLOY.md.
 version: "2.0"
 services:
   xion-relay:

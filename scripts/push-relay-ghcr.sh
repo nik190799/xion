@@ -2,6 +2,10 @@
 # Build the Relay image from git archive (same extraction layout as
 # `xion-verify rebuild`) and push to a registry.
 #
+# Important: extract into "$TMP/xion-os" (not the archive root alone). Docker BuildKit
+# can emit a different image ID when the build context directory path/layout differs;
+# matching `xion-verify rebuild` + genesis/RELAY_IMAGE_DIGEST.txt requires this layout.
+#
 # Modes (first match wins):
 #   1) RELAY_PUSH_IMAGE=name:tag — build and push this single reference (any registry).
 #   2) DOCKERHUB_USER=you — push to docker.io/you/xion-relay:TAG (needs `docker login`).

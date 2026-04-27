@@ -9,6 +9,7 @@ This memo names what is sealed for Genesis, what remains an accepted residual, w
 - **Primary Relay substrate:** Chutes.
 - **Secondary substrate at Genesis:** operator laptop.
 - **Standby blueprint:** `infra/akash/relay-deployment.yaml` and `docs/runbooks/AKASH_RELAY_DEPLOY.md`.
+- **Akash operator findings (mainnet):** escrow uses **`uact`** (mint via BME after client cert); SDL pricing **`denom: uact`**; **`lease-status`** often needs **`--auth-type mtls`**; forwarded URLs are per-lease. See runbook § *Important findings*.
 - **Residual carried:** `LHT-SUBSTRATE-001`. It closes only when a third-party secondary is provisioned and verified post-Genesis.
 
 ## Accepted Residuals
