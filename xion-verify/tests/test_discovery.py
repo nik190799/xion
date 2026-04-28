@@ -4,9 +4,6 @@ import hashlib
 import json
 from pathlib import Path
 
-from click.testing import CliRunner
-
-from xion_verify.cli import root
 from xion_verify.commands.discovery import evaluate_discovery
 from xion_verify.exit_codes import NOT_YET_SEALED, OK
 
@@ -25,11 +22,36 @@ def _with_payload_hash(data: dict[str, object]) -> dict[str, object]:
     return data
 
 
-def test_discovery_keeps_placeholder_repo_registry_unsealed() -> None:
-    result = CliRunner().invoke(root, ["discovery"])
+def test_discovery_marks_placeholder_public_keys_not_yet_sealed(tmp_path: Path) -> None:
+    registry = _with_payload_hash(
+        {
+            "schema_version": 1,
+            "as_of_utc_ns": 1,
+            "discovery_paths": ["arweave_registry", "ao_process", "dns_seed", "akash_secondary"],
+            "payload_sha256": "",
+            "relays": [
+                {
+                    "relay_id": "akash-primary",
+                    "substrate": "akash",
+                    "endpoint": "https://relay.akash.invalid",
+                    "public_key": "ed25519:not-yet-bound",
+                    "last_seen_utc_ns": 1,
+                },
+                {
+                    "relay_id": "chutes-secondary",
+                    "substrate": "chutes",
+                    "endpoint": "https://xion-relay.chutes.ai",
+                    "public_key": "ed25519:reference-key",
+                    "last_seen_utc_ns": 1,
+                },
+            ],
+        }
+    )
+    _write_registry(tmp_path, registry)
+    code, messages = evaluate_discovery(tmp_path)
 
-    assert result.exit_code == NOT_YET_SEALED, result.output
-    assert "placeholder" in result.output
+    assert code == NOT_YET_SEALED
+    assert any("placeholder" in m for m in messages)
 
 
 def test_discovery_accepts_populated_registry(tmp_path: Path) -> None:

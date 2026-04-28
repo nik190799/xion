@@ -8,7 +8,7 @@
 >
 > **Phase 6.9.1 closed 2026-04-26:** Gateway Pattern doctrine codified in `docs/39-GATEWAY-PATTERN.md`, `.cursor/rules/gateway-pattern.mdc`, and the `docs/38-MODULAR-SUBSTRATE.md` audit table. `xion-verify gateway-conformance` is reserved as `NOT_YET_SEALED`, and eight `KW-` entries name the remaining load-bearing surfaces that still need gateway interfaces.
 >
-> **Phase 6.9.2 next:** First Gateway Pattern implementation slice. Closure order: AO Core client (`KW-AOCORE-CLIENT-001`) -> Vault (`KW-VAULT-001`) -> Alerting (`KW-ALERT-001`) -> Observability (`KW-OBS-001`) -> Registry publisher (`KW-REGISTRY-001`) -> Settlement chain (`KW-TREASURY-CHAIN-001`) -> Status publisher (`KW-STATUS-001`) -> promote `xion-verify gateway-conformance` (`KW-GATEWAY-001`) once static conformance checks are live.
+> **Phase 6.9.2 next:** First Gateway Pattern implementation slice. Closure order: AO Core client (`KW-AOCORE-CLIENT-001`) -> Vault (`KW-VAULT-001`) -> Alerting (`KW-ALERT-001`) -> Observability (`KW-OBS-001`) -> Registry publisher (`KW-REGISTRY-001`) -> Settlement chain (`KW-TREASURY-CHAIN-001`) -> Status publisher (`KW-STATUS-001`) -> promote `xion-verify gateway-conformance` (`KW-GATEWAY-001`) once static conformance checks are live. Concrete first-slice scope: [`docs/PHASE_6_9_2_FIRST_SLICE.md`](docs/PHASE_6_9_2_FIRST_SLICE.md).
 >
 > **Read order before opening this file for execution:** all doctrine files in `docs/` (including `24-COGNITION.md` and `SKILL_BOUNTY.md`), all files in `genesis/`, `KNOWN_WEAKNESSES.md`, `CHANGELOG.md`, and `xion-verify/README.md` for the four Properties answers behind the verifier.
 

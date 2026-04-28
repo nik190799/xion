@@ -12,7 +12,7 @@ a placeholder (override with XION_ALLOW_PENDING_AKASH_ENDPOINT=1). Exits 3 if
 wallet/client not configured. Exits 4 if the Arweave wallet balance is zero (no
 AR to pay storage). Set XION_SKIP_AR_BALANCE_CHECK=1 to override (not recommended).
 Exits 5 if the gateway reports 410 Gone for /tx/<id> (phantom or rejected send).
-Exits 6 if the tx never becomes HTTP 200 visible on the gateway within ~120s.
+Exits 6 if the tx never becomes HTTP 200 or 202 visible on the gateway within ~180s.
 """
 from __future__ import annotations
 
@@ -113,11 +113,11 @@ def _main() -> int:
         {"App-Name": "xion-relay-registry", "Schema-Version": "1", "Xion-Primary-Substrate": "akash"},
     )
     gw = submitter._gateway  # noqa: SLF001 — same gateway the client used for send
-    deadline = time.monotonic() + 120.0
+    deadline = time.monotonic() + 180.0
     status: int | None = None
     while time.monotonic() < deadline:
         status = _gateway_tx_status(gw, tx_id)
-        if status == 200:
+        if status in (200, 202):
             break
         if status == 410:
             print(
@@ -127,10 +127,10 @@ def _main() -> int:
                 file=sys.stderr,
             )
             return 5
-        time.sleep(5.0)
+        time.sleep(4.0)
     else:
         print(
-            f"publish-relay-registry: tx {tx_id.strip()} not visible as HTTP 200 on {gw} "
+            f"publish-relay-registry: tx {tx_id.strip()} not visible as HTTP 200/202 on {gw} "
             f"(last status={status}); not writing RELAY_REGISTRY_ARWEAVE_TX.txt.",
             file=sys.stderr,
         )

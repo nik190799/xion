@@ -1,17 +1,17 @@
 {
-  "as_of_utc_ns": 1777250293007090619,
+  "as_of_utc_ns": 1777352717050742000,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "fc3b3db0175087e8d70a6b8cde8d9021bd10cd94806fb13eacbee62990ec2b5c",
+  "payload_sha256": "f601a8b1b299ccd6ffa86df80bae425dfffb32fb7bafc59b1c24ec0707df2533",
   "relays": [
     {
       "endpoint": "https://provider.161.97.85.20.nip.io:30564",
       "last_seen_utc_ns": 1777250293007089919,
-      "public_key": "ed25519:akash-not-yet-deployed",
+      "public_key": "ed25519:1838c61178454b70036217da1ff545f5bb4219ffab3977b0c0e8f31d4371b688",
       "relay_id": "akash-primary-mainnet",
       "service": "xion-relay-akash",
       "substrate": "akash"
@@ -23,7 +23,7 @@
       "image_tag": "pre-genesis-d3-6",
       "instance_id": "02ad3583-f329-437e-b136-00388325a6d2",
       "last_seen_utc_ns": 1777238987920272700,
-      "public_key": "ed25519:not-yet-deployed",
+      "public_key": "ed25519:18e835fdf4819dbb4121ed799bbc931372dcf2e7e888e2ae0086d2297d6b8c8b",
       "relay_id": "chutes-secondary-d3-smoke",
       "service": "xion-relay-chutes-smoke",
       "substrate": "chutes"

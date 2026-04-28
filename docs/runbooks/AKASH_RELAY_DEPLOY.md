@@ -118,7 +118,7 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 
 9. Run `xion-verify substrate-portability`.
 10. **Publish** the committed `ledgers/RELAY_REGISTRY.json` to Arweave (genesis snapshot). `relays[0]` **must** be the real Akash lease HTTPS base (not `…-pending.invalid`). Use `bash scripts/closeout-genesis-akash-primary-wsl.sh` with `XION_AKASH_HTTPS_BASE` first if the file still has a placeholder.
-11. Run `xion-verify discovery` (expect `NOT_YET_SEALED` until non-placeholder `public_key` values are bound on both relays).
+11. Run `xion-verify discovery` (expect **`OK`** once both relays carry real `ed25519:` public keys — use **`python scripts/gen-relay-registry-ed25519-pubkeys.py`** once, then retain **`secrets/relay_registry_ed25519.json`** only on operator hosts).
 
 ### Arweave registry snapshot (genesis)
 
@@ -138,9 +138,15 @@ On success the transaction id is printed and should be written as **a single lin
 
 | as_of (ledger) | payload_sha256 (first 16 hex) | Arweave tx id | Notes |
 |----------------|------------------------------|---------------|--------|
-| `1777250293007090619` | `fc3b3db0175087e8` | **`vEvdNUQtOEc5uslGpCAexhZ0BBtUoOnapm3aTxisKsE`** (2026-04-28) | `relays[0]` = `https://provider.161.97.85.20.nip.io:30564` (lease dseq=26563373). Gate: `https://arweave.net/tx/vEvdNUQtOEc5uslGpCAexhZ0BBtUoOnapm3aTxisKsE` |
+| `1777352717050742000` | `f601a8b1b299ccd6` | **`n6OCNc5mfsgDBdBOUYJsS7tYo980lNQnWgzJzDYdyqE`** (2026-04-28, pubkey-bound) | Supersedes tx `vEvdNUQt…` after `gen-relay-registry-ed25519-pubkeys.py`. Gate: `https://arweave.net/tx/n6OCNc5mfsgDBdBOUYJsS7tYo980lNQnWgzJzDYdyqE` |
 
 The script uses the same JSON bytes as the on-disk registry (minified, sorted keys) so `payload_sha256` matches `xion-verify discovery` hashing.
+
+### Steady-state (lease + drills)
+
+- Re-run **`bash scripts/akash-lease-status.sh`** after any deploy or provider change; **`forwarded_ports`** (`host`, `externalPort`) move with the lease — refresh `relays[0].endpoint` and republish when they do (avoid blindly re-running `closeout` if you only need a registry hash bump without a new substrate dry-run row).
+- **`curl -k https://<lease-base>/health`** on cadence you trust for your SLA.
+- **`docs/runbooks/IMMORTALITY_DRILL.md`** — rehearse failover when you change registry posture or cord auth.
 
 ## Preflight
 
