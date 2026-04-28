@@ -138,7 +138,7 @@ On success the transaction id is printed and should be written as **a single lin
 
 | as_of (ledger) | payload_sha256 (first 16 hex) | Arweave tx id | Notes |
 |----------------|------------------------------|---------------|--------|
-| `1777250293007090619` | `fc3b3db0175087e8` | *NOT_CONFIRMED — registry JWK had **0 AR**; `publish-relay-registry-wsl.sh` now exits 4 until funded* | `relays[0]` = `https://provider.161.97.85.20.nip.io:30564` (lease dseq=26563373). See `ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt` for wallet address + retry steps. |
+| `1777250293007090619` | `fc3b3db0175087e8` | **`vEvdNUQtOEc5uslGpCAexhZ0BBtUoOnapm3aTxisKsE`** (2026-04-28) | `relays[0]` = `https://provider.161.97.85.20.nip.io:30564` (lease dseq=26563373). Gate: `https://arweave.net/tx/vEvdNUQtOEc5uslGpCAexhZ0BBtUoOnapm3aTxisKsE` |
 
 The script uses the same JSON bytes as the on-disk registry (minified, sorted keys) so `payload_sha256` matches `xion-verify discovery` hashing.
 
