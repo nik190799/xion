@@ -21,6 +21,17 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-FLOOR-DEPLOY-001 - Open-weights floor is operator-laptop-hosted, not deployed with the Relay
+- **Domain:** OPS
+- **Discovered:** 2026-04-28 (post-funding pre-Genesis closure review)
+- **Severity:** high
+- **Status:** paying-down
+- **Description:** The Invariant-17 open-weights floor is structurally verified and runnable through `OllamaGenerativeProvider`, but the live Akash Relay footprint does not yet carry its own Ollama floor. In practice, the floor depends on the operator laptop's `ollama serve` daemon unless the deployment explicitly points `XION_OLLAMA_URL` at another host.
+- **Why it exists:** Phase 5g-viii correctly proved that the floor model is open, pinned, and health-checkable, but it optimized for local D2 bootstrap. The first Akash SDL then deployed only the Relay container, not the model-serving sidecar.
+- **Mitigations:** Hosted inference is served through Chutes/Bittensor SN64 with TEE-by-default; `hosted_api_first` still falls through to the floor when reachable; `open_weights_only` refuses hosted fallback during cutover drills. This weakness does not weaken the floor property itself, but it weakens the resurrection claim while the operator laptop remains part of the runtime path.
+- **Pay-down commitment:** Close when the Akash deployment includes a GPU-backed Ollama sidecar (or equivalent deployed open-weights floor) reachable by the Relay through `XION_OLLAMA_URL`, the sidecar has pulled `gemma4:e4b-it-q4_K_M`, `/api/tags` is healthy from inside the deployment, and an `open_weights_only` smoke turn succeeds without the operator laptop online.
+- **Verifier:** `xion-verify inference-sovereignty` covers the model-floor property; the deploy closure is operator-verified by Akash lease health plus an `open_weights_only` `/chat` smoke test until a future `xion-verify deployed-floor` subcommand exists.
+
 ### KW-GATEWAY-001 - Gateway conformance verifier is reserved but not live
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
@@ -1168,13 +1179,13 @@ Every entry has the same shape:
 - **Mitigations:**
   - Smoke envelope discloses `service="xion-relay-chutes-smoke"` and `image_tag` so a third party reading the cord output can see what is and is not promised.
   - `scripts/debug-chute-d3.sh`, `scripts/verify-chute-cords.sh` (now `EXPECTED_IMAGE_TAG`-overridable), `scripts/verify-chute-import.py`, `scripts/probe-pricing-variants.sh`, and `scripts/probe-xion-pricing.sh` give the solo operator a complete one-command WSL loop for (re)building, importing, deploying, warming, and probing this chute.
-  - The cord pipeline itself has been proven end-to-end on the live Chutes platform: build → push → schedule → miner assignment (verified instance) → public 200 OK on all three smoke cords. **Before any new Arweave publish**, re-warm and re-verify cords while instances are active (not COLD/503); see **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`** § *d3-7 live gate*.
+  - The cord pipeline itself has been proven end-to-end on the live Chutes platform: build → push → schedule → miner assignment (verified instance) → public 200 OK on all three smoke cords. **Before any new Arweave publish**, re-warm and re-verify cords while instances are active (not COLD/503); see **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`** § *d3-8 live gate*.
   - The smoke pricing check moved to `/quote`; `/pricing` remains a platform-owned pricing endpoint and is treated as an expected interception, not a Relay failure.
   - `orchestrator/api/launcher.py` now constructs a real `Relay` plus full `AppDeps`, and the root `xion_relay_chute.py` has been rewritten to proxy Chutes cords to that live FastAPI subprocess once a new image can be built.
-- **Pay-down commitment (updated 2026-04-28 for Akash-primary registry order):** `xion-verify discovery` requires **Akash** at `relays[0]` and **Chutes** at `relays[1]`. Closure path: **(A)** a **real Akash lease HTTPS base** in `relays[0].endpoint`, **(B)** `python3 scripts/publish-relay-registry-arweave.py` / `bash scripts/publish-relay-registry-wsl.sh` with `XION_REGISTRY_WALLET_JWK_PATH`, **(C)** non-placeholder **`public_key`** on both relays (**`python scripts/gen-relay-registry-ed25519-pubkeys.py`**), then **`xion-verify discovery`** → **`OK`**. The **Chutes** secondary row remains the d3-6 **smoke** disclosure until **`pre-genesis-d3-7`** ships under the 24h quota (see runbook § *d3-7 live gate*).
+- **Pay-down commitment (updated 2026-04-28 for Akash-primary registry order):** `xion-verify discovery` requires **Akash** at `relays[0]` and **Chutes** at `relays[1]`. Closure path: **(A)** a **real Akash lease HTTPS base** in `relays[0].endpoint`, **(B)** `python3 scripts/publish-relay-registry-arweave.py` / `bash scripts/publish-relay-registry-wsl.sh` with `XION_REGISTRY_WALLET_JWK_PATH`, **(C)** non-placeholder **`public_key`** on both relays (**`python scripts/gen-relay-registry-ed25519-pubkeys.py`**), then **`xion-verify discovery`** → **`OK`**. The **Chutes** secondary row remains the d3-6 **smoke** disclosure until **`pre-genesis-d3-8`** ships under the 24h quota (see runbook § *d3-8 live gate*).
   1. **Registry + Arweave closure (genesis primary on Akash):** **Done** for the pubkey-bound snapshot (Arweave tx **`n6OCNc5…`**; prior **`vEvdNUQt…`** superseded). Ongoing: refresh `relays[0].endpoint` when lease forwards move, re-hash, re-publish.
-  2. **Chutes secondary — cord warmth:** re-warm `pre-genesis-d3-6` (or deploy `pre-genesis-d3-7` when the 24h image-history window allows), then `EXPECTED_IMAGE_TAG=… bash scripts/verify-chute-cords.sh` while instances are **active** (not COLD/503). This is evidence for the **secondary** substrate, not the primary.
-  3. **Live-surface closure (Phase 6.x integration):** still requires a successful d3-7 build/deploy/warmup when the quota allows, `scripts/verify-chute-cords.sh --mode=live`, and a republished registry row with `service: "xion-relay-chutes"` (non-smoke) on the Chutes row.
+  2. **Chutes secondary — cord warmth:** re-warm `pre-genesis-d3-6` (or deploy `pre-genesis-d3-8` when the 24h image-history window allows), then `EXPECTED_IMAGE_TAG=… bash scripts/verify-chute-cords.sh` while instances are **active** (not COLD/503). This is evidence for the **secondary** substrate, not the primary.
+  3. **Live-surface closure (Phase 6.x integration):** still requires a successful d3-8 build/deploy/warmup when the quota allows, `scripts/verify-chute-cords.sh --mode=live`, and a republished registry row with `service: "xion-relay-chutes"` (non-smoke) on the Chutes row.
 - **Verifier:** `scripts/verify-chute-cords.sh` (smoke or live by mode); `pytest orchestrator/tests/test_launcher.py`; `xion-verify discovery` and `xion-verify substrate-portability` per runbooks; Arweave-published registry bytes match committed `ledgers/RELAY_REGISTRY.json` via `payload_sha256` and `scripts/publish-relay-registry-arweave.py`.
 
 ### KW-AUDIT-001 â€” No external contract audit (applies if Sprint Mode is chosen)

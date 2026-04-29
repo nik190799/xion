@@ -30,9 +30,9 @@ def main() -> int:
     if missing_paths:
         print("FAIL missing public cord paths:", sorted(missing_paths), file=sys.stderr)
         return 1
-    if xion_relay_chute.IMAGE_TAG != "pre-genesis-d3-7":
+    if xion_relay_chute.IMAGE_TAG != "pre-genesis-d3-8":
         print(
-            "FAIL image_tag pinned to pre-genesis-d3-7, got:",
+            "FAIL image_tag pinned to pre-genesis-d3-8, got:",
             xion_relay_chute.IMAGE_TAG,
             file=sys.stderr,
         )

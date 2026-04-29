@@ -58,20 +58,40 @@ zero instances and public probes returned Chutes `503 No instances available`.
 Do not publish or promote the row while that state holds. Re-run warmup and the
 cord verifier immediately before any registry publication.
 
-## d3-7 live gate (24-hour image-history quota)
+## Pending d3-8 Live Registry Row
+
+Fill this table only after `MODE=live bash scripts/verify-chute-cords.sh`
+passes against `pre-genesis-d3-8`. Until then, keep the registry row honest as
+smoke.
+
+| Field | Value |
+|-------|-------|
+| Chute id | `PENDING_OPERATOR_EXECUTION` |
+| Image id | `PENDING_OPERATOR_EXECUTION` |
+| Instance id | `PENDING_OPERATOR_EXECUTION` |
+| Service disclosure | `xion-relay-chutes` |
+| Image tag | `pre-genesis-d3-8` |
+| Build wall-clock | `PENDING_OPERATOR_EXECUTION` |
+| Warmup wall-clock | `PENDING_OPERATOR_EXECUTION` |
+| Verifier command | `MODE=live bash scripts/verify-chute-cords.sh` |
+| Verifier result | `PENDING_OPERATOR_EXECUTION` |
+
+## d3-8 live gate (24-hour image-history quota)
 
 When Chutes allows a new image, the operator sequence is:
 
 1. Local pre-flight in this runbook (pytest launcher, loopback API, `verify-chute-import.py`).
-2. `chutes build xion_relay_chute:chute --wait` → tag **`pre-genesis-d3-7`**, deploy, warmup (~240s).
-3. `MODE=live bash scripts/verify-chute-cords.sh` (no smoke envelope; asserts Relay JSON shapes).
-4. Update **`ledgers/RELAY_REGISTRY.json`** `relays[1]`: `service: "xion-relay-chutes"`, new `image_id` / `image_tag` / `instance_id`, `last_seen_utc_ns`, recompute **`payload_sha256`**.
-5. **`bash scripts/publish-relay-registry-wsl.sh`** to append a new Arweave anchor; update **`ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt`** and **`docs/runbooks/AKASH_RELAY_DEPLOY.md`** snapshot table.
-6. Close **`KW-RELAY-CHUTES-D3-001`** live-surface pay-down in **`KNOWN_WEAKNESSES.md`** when the row and verifier evidence match.
+2. `chutes images list --limit 5` and confirm the rolling 24-hour image-history quota has cleared.
+3. `chutes build xion_relay_chute:chute --wait` → tag **`pre-genesis-d3-8`**, deploy, warmup (~240s or longer on cold GPU workers).
+4. If the chute remains cold, `chutes deploy xion_relay_chute:chute`, then poll `chutes chutes get <chute_id>` until instances are non-zero.
+5. `MODE=live bash scripts/verify-chute-cords.sh` (no smoke envelope; asserts Relay JSON shapes).
+6. Update **`ledgers/RELAY_REGISTRY.json`** `relays[1]`: `service: "xion-relay-chutes"`, new `image_id` / `image_tag` / `instance_id`, `last_seen_utc_ns`, recompute **`payload_sha256`**.
+7. **`bash scripts/publish-relay-registry-wsl.sh`** to append a new Arweave anchor; update **`ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt`** and **`docs/runbooks/AKASH_RELAY_DEPLOY.md`** snapshot table.
+8. Close **`KW-RELAY-CHUTES-D3-001`** live-surface pay-down in **`KNOWN_WEAKNESSES.md`** when the row and verifier evidence match.
 
 ## Fallbacks
 
-- If the Chutes hosted model is unhealthy, the Inference Router falls through to the local Ollama floor.
+- If the Chutes hosted model is unhealthy, the Inference Router falls through to the deployed Akash `xion-ollama` floor in Genesis posture, or the local Ollama floor only in D2/local rehearsal.
 - If the Chutes Relay endpoint is unavailable, cut user traffic to the **Akash genesis primary** lease URL in `relays[0]` (registry order) and re-publish the registry if the Akash forward changes.
 - For additional tertiary substrates post-Genesis, follow `SUBSTRATE-RESILIENCE.md` and extend the provider whitelist (Aleph, Fleek, bare metal, etc.).
 

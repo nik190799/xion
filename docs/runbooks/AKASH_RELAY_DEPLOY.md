@@ -18,13 +18,13 @@ Deploy a Relay on Akash as the **genesis primary** hosted substrate in the regis
 
 **Provider API / URL.** `lease-status` against the provider gateway: default JWT auth failed in practice; use **`--auth-type mtls`**. **Forwarded ports** (`host`, `externalPort`) are per lease/provider — always re-read `lease-status`; do not assume a fixed URL.
 
-**Container / TLS / health.** Image must be pullable (e.g. public Docker Hub; SDL may pin `nikhilkadalge/xion-relay:pre-genesis-akash`). Ingress is HTTPS on the forwarded port; the Relay image may use **ephemeral TLS** unless you mount real `XION_TLS_*` — quick checks: **`curl -k https://…/health`**. After manifest `PASS`, allow time for image pull and `ready_replicas` before `/health` is stable.
+**Container / TLS / health.** Image must be pullable (e.g. public Docker Hub; SDL may pin `nikhilkadalge/xion-relay:pre-genesis-akash`). Ingress is HTTPS on the forwarded port; the Relay image may use **ephemeral TLS** unless you mount real `XION_TLS_*` — quick checks: **`curl -k https://…/health`**. After manifest `PASS`, allow time for image pull, the GPU-backed `xion-ollama` sidecar to pull `gemma4:e4b-it-q4_K_M`, and `ready_replicas` before `/health` and `open_weights_only` are stable.
 
-**SDL gotchas.** The `placement` key (e.g. `akash`) must match the leaf under `deployment.xion-relay` (see `infra/akash/relay-deployment.yaml`). On SDL v2, `storage` under the compute profile is a list (e.g. `- size: 10Gi`). **`amount` in `pricing` is a max bid per block in `uact`** — tune to market.
+**SDL gotchas.** The `placement` key (e.g. `akash`) must match the leaf under `deployment.xion-relay` (see `infra/akash/relay-deployment.yaml`). On SDL v2, `storage` under the compute profile is a list (e.g. `- size: 10Gi`). **`amount` in `pricing` is a max bid per block in `uact`** — tune to market. Adding or removing a service, such as the `xion-ollama` sidecar, changes deployment topology; create a new dseq instead of trying to treat that as an in-place `tx deployment update`.
 
 **Real datapoint.** Example mainnet deployment: `dseq=26563373`, health eventually OK on forwarded `*.nip.io` after manifest pass and pull.
 
-**Doctrine / verifiers.** For the **Akash** row in `ledgers/RELAY_REGISTRY.json`, set `relays[0].endpoint` to that HTTPS base (see `scripts/closeout-genesis-akash-primary-wsl.sh`). For **substrate-portability** drills, the current posture often tests **Chutes** as secondary (step 8 below: Bearer on `/health`). To instead record an **Akash-lease** secondary line (legacy), capture `XION_SECONDARY_HEALTH_URL`, `XION_DEPLOYMENT_EVIDENCE` as `akash://<owner>/<dseq>/<gseq>/<oseq>`, and run `scripts/substrate-portability-dry-run.sh` / `xion-verify substrate-portability` as in **Steps** and **§ Important findings** below.
+**Doctrine / verifiers.** For the **Akash** row in `ledgers/RELAY_REGISTRY.json`, set `relays[0].endpoint` to that HTTPS base (see `scripts/closeout-genesis-akash-primary-wsl.sh`). For **substrate-portability** drills, the current posture often tests **Chutes** as secondary (step 9 below: Bearer on `/health`). To instead record an **Akash-lease** secondary line (legacy), capture `XION_SECONDARY_HEALTH_URL`, `XION_DEPLOYMENT_EVIDENCE` as `akash://<owner>/<dseq>/<gseq>/<oseq>`, and run `scripts/substrate-portability-dry-run.sh` / `xion-verify substrate-portability` as in **Steps** and **§ Important findings** below.
 
 ## Important findings (verified mainnet, 2026-04-26)
 
@@ -39,8 +39,22 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 | Provider status API **auth** | `JWT has invalid claims` on `lease-status` | Use **`--auth-type mtls`** (default JWT path failed in practice against provider gateway). |
 | Forwarded URL + TLS | Connection errors or cert warnings | Ingress uses **HTTPS** on forwarded port; Relay uses **ephemeral TLS** in image unless you mount real `XION_TLS_*` — use **`curl -k`** for smoke checks. |
 | Hostname / port | Stale bookmarks | `forwarded_ports` (**`host` + `externalPort`**) change per lease/provider; always re-read **`lease-status`**. |
+| Open-weights floor location | `open_weights_only` works only while the operator laptop is on | The SDL carries a private `xion-ollama` sidecar and sets `XION_OLLAMA_URL=http://xion-ollama:11434`; do not count a laptop-local Ollama daemon as deployed-floor evidence. |
+| GPU sidecar pricing | CPU-sized bids never clear GPU leases, or the provider schedules a CPU-only floor that times out | The `xion-ollama` sidecar starts at **`10000 uact`/block** and requests one NVIDIA GPU. Tune this from observed `bid list`, then record the accepted bid in `docs/runbooks/POST_FUNDING_DEPLOY.md`. |
 
-**Live proof (one deployment):** `dseq=26563373`, health reachable at forwarded `*.nip.io` after manifest `PASS` and image pull (allow several minutes for `ready_replicas`).
+**Historical proof (CPU-only Relay deployment):** `dseq=26563373`, health reachable at forwarded `*.nip.io` after manifest `PASS` and image pull. This predates the GPU-backed `xion-ollama` sidecar and does **not** close `KW-FLOOR-DEPLOY-001`.
+
+**GPU floor proof ledger (fill during next live deploy):**
+
+| Field | Value |
+|-------|-------|
+| New dseq | `PENDING_OPERATOR_EXECUTION` |
+| Provider | `PENDING_OPERATOR_EXECUTION` |
+| Accepted `xion-ollama` bid | `PENDING_OPERATOR_EXECUTION` |
+| Forwarded HTTPS base | `PENDING_OPERATOR_EXECUTION` |
+| `send-manifest` to `ready_replicas` | `PENDING_OPERATOR_EXECUTION` |
+| `ready_replicas` to `/health` 200 | `PENDING_OPERATOR_EXECUTION` |
+| Ollama GPU detected in logs | `PENDING_OPERATOR_EXECUTION` |
 
 ## Steps
 
@@ -98,10 +112,40 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
      --from <key> --keyring-backend test --node "$AKASH_NODE" --auth-type mtls
    ```
 
-   Use `forwarded_ports` (host + `externalPort`) with **`curl -k https://<host>:<externalPort>/health`** until `ready_replicas` catches up (image pull can take a few minutes).
+   Use `forwarded_ports` (host + `externalPort`) with **`curl -k https://<host>:<externalPort>/health`** until `ready_replicas` catches up (image pull and the GPU-backed Ollama sidecar model pull can take several minutes). Record the accepted GPU bid, provider, dseq, forwarded base, and wall-clock timings in `docs/runbooks/POST_FUNDING_DEPLOY.md` before closing any `KW-` entry.
 6. Inject only deployment secrets required for the Relay posture (optional overrides beyond the SDL `env` block).
 7. Confirm `/health` returns OK over the lease endpoint (TLS uses the container entrypoint’s ephemeral cert unless you mount real `XION_TLS_*` material; use `curl -k` for quick checks).
-8. When **Chutes is the secondary** substrate in the current posture, record the dry-run against **Chutes** `/health` (Bearer from `chutes.env`, same as `scripts/verify-chute-cords.sh`):
+8. Confirm the deployed open-weights floor is not the operator laptop:
+
+   ```bash
+   # The Relay env must point at the private sidecar:
+   #   XION_OLLAMA_URL=http://xion-ollama:11434
+   #   XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-q4_K_M
+
+   # From inside the lease/container shell if provider-services exposes one,
+   # or from Relay startup logs:
+   curl -sS http://xion-ollama:11434/api/tags
+   ```
+
+   Then stop or ignore the operator laptop's local Ollama daemon and run one
+   `/chat` smoke turn against the Akash HTTPS base. If the deployment has no
+   `XION_CHUTES_API_KEY`, the Genesis Default `hosted_api_first` router has no
+   hosted provider to choose and the turn exercises the floor. If Chutes
+   credentials are injected, do **not** prefix the client `curl` with
+   `XION_INFERENCE_POLICY=open_weights_only` — that changes only the caller's
+   shell. Instead, do a temporary manifest update with
+   `XION_INFERENCE_POLICY=open_weights_only`, send the manifest, wait for the
+   Relay to restart, run the smoke turn, then restore `hosted_api_first`.
+
+   ```bash
+   curl -k -sS -X POST https://<lease-host>:<externalPort>/chat \
+     -H "Content-Type: application/json" \
+     -d '{"message":"deployed floor smoke: answer in one short sentence","max_tokens":1024}'
+   ```
+
+   `KW-FLOOR-DEPLOY-001` remains open until that turn succeeds with the
+   laptop-local daemon out of the runtime path.
+9. When **Chutes is the secondary** substrate in the current posture, record the dry-run against **Chutes** `/health` (Bearer from `chutes.env`, same as `scripts/verify-chute-cords.sh`):
 
    ```bash
    export XION_SECONDARY_SUBSTRATE_ID=chutes-d3-standby
@@ -116,9 +160,9 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 
    (Legacy: if the secondary under test is an Akash lease, use `akash-testnet-standby`, `XION_SECONDARY_PROVIDER=akash`, and `XION_DEPLOYMENT_EVIDENCE=akash://...`; for TLS ingress self-signed certs, set `XION_SECONDARY_HEALTH_CURL_INSECURE=1`.) Optional one-shot (sets registry Akash base + dry-run): `XION_AKASH_HTTPS_BASE=https://<lease-host:port> bash scripts/closeout-genesis-akash-primary-wsl.sh`
 
-9. Run `xion-verify substrate-portability`.
-10. **Publish** the committed `ledgers/RELAY_REGISTRY.json` to Arweave (genesis snapshot). `relays[0]` **must** be the real Akash lease HTTPS base (not `…-pending.invalid`). Use `bash scripts/closeout-genesis-akash-primary-wsl.sh` with `XION_AKASH_HTTPS_BASE` first if the file still has a placeholder.
-11. Run `xion-verify discovery` (expect **`OK`** once both relays carry real `ed25519:` public keys — use **`python scripts/gen-relay-registry-ed25519-pubkeys.py`** once, then retain **`secrets/relay_registry_ed25519.json`** only on operator hosts).
+10. Run `xion-verify substrate-portability`.
+11. **Publish** the committed `ledgers/RELAY_REGISTRY.json` to Arweave (genesis snapshot). `relays[0]` **must** be the real Akash lease HTTPS base (not `…-pending.invalid`). Use `bash scripts/closeout-genesis-akash-primary-wsl.sh` with `XION_AKASH_HTTPS_BASE` first if the file still has a placeholder.
+12. Run `xion-verify discovery` (expect **`OK`** once both relays carry real `ed25519:` public keys — use **`python scripts/gen-relay-registry-ed25519-pubkeys.py`** once, then retain **`secrets/relay_registry_ed25519.json`** only on operator hosts).
 
 ### Arweave registry snapshot (genesis)
 
@@ -139,6 +183,7 @@ On success the transaction id is printed and should be written as **a single lin
 | as_of (ledger) | payload_sha256 (first 16 hex) | Arweave tx id | Notes |
 |----------------|------------------------------|---------------|--------|
 | `1777352717050742000` | `f601a8b1b299ccd6` | **`n6OCNc5mfsgDBdBOUYJsS7tYo980lNQnWgzJzDYdyqE`** (2026-04-28, pubkey-bound) | Supersedes tx `vEvdNUQt…` after `gen-relay-registry-ed25519-pubkeys.py`. Gate: `https://arweave.net/tx/n6OCNc5mfsgDBdBOUYJsS7tYo980lNQnWgzJzDYdyqE` |
+| `PENDING_OPERATOR_EXECUTION` | `PENDING_OPERATOR_EXECUTION` | `PENDING_OPERATOR_EXECUTION` | Fill only after Akash GPU floor proof and Chutes d3-8 live verifier are green; this is the registry publish that should close `KW-FLOOR-DEPLOY-001` and `KW-RELAY-CHUTES-D3-001`. |
 
 The script uses the same JSON bytes as the on-disk registry (minified, sorted keys) so `payload_sha256` matches `xion-verify discovery` hashing.
 
