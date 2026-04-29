@@ -41,6 +41,11 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 | Hostname / port | Stale bookmarks | `forwarded_ports` (**`host` + `externalPort`**) change per lease/provider; always re-read **`lease-status`**. |
 | Open-weights floor location | `open_weights_only` works only while the operator laptop is on | The SDL carries a private `xion-ollama` sidecar and sets `XION_OLLAMA_URL=http://xion-ollama:11434`; do not count a laptop-local Ollama daemon as deployed-floor evidence. |
 | GPU sidecar pricing | CPU-sized bids never clear GPU leases, or the provider schedules a CPU-only floor that times out | The `xion-ollama` sidecar starts at **`10000 uact`/block** and requests one NVIDIA GPU. Tune this from observed `bid list`, then record the accepted bid in `docs/runbooks/POST_FUNDING_DEPLOY.md`. |
+| RPC node reliability | `deployment create` fails with `502 Bad Gateway` / invalid JSON from the RPC server | Retry against a stable RPC such as `https://rpc.akashnet.net:443`; do not treat one RPC 502 as a deployment design failure. |
+| Closed lease after funding drift | Public endpoint refuses connections and `lease-status` shows closed / `insufficient_funds` | Check the lease state before editing the registry. If the lease is closed, create a new deployment/lease with operator consent instead of republishing a dead endpoint. |
+| Ollama `/api/tags` is not enough readiness | Relay boots, caches `open_weights_floor_unsatisfied`, and `/chat` returns 503 even though the model appears in tags | Gate Relay startup on a successful small `/api/generate` call after `/api/tags` lists the model. The current SDL does this before `exec /usr/local/bin/entrypoint-xion-orchestrator-api.sh`. |
+| `open_weights_only` is read at process start | Client-side `XION_INFERENCE_POLICY=open_weights_only curl ...` does not change the deployed Relay policy | Temporarily edit the SDL/env and `send-manifest`, wait for the Relay restart, run the proof, then restore `hosted_api_first` with a second manifest update. |
+| Chat smoke payload validation | `/chat` returns 422 for too-small `max_tokens` | Use `max_tokens >= 1024` for the deployed proof payload. |
 
 **Historical proof (CPU-only Relay deployment):** `dseq=26563373`, health reachable at forwarded `*.nip.io` after manifest `PASS` and image pull. This predates the GPU-backed `xion-ollama` sidecar and does **not** close `KW-FLOOR-DEPLOY-001`.
 
@@ -48,13 +53,13 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 
 | Field | Value |
 |-------|-------|
-| New dseq | `PENDING_OPERATOR_EXECUTION` |
-| Provider | `PENDING_OPERATOR_EXECUTION` |
-| Accepted `xion-ollama` bid | `PENDING_OPERATOR_EXECUTION` |
-| Forwarded HTTPS base | `PENDING_OPERATOR_EXECUTION` |
-| `send-manifest` to `ready_replicas` | `PENDING_OPERATOR_EXECUTION` |
-| `ready_replicas` to `/health` 200 | `PENDING_OPERATOR_EXECUTION` |
-| Ollama GPU detected in logs | `PENDING_OPERATOR_EXECUTION` |
+| New dseq | `26595076` |
+| Provider | `akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d` |
+| Accepted `xion-ollama` bid | `429.375054 uact/block` (`rtx3090`) |
+| Forwarded HTTPS base | `https://provider.pronto-ai.pp.ua:31503` |
+| `send-manifest` to `ready_replicas` | `ready_replicas=1` observed by `provider-services lease-status --auth-type mtls`; exact wall-clock not captured |
+| `ready_replicas` to `/health` 200 | `/health` 200 observed after the generation-ready Ollama startup gate settled |
+| Ollama GPU detected in logs | CUDA backend loaded; `GPULayers:43[ID:GPU-ba251223-c268-a9a2-ed44-619a94cf01f1 Layers:43(0..42)]` |
 
 ## Steps
 
@@ -180,10 +185,17 @@ bash scripts/publish-relay-registry-wsl.sh
 
 On success the transaction id is printed and should be written as **a single line** to **`ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt`**. Record that id in **[CHANGELOG.md](../../CHANGELOG.md)** and in the table below. If the wallet had **0 AR**, the script exits **4**; fund the JWK’s Arweave address, then re-run.
 
+Arweave findings from the operator-track publish:
+
+- The registry hash is computed over the document **without** `payload_sha256`, using sorted keys and minified separators. Recompute before publishing; `scripts/publish-relay-registry-arweave.py` refuses a mismatch.
+- The published bytes are the full sorted/minified registry document **including** `payload_sha256`; the `payload_sha256` field is therefore a pre-publish content commitment, not a hash of the exact transaction bytes.
+- Keep `ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt` to a single latest tx id. Older txs remain permanent on Arweave and are recorded in the table below, but the file tracks the current registry anchor.
+- A successful publish is not enough by itself: immediately rerun `xion-verify discovery` and `xion-verify substrate-portability` against the same working tree so the Arweave tx, local registry bytes, and verifier state are tied together in the closeout evidence.
+
 | as_of (ledger) | payload_sha256 (first 16 hex) | Arweave tx id | Notes |
 |----------------|------------------------------|---------------|--------|
 | `1777352717050742000` | `f601a8b1b299ccd6` | **`n6OCNc5mfsgDBdBOUYJsS7tYo980lNQnWgzJzDYdyqE`** (2026-04-28, pubkey-bound) | Supersedes tx `vEvdNUQt…` after `gen-relay-registry-ed25519-pubkeys.py`. Gate: `https://arweave.net/tx/n6OCNc5mfsgDBdBOUYJsS7tYo980lNQnWgzJzDYdyqE` |
-| `PENDING_OPERATOR_EXECUTION` | `PENDING_OPERATOR_EXECUTION` | `PENDING_OPERATOR_EXECUTION` | Fill only after Akash GPU floor proof and Chutes d3-8 live verifier are green; this is the registry publish that should close `KW-FLOOR-DEPLOY-001` and `KW-RELAY-CHUTES-D3-001`. |
+| `1777440937298896100` | `26c69c5f50bd9d8a` | **`KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs`** (2026-04-29, Akash GPU floor + Chutes d3-10 live) | Closes the operator-track registry publish after Akash `/chat` open-weights proof and `MODE=live bash scripts/verify-chute-cords.sh` returned all cords green. Gate: `https://arweave.net/tx/KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs` |
 
 The script uses the same JSON bytes as the on-disk registry (minified, sorted keys) so `payload_sha256` matches `xion-verify discovery` hashing.
 

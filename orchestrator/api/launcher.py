@@ -75,6 +75,10 @@ def build_app(
 
     relay = relay or Relay()
 
+    raw_cd = os.environ.get("XION_CHAT_DEADLINE_S", "").strip()
+    if raw_cd:
+        chat_deadline_s = float(raw_cd)
+
     if admission_config is None:
         admission_config = load_admission_config_from_env()
     if require_bearer is not None:

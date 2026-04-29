@@ -19,6 +19,13 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 - **Honesty gates preserved:** `KW-FLOOR-DEPLOY-001`, `KW-RELAY-CHUTES-D3-001`, and the Immortality Drill honesty gate remain open until the operator records real Akash GPU-floor proof, Chutes d3-8 live verifier output, and the new Arweave registry tx id.
 - **Chutes d3-8 live gate staged:** `xion_relay_chute.py`, `scripts/verify-chute-cords.sh`, and `scripts/verify-chute-import.py` now target `pre-genesis-d3-8`, with longer Relay boot tolerance for cold GPU workers. The public registry stays on d3-6 smoke until a live d3-8 build/warmup passes `MODE=live`.
 
+### Operator-track closeout — Akash GPU floor, Chutes d3-10, registry, and first drill — 2026-04-29
+
+- **`KW-FLOOR-DEPLOY-001` closed:** Akash `dseq=26595076` on provider `akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d` now carries the private `xion-ollama` floor; `/chat` returned `200` in `8.38s` under `XION_INFERENCE_POLICY=open_weights_only` with `gemma4:e4b-it-q4_K_M`.
+- **`KW-RELAY-CHUTES-D3-001` closed:** Chutes image `pre-genesis-d3-10` (`a5ab815c-9fb5-5cb9-bcbd-a51535f1abe9`) warmed and `MODE=live bash scripts/verify-chute-cords.sh` returned `RESULT: all cords green` for `/health`, `/quote`, and `/self`.
+- **Registry republished:** `ledgers/RELAY_REGISTRY.json` now points Akash to `https://provider.pronto-ai.pp.ua:31503` and promotes the Chutes row to `service="xion-relay-chutes"` / `relay_id="chutes-secondary-d3-10"`; Arweave tx `KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs` anchors payload hash `26c69c5f50bd9d8a...`.
+- **First real Immortality Drill rehearsal passed:** `scripts/immortality-drill-rehearsal.sh` appended run `073d54e2-6763-4242-a960-02154149ac57` with primary `akash-simulated-blackhole`, secondary `chutes-d3-standby`, and passing substrate/end-to-end checks.
+
 ### Genesis Relay registry — Akash primary, Arweave publication path — 2026-04-26
 
 - **`xion-verify discovery`** enforces `relays[0]` = Akash (genesis **primary** hosted substrate) and `relays[1]` = Chutes (genesis **secondary** cord), with a recomputed `payload_sha256` on `ledgers/RELAY_REGISTRY.json`.

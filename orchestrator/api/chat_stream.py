@@ -138,6 +138,10 @@ def register_chat_stream_route(app: FastAPI) -> None:
         billing_config: BillingConfig = app.state.billing_config
 
         deadline_s = float(getattr(app.state, "chat_deadline_s", _DEFAULT_DEADLINE_S))
+        from orchestrator.cognition.loop import chat_cognition_budget
+
+        cog_budget = chat_cognition_budget()
+        deadline_s = max(deadline_s, cog_budget.wall_clock_s)
 
         user_proof_commit = None
         user_proof_algorithm = None
@@ -408,7 +412,7 @@ async def _stream_body(
     supervisor = getattr(app.state, "supervisor", None)
     snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
     
-    from orchestrator.cognition.loop import stream_run_turn
+    from orchestrator.cognition.loop import chat_cognition_budget, stream_run_turn
     gen = stream_run_turn(
         provider,
         req.message,
@@ -419,6 +423,7 @@ async def _stream_body(
         ingress.correlation_id,
         stream_generate,
         principal_id,
+        budget=chat_cognition_budget(),
     )
     try:
         # Per-chunk wall-clock deadline check. The individual

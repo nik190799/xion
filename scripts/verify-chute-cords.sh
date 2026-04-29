@@ -7,7 +7,7 @@ set -euo pipefail
 
 SECRETS_FILE="${CHUTES_ENV_FILE:-/mnt/c/Users/16823/Documents/xion/xion-secrets/chutes.env}"
 PUBLIC_URL="${CHUTE_PUBLIC_URL:-https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai}"
-EXPECTED_IMAGE_TAG="${EXPECTED_IMAGE_TAG:-pre-genesis-d3-8}"
+EXPECTED_IMAGE_TAG="${EXPECTED_IMAGE_TAG:-pre-genesis-d3-10}"
 MODE="${MODE:-smoke}"
 
 case "${1:-}" in

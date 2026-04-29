@@ -6,7 +6,7 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from orchestrator.cognition.loop import run_turn as run_agentic_turn
+from orchestrator.cognition.loop import chat_cognition_budget, run_turn as run_agentic_turn
 from orchestrator.cognition.subagent import Candidate
 
 if TYPE_CHECKING:
@@ -65,5 +65,6 @@ class CognitionWorker:
             self.max_tokens,
             self.deadline_s,
             cid,
+            budget=chat_cognition_budget(),
         )
         return Candidate(payload=result, correlation_id=cid)

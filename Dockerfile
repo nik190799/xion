@@ -6,6 +6,11 @@ LABEL org.opencontainers.image.description="Xion orchestrator API / Relay runtim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# GPU-backed Ollama floor (Akash/Chutes) often needs >8s for first tokens; the
+# repo default pin stays 8s for ``xion-verify cognition-loop-bounded``. Local
+# runs can override with ``docker run -e XION_COGNITION_WALL_S=8``.
+ENV XION_COGNITION_WALL_S=120
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*

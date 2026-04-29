@@ -1,12 +1,16 @@
 """Smoke-import the repo-root Chutes module before pushing.
 
 This catches import-time errors (typos, missing deps, bad cord declarations)
-before we burn a Chutes build slot.
+and the Relay subprocess env contract before we burn a Chutes build slot.
 """
 
 from __future__ import annotations
 
+import os
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import xion_relay_chute
 
@@ -30,9 +34,9 @@ def main() -> int:
     if missing_paths:
         print("FAIL missing public cord paths:", sorted(missing_paths), file=sys.stderr)
         return 1
-    if xion_relay_chute.IMAGE_TAG != "pre-genesis-d3-8":
+    if xion_relay_chute.IMAGE_TAG != "pre-genesis-d3-10":
         print(
-            "FAIL image_tag pinned to pre-genesis-d3-8, got:",
+            "FAIL image_tag pinned to pre-genesis-d3-10, got:",
             xion_relay_chute.IMAGE_TAG,
             file=sys.stderr,
         )
@@ -45,6 +49,31 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    app_root = xion_relay_chute.APP_ROOT
+    if not (app_root / "orchestrator").is_dir():
+        print("FAIL APP_ROOT does not contain orchestrator/:", app_root, file=sys.stderr)
+        return 1
+
+    relay_env = xion_relay_chute._relay_env()
+    expected_env = {
+        "XION_API_HOST": "127.0.0.1",
+        "XION_API_PORT": str(xion_relay_chute.RELAY_PORT),
+        "XION_API_WORKERS": "1",
+        "XION_REPO_ROOT": str(app_root),
+        "XION_CAST_POOL_ON_BOOT": "false",
+    }
+    for key, expected in expected_env.items():
+        actual = relay_env.get(key)
+        if actual != expected:
+            print(f"FAIL relay env {key}={actual!r}, expected {expected!r}", file=sys.stderr)
+            return 1
+
+    pythonpath = relay_env.get("PYTHONPATH", "").split(os.pathsep)
+    if str(app_root) not in pythonpath:
+        print("FAIL relay env PYTHONPATH does not include APP_ROOT:", app_root, file=sys.stderr)
+        return 1
+
     print("live_surface_ok:", xion_relay_chute.SERVICE_NAME)
     return 0
 
