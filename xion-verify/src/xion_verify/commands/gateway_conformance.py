@@ -7,6 +7,7 @@ static verifier lands in Phase 6.9.2, after the doctrine and KW gaps exist.
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import click
@@ -65,6 +66,46 @@ _GAPS: tuple[GatewayGap, ...] = (
 )
 
 
+def _ao_core_client_presence_lines() -> Iterable[str]:
+    """Assert the Phase 6.9.2 AO Core gateway slice is mechanically present."""
+    try:
+        from orchestrator.ao_core.client import (
+            LegacynetAOCoreGateway,
+            LocalnetAOCoreGateway,
+        )
+        from orchestrator.ao_core.gateway import (
+            AOCoreGateway,
+            AOCoreGatewaySettings,
+            get_ao_core_gateway,
+        )
+    except Exception as e:  # pragma: no cover - surfaced through verifier output
+        return (f"ao-core-client presence: FAIL - import error: {e}",)
+
+    try:
+        localnet = get_ao_core_gateway(
+            AOCoreGatewaySettings(substrate="localnet", process_id="probe")
+        )
+        legacynet = get_ao_core_gateway(
+            AOCoreGatewaySettings(substrate="legacynet", process_id="probe")
+        )
+        if not isinstance(localnet, LocalnetAOCoreGateway):
+            return ("ao-core-client presence: FAIL - localnet provider not selected",)
+        if not isinstance(legacynet, LegacynetAOCoreGateway):
+            return ("ao-core-client presence: FAIL - legacynet provider not selected",)
+        if not isinstance(localnet, AOCoreGateway) or not isinstance(
+            legacynet,
+            AOCoreGateway,
+        ):
+            return ("ao-core-client presence: FAIL - providers do not satisfy Protocol",)
+    except Exception as e:  # pragma: no cover - surfaced through verifier output
+        return (f"ao-core-client presence: FAIL - provider probe failed: {e}",)
+
+    return (
+        "ao-core-client presence: OK - AOCoreGateway Protocol, localnet provider, "
+        "legacynet placeholder, and factory are present.",
+    )
+
+
 @click.command(
     name="gateway-conformance",
     help="[NOT_YET_SEALED] Verify Gateway Pattern conformance across load-bearing externals.",
@@ -85,6 +126,9 @@ def gateway_conformance(surface: str | None) -> None:
     )
     click.echo("doctrine: docs/39-GATEWAY-PATTERN.md")
     click.echo("audit: docs/38-MODULAR-SUBSTRATE.md#gateway-audit-phase-691")
+    if surface in {"ao-core-client", None}:
+        for line in _ao_core_client_presence_lines():
+            click.echo(line)
     click.echo("open gaps:")
     for gap in selected:
         click.echo(f"  - {gap.surface}: {gap.kw_id} - {gap.closure}")
