@@ -25,8 +25,10 @@ What this module promises (Four Questions, per The-Xion-Builder):
 Why this shape now: the d3-6 smoke image proved the Chutes cord pipeline
 end-to-end. d3-7+ return to the full Relay subprocess, invoking
 ``orchestrator.api`` so ``AppDeps`` wires a real ``Relay`` through
-``orchestrator.api.launcher``. d3-8 lengthens boot wait / shutdown allowance
-after d3-7 hit GPU cold-start limits.
+``orchestrator.api.launcher``. d3-8 lengthened boot wait / shutdown allowance
+after d3-7 hit GPU cold-start limits; d3-9 bakes ``XION_CAST_POOL_ON_BOOT=false``
+and a longer cognition wall-clock for cold Ollama on Chutes workers; d3-10 moves
+the Relay subprocess off port 8000 so it does not collide with Chutes' Hypercorn.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ import os
 import signal
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -44,11 +47,26 @@ from chutes.image import Image
 
 
 SERVICE_NAME = "xion-relay-chutes"
-IMAGE_TAG = "pre-genesis-d3-8"
-RELAY_PORT = 8000
+IMAGE_TAG = "pre-genesis-d3-10"
+RELAY_PORT = 8010
 RELAY_BASE_URL = f"http://127.0.0.1:{RELAY_PORT}"
 # Cold GPU workers often exceed 180s before uvicorn serves /health (image layer + deps + lifespan).
 RELAY_BOOT_TIMEOUT_S = int(os.environ.get("XION_RELAY_BOOT_TIMEOUT_S", "420"))
+APP_ROOT = Path(__file__).resolve().parent
+
+RELAY_ENV_OVERRIDES = {
+    "XION_CHUTE_SERVICE": SERVICE_NAME,
+    "XION_CHUTE_IMAGE_TAG": IMAGE_TAG,
+    "XION_API_HOST": "127.0.0.1",
+    "XION_API_PORT": str(RELAY_PORT),
+    "XION_API_WORKERS": "1",
+    "XION_REPO_ROOT": str(APP_ROOT),
+    "XION_API_REQUIRE_BEARER": "false",
+    "XION_BILLING_REQUIRED": "true",
+    "XION_BILLING_ALLOW_X402": "true",
+    "XION_CAST_POOL_ON_BOOT": "false",
+    "XION_COGNITION_WALL_S": "120",
+}
 
 # Three routing facts the D3-4 / D3-5 / D3-6 builds proved against the
 # live Chutes platform, recorded so the next maintainer does not relearn
@@ -94,6 +112,7 @@ image = (
     .from_base("parachutes/python:3.12")
     .add("pyproject.toml", "/app/pyproject.toml")
     .add("README.md", "/app/README.md")
+    .add("genesis/SOUL_PROMPT.md", "/app/genesis/SOUL_PROMPT.md")
     .add("orchestrator", "/app/orchestrator")
     .add("docs", "/app/docs")
     .set_workdir("/app")
@@ -105,9 +124,12 @@ image = (
     .with_env("XION_API_HOST", "127.0.0.1")
     .with_env("XION_API_PORT", str(RELAY_PORT))
     .with_env("XION_API_WORKERS", "1")
+    .with_env("XION_REPO_ROOT", "/app")
     .with_env("XION_API_REQUIRE_BEARER", "false")
     .with_env("XION_BILLING_REQUIRED", "true")
     .with_env("XION_BILLING_ALLOW_X402", "true")
+    .with_env("XION_CAST_POOL_ON_BOOT", "false")
+    .with_env("XION_COGNITION_WALL_S", "120")
 )
 
 
@@ -129,9 +151,26 @@ chute = Chute(
 )
 
 
-async def _wait_for_relay() -> None:
+def _relay_env() -> dict[str, str]:
+    env = os.environ.copy()
+    pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = (
+        str(APP_ROOT)
+        if not pythonpath
+        else f"{APP_ROOT}{os.pathsep}{pythonpath}"
+    )
+    env.update(RELAY_ENV_OVERRIDES)
+    return env
+
+
+async def _wait_for_relay(proc: subprocess.Popen[bytes] | None = None) -> None:
     async with httpx.AsyncClient(timeout=5.0) as client:
         for _ in range(RELAY_BOOT_TIMEOUT_S):
+            if proc is not None and proc.poll() is not None:
+                raise RuntimeError(
+                    "xion-orchestrator-api exited before becoming healthy "
+                    f"(returncode={proc.returncode})"
+                )
             try:
                 response = await client.get(f"{RELAY_BASE_URL}/health")
                 if response.status_code == 200:
@@ -156,16 +195,14 @@ async def _get_json(path: str) -> dict[str, Any]:
 
 @chute.on_startup()
 async def start_relay(self: Chute) -> None:
-    env = os.environ.copy()
-    env.setdefault("PYTHONPATH", "/app")
     exe = sys.executable or "/usr/local/bin/python3"
     proc = subprocess.Popen(
         [exe, "-m", "orchestrator.api"],
-        cwd="/app",
-        env=env,
+        cwd=str(APP_ROOT),
+        env=_relay_env(),
     )
     self.state.xion_relay_proc = proc
-    await _wait_for_relay()
+    await _wait_for_relay(proc)
 
 
 @chute.on_shutdown()
@@ -180,19 +217,31 @@ async def stop_relay(self: Chute) -> None:
         proc.kill()
 
 
+async def _health_impl() -> dict[str, Any]:
+    return await _get_json("/health")
+
+
+async def _quote_impl() -> dict[str, Any]:
+    return await _get_json("/pricing")
+
+
+async def _self_endpoint_impl() -> dict[str, Any]:
+    return await _get_json("/self")
+
+
 @chute.cord(public_api_path="/health", public_api_method="GET")
 async def health(self: Chute) -> dict[str, Any]:
-    return await _get_json("/health")
+    return await _health_impl()
 
 
 @chute.cord(public_api_path="/quote", public_api_method="GET")
 async def quote(self: Chute) -> dict[str, Any]:
-    return await _get_json("/pricing")
+    return await _quote_impl()
 
 
 @chute.cord(public_api_path="/self", public_api_method="GET")
 async def self_endpoint(self: Chute) -> dict[str, Any]:
-    return await _get_json("/self")
+    return await _self_endpoint_impl()
 
 
 __all__ = ["chute"]

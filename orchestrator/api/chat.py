@@ -285,7 +285,11 @@ def register_chat_route(app: FastAPI) -> None:
         result: "GenerationResult | None" = None
         provider_id: str | None = None
 
+        from orchestrator.cognition.loop import chat_cognition_budget, run_turn
         from orchestrator.inference_router.model_registry import get_min_max_tokens
+
+        cog_budget = chat_cognition_budget()
+        turn_timeout_s = max(deadline_s, cog_budget.wall_clock_s)
 
         for attempt_index, provider in enumerate(ordered):
             provider_id = (
@@ -300,8 +304,6 @@ def register_chat_route(app: FastAPI) -> None:
 
             attempt_started_ns = time.time_ns()
             try:
-                from orchestrator.cognition.loop import run_turn
-                
                 supervisor = getattr(app.state, "supervisor", None)
                 snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
                 
@@ -316,8 +318,9 @@ def register_chat_route(app: FastAPI) -> None:
                         deadline_s,
                         ingress.correlation_id,
                         principal_id,
+                        budget=cog_budget,
                     ),
-                    timeout=deadline_s,
+                    timeout=turn_timeout_s,
                 )
             except (TimeoutError, asyncio.TimeoutError) as exc:
                 failure_class = (
@@ -399,7 +402,7 @@ def register_chat_route(app: FastAPI) -> None:
                 prompt=req.message,
                 system=app.state.soul_prompt,
                 max_tokens=effective_max_tokens,
-                deadline_s=min(deadline_s, 8.0),
+                deadline_s=min(deadline_s, cog_budget.wall_clock_s),
                 correlation_id=ingress.correlation_id,
             )
             break

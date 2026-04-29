@@ -151,7 +151,7 @@ async def _voice_stream_body(
         return
 
     try:
-        from orchestrator.cognition.loop import run_turn
+        from orchestrator.cognition.loop import chat_cognition_budget, run_turn
         from orchestrator.inference_router.model_registry import get_min_max_tokens
 
         provider_id = getattr(text_provider, "provider_id", type(text_provider).__name__)
@@ -166,15 +166,22 @@ async def _voice_stream_body(
             if supervisor is not None and supervisor.latest_snapshot()
             else None
         )
-        result = await asyncio.to_thread(
-            run_turn,
-            text_provider,
-            req.message,
-            app.state.soul_prompt,
-            snapshot_dict,
-            effective_max_tokens,
-            float(getattr(app.state, "chat_deadline_s", 30.0)),
-            ingress.correlation_id,
+        chat_deadline = float(getattr(app.state, "chat_deadline_s", 30.0))
+        cog_budget = chat_cognition_budget()
+        turn_timeout_s = max(chat_deadline, cog_budget.wall_clock_s)
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                run_turn,
+                text_provider,
+                req.message,
+                app.state.soul_prompt,
+                snapshot_dict,
+                effective_max_tokens,
+                chat_deadline,
+                ingress.correlation_id,
+                budget=cog_budget,
+            ),
+            timeout=turn_timeout_s,
         )
     except Exception as exc:
         yield _sse(

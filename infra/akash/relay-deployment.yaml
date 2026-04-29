@@ -14,7 +14,52 @@
 version: "2.0"
 services:
   xion-relay:
-    image: nikhilkadalge/xion-relay:pre-genesis-akash
+    image: nikhilkadalge/xion-relay:pre-genesis-akash-wall120
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        python - <<'PY'
+        import json
+        import os
+        import time
+        import urllib.request
+
+        base_url = os.environ.get("XION_OLLAMA_URL", "http://xion-ollama:11434").rstrip("/")
+        tags_url = base_url + "/api/tags"
+        generate_url = base_url + "/api/generate"
+        wanted = os.environ.get("XION_OLLAMA_FLOOR_MODEL", "gemma4:e4b-it-q4_K_M")
+        deadline = time.monotonic() + int(os.environ.get("XION_OLLAMA_BOOT_WAIT_S", "900"))
+
+        while time.monotonic() < deadline:
+            try:
+                with urllib.request.urlopen(tags_url, timeout=5) as response:
+                    body = json.loads(response.read().decode("utf-8"))
+                names = {model.get("name") for model in body.get("models", []) if isinstance(model, dict)}
+                if wanted in names:
+                    payload = json.dumps(
+                        {"model": wanted, "prompt": "ping", "stream": False, "options": {"num_predict": 1}}
+                    ).encode("utf-8")
+                    request = urllib.request.Request(
+                        generate_url,
+                        data=payload,
+                        method="POST",
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(request, timeout=60) as response:
+                        if not (200 <= response.status < 300):
+                            raise RuntimeError(f"generate returned HTTP {response.status}")
+                        response.read()
+                    print(f"State-of-Xion: Ollama floor model ready: {wanted}", flush=True)
+                    break
+                print(f"State-of-Xion: waiting for Ollama floor model {wanted}; seen={sorted(names)}", flush=True)
+            except Exception as exc:
+                print(f"State-of-Xion: waiting for Ollama readiness at {base_url}: {exc}", flush=True)
+            time.sleep(5)
+        else:
+            raise SystemExit(f"State-of-Xion: Ollama floor model {wanted} was not ready before timeout")
+        PY
+        exec /usr/local/bin/entrypoint-xion-orchestrator-api.sh
     expose:
       - port: 8443
         as: 443
@@ -27,6 +72,9 @@ services:
       - XION_API_REQUIRE_BEARER=false
       - XION_BILLING_REQUIRED=false
       - XION_CAST_POOL_ON_BOOT=false
+      - XION_CHAT_DEADLINE_S=120
+      - XION_COGNITION_WALL_S=120
+      - XION_INFERENCE_POLICY=hosted_api_first
       # The open-weights floor must live inside the deployed substrate, not on
       # the operator laptop. The sidecar below serves the same Ollama API the
       # local D2 posture uses.

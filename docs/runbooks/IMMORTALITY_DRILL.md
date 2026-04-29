@@ -52,20 +52,20 @@ against the Akash lease.
 
 ## First Real Drill Evidence
 
-Fill this table only after `KW-FLOOR-DEPLOY-001` is closed, Chutes d3-8 is live
+Fill this table only after `KW-FLOOR-DEPLOY-001` is closed, Chutes d3 live surface is live
 in `ledgers/RELAY_REGISTRY.json`, and `scripts/immortality-drill-rehearsal.sh`
 has appended a new row.
 
 | Field | Value |
 |-------|-------|
-| Drill run id | `PENDING_OPERATOR_EXECUTION` |
-| Ledger row timestamp | `PENDING_OPERATOR_EXECUTION` |
+| Drill run id | `073d54e2-6763-4242-a960-02154149ac57` |
+| Ledger row timestamp | `2026-04-29T05:40:38Z` |
 | Primary substrate | `akash-simulated-blackhole` |
-| Secondary substrate | `PENDING_OPERATOR_EXECUTION` |
-| Laptop Ollama stopped | `PENDING_OPERATOR_EXECUTION` |
-| Akash floor proof | `PENDING_OPERATOR_EXECUTION` |
-| Chutes d3-8 verifier | `PENDING_OPERATOR_EXECUTION` |
-| Result | `PENDING_OPERATOR_EXECUTION` |
+| Secondary substrate | `chutes-d3-standby` |
+| Laptop Ollama stopped | Operator consented during deployed-floor proof; Akash Relay used private sidecar `XION_OLLAMA_URL=http://xion-ollama:11434` |
+| Akash floor proof | `dseq=26595076`; `/chat` returned `200` in `8.38s` under `XION_INFERENCE_POLICY=open_weights_only` with `gemma4:e4b-it-q4_K_M` |
+| Chutes d3-8 verifier | Superseded by d3-10: `MODE=live bash scripts/verify-chute-cords.sh` returned `RESULT: all cords green` for image `pre-genesis-d3-10` |
+| Result | `passed`; substrate dry-run row `seq=4`, end-to-end drill test passed, and drill ledger row hash `e215589d2be896b673b5b0d39d31f0bb89c1bdfaa68dd51645bd5b395a5ad006` |
 
 ## Residual
 

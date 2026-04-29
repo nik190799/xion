@@ -2,7 +2,7 @@
 
 ## Property
 
-Complete the funded pre-Genesis deployment closure in one reproducible pass: a GPU-backed Akash open-weights floor, a live Chutes d3-8 secondary cord, a republished Arweave Relay registry, and the first meaningful Immortality Drill rehearsal.
+Complete the funded pre-Genesis deployment closure in one reproducible pass: a GPU-backed Akash open-weights floor, a live Chutes d3 secondary cord (d3-10 in the final operator run), a republished Arweave Relay registry, and the first meaningful Immortality Drill rehearsal.
 
 ## Invariants Touched
 
@@ -66,13 +66,13 @@ Record after execution:
 
 | Field | Value |
 |-------|-------|
-| New dseq | `PENDING_OPERATOR_EXECUTION` |
-| Provider | `PENDING_OPERATOR_EXECUTION` |
-| Accepted `xion-ollama` bid | `PENDING_OPERATOR_EXECUTION` |
-| Forwarded HTTPS base | `PENDING_OPERATOR_EXECUTION` |
-| `send-manifest` to `ready_replicas` | `PENDING_OPERATOR_EXECUTION` |
-| `ready_replicas` to `/health` 200 | `PENDING_OPERATOR_EXECUTION` |
-| Ollama GPU detected in logs | `PENDING_OPERATOR_EXECUTION` |
+| New dseq | `26595076` |
+| Provider | `akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d` |
+| Accepted `xion-ollama` bid | `429.375054 uact/block` (`rtx3090`) |
+| Forwarded HTTPS base | `https://provider.pronto-ai.pp.ua:31503` |
+| `send-manifest` to `ready_replicas` | `ready_replicas=1` observed by `provider-services lease-status --auth-type mtls`; exact wall-clock not captured |
+| `ready_replicas` to `/health` 200 | `/health` 200 observed after Ollama generation-ready startup gate settled |
+| Ollama GPU detected in logs | CUDA backend loaded; `GPULayers:43[ID:GPU-ba251223-c268-a9a2-ed44-619a94cf01f1 Layers:43(0..42)]` |
 
 ## Block B - Deployed-Floor Proof
 
@@ -90,11 +90,11 @@ Record after execution:
 
 | Field | Value |
 |-------|-------|
-| Laptop Ollama stopped | `PENDING_OPERATOR_EXECUTION` |
-| Policy manifest sent | `PENDING_OPERATOR_EXECUTION` |
-| `/chat` status | `PENDING_OPERATOR_EXECUTION` |
-| Wall-clock latency | `PENDING_OPERATOR_EXECUTION` |
-| Provider response snippet | `PENDING_OPERATOR_EXECUTION` |
+| Laptop Ollama stopped | Operator consented; proof path used Akash private `XION_OLLAMA_URL=http://xion-ollama:11434`, not laptop loopback |
+| Policy manifest sent | `XION_INFERENCE_POLICY=open_weights_only` update sent after tx `71448122...`; restored to `hosted_api_first` after tx `ADD2D7DED3DE529EC46250D88806914AB7908E39E53B08E7BB68118EFBF476F1` |
+| `/chat` status | `200` |
+| Wall-clock latency | `8.38s` |
+| Provider response snippet | Successful `gemma4:e4b-it-q4_K_M` generated response to `deployed floor smoke: answer in one short sentence` |
 
 Only close `KW-FLOOR-DEPLOY-001` after this table is filled with a successful Akash lease run.
 
@@ -121,13 +121,13 @@ Record after execution:
 
 | Field | Value |
 |-------|-------|
-| Chute id | `PENDING_OPERATOR_EXECUTION` |
-| Image id | `PENDING_OPERATOR_EXECUTION` |
-| Instance id | `PENDING_OPERATOR_EXECUTION` |
-| Build wall-clock | `PENDING_OPERATOR_EXECUTION` |
-| Warmup wall-clock | `PENDING_OPERATOR_EXECUTION` |
+| Chute id | `89866bfc-5ddd-5382-b887-116d8901808f` |
+| Image id | `a5ab815c-9fb5-5cb9-bcbd-a51535f1abe9` |
+| Instance id | `98f0cdf3-e8a0-461d-8a75-a4d3240e0389` (from live worker id `chute-98f0cdf3-e8a0-461d-8a75-a4d3240e0389-hwvrz-205`) |
+| Build wall-clock | `6m12s` (`2026-04-29T03:36:27Z` to `2026-04-29T03:42:39Z`) |
+| Warmup wall-clock | `3m47s` from warmup start `2026-04-29T05:30:22Z` to all-cords-green verifier |
 | Verifier command | `MODE=live bash scripts/verify-chute-cords.sh` |
-| Verifier result | `PENDING_OPERATOR_EXECUTION` |
+| Verifier result | `RESULT: all cords green` (`/health`, `/quote`, `/self` all 200) |
 
 Only close `KW-RELAY-CHUTES-D3-001` after the live verifier is green and the registry carries this non-smoke row.
 
@@ -145,11 +145,11 @@ Record after execution:
 
 | Field | Value |
 |-------|-------|
-| Registry `as_of_utc_ns` | `PENDING_OPERATOR_EXECUTION` |
-| `payload_sha256` first 16 | `PENDING_OPERATOR_EXECUTION` |
-| Arweave tx id | `PENDING_OPERATOR_EXECUTION` |
-| Discovery verifier | `PENDING_OPERATOR_EXECUTION` |
-| Substrate-portability verifier | `PENDING_OPERATOR_EXECUTION` |
+| Registry `as_of_utc_ns` | `1777440937298896100` |
+| `payload_sha256` first 16 | `26c69c5f50bd9d8a` |
+| Arweave tx id | `KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs` |
+| Discovery verifier | `discovery: OK (Relay registry declares Akash primary, Chutes secondary, Arweave, AO, DNS paths)` |
+| Substrate-portability verifier | `substrate-portability: OK (dry-run ledger chain and tip parity verified)` after dry-run row `seq=3` |
 
 ## Block E - Immortality Drill Rehearsal
 
@@ -163,32 +163,35 @@ Record after execution:
 
 | Field | Value |
 |-------|-------|
-| Drill run id | `PENDING_OPERATOR_EXECUTION` |
-| Ledger row timestamp | `PENDING_OPERATOR_EXECUTION` |
+| Drill run id | `073d54e2-6763-4242-a960-02154149ac57` |
+| Ledger row timestamp | `2026-04-29T05:40:38Z` |
 | Primary substrate | `akash-simulated-blackhole` |
-| Secondary substrate | `PENDING_OPERATOR_EXECUTION` |
-| Result | `PENDING_OPERATOR_EXECUTION` |
+| Secondary substrate | `chutes-d3-standby` |
+| Result | `passed`; `substrate-portability` row `seq=4`, `orchestrator/tests/test_end_to_end_drill.py` passed, `pre-genesis drill: OK (962dea11-4445-4f96-bfcc-e27da8e08f88)` |
 
 ## Cost Ledger
 
 | Item | Observed cost |
 |------|---------------|
-| Akash `xion-relay` bid | `PENDING_OPERATOR_EXECUTION` |
-| Akash `xion-ollama` GPU bid | `PENDING_OPERATOR_EXECUTION` |
-| Arweave registry publish | `PENDING_OPERATOR_EXECUTION` |
-| Chutes build/warmup credit impact | `PENDING_OPERATOR_EXECUTION` |
+| Akash lease bid | `429.375054 uact/block` active bid for the combined `xion-ollama` GPU + `xion-relay` workload |
+| Akash `xion-ollama` GPU bid | `429.375054 uact/block` (`rtx3090` accepted provider bid) |
+| Arweave registry publish | Tx `KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs`; exact AR fee not printed by the publish wrapper |
+| Chutes build/warmup credit impact | Build consumed one image-history quota slot; warmup allocated one `pro_6000` worker at estimated `$0.20/hour` minimum |
 
 ## Time-Budget Ledger
 
 | Step | Observed time |
 |------|---------------|
-| Akash bid wait | `PENDING_OPERATOR_EXECUTION` |
-| Akash manifest to ready | `PENDING_OPERATOR_EXECUTION` |
-| Ollama model pull | `PENDING_OPERATOR_EXECUTION` |
-| Chutes image build | `PENDING_OPERATOR_EXECUTION` |
-| Chutes warmup | `PENDING_OPERATOR_EXECUTION` |
-| Registry publish confirmation | `PENDING_OPERATOR_EXECUTION` |
+| Akash bid wait | Bid list for `dseq=26595076` returned three providers; exact wait not captured |
+| Akash manifest to ready | `ready_replicas=1` confirmed by `lease-status`; exact wait not captured |
+| Ollama model pull | Logs show 9.6 GB `gemma4:e4b-it-q4_K_M` pull followed by generation-ready retry and CUDA load |
+| Chutes image build | `6m12s` |
+| Chutes warmup | `3m47s` to green verifier after a transient `/health` 404 |
+| Registry publish confirmation | `10.1s` to tx id and `RELAY_REGISTRY_ARWEAVE_TX.txt` write |
 
 ## Failure Modes Seen
 
-- `PENDING_OPERATOR_EXECUTION`: replace with exact command, stderr/stdout summary, mitigation, and whether a new `KW-` entry was opened.
+- Akash RPC returned one `502 Bad Gateway` during deployment creation; retrying against `https://rpc.akashnet.net:443` succeeded.
+- Prior Akash lease `26593426` closed with `insufficient_funds`; operator consented to a new GPU deployment `26595076`.
+- Relay initially cached `open_weights_floor_unsatisfied` before the Ollama sidecar was generation-ready. The SDL now gates Relay startup on both `/api/tags` and a one-token `/api/generate`.
+- Chutes warmup briefly returned `/health` 404 while `/quote` and `/self` were already live; retry after route propagation returned `RESULT: all cords green`.

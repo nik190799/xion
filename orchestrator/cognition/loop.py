@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, AsyncIterator
 from .context import assemble_context
 from .journal import Journal
@@ -27,6 +28,18 @@ class CognitionLoopBudget:
 
 
 DEFAULT_BUDGET = CognitionLoopBudget()
+
+
+def chat_cognition_budget() -> CognitionLoopBudget:
+    """Live chat budget; env may extend wall-clock for cold local inference.
+
+    ``DEFAULT_BUDGET`` stays pinned for ``xion-verify cognition-loop-bounded``.
+    """
+    raw = os.environ.get("XION_COGNITION_WALL_S", "").strip()
+    if not raw:
+        return DEFAULT_BUDGET
+    return replace(DEFAULT_BUDGET, wall_clock_s=float(raw))
+
 
 def run_turn(
     provider: Any,
@@ -162,4 +175,10 @@ def _tool_resolver() -> PythonToolResolver:
     return _TOOL_RESOLVER
 
 
-__all__ = ["CognitionLoopBudget", "DEFAULT_BUDGET", "run_turn", "stream_run_turn"]
+__all__ = [
+    "CognitionLoopBudget",
+    "DEFAULT_BUDGET",
+    "chat_cognition_budget",
+    "run_turn",
+    "stream_run_turn",
+]
