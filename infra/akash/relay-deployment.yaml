@@ -8,6 +8,8 @@
 # - `placement` name (`akash` here) must match `deployment.<service>.<same-name>`.
 # - `storage` for compute profiles should be a list (`- size: ...`) per SDL v2 syntax.
 # - `amount` under pricing is max bid per block in uact; tune for market (100 is an example).
+# - `xion-ollama` is intentionally GPU-backed for the Gemma 4 floor; start at
+#   10000 uact/block and tune from observed `bid list` rather than from CPU bids.
 # - Image must be pullable by providers (public Docker Hub / GHCR); see docs/runbooks/AKASH_RELAY_DEPLOY.md.
 version: "2.0"
 services:
@@ -25,11 +27,35 @@ services:
       - XION_API_REQUIRE_BEARER=false
       - XION_BILLING_REQUIRED=false
       - XION_CAST_POOL_ON_BOOT=false
+      # The open-weights floor must live inside the deployed substrate, not on
+      # the operator laptop. The sidecar below serves the same Ollama API the
+      # local D2 posture uses.
+      - XION_OLLAMA_URL=http://xion-ollama:11434
+      - XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-q4_K_M
       - XION_PAYMENT_LEDGER=/app/data/PAYMENT_LEDGER.jsonl
       - XION_SENSORIUM_LEDGER=/app/data/SENSORIUM_LEDGER.jsonl
       - XION_SAFETY_LEDGER=/app/data/SAFETY_LEDGER.jsonl
       - XION_REQUEST_LEDGER=/app/data/REQUEST_LEDGER.jsonl
       - XION_ANCHOR_DB_PATH=/app/data/ANCHOR_LEDGER.jsonl
+  xion-ollama:
+    image: ollama/ollama:0.21.0
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        ollama serve &
+        pid="$!"
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        ollama pull "${XION_OLLAMA_FLOOR_MODEL:-gemma4:e4b-it-q4_K_M}"
+        wait "$pid"
+    expose:
+      - port: 11434
+        as: 11434
+        to:
+          - service: xion-relay
+    env:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-q4_K_M
 profiles:
   compute:
     xion-relay:
@@ -40,14 +66,44 @@ profiles:
           size: 2Gi
         storage:
           - size: 10Gi
+    xion-ollama:
+      resources:
+        cpu:
+          units: 4
+        memory:
+          size: 16Gi
+        storage:
+          - size: 60Gi
+        # Accept common Akash NVIDIA cards so a solo operator gets bids while
+        # preserving the real Gemma 4 floor latency target.
+        gpu:
+          units: 1
+          attributes:
+            vendor:
+              nvidia:
+                - model: rtx3090
+                - model: rtx4090
+                - model: a4000
+                - model: a5000
+                - model: a6000
+                - model: l4
+                - model: l40
+                - model: a100
   placement:
     akash:
       pricing:
         xion-relay:
           denom: uact
           amount: 100
+        xion-ollama:
+          denom: uact
+          amount: 10000
 deployment:
   xion-relay:
     akash:
       profile: xion-relay
+      count: 1
+  xion-ollama:
+    akash:
+      profile: xion-ollama
       count: 1

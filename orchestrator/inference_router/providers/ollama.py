@@ -1,12 +1,13 @@
 """Ollama (local open-weights) generative provider (Phase 5g-i).
 
 Doctrine anchor: ``docs/26-INFERENCE-POLICY.md`` § "The floor-model
-choice (Gemma 3 4B)".
+choice (Gemma 4 E4B-it)".
 
-Talks to a local Ollama daemon over ``http://localhost:11434`` by
-default, using stdlib ``http.client``. The provider's ``category`` is
-``"open_weights_self_hostable"`` — this is the provider that holds the
-Invariant-17 floor at runtime. It is NOT the ``xion-verify
+Talks to an Ollama daemon over ``XION_OLLAMA_URL`` (default
+``http://localhost:11434`` for local D2; Akash deployments point this at the
+private ``xion-ollama`` sidecar), using stdlib ``http.client``. The provider's
+``category`` is ``"open_weights_self_hostable"`` — this is the provider that
+holds the Invariant-17 floor at runtime. It is NOT the ``xion-verify
 inference-sovereignty`` target; that verifier walks the manifest's
 structural sentinel pins. The runtime floor is held by ``health()``
 returning True, not by any hash check here.
@@ -17,10 +18,10 @@ Two checks in ``health()`` together determine reachability:
      ``gemma3:4b``) is listed in that response.
 
 Either check failing returns False. A True result means: the daemon
-is up and the operator has pulled the pinned floor model locally.
+is up and the configured deployment has pulled the pinned floor model.
 This satisfies Invariant 17 clause 2(iv)'s "health-checkable locally
-without a third-party API call" — Ollama's API is loopback-only by
-default.
+without a third-party API call" — in production-style Akash posture the
+"local" boundary is the private deployment network, not the operator laptop.
 """
 
 from __future__ import annotations

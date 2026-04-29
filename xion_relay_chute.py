@@ -23,17 +23,19 @@ What this module promises (Four Questions, per The-Xion-Builder):
   cord runtime and the FastAPI app lifecycle isolated.
 
 Why this shape now: the d3-6 smoke image proved the Chutes cord pipeline
-end-to-end. This d3-7 shape returns to the full Relay subprocess, but points
-at ``python -m orchestrator.api`` so ``AppDeps`` is constructed with a real
-``Relay`` through ``orchestrator.api.launcher`` rather than a hand-rolled
-partial object.
+end-to-end. d3-7+ return to the full Relay subprocess, invoking
+``orchestrator.api`` so ``AppDeps`` wires a real ``Relay`` through
+``orchestrator.api.launcher``. d3-8 lengthens boot wait / shutdown allowance
+after d3-7 hit GPU cold-start limits.
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 import signal
 import subprocess
+import sys
 from typing import Any
 
 import httpx
@@ -42,10 +44,11 @@ from chutes.image import Image
 
 
 SERVICE_NAME = "xion-relay-chutes"
-IMAGE_TAG = "pre-genesis-d3-7"
+IMAGE_TAG = "pre-genesis-d3-8"
 RELAY_PORT = 8000
 RELAY_BASE_URL = f"http://127.0.0.1:{RELAY_PORT}"
-RELAY_BOOT_TIMEOUT_S = 180
+# Cold GPU workers often exceed 180s before uvicorn serves /health (image layer + deps + lifespan).
+RELAY_BOOT_TIMEOUT_S = int(os.environ.get("XION_RELAY_BOOT_TIMEOUT_S", "420"))
 
 # Three routing facts the D3-4 / D3-5 / D3-6 builds proved against the
 # live Chutes platform, recorded so the next maintainer does not relearn
@@ -84,9 +87,8 @@ image = (
         name="xion-relay",
         tag=IMAGE_TAG,
         readme=(
-            "Xion pre-genesis Relay runtime image — D3 cord smoke build. "
-            "Static cord responses only; full Relay subprocess returns in a "
-            "follow-up build."
+            "Xion pre-genesis Relay — live FastAPI subprocess (orchestrator.api) "
+            "behind Chutes cords; tag tracks launcher boot budget and smoke vs live."
         ),
     )
     .from_base("parachutes/python:3.12")
@@ -122,7 +124,7 @@ chute = Chute(
     node_selector=NodeSelector(gpu_count=1, min_vram_gb_per_gpu=16),
     concurrency=4,
     max_instances=1,
-    shutdown_after_seconds=300,
+    shutdown_after_seconds=900,
     allow_external_egress=True,
 )
 
@@ -154,7 +156,14 @@ async def _get_json(path: str) -> dict[str, Any]:
 
 @chute.on_startup()
 async def start_relay(self: Chute) -> None:
-    proc = subprocess.Popen(["python", "-m", "orchestrator.api"])
+    env = os.environ.copy()
+    env.setdefault("PYTHONPATH", "/app")
+    exe = sys.executable or "/usr/local/bin/python3"
+    proc = subprocess.Popen(
+        [exe, "-m", "orchestrator.api"],
+        cwd="/app",
+        env=env,
+    )
     self.state.xion_relay_proc = proc
     await _wait_for_relay()
 

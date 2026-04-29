@@ -58,7 +58,7 @@ Operator-rotatable. Any change to these defaults is a commit to this file; any c
 | Knob | Genesis Default | Env var | Rotatable at |
 |------|-----------------|---------|--------------|
 | Policy mode | `hosted_api_first` | `XION_INFERENCE_POLICY` | process start |
-| Floor provider | Ollama (`http://localhost:11434`) | `XION_OLLAMA_URL` | process start |
+| Floor provider | Ollama (`http://localhost:11434` locally; `http://xion-ollama:11434` on Akash) | `XION_OLLAMA_URL` | process start |
 | Floor model | `gemma4:e4b-it-q4_K_M` | `XION_OLLAMA_FLOOR_MODEL` | process start |
 | Floor model verified-bytes pin | `<unset>` (operator-supplied path to the upstream Hugging Face GGUF after C0 download) | `XION_OPEN_WEIGHTS_GGUF_PATH` | process start |
 | Hosted gateway | Chutes (Bittensor Subnet 64) at `https://llm.chutes.ai/v1` | `XION_CHUTES_BASE_URL` | process start |
@@ -70,7 +70,9 @@ Operator-rotatable. Any change to these defaults is a commit to this file; any c
 
 The Chutes API key is loaded from the process environment, optionally pre-loaded from a gitignored `.env` at the repo root at lifespan startup. The key never enters git, never enters ledger rows, never appears in log lines (`ChutesGenerativeProvider` scrubs `Authorization` headers and bare `cpk_...` tokens from error paths).
 
-The former OpenRouter parity fallback is removed by `docs/41-CENTRALIZED-REMOVAL.md`. Operators who need a non-Chutes posture use `XION_INFERENCE_POLICY=open_weights_only`, which routes only to the local floor.
+The former OpenRouter parity fallback is removed by `docs/41-CENTRALIZED-REMOVAL.md`. Operators who need a non-Chutes posture use `XION_INFERENCE_POLICY=open_weights_only`, which routes only to the open-weights floor.
+
+**Deployed-floor posture (Phase 6.x pay-down).** Local Ollama is acceptable for D2 development and one-machine rehearsal, but it is not sufficient for the Genesis hosted substrate. The Akash Relay deployment must carry a GPU-backed Ollama sidecar (or equivalent deployed open-weights floor) and set `XION_OLLAMA_URL=http://xion-ollama:11434` so killing the operator laptop does not remove the floor. The sidecar requests one NVIDIA GPU because `gemma4:e4b-it-q4_K_M` is the Genesis floor model and must fit the 30-second chat deadline during a cutover. Until that sidecar has pulled `gemma4:e4b-it-q4_K_M` and an `open_weights_only` smoke turn succeeds on the lease with the operator laptop's daemon stopped, `KW-FLOOR-DEPLOY-001` remains open and any Immortality Drill is only a laptop-on rehearsal.
 
 ## The hosted-provider choice (Chutes SN64 + `moonshotai/Kimi-K2.6-TEE`)
 
@@ -150,8 +152,8 @@ Phase 5g-i.1 used a centralized vendor-of-vendors gateway as the hosted path. Ph
 
 The live policy is now simpler:
 
-1. `hosted_api_first` attempts Chutes/Bittensor first, then the local open-weights floor.
-2. `open_weights_only` attempts only the local open-weights floor.
+1. `hosted_api_first` attempts Chutes/Bittensor first, then the deployed open-weights floor.
+2. `open_weights_only` attempts only the deployed open-weights floor.
 3. No single-vendor SaaS gateway is a policy-legal provider.
 
 Chutes remains a gateway liveness dependency; that residual is tracked as `KW-CHUTES-GATEWAY-001` / `KW-INFER-005` and paid down by a validator-direct or second decentralized inference path.

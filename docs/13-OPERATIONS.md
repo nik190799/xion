@@ -255,7 +255,7 @@ Before the first launch, the host needs:
 
 - **Python 3.11+** with `pip`. No system-wide install required; a venv at `~/xion-os/.venv` is typical. `pip install -e .[api]` pulls in FastAPI, Uvicorn, Pydantic, `httpx`, `pytest`, and the repo's own modules; nothing else.
 - **Disk:** `~500 MB` for the venv, the repo, and the open-weights floor model. Ledgers grow `~2 MB / 10k turns`; budget accordingly. SQLite-WAL broker file (multi-worker mode) is `~1 MB` at steady state.
-- **Ollama daemon** reachable at `XION_OLLAMA_URL` (default `http://localhost:11434`) with the floor model pulled: `ollama pull <floor-model>` where `<floor-model>` matches `XION_OLLAMA_FLOOR_MODEL` (default `gemma4:e4b-it-q4_K_M` post-Phase-5g-viii rotation). Daemon must be running at orchestrator start; the Inference Router refuses to bootstrap without a healthy open-weights floor (Invariant 17 structural guarantee). Operators who want full Witness-recomputable byte-verification of the floor model also follow the "First-time GGUF setup" subsection below to download the upstream Hugging Face Q4_K_M and set `XION_OPEN_WEIGHTS_GGUF_PATH`; without that env var, `xion-verify inference-sovereignty` reports `NOT_YET_SEALED` for the model-blob entry only (the rest of the floor verifies normally).
+- **Ollama daemon** reachable at `XION_OLLAMA_URL` (default `http://localhost:11434` for local D2; `http://xion-ollama:11434` inside the Akash deployment) with the floor model pulled: `ollama pull <floor-model>` where `<floor-model>` matches `XION_OLLAMA_FLOOR_MODEL` (default `gemma4:e4b-it-q4_K_M` post-Phase-5g-viii rotation). Daemon must be running at orchestrator start; the Inference Router refuses to bootstrap without a healthy open-weights floor (Invariant 17 structural guarantee). For the Genesis hosted posture, this daemon must be the GPU-backed Akash sidecar, not the operator laptop. Operators who want full Witness-recomputable byte-verification of the floor model also follow the "First-time GGUF setup" subsection below to download the upstream Hugging Face Q4_K_M and set `XION_OPEN_WEIGHTS_GGUF_PATH`; without that env var, `xion-verify inference-sovereignty` reports `NOT_YET_SEALED` for the model-blob entry only (the rest of the floor verifies normally).
 - **Optional Chutes API key** in `XION_CHUTES_API_KEY` if the operator wants the hosted Bittensor path active. Without it, the orchestrator runs floor-only. Genesis Default hosted model is `moonshotai/Kimi-K2.6-TEE`; see [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § "The hosted-provider choice".
 - **Optional TLS material** — a cert+key pair at `XION_TLS_CERT_PATH` / `XION_TLS_KEY_PATH` if the operator binds `XION_API_HOST` to a non-loopback address. The launcher refuses to start a non-loopback bind without TLS (fail-closed; mirrors BillingConfig posture). Operators typically front Uvicorn with a reverse proxy (Caddy, nginx, Traefik) that handles TLS, ALPN, and automated cert renewal; bind orchestrator to `127.0.0.1:8000` and let the proxy hold the cert.
 
@@ -272,7 +272,7 @@ Every `XION_*` variable an operator may set, with default, D2 recommendation, an
 | `XION_CHUTES_BASE_URL` | `https://llm.chutes.ai/v1` | same | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § Genesis Defaults |
 | `XION_CHUTES_HOSTED_MODEL` | `moonshotai/Kimi-K2.6-TEE` | same unless governance rotates | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The hosted-provider choice |
 | `XION_CHUTES_TEE_REQUIRED` | `true` | `true` | [`docs/40-CHUTES-INTEGRATION.md`](./40-CHUTES-INTEGRATION.md) |
-| `XION_OLLAMA_URL` | `http://localhost:11434` | same if Ollama is co-located; otherwise the reachable URL | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The floor-model choice |
+| `XION_OLLAMA_URL` | `http://localhost:11434` | local D2: same; Akash Genesis posture: `http://xion-ollama:11434` private sidecar | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The floor-model choice |
 | `XION_OLLAMA_FLOOR_MODEL` | `gemma4:e4b-it-q4_K_M` | `gemma4:e4b-it-q4_K_M` (Phase 5g-viii rotation; rollback to `gemma3:4b` is one env-var) | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § The floor-model choice |
 | `XION_OPEN_WEIGHTS_GGUF_PATH` | *(unset)* | absolute path to the upstream Hugging Face GGUF the manifest pins; unset is supported (verifier reports `NOT_YET_SEALED` for the model-blob entry only) | [`docs/26-INFERENCE-POLICY.md`](./26-INFERENCE-POLICY.md) § Model-blob pin |
 | `XION_API_REQUIRE_BEARER` | `false` | **`true` for D2** (non-negotiable once a non-operator user can reach the port) | [`docs/30-API-ADMISSION.md`](./30-API-ADMISSION.md) § Bearer auth |
@@ -401,7 +401,7 @@ Invariant 17 clause 5 requires an annual dry-run that exercises the open-weights
 **Pre-checklist:**
 
 1. The model-blob entry is `OK` on this host (`xion-verify inference-sovereignty` reports 3/3 hash-verified). If it is `NOT_YET_SEALED`, run "First-time GGUF setup" first; if it is `FAIL`, do not start the dry-run — the floor is structurally unsound, fix the manifest first.
-2. The Ollama daemon is healthy: `curl -sS http://localhost:11434/api/tags | jq '.models[].name'` should list `gemma4:e4b-it-q4_K_M` (or whatever `XION_OLLAMA_FLOOR_MODEL` names).
+2. The Ollama daemon is healthy. On a local D2 host, `curl -sS http://localhost:11434/api/tags | jq '.models[].name'` should list `gemma4:e4b-it-q4_K_M` (or whatever `XION_OLLAMA_FLOOR_MODEL` names). On Akash, run the equivalent check from the Relay container against `http://xion-ollama:11434/api/tags` and confirm the provider logs show GPU acceleration for `xion-ollama`; a laptop-local daemon or CPU-only sidecar does not satisfy the deployed-floor precheck for the Genesis posture.
 3. A baseline chat through the hosted gateway succeeds (so the host is otherwise healthy and the dry-run can attribute any failure to the floor specifically).
 
 **Dry-run execution:**
@@ -411,10 +411,10 @@ Invariant 17 clause 5 requires an annual dry-run that exercises the open-weights
 date -u +"dry-run start: %Y-%m-%dT%H:%M:%SZ"
 
 # 2. Flip the orchestrator into open_weights_only mode for the window.
-#    No restart needed if the orchestrator reads policy lazily; otherwise
-#    edit .env and restart.
+#    Policy mode is read at Relay startup, so edit the deployment env / .env
+#    and restart or send an updated Akash manifest before the window.
 export XION_INFERENCE_POLICY=open_weights_only
-# (or edit .env and restart: python -m orchestrator.api)
+# then restart: python -m orchestrator.api
 
 # 3. Run a representative chat workload for the window.
 #    Minimum: 100 turns spread across at least 30 minutes, with a mix of
@@ -446,7 +446,7 @@ tail -n 200 REQUEST_LEDGER.jsonl | jq -c 'select(.schema_version == 2)'
 
 **Verdict criteria.**
 
-- **Green:** every dry-run turn returned `200`. Floor is provisioned for real, not for the manifest. Record the result in the operator's annual ops log alongside the start/end timestamps and the count of turns served.
+- **Green:** every dry-run turn returned `200` while the floor endpoint was the deployed substrate (`XION_OLLAMA_URL=http://xion-ollama:11434` on Akash, or an equivalent non-laptop floor). Floor is provisioned for real, not for the manifest. Record the result in the operator's annual ops log alongside the start/end timestamps and the count of turns served.
 - **Yellow:** ≥1 turn returned `503` with `failure_reason_class` ∈ {`timeout`, `provider_unreachable`, `unknown_provider_error`} BUT the floor came back healthy without operator intervention. Floor is provisioned but bursty; record the symptom and the suspected cause (RAM, GPU pressure, daemon hiccup), and open a `KW-OPS-###` if the symptom recurs in next year's dry-run.
 - **Red:** ≥1 turn returned `503` AND the floor required operator intervention to recover (manual `ollama serve` restart, host reboot, `XION_OLLAMA_FLOOR_MODEL` rotation back to a smaller model). Floor is NOT provisioned for the current load; this is the gap the dry-run exists to find. Open a Tier-2 incident, name the resource shortfall (RAM, disk, GPU, model size), and pin the resolution to the next annual dry-run as a closure criterion.
 

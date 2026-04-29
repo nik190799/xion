@@ -10,6 +10,15 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Akash deployed open-weights floor + Chutes d3-8 live gate — 2026-04-28
+
+- **`KW-FLOOR-DEPLOY-001` opened:** the Invariant-17 floor was structurally real but still depended on the operator laptop's Ollama daemon. The weakness now names the honest gap: until the deployed Relay carries its own floor, Immortality Drill runs are laptop-on rehearsals.
+- **`infra/akash/relay-deployment.yaml`** now carries a private GPU-backed `xion-ollama` sidecar (`ollama/ollama:0.21.0`) and points the Relay at `XION_OLLAMA_URL=http://xion-ollama:11434`; the sidecar pulls `gemma4:e4b-it-q4_K_M` before serving the floor. The SDL starts the sidecar at `10000 uact`/block and 60Gi storage so the operator can tune from live GPU bids instead of CPU bids.
+- **Doctrine and runbooks updated:** `docs/26-INFERENCE-POLICY.md`, `.env.example`, `docs/13-OPERATIONS.md`, `docs/runbooks/AKASH_RELAY_DEPLOY.md`, and `docs/runbooks/IMMORTALITY_DRILL.md` now distinguish local D2 Ollama from the deployed-floor posture and require an `open_weights_only` smoke turn against Akash before treating the drill as full.
+- **Post-funding deploy runbook added:** `docs/runbooks/POST_FUNDING_DEPLOY.md` is the one-page operator ledger for the Akash GPU sidecar, deployed-floor proof, Chutes d3-8 live deploy, registry republish, and first real Immortality Drill rehearsal. Evidence fields remain marked `PENDING_OPERATOR_EXECUTION` until the live Akash/Chutes commands produce dseq, provider, instance, latency, and tx-id values.
+- **Honesty gates preserved:** `KW-FLOOR-DEPLOY-001`, `KW-RELAY-CHUTES-D3-001`, and the Immortality Drill honesty gate remain open until the operator records real Akash GPU-floor proof, Chutes d3-8 live verifier output, and the new Arweave registry tx id.
+- **Chutes d3-8 live gate staged:** `xion_relay_chute.py`, `scripts/verify-chute-cords.sh`, and `scripts/verify-chute-import.py` now target `pre-genesis-d3-8`, with longer Relay boot tolerance for cold GPU workers. The public registry stays on d3-6 smoke until a live d3-8 build/warmup passes `MODE=live`.
+
 ### Genesis Relay registry — Akash primary, Arweave publication path — 2026-04-26
 
 - **`xion-verify discovery`** enforces `relays[0]` = Akash (genesis **primary** hosted substrate) and `relays[1]` = Chutes (genesis **secondary** cord), with a recomputed `payload_sha256` on `ledgers/RELAY_REGISTRY.json`.
@@ -29,14 +38,14 @@ Stages the full Relay Chutes shape without claiming a live deployment. `orchestr
 
 ### Changed
 
-- **`scripts/verify-chute-cords.sh`** — adds smoke/live verification modes so d3-6 smoke envelopes and future d3-7 live Relay payloads are checked by one harness.
+- **`scripts/verify-chute-cords.sh`** — adds smoke/live verification modes so d3-6 smoke envelopes and future d3-8 live Relay payloads are checked by one harness.
 - **`scripts/verify-chute-import.py`** — now asserts the root Chutes module exposes the live service marker and required cord paths.
 - **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`** — adds a local pre-flight section and records the current d3-6 smoke registry metadata.
 - **Agent cast content hashes** — refreshes Agent Soul parent hashes, manifest hash, and cast rows so production `python -m orchestrator.api` can pass its cast-pool boot gate.
 
 ### Not Yet Green
 
-- **`pre-genesis-d3-7` live Chutes image** is still gated on the operator’s Chutes **24-hour `imagehistorys` quota** and a successful `chutes build … --wait` when the window allows; until then the registry’s Chutes row remains **smoke** (`xion-relay-chutes-smoke`). See **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`** § *d3-7 live gate*.
+- **`pre-genesis-d3-8` live Chutes image** is still gated on the operator’s Chutes **24-hour `imagehistorys` quota** and a successful `chutes build … --wait` when the window allows; until then the registry’s Chutes row remains **smoke** (`xion-relay-chutes-smoke`). See **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`** § *d3-8 live gate*.
 - **Chutes cord warmth** can still oscillate (`COLD` / `503` vs warmed `200`); re-run `EXPECTED_IMAGE_TAG=pre-genesis-d3-6 bash scripts/verify-chute-cords.sh` before treating the secondary as operator-verified.
 
 ### Phase 6.9.1 — Gateway Pattern doctrine — 2026-04-26
