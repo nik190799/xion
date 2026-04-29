@@ -53,7 +53,7 @@ The modularity claim is checked by the Phase 6.9 verifier set: provider conforma
 | Voice | `orchestrator/voice_router/router.py::VoiceProvider` | `WhisperPiperLiveKitProvider`; optional overlays by policy | production hosted overlay and stronger floor evidence | sealed for Phase 6.5 floor shape |
 | Alerting | none | ntfy.sh / Pushover runbook only | `Alerter` Protocol plus provider registry | gap `KW-ALERT-001` |
 | Observability | none | Prometheus / Grafana Cloud / Loki / Tempo doctrine only | metrics/logs/traces provider interfaces | gap `KW-OBS-001` |
-| AO Core RPC client | none | `AOCoreClient` single implementation | AO substrate variants behind one interface | gap `KW-AOCORE-CLIENT-001` |
+| AO Core RPC client | `orchestrator/ao_core/gateway.py::AOCoreGateway` | `LocalnetAOCoreGateway`; `LegacynetAOCoreGateway` placeholder | CU/MU/SU HTTP messaging behind the legacynet provider | partial pay-down of `KW-AOCORE-CLIENT-001` |
 | Credential vault unlock | none | doctrine-only threshold unlock | `Vault` Protocol imported by orchestrator startup | gap `KW-VAULT-001` |
 | Relay registry / discovery publishing | none | `registry/arweave_publisher.py` | `RelayRegistryPublisher` Protocol | gap `KW-REGISTRY-001` |
 | Settlement chain / treasury rail | none | Base Sepolia/Base EVM contracts | `SettlementChain` Protocol | gap `KW-TREASURY-CHAIN-001` |
