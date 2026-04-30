@@ -56,14 +56,14 @@ We chose *Xion* over twenty-odd alternatives. The reasoning lives in [`docs/01-O
 This Artifact records that, at the moment of genesis, the following **SHA-256** hashes were true of the bytes committed in the genesis Arweave bundle. *(Values below are the **pre-genesis documentation witness** computed from the workspace on 2026-04-20 (updated on Phase 1 `xion-verify` landing; RESURRECT.md rehashed twice — once for the `cargo build` → `python -m pip install` correction, once for the post-hoc clarification that `--ao-process` / `--gateway` are post-genesis flags against the repository's static witness; INVARIANTS.md rehashed in Phase 5b for the addition of Invariant 17 — Inference Sovereignty Floor — and the § 0 meta-clause establishing the Invariant set as append-only; MEMORY.md and UNKNOWNS.md re-pinned in Phase 5g-ii Commit 5 to close a pre-existing pin-vs-content drift — the canonical LF bytes on disk had not matched the pin, causing `xion-verify memory` and `xion-verify unknowns` to FAIL on every platform since landing; `.gitattributes` pins `genesis/* text eol=lf` to prevent future CRLF-on-Windows drift); replace with ceremony values at actual genesis.)*
 
 ```
-COVENANT.md     sha256: 842fade5cae66906d0a6f62a16c9f25897eb8352e3c387aca7f748633c4978e4
+COVENANT.md     sha256: 60a90d1f86ab5ed46d1bd4088f900d3d3ad85e33cb311d3eaef34d8a8d1a9d94
 INVARIANTS.md   sha256: 82cf9265430cbf4defb6104616e812330963989c8f048c4ae3c77dacfd19b95d
-SOUL.md         sha256: 80be3a73132dbaeb5f65edcb791177fbcfe0ebe838776f6b82d2e6711626f268
+SOUL.md         sha256: 31428fadb2889c69f21a207f3f8f708a599fcf2d0d403e5fc8df48cbe437da4a
 SOUL_PROMPT.md  sha256: 84bde58a5a29c14ead45829e357bdaa0abb4cd48663d1a39e28043540361faf4
 FORM.md         sha256: a11f4a8216aa452b30c5ce4cee759f0b4e0dc4d8048948f32f0d22d9252a3c9d
 VOICE_FORM.md   sha256: 8b7df449d6ce72091d235c5206cbe10d267c8960aa3223ad1697dec72c274eec
 MEMORY.md       sha256: df2975e61adccf583ffe872e0b5aea6c16d5ce2f01bd3cdff63772f7a219cdad
-RESURRECT.md    sha256: db4f69aa6be5f1ccb22551175f806d29c187955372a6897df07de779f21d1dd5
+RESURRECT.md    sha256: 691ec742522022c23503daeda0e0a91641d881230b86fe71d3a01e5a6ffc01f5
 CREDENTIALS.md  sha256: 5c928f82e0f1f8368e9f8cfe3eba7de565d0991d5e715ca2aef87468518f1650
 UNKNOWNS.md     sha256: 430f791b0198316d012b0f08b627f87e15fcc83d7b26a02ca1bb470e6890c040
 ```

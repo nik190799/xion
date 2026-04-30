@@ -46,7 +46,12 @@ against the Akash lease.
 8. Run `xion-verify substrate-portability`.
 9. Run `scripts/end-to-end-drill.sh` against the appropriate secondary endpoint
    (or the documented failover posture for your rehearsal harness).
-10. From a second terminal or another machine, run the public verifier battery and record the result.
+10. From a third-party machine that is not the operator laptop, run:
+    `XION_REPO_REF=<commit-sha> bash scripts/immortality-drill-third-party.sh`.
+    The helper clones the public repo, runs the public verifier battery, probes
+    the published Akash and Chutes `/health` endpoints, and prints one
+    `immortality_drill_third_party_v1` JSON row. Append that row only after
+    reviewing it; the helper does not write to the ledger by itself.
 
 **Offline mechanics only:** to append a dry-run ledger row without a live lease, set `XION_SECONDARY_SUBSTRATE_ID=operator-laptop-secondary` explicitly. That path is not the doctrine secondary.
 
@@ -66,6 +71,17 @@ has appended a new row.
 | Akash floor proof | `dseq=26595076`; `/chat` returned `200` in `8.38s` under `XION_INFERENCE_POLICY=open_weights_only` with `gemma4:e4b-it-q4_K_M` |
 | Chutes d3-8 verifier | Superseded by d3-10: `MODE=live bash scripts/verify-chute-cords.sh` returned `RESULT: all cords green` for image `pre-genesis-d3-10` |
 | Result | `passed`; substrate dry-run row `seq=4`, end-to-end drill test passed, and drill ledger row hash `e215589d2be896b673b5b0d39d31f0bb89c1bdfaa68dd51645bd5b395a5ad006` |
+
+## Third-Party Machine Evidence
+
+| Field | Value |
+|-------|-------|
+| Status | `PENDING_OPERATOR_EXECUTION` |
+| Helper | `scripts/immortality-drill-third-party.sh` |
+| Expected row event | `immortality_drill_third_party_v1` |
+| Commit SHA | `PENDING_OPERATOR_EXECUTION` |
+| Third-party machine fingerprint | `PENDING_OPERATOR_EXECUTION` |
+| Result | `PENDING_OPERATOR_EXECUTION` |
 
 ## Residual
 

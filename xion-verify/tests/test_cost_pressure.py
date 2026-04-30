@@ -27,5 +27,5 @@ def test_cost_pressure_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     proposal_file = tmp_path / "ledgers" / "PROPOSAL_LEDGER.jsonl"
     assert proposal_file.is_file()
     content = proposal_file.read_text(encoding="utf-8")
-    assert "Cost-Pressure: Route to gpt-4" in content
+    assert "Cost-Pressure: Route to moonshotai/Kimi-K2.6-TEE" in content
     assert '"tier": 0' in content

@@ -10,14 +10,14 @@ from xion_verify.commands.substrate_portability import (
     check_substrate_portability,
     evaluate_substrate_portability,
 )
-from xion_verify.exit_codes import NOT_YET_SEALED, OK
+from xion_verify.exit_codes import OK
 
 
-def test_substrate_portability_command_keeps_placeholder_repo_ledger_unsealed() -> None:
+def test_substrate_portability_command_accepts_repo_chutes_secondary() -> None:
     result = CliRunner().invoke(root, ["substrate-portability"])
 
-    assert result.exit_code == NOT_YET_SEALED, result.output
-    assert "non-laptop secondary" in result.output
+    assert result.exit_code == OK, result.output
+    assert "dry-run ledger chain and tip parity verified" in result.output
 
 
 def test_substrate_portability_accepts_non_laptop_secondary(tmp_path) -> None:
