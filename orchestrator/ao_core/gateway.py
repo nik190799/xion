@@ -13,6 +13,9 @@ from orchestrator.ao_core.client import LegacynetAOCoreGateway, LocalnetAOCoreGa
 class AOCoreGateway(Protocol):
     """Stable AO Core boundary used by Relay/runtime code."""
 
+    async def read_state_tip(self) -> str:
+        """Read the current AO state-tip payload from the configured substrate."""
+
     async def commit_state(
         self,
         tip_height: int,

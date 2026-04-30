@@ -13,6 +13,7 @@ from orchestrator.ao_core.gateway import (
     AOCoreGatewaySettings,
     get_ao_core_gateway,
 )
+from orchestrator.ao_core.listener import AOCoreListener
 
 
 def test_factory_defaults_to_localnet_provider(monkeypatch):
@@ -80,6 +81,59 @@ def test_localnet_commit_state_invokes_aos(monkeypatch):
     assert kwargs["stderr"] == client_module.asyncio.subprocess.PIPE
 
 
+def test_localnet_read_state_tip_invokes_aos(monkeypatch):
+    calls = []
+
+    class _Proc:
+        returncode = 0
+
+        async def communicate(self):
+            return b'{ height = 1, root = "abc", prev = "def" }', b""
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        calls.append((args, kwargs))
+        return _Proc()
+
+    monkeypatch.setattr(
+        client_module.asyncio,
+        "create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    gateway = LocalnetAOCoreGateway(process_id="proc-read", aos_binary_path="aos-test")
+    output = asyncio.run(gateway.read_state_tip())
+
+    assert output == '{ height = 1, root = "abc", prev = "def" }'
+    args, kwargs = calls[0]
+    assert args[:3] == ("aos-test", "proc-read", "--eval")
+    assert "state_tip_height" in args[3]
+    assert kwargs["stdout"] == client_module.asyncio.subprocess.PIPE
+    assert kwargs["stderr"] == client_module.asyncio.subprocess.PIPE
+
+
+def test_listener_uses_gateway_boundary(tmp_path):
+    class _Gateway:
+        called = False
+
+        async def read_state_tip(self):
+            self.called = True
+            return '{ height = 1, root = "abc", prev = "def" }'
+
+        async def commit_state(self, tip_height, state_root_sha256, correlation_id):
+            return True
+
+    gateway = _Gateway()
+    listener = AOCoreListener(
+        process_id="proc-listener",
+        ledger_path=tmp_path / "STATE_CHAIN_LEDGER.jsonl",
+        gateway=gateway,
+    )
+
+    asyncio.run(listener.run_once())
+
+    assert gateway.called is True
+
+
 def test_localnet_commit_state_failure_returns_false(monkeypatch):
     class _Proc:
         returncode = 1
@@ -107,3 +161,10 @@ def test_legacynet_placeholder_does_not_fake_commit_state():
 
     with pytest.raises(NotImplementedError, match="CU/MU/SU HTTP messaging"):
         asyncio.run(gateway.commit_state(1, "c" * 64, "corr-3"))
+
+
+def test_legacynet_placeholder_does_not_fake_read_state_tip():
+    gateway = LegacynetAOCoreGateway(process_id="proc-6")
+
+    with pytest.raises(NotImplementedError, match="CU/MU/SU HTTP reads"):
+        asyncio.run(gateway.read_state_tip())

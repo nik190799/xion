@@ -51,14 +51,14 @@ The modularity claim is checked by the Phase 6.9 verifier set: provider conforma
 | Broker / worker coordination | `orchestrator/runtime/broker.py::Broker` | `SqliteBroker` | AO mailbox or cross-host broker | sealed for single-host D2; later substitute not yet promoted |
 | Arweave / RPC reads | `orchestrator/data/_quorum_base.py` | multi-gateway Arweave; multi-RPC EVM readers | warm secondary substrate | residual `LHT-SUBSTRATE-001` |
 | Voice | `orchestrator/voice_router/router.py::VoiceProvider` | `WhisperPiperLiveKitProvider`; optional overlays by policy | production hosted overlay and stronger floor evidence | sealed for Phase 6.5 floor shape |
-| Alerting | none | ntfy.sh / Pushover runbook only | `Alerter` Protocol plus provider registry | gap `KW-ALERT-001` |
-| Observability | none | Prometheus / Grafana Cloud / Loki / Tempo doctrine only | metrics/logs/traces provider interfaces | gap `KW-OBS-001` |
-| AO Core RPC client | `orchestrator/ao_core/gateway.py::AOCoreGateway` | `LocalnetAOCoreGateway`; `LegacynetAOCoreGateway` placeholder | CU/MU/SU HTTP messaging behind the legacynet provider | partial pay-down of `KW-AOCORE-CLIENT-001` |
-| Credential vault unlock | none | doctrine-only threshold unlock | `Vault` Protocol imported by orchestrator startup | gap `KW-VAULT-001` |
-| Relay registry / discovery publishing | none | `registry/arweave_publisher.py` | `RelayRegistryPublisher` Protocol | gap `KW-REGISTRY-001` |
-| Settlement chain / treasury rail | none | Base Sepolia/Base EVM contracts | `SettlementChain` Protocol | gap `KW-TREASURY-CHAIN-001` |
-| Public status publishing | none | `status.xion.ar` Arweave static-page doctrine | `StatusPublisher` Protocol | gap `KW-STATUS-001` |
-| Cross-cutting gateway verifier | `xion-verify gateway-conformance` | `NOT_YET_SEALED` stub | static + runtime conformance implementation | meta gap `KW-GATEWAY-001` |
+| Alerting | `orchestrator/alerting/gateway.py::Alerter` | `LocalLogAlerter`; `NtfyAlerter`; `PushoverAlerter` | hosted credentials/operator topics | sealed for Phase 6.9.2 provider shape |
+| Observability | `orchestrator/observability/gateway.py` | `StdoutObservability`; `HostedObservabilityStub` | live Prometheus/Grafana/Loki/Tempo export | partial pay-down of `KW-OBS-001` |
+| AO Core RPC client | `orchestrator/ao_core/gateway.py::AOCoreGateway` | `LocalnetAOCoreGateway`; `LegacynetAOCoreGateway` placeholder | CU/MU/SU HTTP messaging behind the legacynet provider | sealed for Phase 6.9.2 provider shape |
+| Credential vault unlock | `orchestrator/vault/gateway.py::Vault` | `EnvVault`; `ThresholdVaultStub` | real threshold-unlock provider | partial pay-down of `KW-VAULT-001` |
+| Relay registry / discovery publishing | `orchestrator/registry/gateway.py::RelayRegistryPublisher` | `LocalFileRelayRegistryPublisher`; `ArweaveRelayRegistryPublisher` | successor substrate if Arweave is replaced | sealed for Phase 6.9.2 provider shape |
+| Settlement chain / treasury rail | `orchestrator/treasury/settlement_gateway.py::SettlementChain` | `BaseEvmSettlementChain`; `FutureChainStub` | first non-Base payment or token rail | partial pay-down of `KW-TREASURY-CHAIN-001` |
+| Public status publishing | `orchestrator/status/gateway.py::StatusPublisher` | `LocalFileStatusPublisher`; `ArweaveStatusPublisher` | alternate branded host if Arweave is unavailable | sealed for Phase 6.9.2 provider shape |
+| Cross-cutting gateway verifier | `xion-verify gateway-conformance` | live static presence verifier | deeper caller-import graph checks over time | sealed for Phase 6.9.2 provider shape |
 | Arbiter gate | deliberate exception | in-process Covenant gate | none | not a registry participant by design |
 
 Rows marked as gaps are not launch-blocking by themselves, but they are not allowed to disappear into prose. Each gap has a `KW-` entry with a closure bar and a verifier path.

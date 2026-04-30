@@ -3,31 +3,29 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
 import click
+from orchestrator.treasury import SettlementChainSettings, get_settlement_chain
 
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _MANIFEST = "genesis/CONTRACT_ADDRESSES.json"
-_ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
 
 
 def _load_manifest(repo_root: Path) -> tuple[int, dict[str, object] | str]:
     path = repo_root / _MANIFEST
     if not path.is_file():
         return NOT_YET_SEALED, f"{_MANIFEST} not found"
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("status") != "testnet":
-        return NOT_YET_SEALED, f"{_MANIFEST} status is {data.get('status')!r}, expected 'testnet'"
-    for field in ("xion_token", "imprint", "emission_controller", "liquidity_lock"):
-        value = data.get(field)
-        if not isinstance(value, str) or not _ADDRESS_RE.fullmatch(value):
-            return NOT_YET_SEALED, f"{field} is not populated with an EVM address"
-    return OK, data
+    try:
+        chain = get_settlement_chain(
+            SettlementChainSettings(chain="base", repo_root=repo_root)
+        )
+        return OK, chain.authorities_root()
+    except (OSError, json.JSONDecodeError, RuntimeError) as exc:
+        return NOT_YET_SEALED, str(exc)
 
 
 def _command(label: str, fields: tuple[str, ...]) -> None:

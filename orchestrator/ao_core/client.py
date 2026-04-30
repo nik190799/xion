@@ -19,6 +19,29 @@ class LocalnetAOCoreGateway:
     process_id: str
     aos_binary_path: str = "aos"
 
+    async def read_state_tip(self) -> str:
+        """Read the current state tip through the operator-proven ``aos`` path."""
+        cmd = [
+            self.aos_binary_path,
+            self.process_id,
+            "--eval",
+            "return { height = state.state_tip_height, root = state.state_root_sha256, prev = state.prev_state_root_sha256 }",
+        ]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                logger.error("read-state-tip failed: %s", stderr.decode())
+                return ""
+            return stdout.decode().strip()
+        except Exception as e:
+            logger.error("read-state-tip error: %s", e)
+            return ""
+
     async def commit_state(
         self,
         tip_height: int,
@@ -63,6 +86,13 @@ class LegacynetAOCoreGateway:
 
     process_id: str
     ao_gateway_url: str = "https://arweave.net"
+
+    async def read_state_tip(self) -> str:
+        raise NotImplementedError(
+            "AO Core legacynet read-state-tip is not wired yet; "
+            "KW-AOCORE-CLIENT-001 remains open until CU/MU/SU HTTP reads land "
+            "behind AOCoreGateway."
+        )
 
     async def commit_state(
         self,

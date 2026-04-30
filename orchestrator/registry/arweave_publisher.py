@@ -14,6 +14,8 @@ import time
 from pathlib import Path
 from typing import Any, Protocol
 
+from orchestrator.vault import get_vault
+
 
 class RegistrySubmitter(Protocol):
     def submit(self, payload: bytes, tags: dict[str, str]) -> str:
@@ -37,7 +39,12 @@ class ArweaveRegistrySubmitter:
         jwk_path: str | Path | None = None,
         gateway: str | None = None,
     ) -> None:
-        self._jwk_path = str(jwk_path) if jwk_path is not None else os.environ.get(self._JWK_PATH_ENV)
+        self._jwk_path = (
+            str(jwk_path)
+            if jwk_path is not None
+            else get_vault().unlock(self._JWK_PATH_ENV)
+            or os.environ.get(self._JWK_PATH_ENV)
+        )
         self._gateway = gateway or os.environ.get(self._GATEWAY_ENV, self._DEFAULT_GATEWAY)
 
     def submit(self, payload: bytes, tags: dict[str, str]) -> str:
@@ -85,7 +92,9 @@ def build_registry_document(relays: list[dict[str, Any]], *, as_of_utc_ns: int |
     return document
 
 
-class RelayRegistryPublisher:
+class ArweaveRelayRegistryPublisher:
+    provider_id = "arweave"
+
     def __init__(self, *, submitter: RegistrySubmitter | None = None) -> None:
         self._submitter = submitter
 
@@ -103,11 +112,14 @@ class RelayRegistryPublisher:
         payload = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         return self._submitter.submit(payload, {"App-Name": "xion-relay-registry", "Schema-Version": "1"})
 
+    def publish_remote(self, relays: list[dict[str, Any]]) -> str:
+        return self.publish_arweave(relays)
+
 
 __all__ = [
     "ArweaveRegistrySubmitter",
+    "ArweaveRelayRegistryPublisher",
     "RegistrySubmitter",
-    "RelayRegistryPublisher",
     "arweave_submitter_from_env",
     "build_registry_document",
 ]

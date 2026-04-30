@@ -6,8 +6,16 @@ from xion_verify.commands.discovery import check_discovery
 
 from orchestrator.registry.arweave_publisher import (
     ArweaveRegistrySubmitter,
-    RelayRegistryPublisher,
     build_registry_document,
+)
+from orchestrator.registry.gateway import (
+    RelayRegistryPublisher,
+    RelayRegistryPublisherSettings,
+    get_relay_registry_publisher,
+)
+from orchestrator.registry.providers import (
+    ArweaveRelayRegistryPublisher,
+    LocalFileRelayRegistryPublisher,
 )
 
 
@@ -42,7 +50,7 @@ def test_registry_document_is_deterministic_for_fixed_time() -> None:
 def test_registry_publisher_writes_local_document(tmp_path) -> None:
     path = tmp_path / "ledgers" / "RELAY_REGISTRY.json"
 
-    RelayRegistryPublisher().publish_local(path, [_akash_relay(), _relay()])
+    LocalFileRelayRegistryPublisher().publish_local(path, [_akash_relay(), _relay()])
 
     assert json.loads(path.read_text(encoding="utf-8"))["relays"][0]["relay_id"] == "akash-secondary"
 
@@ -60,9 +68,22 @@ def test_arweave_submitter_requires_jwk_file(tmp_path) -> None:
 
 def test_discovery_accepts_registry_with_three_paths(tmp_path) -> None:
     path = tmp_path / "ledgers" / "RELAY_REGISTRY.json"
-    RelayRegistryPublisher().publish_local(path, [_akash_relay(), _relay()])
+    LocalFileRelayRegistryPublisher().publish_local(path, [_akash_relay(), _relay()])
 
     assert check_discovery(tmp_path) == []
+
+
+def test_registry_gateway_factory_selects_backends(monkeypatch):
+    local = get_relay_registry_publisher(
+        RelayRegistryPublisherSettings(backend="local-file")
+    )
+    assert isinstance(local, LocalFileRelayRegistryPublisher)
+    assert isinstance(local, RelayRegistryPublisher)
+
+    monkeypatch.setenv("XION_REGISTRY_WALLET_JWK_PATH", "operator-wallet.json")
+    arweave = get_relay_registry_publisher(RelayRegistryPublisherSettings(backend="arweave"))
+    assert isinstance(arweave, ArweaveRelayRegistryPublisher)
+    assert isinstance(arweave, RelayRegistryPublisher)
 
 
 def test_discovery_rejects_missing_path(tmp_path) -> None:

@@ -37,6 +37,7 @@ from orchestrator.inference_router.provider import (
     UnknownProviderError,
 )
 from orchestrator.inference_router.router import Category
+from orchestrator.vault import get_vault
 
 
 class ChutesProviderError(ProviderError):
@@ -59,6 +60,10 @@ _RE_CHUTES_KEY = re.compile(r"cpk_[A-Za-z0-9_\-\.]+")
 
 def _truthy(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _vault_secret(name: str) -> str:
+    return get_vault().unlock(name) or ""
 
 
 def _scrub(msg: str, api_key: str) -> str:
@@ -101,7 +106,7 @@ class ChutesGenerativeProvider:
         "XION_CHUTES_TEE_REQUIRED", _DEFAULT_TEE_REQUIRED,
     )))
     _api_key: str = field(default_factory=lambda: os.environ.get(
-        "XION_CHUTES_API_KEY", "",
+        "XION_CHUTES_API_KEY", _vault_secret("XION_CHUTES_API_KEY"),
     ), repr=False)
 
     _cached_health: bool = field(default=False, init=False, repr=False)
@@ -316,42 +321,43 @@ class ChutesGenerativeProvider:
         usage_out = 0
         finish = "stop"
         try:
-            async with httpx.AsyncClient(timeout=deadline_s) as client:
-                async with client.stream("POST", url, json=body, headers=headers) as resp:
-                    if not (200 <= resp.status_code < 300):
-                        raw_bytes = await resp.aread()
-                        snippet = raw_bytes[:512].decode("utf-8", errors="replace")
-                        raise _error_for_status(
-                            resp.status_code,
-                            f"chutes HTTP {resp.status_code}: {_scrub(snippet, self._api_key)}",
-                        )
-                    async for line in resp.aiter_lines():
-                        if not line or not line.startswith("data:"):
-                            continue
-                        payload_text = line[len("data:"):].strip()
-                        if payload_text == "[DONE]":
-                            break
-                        try:
-                            event = json.loads(payload_text)
-                        except json.JSONDecodeError:
-                            continue
-                        choices = event.get("choices") or []
-                        if choices:
-                            first = choices[0] or {}
-                            delta = first.get("delta") or {}
-                            content = delta.get("content")
-                            if isinstance(content, str) and content:
-                                yield content
-                            finish_reason = first.get("finish_reason")
-                            if finish_reason:
-                                finish = str(finish_reason)
-                        usage_obj = event.get("usage")
-                        if isinstance(usage_obj, dict):
-                            usage_in = int(usage_obj.get("prompt_tokens") or usage_in)
-                            usage_out = int(usage_obj.get("completion_tokens") or usage_out)
-                        returned_model = event.get("model")
-                        if isinstance(returned_model, str) and returned_model:
-                            model_id = returned_model
+            async with httpx.AsyncClient(timeout=deadline_s) as client, client.stream(
+                "POST", url, json=body, headers=headers
+            ) as resp:
+                if not (200 <= resp.status_code < 300):
+                    raw_bytes = await resp.aread()
+                    snippet = raw_bytes[:512].decode("utf-8", errors="replace")
+                    raise _error_for_status(
+                        resp.status_code,
+                        f"chutes HTTP {resp.status_code}: {_scrub(snippet, self._api_key)}",
+                    )
+                async for line in resp.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload_text = line[len("data:"):].strip()
+                    if payload_text == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(payload_text)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = event.get("choices") or []
+                    if choices:
+                        first = choices[0] or {}
+                        delta = first.get("delta") or {}
+                        content = delta.get("content")
+                        if isinstance(content, str) and content:
+                            yield content
+                        finish_reason = first.get("finish_reason")
+                        if finish_reason:
+                            finish = str(finish_reason)
+                    usage_obj = event.get("usage")
+                    if isinstance(usage_obj, dict):
+                        usage_in = int(usage_obj.get("prompt_tokens") or usage_in)
+                        usage_out = int(usage_obj.get("completion_tokens") or usage_out)
+                    returned_model = event.get("model")
+                    if isinstance(returned_model, str) and returned_model:
+                        model_id = returned_model
         except TimeoutError as e:
             raise ProviderTimeoutError(
                 f"chutes stream transport timeout: {_scrub(str(e), self._api_key)}",

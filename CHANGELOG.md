@@ -10,6 +10,12 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Phase 6.9.2 — Gateway Pattern implementation slices — 2026-04-29
+
+- **Gateway surfaces landed:** AO Core, Vault, Alerting, Observability, Relay Registry publishing, Settlement Chain reads, and Public Status publishing now expose Protocol/factory/provider boundaries instead of doctrine-only seams.
+- **`xion-verify gateway-conformance` promoted:** the verifier now exits `OK` when Phase 6.9.2 Protocols, providers, factories, and Gateway Audit rows resolve, and supports per-surface checks for each gateway slice.
+- **Weakness pay-down:** `KW-AOCORE-CLIENT-001`, `KW-ALERT-001`, `KW-REGISTRY-001`, `KW-STATUS-001`, and `KW-GATEWAY-001` are closed; `KW-VAULT-001`, `KW-OBS-001`, and `KW-TREASURY-CHAIN-001` remain narrowed residuals where the non-default backend is intentionally stubbed.
+
 ### Akash deployed open-weights floor + Chutes d3-8 live gate — 2026-04-28
 
 - **`KW-FLOOR-DEPLOY-001` opened:** the Invariant-17 floor was structurally real but still depended on the operator laptop's Ollama daemon. The weakness now names the honest gap: until the deployed Relay carries its own floor, Immortality Drill runs are laptop-on rehearsals.
