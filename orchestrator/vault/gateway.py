@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from orchestrator.vault.providers import EnvVault, ThresholdVaultStub
+from orchestrator.vault.providers import EnvVault, ThresholdVault
 
 
 @runtime_checkable
@@ -44,7 +44,7 @@ def get_vault(settings: VaultSettings | None = None) -> Vault:
     if resolved.provider in {"", "env", "local", "development"}:
         return EnvVault()
     if resolved.provider in {"threshold", "ceremony"}:
-        return ThresholdVaultStub()
+        return ThresholdVault()
     raise ValueError(
         f"unsupported XION_VAULT_PROVIDER={resolved.provider!r}; "
         "expected env or threshold"

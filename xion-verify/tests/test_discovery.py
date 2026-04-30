@@ -85,3 +85,36 @@ def test_discovery_accepts_populated_registry(tmp_path: Path) -> None:
 
     assert code == OK
     assert messages == []
+
+
+def test_discovery_no_cloudflare_rejects_cloudflare_endpoint(tmp_path: Path) -> None:
+    registry = _with_payload_hash(
+        {
+            "schema_version": 1,
+            "as_of_utc_ns": 1,
+            "discovery_paths": ["arweave_registry", "ao_process", "dns_seed", "akash_secondary"],
+            "payload_sha256": "",
+            "relays": [
+                {
+                    "relay_id": "akash-primary",
+                    "substrate": "akash",
+                    "endpoint": "https://xion-relay.example.workers.dev",
+                    "public_key": "ed25519:def456",
+                    "last_seen_utc_ns": 1,
+                },
+                {
+                    "relay_id": "chutes-secondary",
+                    "substrate": "chutes",
+                    "endpoint": "https://xion-relay.chutes.ai",
+                    "public_key": "ed25519:abc123",
+                    "last_seen_utc_ns": 1,
+                },
+            ],
+        }
+    )
+    _write_registry(tmp_path, registry)
+
+    code, messages = evaluate_discovery(tmp_path, no_cloudflare=True)
+
+    assert code != OK
+    assert any("Cloudflare" in message for message in messages)

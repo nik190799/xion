@@ -10,6 +10,7 @@ AnchorBatches = AnchorBatches or {}
 AuthorityRotations = AuthorityRotations or {}
 AbdicationEvents = AbdicationEvents or {}
 TreasurySpends = TreasurySpends or {}
+TreasuryBridgeEvents = TreasuryBridgeEvents or {}
 RegistryUpdates = RegistryUpdates or {}
 OutboundSpends = OutboundSpends or {}
 ImprintSlashes = ImprintSlashes or {}
@@ -711,7 +712,7 @@ Handlers.add("treasury-spend",
             return
         end
 
-        if not require_tags(msg, { "Spend-Id", "Amount", "Asset", "Recipient", "Purpose-Sha256" }) then
+        if not require_tags(msg, { "Spend-Id", "Amount", "Asset", "Recipient", "Purpose-Sha256", "Chain-Id", "Bridge-Payload-Sha256" }) then
             reject(msg, "Treasury-Rejection", "missing_args")
             return
         end
@@ -719,8 +720,11 @@ Handlers.add("treasury-spend",
         local spend_id = tag(msg, "Spend-Id")
         local amount = positive_number(tag(msg, "Amount"))
         local purpose_sha256 = tag(msg, "Purpose-Sha256")
+        local chain_id = positive_number(tag(msg, "Chain-Id"))
+        local bridge_payload_sha256 = tag(msg, "Bridge-Payload-Sha256")
+        local bridge_event_id = "treasury-spend:" .. spend_id
 
-        if not amount or not is_hex(purpose_sha256, 64) then
+        if not amount or not chain_id or not is_hex(purpose_sha256, 64) or not is_hex(bridge_payload_sha256, 64) then
             reject(msg, "Treasury-Rejection", "invalid_args")
             return
         end
@@ -735,11 +739,34 @@ Handlers.add("treasury-spend",
             asset = tag(msg, "Asset"),
             recipient = tag(msg, "Recipient"),
             purpose_sha256 = purpose_sha256,
+            chain_id = chain_id,
+            bridge_event_id = bridge_event_id,
+            bridge_payload_sha256 = bridge_payload_sha256,
             approved_by = msg.From
+        }
+        TreasuryBridgeEvents[bridge_event_id] = {
+            kind = "treasury-spend",
+            spend_id = spend_id,
+            amount = amount,
+            asset = tag(msg, "Asset"),
+            recipient = tag(msg, "Recipient"),
+            purpose_sha256 = purpose_sha256,
+            chain_id = chain_id,
+            payload_hash = bridge_payload_sha256,
+            state_height = StateTip.height,
+            state_root = StateTip.root
         }
 
         print("treasury-spend success for " .. spend_id)
-        ao.send({ Target = msg.From, Action = "Treasury-Spend-Approved", ["Spend-Id"] = spend_id })
+        ao.send({
+            Target = msg.From,
+            Action = "Treasury-Bridge-Event",
+            ["Spend-Id"] = spend_id,
+            ["Bridge-Event-Id"] = bridge_event_id,
+            ["Bridge-Payload-Sha256"] = bridge_payload_sha256,
+            ["State-Height"] = tostring(StateTip.height),
+            ["State-Root"] = StateTip.root
+        })
     end
 )
 

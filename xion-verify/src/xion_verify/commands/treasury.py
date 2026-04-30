@@ -18,8 +18,19 @@ _CONTRACTS = ("contracts/treasury/MasterTreasury.sol", "contracts/treasury/Vault
 def check_treasury(repo_root: Path, manifest_rel: str = _MANIFEST) -> list[str]:
     errors: list[str] = []
     for rel in _CONTRACTS:
-        if not (repo_root / rel).is_file():
+        path = repo_root / rel
+        if not path.is_file():
             errors.append(f"missing treasury contract: {rel}")
+            continue
+        source = path.read_text(encoding="utf-8")
+        if rel.endswith("MasterTreasury.sol"):
+            for needle in ("function aggregateTotals", "function requestReplenish", "event ReplenishRequested"):
+                if needle not in source:
+                    errors.append(f"MasterTreasury.sol missing {needle}")
+        if rel.endswith("Vault.sol"):
+            for needle in ("SafeERC20", "function balanceOf", "function withdraw", "receive() external payable"):
+                if needle not in source:
+                    errors.append(f"Vault.sol missing {needle}")
     manifest_path = repo_root / manifest_rel
     if not manifest_path.is_file():
         errors.append(f"missing treasury manifest: {manifest_rel}")
@@ -58,7 +69,7 @@ def treasury() -> None:
         for error in errors:
             click.echo(f"treasury: FAIL: {error}", err=True)
         sys.exit(FAIL)
-    click.echo("treasury: OK (treasury contracts and manifest structure verified; deployment residual remains explicit)")
+    click.echo("treasury: OK (custody/accounting contracts and manifest structure verified; deployment residual remains explicit)")
     sys.exit(OK)
 
 

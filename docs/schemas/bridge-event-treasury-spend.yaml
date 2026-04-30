@@ -1,0 +1,33 @@
+schema_id: bridge-event-treasury-spend
+schema_version: 1
+source_doctrine: docs/28-AO-CORE.md
+source_sha256: 29b8d8f3aebed5f98b4e73920b1d8a7cbda1d8a903ed43b420f802e1d4089991
+status: canonical
+event_name: Treasury-Bridge-Event
+source_chain: ao
+target_chain: evm
+
+row:
+  required_fields:
+    - kind
+    - spend_id
+    - amount
+    - asset
+    - recipient
+    - purpose_sha256
+    - chain_id
+    - bridge_event_id
+    - payload_hash
+    - ao_checkpoint
+  ao_checkpoint:
+    required_fields:
+      - process_id
+      - height
+      - prev_state_root
+      - state_root
+      - event_id
+      - payload_hash
+
+hash:
+  algorithm: sha256
+  canonicalization: json.dumps(payload_without_ao_checkpoint, sort_keys=True, separators=(",", ":"))

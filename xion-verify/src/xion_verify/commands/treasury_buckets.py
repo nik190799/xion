@@ -32,6 +32,34 @@ def _run(label: str) -> None:
     if code != OK:
         click.echo(f"{label}: NOT_YET_SEALED — {result}")
         sys.exit(code)
+    if label == "treasury-flow":
+        try:
+            from orchestrator.bridge import (
+                LightClientBridgeAttestor,
+                attest_treasury_spend,
+                build_treasury_spend_payload,
+                verify_treasury_spend,
+            )
+
+            payload = build_treasury_spend_payload(
+                process_id="ao-core-localnet",
+                height=1,
+                prev_state_root="0" * 64,
+                state_root="1" * 64,
+                spend_id="synthetic-treasury-flow",
+                amount=1,
+                asset="USDC",
+                recipient="0x0000000000000000000000000000000000000001",
+                purpose_sha256="a" * 64,
+                chain_id=8453,
+            )
+            attestor = LightClientBridgeAttestor()
+            attestation = attest_treasury_spend(attestor, payload=payload)
+            if not verify_treasury_spend(attestor, attestation, payload=payload):
+                raise RuntimeError("synthetic AO treasury-spend bridge event did not verify")
+        except Exception as exc:
+            click.echo(f"{label}: FAIL: {exc}", err=True)
+            sys.exit(FAIL)
     click.echo(f"{label}: OK (testnet treasury manifest populated)")
     sys.exit(OK)
 

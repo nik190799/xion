@@ -14,6 +14,7 @@ from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
 _LEDGER = "ledgers/GOVERNANCE_LEDGER.jsonl"
+_SAFETY_LEDGER = "ledgers/SAFETY_LEDGER.jsonl"
 _SCHEMA = "docs/schemas/ledger-governance.yaml"
 _ZERO = "0" * 64
 _REQUIRED = {
@@ -36,7 +37,7 @@ _REQUIRED = {
 }
 
 
-def check_regulatory_ledger(repo_root: Path, ledger_rel: str = _LEDGER) -> list[str]:
+def check_regulatory_ledger(repo_root: Path, ledger_rel: str = _LEDGER, *, check_safety_link: bool = False) -> list[str]:
     if not (repo_root / _SCHEMA).is_file():
         return [f"missing schema: {_SCHEMA}"]
     path = repo_root / ledger_rel
@@ -64,6 +65,13 @@ def check_regulatory_ledger(repo_root: Path, ledger_rel: str = _LEDGER) -> list[
             errors.append(f"row {expected_seq}: class B needs invariants_touched")
         if row["class"] == "C" and row["linked_safety_ledger_seq"] is None:
             errors.append(f"row {expected_seq}: class C needs linked_safety_ledger_seq")
+        if (
+            check_safety_link
+            and row["class"] == "C"
+            and row["linked_safety_ledger_seq"] is not None
+            and not _safety_seq_exists(repo_root, int(row["linked_safety_ledger_seq"]))
+        ):
+            errors.append(f"row {expected_seq}: linked_safety_ledger_seq {row['linked_safety_ledger_seq']} not found")
         prev = row["this_hash"]
     return errors
 
@@ -73,14 +81,28 @@ def _hash_row(row: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
 
 
+def _safety_seq_exists(repo_root: Path, seq: int) -> bool:
+    path = repo_root / _SAFETY_LEDGER
+    if not path.is_file():
+        return False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("seq") == seq:
+            return True
+    return False
+
+
 @click.command(name="regulatory-ledger", help="Verify GOVERNANCE_LEDGER state-actor-interaction rows.")
-def regulatory_ledger() -> None:
+@click.option("--check-safety-link", is_flag=True, help="For class C rows, require linked SAFETY_LEDGER seq to exist.")
+def regulatory_ledger(check_safety_link: bool) -> None:
     try:
         repo_root = find_repo_root()
     except RepoRootNotFound as exc:
         click.echo(f"regulatory-ledger: FAIL: {exc}", err=True)
         sys.exit(FAIL)
-    errors = check_regulatory_ledger(repo_root)
+    errors = check_regulatory_ledger(repo_root, check_safety_link=check_safety_link)
     if errors:
         for error in errors:
             click.echo(f"regulatory-ledger: FAIL: {error}", err=True)

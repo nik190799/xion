@@ -27,13 +27,24 @@ args:
     tag: Purpose-Sha256
     type: sha256
     required: true
+  - name: chain_id
+    tag: Chain-Id
+    type: integer
+    required: true
+  - name: bridge_payload_sha256
+    tag: Bridge-Payload-Sha256
+    type: sha256
+    required: true
 preconditions:
   - caller is an authorized signer
   - amount is positive
   - purpose_sha256 is a canonical lowercase 64-character digest
+  - chain_id is positive
+  - bridge_payload_sha256 is a canonical lowercase 64-character digest
   - spend_id has not been used before
 state_changes:
-  - TreasurySpends[spend_id] records amount, asset, recipient, purpose_sha256, and approved_by
+  - TreasurySpends[spend_id] records amount, asset, recipient, purpose_sha256, chain_id, bridge_event_id, bridge_payload_sha256, and approved_by
+  - TreasuryBridgeEvents[bridge_event_id] records the AO-to-EVM treasury bridge event for BridgeAttestor verification
 failure_modes:
   - non_authorised_caller -> reject + emit Treasury-Rejection
   - missing_args -> reject + emit Treasury-Rejection

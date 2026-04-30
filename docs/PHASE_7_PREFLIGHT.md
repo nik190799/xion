@@ -20,7 +20,8 @@ before the Genesis ceremony.
   per-chain `Vault.sol` contracts on testnet, pin addresses in
   `genesis/TREASURY_VAULTS.json`, then run `xion-verify treasury`.
 - **Bridge and treasury audit:** choose bridge posture, complete external audit,
-  and keep `KW-AUDIT-001` / `KW-TREASURY-001` open until evidence exists.
+  and keep `KW-AUDIT-001` / `KW-TREASURY-001` open until evidence exists. The
+  current review scope is `docs/audits/treasury-2026-scope.md`.
 - **Warm secondary substrate:** provision a secondary substrate, run
   `scripts/substrate-portability-dry-run.sh`, and run
   `xion-verify substrate-portability`.

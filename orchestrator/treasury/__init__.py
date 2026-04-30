@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from .settlement_gateway import (
+    ArweaveSettlementChain,
     BaseEvmSettlementChain,
-    FutureChainStub,
     SettlementChain,
     SettlementChainSettings,
     get_settlement_chain,
@@ -12,9 +12,9 @@ from .settlement_gateway import (
 from .topup import ChutesTopUp, SpendProposal, TopUpRequest
 
 __all__ = [
+    "ArweaveSettlementChain",
     "BaseEvmSettlementChain",
     "ChutesTopUp",
-    "FutureChainStub",
     "SettlementChain",
     "SettlementChainSettings",
     "SpendProposal",

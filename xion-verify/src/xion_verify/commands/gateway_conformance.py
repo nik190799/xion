@@ -196,8 +196,8 @@ def _settlement_chain_presence_lines() -> Iterable[str]:
         from pathlib import Path
 
         from orchestrator.treasury import (
+            ArweaveSettlementChain,
             BaseEvmSettlementChain,
-            FutureChainStub,
             SettlementChain,
             SettlementChainSettings,
             get_settlement_chain,
@@ -206,14 +206,14 @@ def _settlement_chain_presence_lines() -> Iterable[str]:
         return (f"settlement-chain presence: FAIL - import error: {e}",)
     try:
         base = get_settlement_chain(SettlementChainSettings(chain="base", repo_root=Path(".")))
-        future = get_settlement_chain(SettlementChainSettings(chain="future-chain"))
-        if not isinstance(base, BaseEvmSettlementChain) or not isinstance(future, FutureChainStub):
+        arweave = get_settlement_chain(SettlementChainSettings(chain="arweave", repo_root=Path(".")))
+        if not isinstance(base, BaseEvmSettlementChain) or not isinstance(arweave, ArweaveSettlementChain):
             return ("settlement-chain presence: FAIL - providers not selected by factory",)
-        if not isinstance(base, SettlementChain) or not isinstance(future, SettlementChain):
+        if not isinstance(base, SettlementChain) or not isinstance(arweave, SettlementChain):
             return ("settlement-chain presence: FAIL - providers do not satisfy Protocol",)
     except Exception as e:
         return (f"settlement-chain presence: FAIL - provider probe failed: {e}",)
-    return ("settlement-chain presence: OK - SettlementChain Protocol, Base EVM provider, future-chain placeholder, and factory are present.",)
+    return ("settlement-chain presence: OK - SettlementChain Protocol, Base EVM provider, Arweave provider, and factory are present.",)
 
 
 def _status_presence_lines() -> Iterable[str]:

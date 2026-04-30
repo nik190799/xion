@@ -58,11 +58,11 @@ Every entry has the same shape:
 - **Domain:** SUBSTRATE
 - **Discovered:** 2026-04-26 (Phase 6.9.1 Gateway Pattern doctrine)
 - **Severity:** high
-- **Status:** mitigated-residual
-- **Description:** XION ERC-20, IMPRINT, treasury vaults, and related egress checks are Base/EVM-first. `orchestrator/treasury/settlement_gateway.py::SettlementChain` now exists with a Base EVM provider, but the second settlement rail is an honest `FutureChainStub` until a non-Base rail is specified.
+- **Status:** closed 2026-04-29 (Macro Phase 6 Epic C provider-depth slice)
+- **Description:** XION ERC-20, IMPRINT, treasury vaults, and related egress checks remain Base/EVM-first for token custody, but `orchestrator/treasury/settlement_gateway.py::SettlementChain` now has both `BaseEvmSettlementChain` and `ArweaveSettlementChain` providers. The second rail is no longer a placeholder.
 - **Why it exists:** The safe pre-Genesis path deployed and verified the EVM contracts first; abstracting a second settlement chain before one exists would risk designing around imagined semantics.
 - **Mitigations:** Xion's identity is AO Core, not Base. Base is a payment/token rail, daily egress caps bound bridge effects, and governance can route future payments to another chain. The bridge layer is already Protocol-bound by `BridgeAttestor`.
-- **Pay-down commitment:** Keep open until the first non-Base payment or token rail is specified and implemented behind `SettlementChain`; Phase 6.9.2 closed only the Protocol/factory/read-only Base adapter shape.
+- **Pay-down commitment:** Complete for the gateway-provider depth claim. Mainnet custody, AR balance/broadcast depth, and external audit remain tracked under Macro Phase 6 Epic C and Phase 7 preflight rather than this Gateway Pattern gap.
 - **Verifier:** `xion-verify gateway-conformance --surface=settlement-chain`; existing `xion-verify supply`, `xion-verify liquidity-lock`, `xion-verify authorities`, and treasury verifiers cover the Base implementation.
 
 ### KW-REGISTRY-001 - Relay registry publishing is Arweave-only

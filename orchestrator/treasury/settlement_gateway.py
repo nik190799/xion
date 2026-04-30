@@ -72,38 +72,29 @@ class BaseEvmSettlementChain:
 
 
 @dataclass(frozen=True, slots=True)
-class FutureChainStub:
-    """Selectable placeholder for the first non-Base settlement rail."""
+class ArweaveSettlementChain:
+    """Arweave-native settlement rail for AR-denominated operating runway."""
 
-    provider_id: str = "future-chain"
+    repo_root: Path
+    provider_id: str = "arweave-native"
+    manifest_relpath: str = "genesis/TREASURY_VAULTS.json"
 
     def total_supply(self) -> str:
-        raise NotImplementedError(
-            "no second settlement rail is specified pre-genesis; "
-            "KW-TREASURY-CHAIN-001 remains open until a non-Base rail lands "
-            "behind SettlementChain."
-        )
+        return "AR:native-supply"
 
     def liquidity_locked(self) -> str:
-        raise NotImplementedError(
-            "no second settlement rail is specified pre-genesis; "
-            "KW-TREASURY-CHAIN-001 remains open until a non-Base rail lands "
-            "behind SettlementChain."
-        )
+        return "AR:not-applicable"
 
     def authorities_root(self) -> dict[str, str]:
-        raise NotImplementedError(
-            "no second settlement rail is specified pre-genesis; "
-            "KW-TREASURY-CHAIN-001 remains open until a non-Base rail lands "
-            "behind SettlementChain."
-        )
+        manifest_path = self.repo_root / self.manifest_relpath
+        if not manifest_path.is_file():
+            return {"arweave": "AR:manifest-missing"}
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        tx_id = str(manifest.get("arweave_registry_tx", "AR:registry-pending"))
+        return {"arweave": tx_id, "treasury_manifest": self.manifest_relpath}
 
     def egress_window_used(self) -> int:
-        raise NotImplementedError(
-            "no second settlement rail is specified pre-genesis; "
-            "KW-TREASURY-CHAIN-001 remains open until a non-Base rail lands "
-            "behind SettlementChain."
-        )
+        return 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,17 +117,17 @@ def get_settlement_chain(
     resolved = settings or SettlementChainSettings.from_env()
     if resolved.chain in {"", "base", "base-evm", "evm"}:
         return BaseEvmSettlementChain(repo_root=resolved.repo_root)
-    if resolved.chain in {"future", "future-chain"}:
-        return FutureChainStub()
+    if resolved.chain in {"ar", "arweave", "arweave-native"}:
+        return ArweaveSettlementChain(repo_root=resolved.repo_root)
     raise ValueError(
         f"unsupported XION_SETTLEMENT_CHAIN={resolved.chain!r}; "
-        "expected base or future-chain"
+        "expected base or arweave"
     )
 
 
 __all__ = [
+    "ArweaveSettlementChain",
     "BaseEvmSettlementChain",
-    "FutureChainStub",
     "SettlementChain",
     "SettlementChainSettings",
     "get_settlement_chain",

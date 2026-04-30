@@ -45,6 +45,13 @@ Everything else should be absorbed by automation. If the operator is regularly d
 3. **Verification:** Run `xion-verify skill-bounty` to confirm the payout was recorded and the firewall was respected.
 4. **Manual Fallback:** If the automated flow fails, the operator can manually authorize the transaction from the multisig, noting the proposal ID in the memo.
 
+### State-Actor Intake Runbook
+1. **Trigger:** Any regulator notice, subpoena, sanctions correspondence, mandatory-controller request, audit-firm disclosure, or other state-actor interaction.
+2. **Classify:** Use `docs/REGULATORY-POSTURE.md` Part IV and the operator workflow in [`runbooks/STATE_ACTOR_INTAKE.md`](./runbooks/STATE_ACTOR_INTAKE.md).
+3. **Append:** Write through `POST /governance/state-actor` or the local `orchestrator.governance.append_governance_row` fallback.
+4. **Verify:** Run `xion-verify regulatory-ledger`; for class `C`, also run `xion-verify regulatory-ledger --check-safety-link`.
+5. **Disclose:** Include the row hash or pending status in the next State-of-Xion memo.
+
 ## State-of-Xion authorship (constitutional chain)
 
 Each memo exists as **two public artifacts** when they differ:

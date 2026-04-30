@@ -7,8 +7,8 @@ import json
 import pytest
 
 from orchestrator.treasury import (
+    ArweaveSettlementChain,
     BaseEvmSettlementChain,
-    FutureChainStub,
     SettlementChain,
     SettlementChainSettings,
     get_settlement_chain,
@@ -47,13 +47,21 @@ def test_base_evm_settlement_chain_reads_manifest(tmp_path):
     assert chain.egress_window_used() == 0
 
 
-def test_future_chain_stub_does_not_fake_second_rail():
-    chain = get_settlement_chain(SettlementChainSettings(chain="future-chain"))
+def test_arweave_settlement_chain_is_real_second_rail(tmp_path):
+    (tmp_path / "genesis").mkdir()
+    (tmp_path / "genesis" / "TREASURY_VAULTS.json").write_text(
+        json.dumps({"arweave_registry_tx": "ar://treasury-registry"}),
+        encoding="utf-8",
+    )
 
-    assert isinstance(chain, FutureChainStub)
+    chain = get_settlement_chain(SettlementChainSettings(chain="arweave", repo_root=tmp_path))
+
+    assert isinstance(chain, ArweaveSettlementChain)
     assert isinstance(chain, SettlementChain)
-    with pytest.raises(NotImplementedError, match="KW-TREASURY-CHAIN-001"):
-        chain.total_supply()
+    assert chain.total_supply() == "AR:native-supply"
+    assert chain.liquidity_locked() == "AR:not-applicable"
+    assert chain.authorities_root()["arweave"] == "ar://treasury-registry"
+    assert chain.egress_window_used() == 0
 
 
 def test_settlement_factory_rejects_unknown_chain():

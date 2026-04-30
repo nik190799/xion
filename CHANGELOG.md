@@ -10,6 +10,14 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Macro Phase 6 wrap code slices — treasury depth + governance ledger intake — 2026-04-29
+
+- **Treasury custody/accounting depth:** `Vault` now performs real ERC-20/native withdrawals for known assets, exposes per-asset balances, and accepts native custody; `MasterTreasury` now tracks registered chains, exposes `aggregateTotals`, and emits AO-authorized replenish requests under the daily egress cap.
+- **AO-to-EVM bridge evidence:** the previous light-client placeholder is replaced by a deterministic AO-checkpoint bridge verifier, `bridge-attest --backend=lightclient` is live, and `docs/schemas/bridge-event-treasury-spend.yaml` pins the treasury-spend event shape.
+- **Gateway depth:** the vault gateway now has a local Shamir threshold provider, and the settlement-chain gateway now has an Arweave-native second rail instead of `FutureChainStub`; `KW-TREASURY-CHAIN-001` is closed for provider-depth.
+- **Governance ledger intake:** `orchestrator/governance/ledger.py`, `POST /governance/state-actor`, `docs/runbooks/STATE_ACTOR_INTAKE.md`, and `xion-verify regulatory-ledger --check-safety-link` are live.
+- **Preflight support:** `xion-verify discovery --no-cloudflare`, `docs/audits/treasury-2026-scope.md`, and `docs/STATE_OF_XION_PREFLIGHT.md` stage the remaining external Phase 7 evidence without fabricating deploys, audits, cosigns, or drill rows.
+
 ### Macro Phase 6 Epic D code-side closure — substrate-cutover rung + drill ledger schema — 2026-04-29
 
 - **Drill ledger schema pinned:** `docs/schemas/ledger-immortality-drill.yaml` now mirrors the rehearsal row shape and pins `docs/runbooks/IMMORTALITY_DRILL.md` via `source_sha256`.

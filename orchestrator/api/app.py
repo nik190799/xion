@@ -44,6 +44,7 @@ from orchestrator.volition import Volition
 from .admission import admission_dependency
 from .chat import register_chat_route
 from .chat_stream import register_chat_stream_route
+from .governance import router as governance_router
 from .lifespan import lifespan
 from .me import router as me_router
 from .memory import router as memory_router
@@ -285,6 +286,7 @@ def create_app(deps: AppDeps) -> FastAPI:
     app.include_router(presence_router)
     app.include_router(self_router)
     app.include_router(voice_router)
+    app.include_router(governance_router)
 
     # --- Phase 5g-v: optional web-client mount ---------------------
     # Registered last so /app/* cannot shadow any admission-gated API
