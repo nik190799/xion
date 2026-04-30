@@ -1245,7 +1245,7 @@ Single PR. Tier-2 (`roles.yaml` is constitutional-adjacent: it is the machine-re
 
 Phase 6 is sliced into six sub-phases:
 - **6.1 (Skeleton):** `commit-state` + `attest` deployed to AO testnet.
-- **6.2 (Substrate):** Akash migration + Cloudflare decommission.
+- **6.2 (Substrate):** Akash migration + Arweave registry/discovery posture **closed 2026-04-29** via Macro Phase 6 Epic B; see [CHANGELOG](CHANGELOG.md).
 - **6.3 (Provisioning):** Multi-host autonomous provisioning.
 - **6.4 (Treasury):** Multi-chain treasury vault deployment.
 - **6.5 (Attestor):** AO-Core attestor wiring to Base EVM.

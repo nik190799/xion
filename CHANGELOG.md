@@ -10,6 +10,12 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Macro Phase 6 Epic B closed — Relay on Akash primary + Chutes secondary — 2026-04-29
+
+- **Epic B posture reconciled:** Macro Phase 6 now names Akash as the Genesis primary Relay substrate and Chutes `pre-genesis-d3-10` as the secondary cord, matching `xion-verify discovery`, `ledgers/RELAY_REGISTRY.json`, and the published registry posture.
+- **Closure evidence:** Akash `dseq=26595076` carries the private `xion-ollama` Invariant-17 floor, Chutes image `pre-genesis-d3-10` returned `RESULT: all cords green`, Arweave tx `KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs` anchors registry payload hash `26c69c5f50bd9d8a...`, and drill rehearsal `073d54e2-6763-4242-a960-02154149ac57` passed with Akash simulated blackhole plus Chutes standby.
+- **Next critical path:** Macro Phase 6 Epic D becomes the lead engineering focus: full Immortality Drill, warm secondary substrate, and substrate-portability promotion or explicit accepted-residual handling before Phase 7 preflight.
+
 ### Phase 6.9.2 — Gateway Pattern implementation slices — 2026-04-29
 
 - **Gateway surfaces landed:** AO Core, Vault, Alerting, Observability, Relay Registry publishing, Settlement Chain reads, and Public Status publishing now expose Protocol/factory/provider boundaries instead of doctrine-only seams.

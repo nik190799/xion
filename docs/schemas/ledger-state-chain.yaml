@@ -2,7 +2,7 @@ schema_name: STATE_CHAIN_LEDGER
 schema_version: 1
 status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: 688f679a2d62e28e7e119657aa0fb84febfe2a22674e352ac3c5adc5f9e285cf
+source_sha256: 5829deabe95e3feae1ae708aa12df7373be5f49e7c68554cc96581650abbeb10
 description: Off-chain mirror of the AO Core state-chain tip. Append-only.
 fields:
   - name: correlation_id

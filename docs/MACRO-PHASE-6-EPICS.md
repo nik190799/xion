@@ -23,9 +23,10 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 - **Closure observables:** [`docs/34-CONTRIBUTION-PROTOCOL.md`](./34-CONTRIBUTION-PROTOCOL.md), [`docs/35-CONTRIBUTOR-HANDBOOK.md`](./35-CONTRIBUTOR-HANDBOOK.md), `xion-verify which-level`, `xion-verify identity-bindings`, `xion-verify mcp-export`, and `xion new proposal --touches` are live and documented.
 - **Boundary:** External assistants are tools, not actors. This gate creates no direct Core write path, no assistant cosign, and no live MCP write tools.
 
-## Epic B — Relay on Chutes + discovery
+## Epic B — Relay on Akash + discovery (Chutes secondary)
 
-- **Goal:** Chutes-primary Relay substrate, **Akash secondary** for Genesis redundancy, `xion-verify discovery` green against the current posture, registry on Arweave, Cloudflare out of the critical path per doctrine. `infra/akash/relay-deployment.yaml` is the canonical secondary SDL.
+- **Status:** Closed 2026-04-29. Akash `dseq=26595076` on provider `akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d` carries the private `xion-ollama` Invariant-17 floor; Chutes image `pre-genesis-d3-10` (`a5ab815c-9fb5-5cb9-bcbd-a51535f1abe9`) is the live secondary cord; Arweave tx `KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs` anchors registry payload hash `26c69c5f50bd9d8a...`; drill rehearsal `073d54e2-6763-4242-a960-02154149ac57` passed with primary `akash-simulated-blackhole` and secondary `chutes-d3-standby`.
+- **Goal:** Akash-primary Relay substrate (`infra/akash/relay-deployment.yaml` carrying the private `xion-ollama` Invariant-17 floor), Chutes secondary cord for Genesis redundancy, `xion-verify discovery` green against the published registry, registry on Arweave, Cloudflare out of the critical path per doctrine.
 - **Depends on:** Epic A's AO provisioning event surface plus Phase 6.6's cast cognition pool and Phase 6.6a's contribution/access tooling, so the deployed Relay serves the real agent substrate and the work can be safely reviewed by a broader contributor base.
 
 ## Epic C — Multi-chain treasury

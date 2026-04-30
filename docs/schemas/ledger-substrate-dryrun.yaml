@@ -1,7 +1,7 @@
 schema_id: ledger-substrate-dryrun
 schema_version: 1
 source_doctrine: docs/SUBSTRATE-RESILIENCE.md
-source_sha256: 77adf295a1e545fe710059230c6cb37f82d23fd43ec46e3f5c3488b85196745b
+source_sha256: 8df67eb7b2a474309ccbb4a80c61c08bd6ab76201e02e75e259ec5f9046698a1
 status: canonical
 row_type: substrate_dryrun_v1
 
