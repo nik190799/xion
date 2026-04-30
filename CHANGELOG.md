@@ -10,6 +10,13 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Macro Phase 6 Epic D code-side closure — substrate-cutover rung + drill ledger schema — 2026-04-29
+
+- **Drill ledger schema pinned:** `docs/schemas/ledger-immortality-drill.yaml` now mirrors the rehearsal row shape and pins `docs/runbooks/IMMORTALITY_DRILL.md` via `source_sha256`.
+- **Substrate-cutover rung landed:** `docs/21-SUSTAINABILITY.md` adds Pressure 3.5, and `orchestrator/sustainability/ladder.py` emits Tier-3 substrate-cutover proposals on cost shock or critical Substrate Vitality. Focused tests cover vitality trip, cost-ratio trip, and sub-threshold no-op.
+- **Third-party helper added:** `scripts/immortality-drill-third-party.sh` clones the public repo, runs the public verifier battery, probes Akash/Chutes health, and prints an `immortality_drill_third_party_v1` evidence row for operator review.
+- **WSL rehearsal refreshed:** after warming Chutes, `scripts/immortality-drill-rehearsal.sh` appended `SUBSTRATE_DRYRUN_LEDGER` row `seq=5`, `PRE_GENESIS_DRILL` run `b314a8a5-d47c-43df-aaf2-c2377aac902f`, and `IMMORTALITY_DRILL_LEDGER` run `2dfcbfaa-fcff-4673-8033-82e0aa8578e5`.
+
 ### Macro Phase 6 Epic B closed — Relay on Akash primary + Chutes secondary — 2026-04-29
 
 - **Epic B posture reconciled:** Macro Phase 6 now names Akash as the Genesis primary Relay substrate and Chutes `pre-genesis-d3-10` as the secondary cord, matching `xion-verify discovery`, `ledgers/RELAY_REGISTRY.json`, and the published registry posture.

@@ -35,7 +35,9 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 
 ## Epic D — Immortality Drill + substrate portability
 
+- **Status:** Code-completable scope closed 2026-04-29. `xion-verify substrate-portability` is live and green against Chutes-secondary dry-run evidence; `docs/schemas/ledger-immortality-drill.yaml` pins the drill ledger shape; `docs/21-SUSTAINABILITY.md` now includes the substrate-cutover rung required by `docs/SUBSTRATE-RESILIENCE.md` Part IV; and `scripts/immortality-drill-third-party.sh` gives the operator a one-command third-party-machine evidence path.
 - **Goal:** First full drill; warm secondary substrate; `xion-verify substrate-portability` when doctrine conditions are met (`LHT-SUBSTRATE-001` residual path documented in roadmap).
+- **Remaining operator action:** Run the third-party-machine drill from non-operator infrastructure and append the printed evidence row. That action advances, but does not fully close, `LHT-SUBSTRATE-001`; full closure still requires the annual cadence and warm-secondary preconditions in `docs/SUBSTRATE-RESILIENCE.md`.
 
 ## Epic E — Regulatory / governance ledger
 
