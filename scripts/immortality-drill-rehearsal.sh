@@ -48,6 +48,7 @@ export XION_SECONDARY_STATE_TIP="${XION_SECONDARY_STATE_TIP:-local-pre-genesis-t
 bash scripts/substrate-portability-dry-run.sh
 $PYTHON_BIN -m xion_verify substrate-portability
 bash scripts/end-to-end-drill.sh
+printf '{"source":"immortality-drill-rehearsal","status":"drill_checks_passed","details":{"secondary_substrate":"%s","deployment_evidence":"%s"}}' "$XION_SECONDARY_SUBSTRATE_ID" "$XION_DEPLOYMENT_EVIDENCE" | $PYTHON_BIN -m orchestrator.status
 
 $PYTHON_BIN - <<'PY'
 from __future__ import annotations

@@ -73,8 +73,9 @@ def _main() -> int:
         return 2
 
     sys.path.insert(0, str(root))
-    from orchestrator.registry.arweave_publisher import (  # noqa: E402
-        ArweaveRegistrySubmitter,
+    from orchestrator.registry.gateway import (  # noqa: E402
+        RelayRegistryPublisherSettings,
+        get_relay_registry_publisher,
     )
 
     jwk = os.environ.get("XION_REGISTRY_WALLET_JWK_PATH", "")
@@ -85,7 +86,9 @@ def _main() -> int:
         )
         return 3
     try:
-        submitter = ArweaveRegistrySubmitter()
+        publisher = get_relay_registry_publisher(
+            RelayRegistryPublisherSettings(backend="arweave")
+        )
     except Exception as exc:  # pragma: no cover - import/runtime
         print(f"publish-relay-registry: {exc}", file=sys.stderr)
         return 3
@@ -108,6 +111,7 @@ def _main() -> int:
             return 3
 
     raw = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    submitter = publisher._submitter  # noqa: SLF001 — script owns deploy-time diagnostics
     tx_id = submitter.submit(
         raw,
         {"App-Name": "xion-relay-registry", "Schema-Version": "1", "Xion-Primary-Substrate": "akash"},

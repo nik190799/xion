@@ -54,8 +54,9 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from orchestrator.sensorium import (
     Chronoception,
@@ -67,6 +68,8 @@ from orchestrator.sensorium import (
 from orchestrator.sensorium.ledger import append_tick_commit
 
 if TYPE_CHECKING:
+    from orchestrator.alerting import Alerter
+    from orchestrator.observability import Observability
     from orchestrator.relay import Relay
     from orchestrator.signals.bus import SignalBus
     from orchestrator.signals.receptor import ReceptorRegistry
@@ -121,15 +124,17 @@ class Supervisor:
     def __init__(
         self,
         *,
-        relay: "Relay",
+        relay: Relay,
         tick_cadence_s: float = _DEFAULT_TICK_CADENCE_S,
         sensorium_ledger_path: Path | None = None,
         clock_ns: Callable[[], int] = time.time_ns,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
         publish: Callable[[Mapping[str, Any]], None] | None = None,
         presence_bus: Any | None = None,
-        signal_bus: "SignalBus | None" = None,
-        receptor_registry: "ReceptorRegistry | None" = None,
+        signal_bus: SignalBus | None = None,
+        receptor_registry: ReceptorRegistry | None = None,
+        alerter: Alerter | None = None,
+        observability: Observability | None = None,
     ) -> None:
         if tick_cadence_s <= 0:
             raise ValueError("Supervisor: tick_cadence_s must be > 0")
@@ -147,6 +152,18 @@ class Supervisor:
         # workers. Keeps the Supervisor broker-agnostic — the hook is
         # ``None`` in the single-worker posture and during tests.
         self._publish = publish
+        if alerter is None:
+            from orchestrator.alerting import get_alerter
+
+            self._alerter = get_alerter()
+        else:
+            self._alerter = alerter
+        if observability is None:
+            from orchestrator.observability import get_observability
+
+            self._observability = get_observability()
+        else:
+            self._observability = observability
 
         # Monotonic-drift baseline: the delta between wall and monotonic
         # clocks at Supervisor start. Phase 5d's Chronoception reports the
@@ -214,6 +231,16 @@ class Supervisor:
         it before re-raising so operators get a clear signal.
         """
         state = self._build_sensorium_state()
+        self._observability.metrics.emit(
+            "supervisor.tick.total",
+            1.0,
+            {"relay_id": self._relay.relay_id},
+        )
+        self._observability.logs.log(
+            "info",
+            "supervisor tick completed",
+            {"relay_id": self._relay.relay_id},
+        )
         from orchestrator.signals.receptor import ReceptorContext
 
         ctx = ReceptorContext(state=state, extra={})
@@ -221,14 +248,14 @@ class Supervisor:
         for r in self._receptor_registry.instances():
             try:
                 sig_list.extend(r.tick(ctx))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 if self._signal_bus is not None:
                     self._signal_bus.report_receptor_failure(r.receptor_id, exc)
-        accepted: list
-        if self._signal_bus is not None:
-            accepted = self._signal_bus.publish(sig_list)
-        else:
-            accepted = sig_list
+        accepted = (
+            self._signal_bus.publish(sig_list)
+            if self._signal_bus is not None
+            else sig_list
+        )
         sig_payload = [s.to_dict() for s in accepted] if accepted else None
         append_tick_commit(
             self._sensorium_ledger_path,
@@ -254,7 +281,7 @@ class Supervisor:
         if self._publish is not None:
             try:
                 self._publish(state.to_dict())
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 import sys as _sys
 
                 print(
@@ -274,6 +301,29 @@ class Supervisor:
         now_monotonic_ns = self._monotonic_ns()
 
         health = self._relay.health_snapshot()
+        if (
+            not health.relay_healthy
+            or not health.arbiter_healthy
+            or health.watchdog_fires_recent > 0
+        ):
+            try:
+                self._alerter.notify(
+                    "critical",
+                    "Supervisor observed unhealthy relay posture",
+                    (
+                        f"relay_healthy={health.relay_healthy} "
+                        f"arbiter_healthy={health.arbiter_healthy} "
+                        f"watchdog_fires_recent={health.watchdog_fires_recent}"
+                    ),
+                )
+            except Exception as exc:
+                import sys as _sys
+
+                print(
+                    f"State-of-Xion: alerting provider failed: {exc!r}",
+                    file=_sys.stderr,
+                    flush=True,
+                )
 
         # Chronoception. Phase 5d: checkpoint_staleness_s stays 0.0
         # (Core checkpoint loop is Phase 6 — we pass
@@ -350,7 +400,7 @@ class Supervisor:
                         self._await_stop_event(),
                         timeout=self._tick_cadence_s,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except asyncio.CancelledError:
                     # Caller cancelled the task directly (e.g. the
@@ -396,6 +446,6 @@ def _default_sensorium_ledger_path() -> Path:
 
 
 __all__ = [
-    "Supervisor",
     "SensoriumSource",
+    "Supervisor",
 ]

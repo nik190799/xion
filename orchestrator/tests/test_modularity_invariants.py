@@ -172,6 +172,22 @@ def test_gateway_provider_modules_match_protocol_shape():
             "attrs": {"provider_id", "category"},
             "methods": {"health"},
         },
+        "orchestrator/vault/providers": {
+            "attrs": {"provider_id"},
+            "methods": {"unlock", "is_sealed", "posture"},
+        },
+        "orchestrator/alerting/providers": {
+            "attrs": {"provider_id"},
+            "methods": {"notify"},
+        },
+        "orchestrator/observability/providers": {
+            "attrs": {"provider_id"},
+            "methods": {"emit", "log", "span"},
+        },
+        "orchestrator/registry/providers": {
+            "attrs": {"provider_id"},
+            "methods": {"publish_local", "publish_remote"},
+        },
     }
 
     failures: list[str] = []

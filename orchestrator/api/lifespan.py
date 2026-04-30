@@ -69,12 +69,12 @@ from orchestrator.runtime import (
     default_worker_id,
     load_broker_from_env,
 )
+from orchestrator.sensorium.presence_bus import PresenceBus
 from orchestrator.signals.bus import SignalBus
 from orchestrator.signals.effector import EffectorRegistry
 from orchestrator.signals.receptor import ReceptorRegistry
 from orchestrator.signals.reflex import ReflexRegistry
 from orchestrator.supervisor import Supervisor
-from orchestrator.sensorium.presence_bus import PresenceBus
 
 from .admission import (
     build_rate_limiters,
@@ -122,6 +122,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.presence_bus = presence_bus
 
     # --- Phase 6.4.b: Nervous System (SignalBus + reflex + receptors) ---
+    from orchestrator.observability import get_observability
+
+    observability = get_observability()
+    app.state.observability = observability
+
     effector_registry = EffectorRegistry()
     reflex_registry = ReflexRegistry()
     reflex_registry.bind_effectors(effector_registry)
@@ -158,6 +163,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             presence_bus=presence_bus,
             signal_bus=signal_bus,
             receptor_registry=receptor_registry,
+            observability=observability,
         )
         # Doctrine pin: pre-seed the snapshot synchronously. After this
         # returns, ``supervisor.latest_snapshot()`` is non-None and the
@@ -184,6 +190,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             presence_bus=presence_bus,
             signal_bus=signal_bus,
             receptor_registry=receptor_registry,
+            observability=observability,
         )
         shell.initial_seed()
         supervisor = shell  # type: ignore[assignment]
@@ -204,6 +211,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         router = deps.router
     else:
         _load_dotenv_if_present()
+        from orchestrator.vault import get_vault
+
+        app.state.vault = get_vault()
         router = _build_router_from_env()
         _register_env_providers(router)
     _enforce_sovereign_profile()
@@ -353,9 +363,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.supervisor_task = supervisor_task
 
     # --- Phase 6.3: Interaction Anchoring Daemon ---
+    import os
+
     from orchestrator.anchor.daemon import AnchorDaemon
     from orchestrator.anchor.sink import LocalLedgerSink
-    import os
 
     anchor_ledger_path = Path(os.environ.get("XION_ANCHOR_DB_PATH", "ledgers/ANCHOR_LEDGER.jsonl"))
     request_ledger_path = Path(os.environ.get("XION_REQUEST_LEDGER", "REQUEST_LEDGER.jsonl"))
@@ -649,8 +660,8 @@ async def _poll_chutes_billing_forever() -> None:
     """Append Chutes balance telemetry rows while the API process is live."""
     from orchestrator.billing.credit_ledger import append_billing_row
     from orchestrator.billing.providers.chutes_billing import (
-        ChutesBillingProvider,
         ChutesBillingError,
+        ChutesBillingProvider,
     )
 
     interval_s = int(os.environ.get("XION_CHUTES_BILLING_POLL_S", "300"))
@@ -777,4 +788,4 @@ def _verify_agent_cast_pool(repo_root: Path) -> None:
         raise RuntimeError(f"Agent cast pool boot failed: {joined_notes}")
 
 
-__all__ = ["lifespan", "_ensure_agent_cast_pool_at_boot"]
+__all__ = ["_ensure_agent_cast_pool_at_boot", "lifespan"]

@@ -47,12 +47,12 @@ from .chat_stream import register_chat_stream_route
 from .lifespan import lifespan
 from .me import router as me_router
 from .memory import router as memory_router
-from .presence import router as presence_router
-from .self_endpoint import router as self_router
-from .voice import router as voice_router
 from .models import DriveResponse, HealthResponse, SensoriumResponse, VitalsResponse
+from .presence import router as presence_router
 from .pricing import register_pricing_route
+from .self_endpoint import router as self_router
 from .sustainability import register_sustainability_route
+from .voice import router as voice_router
 from .web_client import (
     WebClientConfig,
     load_web_client_config_from_env,
@@ -217,6 +217,13 @@ def create_app(deps: AppDeps) -> FastAPI:
     )
     def get_health() -> dict[str, Any]:
         health = deps.relay.health_snapshot()
+        observability = getattr(app.state, "observability", None)
+        if observability is not None:
+            observability.metrics.emit(
+                "relay.requests.total",
+                1.0,
+                {"route": "/health", "relay_id": deps.relay.relay_id},
+            )
         return {
             "relay_healthy": health.relay_healthy,
             "arbiter_healthy": health.arbiter_healthy,
