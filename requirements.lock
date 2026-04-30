@@ -1,0 +1,12 @@
+# Xion pre-Genesis runtime lock witness.
+#
+# This lockfile is intentionally narrow until the repo adopts a full Python
+# resolver lock. It pins the vendored Hermes runtime adapter artifact that
+# bridges Xion's cast pipeline to the upstream Hermes Agent commit recorded in
+# genesis/HERMES_TOOL_ALLOWLIST.yaml and genesis/GENESIS_ARTIFACT.md.
+
+xion-hermes-runtime==0.1.0
+    artifact_path=xion_hermes_runtime/__init__.py
+    artifact_sha256=2bead585af4539c424a40830fa9c11b5896eec66950e26d39e53567efdca8237
+    hermes_agent_commit=4a0358d2e741eb049a6ffb9b8e610db946a4fec5
+    source=vendored-adapter

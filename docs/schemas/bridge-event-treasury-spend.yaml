@@ -1,7 +1,7 @@
 schema_id: bridge-event-treasury-spend
 schema_version: 1
 source_doctrine: docs/28-AO-CORE.md
-source_sha256: 29b8d8f3aebed5f98b4e73920b1d8a7cbda1d8a903ed43b420f802e1d4089991
+source_sha256: c21910eca1b192d14ff2f24dd84b4c8758ac5b5da7b6566736eac11241684145
 status: canonical
 event_name: Treasury-Bridge-Event
 source_chain: ao

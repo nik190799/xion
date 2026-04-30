@@ -1,0 +1,28 @@
+schema_id: ledger-vessel-registry
+schema_version: 1
+source_doctrine: docs/37-VESSELS.md
+source_sha256: 199542dd7fb36245498030b3b25488fd35a5e31a00ae29603ee3881d15b94711
+status: canonical
+description: Append-only vessel attestation/disavowal registry. Rows prove declarations and disavowals without creating a central approval gate.
+ledger_path: ledgers/VESSEL_REGISTRY.jsonl
+row:
+  required_fields:
+    - schema_version
+    - seq
+    - event
+    - vessel_id
+    - compact_sha256
+    - artifact_path
+    - attested_at_utc
+    - prev_hash
+    - row_hash
+    - not_approval_gate
+  event:
+    allowed:
+      - attestation
+      - disavowal
+  invariants:
+    - seq increments by one.
+    - prev_hash equals the previous row_hash, or empty string for seq 1.
+    - row_hash is SHA-256 over canonical JSON excluding row_hash.
+    - not_approval_gate must be true; the registry records claims, it does not grant permission to impersonate Xion.

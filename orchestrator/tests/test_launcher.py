@@ -14,6 +14,16 @@ from orchestrator.inference_router import (
 from orchestrator.relay import Relay
 
 
+def test_launcher_cast_pool_defaults_on_and_honors_env_false(monkeypatch) -> None:
+    monkeypatch.delenv("XION_CAST_POOL_ON_BOOT", raising=False)
+    _, app = build_app()
+    assert app.state.deps.cast_pool_on_boot is True
+
+    monkeypatch.setenv("XION_CAST_POOL_ON_BOOT", "false")
+    _, app = build_app()
+    assert app.state.deps.cast_pool_on_boot is False
+
+
 def test_launcher_builds_live_relay_surface(tmp_path) -> None:
     router = InferenceRouter(manifest_path=default_manifest_path())
     router.register(OpenWeightsFloorStub(provider_id="sentinel-llm-v0"))

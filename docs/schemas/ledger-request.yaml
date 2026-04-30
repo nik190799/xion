@@ -40,7 +40,7 @@
 schema_version: 2
 
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: 5829deabe95e3feae1ae708aa12df7373be5f49e7c68554cc96581650abbeb10
+source_sha256: a61356ca6d430ac62c30d475db2d30df86846bb9411172e3923101ff1b69b8a9
 
 status: canonical
 
@@ -94,8 +94,8 @@ row:
     - unknown_provider_error
   conditional_fields: {}
   optional_fields:
-    - user_proof_commit      # hex64 | null; passthrough-only in Phase 6.3
-    - user_proof_algorithm   # string | null; passthrough-only in Phase 6.3
+    - user_proof_commit      # hex64 | null; verified Ed25519 proof commit when user_proof is present
+    - user_proof_algorithm   # string | null; e.g. ed25519
 
 # Canonicalization rule for hashing (must match implementation exactly).
 hash:

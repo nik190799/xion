@@ -470,8 +470,8 @@ The Relay maintains its OWN append-only hash-chained file at `<repo_root>/REQUES
 | `final_outcome` | enum | always | One of `ok`, `refuse`, `escalate`. The verdict the user-facing flow ended on. For `gate_call_count > 1` (future) this is `strength_max` of all gate calls in the turn — the Relay only emits a candidate iff every gate call returned OK. |
 | `gate_latency_ms_total` | uint | always | Sum of wall-clock durations across all `gate()` calls in this turn (in 5a: just one). Bounded by the contract's 250ms hard cap per call; for Phase 5a, max value is ≤ 250 × `gate_call_count`. |
 | `relay_id` | string | always | Opaque short identifier of the Relay process/replica. Phase 5a Genesis Default: `"relay-local-d2"`. Bound at process start from `$XION_RELAY_ID` if set, else a deterministic-per-host string. NOT a public key (yet); the public-key-bound `relay_id` is Phase 6, when the Relay registry is published. |
-| `user_proof_commit` | hex64 \| null | optional (v2) | Passthrough-only hash of the client-side interaction signature. Added in Phase 6.3; client-side mechanism lands in 6.3.b. Algorithm-agnostic. |
-| `user_proof_algorithm` | enum \| null | optional (v2) | The algorithm used for the client signature (e.g., `ed25519`). Passthrough-only in Phase 6.3. |
+| `user_proof_commit` | hex64 \| null | optional (v2) | Verified hash of `user_pubkey_b64|message` when the client supplies an Ed25519 `user_proof`; null when no proof is present. Algorithm-agnostic field, currently `ed25519`. |
+| `user_proof_algorithm` | enum \| null | optional (v2) | The algorithm used for the client signature (currently `ed25519`), or null when no proof is present. |
 
 There are no conditional fields at v1. Every field listed above is required; a row missing any is a chain violation.
 
@@ -1127,8 +1127,8 @@ class ProviderPricingRef(BaseModel): ...
 - `authorization_reference` — the B1 operator-attestation payload hash or the B2 x402 commitment hash; empty string in `disabled` posture.
 - `source_sha256` — anchor hash of `docs/04-ARCHITECTURE.md` at row-write time; lets future verifiers confirm the row was written under a known-good doctrine version.
 - `stream_id` — optional hex32; present iff row originated on `POST /chat/stream` (Phase 5g-ii). Groups chunks.
-- `user_proof_commit` — optional hex64 | null; passthrough-only hash of the client-side interaction signature. Added in Phase 6.3; client-side mechanism lands in 6.3.b. Algorithm-agnostic.
-- `user_proof_algorithm` — optional enum | null; the algorithm used for the client signature (e.g., `ed25519`). Passthrough-only in Phase 6.3.
+- `user_proof_commit` — optional hex64 | null; verified hash of `user_pubkey_b64|message` when the client supplies an Ed25519 `user_proof`; null when no proof is present.
+- `user_proof_algorithm` — optional enum | null; the algorithm used for the client signature (currently `ed25519`), or null when no proof is present.
 
 The row is computed after the terminal state is known, appended atomically before the HTTP response is sent, and its `this_hash` is included in the next row's `prev_hash` on the subsequent turn. A process crash between row-write and response-send leaves the row but no response, which is auditable (the operator reconciles by side-channel). A crash between response-prep and row-write returns `503` without a row, which is also auditable (no commitment recorded, no money changed hands, Refusal-is-Free vacuously satisfied).
 

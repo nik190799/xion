@@ -157,7 +157,7 @@ Companion CI gate: `.github/workflows/level-discipline.yml` runs the same logic 
 
 ### Cognitive Substrate commands (Phase 6.6)
 
-`xion-verify hermes-runtime` verifies `genesis/HERMES_TOOL_ALLOWLIST.yaml`, confirms `default_deny: true`, asserts Hermes self-improvement / autonomous skill creation / MCP auto-discovery / user-model export are disabled, and cross-checks the Hermes commit and allowlist hash in `genesis/GENESIS_ARTIFACT.md`. It reports the installable Hermes dependency pin as `NOT_YET_SEALED` until the runtime is a lockfile dependency.
+`xion-verify hermes-runtime` verifies `genesis/HERMES_TOOL_ALLOWLIST.yaml`, confirms `default_deny: true`, asserts Hermes self-improvement / autonomous skill creation / MCP auto-discovery / user-model export are disabled, and cross-checks the Hermes commit, allowlist hash, and vendored adapter lock witness.
 
 `xion-verify agent-souls` verifies every `genesis/AGENT_SOULS/*.yaml` file against the current `genesis/SOUL.md` hash and the Hermes tool allowlist. It rejects any `agent_id: arbiter`.
 

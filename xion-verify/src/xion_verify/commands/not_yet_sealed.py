@@ -54,10 +54,6 @@ _UNSEALED = (
              "Verify signed vessel media bundles against Relay keys, Core lineage, Covenant hash, Voice/Form hashes, and edit history.",
              "No signed podcast, livestream, audio/video, or AR bundle exists yet; verifier promotes when the first reference bundle lands.",
              "Phase 6.7"),
-    StubSpec("vessel-registry",
-             "Verify append-only vessel attestations and disavowals without becoming an approval gate.",
-             "No vessel attestation/disavowal registry exists yet; verifier promotes with the first registry artifact.",
-             "Phase 6.7"),
 )
 
 

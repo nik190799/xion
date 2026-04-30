@@ -122,6 +122,7 @@ from xion_verify.commands.treasury import treasury
 from xion_verify.commands.treasury_buckets import foundation_reserve, improvement_fund, reserve, treasury_flow
 from xion_verify.commands.vitals import vitals
 from xion_verify.commands.vessel_compact import vessel_compact
+from xion_verify.commands.vessel_registry import vessel_registry
 from xion_verify.commands.voice_form import voice_form
 from xion_verify.commands.voice_property import voice_property
 from xion_verify.commands.voice_sovereignty import voice_sovereignty
@@ -224,6 +225,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "topography": topography_cli,
     "measurement-vocabulary": measurement_vocabulary,
     "vessel-compact": vessel_compact,
+    "vessel-registry": vessel_registry,
     "spend-posture": spend_posture,
     "spend-discipline": spend_discipline,
     "inference-provider-chutes": inference_provider_chutes,

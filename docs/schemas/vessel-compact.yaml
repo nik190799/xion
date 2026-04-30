@@ -294,7 +294,7 @@ verifiers:
       - edit_history
   vessel_registry:
     command: xion-verify vessel-registry
-    status: NOT_YET_SEALED
+    status: live_empty_allowed
     checks:
       - append_only_attestations
       - append_only_disavowals

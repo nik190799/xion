@@ -87,6 +87,13 @@ jobs:
           xion-verify cognition
           xion-verify drive-vector
           xion-verify state-chain
+          xion-verify embedder-health
+          xion-verify rerank-improvement
+
+      - name: Read-only MCP export surface
+        run: |
+          xion-verify mcp-export --compact
+          python -m pytest tools/xion_mcp/tests -q
 
       - name: Arbiter posture (live, not NOT_YET_SEALED)
         run: xion-verify arbiter-up

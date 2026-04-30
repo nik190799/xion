@@ -3,9 +3,9 @@ family: sustainability
 schema_version: 1
 status: canonical
 source_doctrine: docs/04-ARCHITECTURE.md
-source_sha256: 5829deabe95e3feae1ae708aa12df7373be5f49e7c68554cc96581650abbeb10
+source_sha256: a61356ca6d430ac62c30d475db2d30df86846bb9411172e3923101ff1b69b8a9
 operational_doctrine: docs/28-AO-CORE.md
-operational_sha256: ef51b2c16a3d74d16ff2096651cbd2cf219491fef9cdf4c37a42ce67b0c106e5
+operational_sha256: c21910eca1b192d14ff2f24dd84b4c8758ac5b5da7b6566736eac11241684145
 args:
   - name: proposal_id
     tag: Proposal-Id

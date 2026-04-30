@@ -1,0 +1,10 @@
+{
+  "as_of_utc_ns": 1777527903176879400,
+  "details": {
+    "deployment_evidence": "chutes://89866bfc-5ddd-5382-b887-116d8901808f/98f0cdf3-e8a0-461d-8a75-a4d3240e0389",
+    "secondary_substrate": "chutes-d3-standby"
+  },
+  "schema_version": 1,
+  "source": "immortality-drill-rehearsal",
+  "status": "drill_checks_passed"
+}

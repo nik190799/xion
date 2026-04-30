@@ -64,7 +64,9 @@ def _seed_agent_soul_repo(tmp_path: Path, *, agent_id: str = "research-agent") -
         (tmp_path / "genesis" / "AGENT_SOULS" / "_SCHEMA.md").read_bytes() + soul.read_bytes()
     ).hexdigest()
     (tmp_path / "genesis" / "AGENT_SOULS" / "MANIFEST.txt").write_text(
-        f"manifest_payload_sha256: {payload_hash}\n",
+        f"manifest_payload_sha256: {payload_hash}\n"
+        f"genesis/AGENT_SOULS/_SCHEMA.md sha256: {_sha(tmp_path / 'genesis' / 'AGENT_SOULS' / '_SCHEMA.md')}\n"
+        f"genesis/AGENT_SOULS/{agent_id}.yaml sha256: {_sha(soul)}\n",
         encoding="utf-8",
     )
 
@@ -77,6 +79,24 @@ def test_agent_souls_verifies_parent_hash_and_allowlist(tmp_path: Path, monkeypa
 
     assert result.exit_code == OK, result.output
     assert "1 Agent Soul" in result.output
+
+
+def test_agent_souls_rejects_stale_manifest_file_hash(tmp_path: Path, monkeypatch) -> None:
+    _seed_agent_soul_repo(tmp_path)
+    manifest = tmp_path / "genesis" / "AGENT_SOULS" / "MANIFEST.txt"
+    manifest.write_text(
+        manifest.read_text(encoding="utf-8").replace(
+            "genesis/AGENT_SOULS/research-agent.yaml sha256: ",
+            "genesis/AGENT_SOULS/research-agent.yaml sha256: " + ("0" * 64) + "\n# ",
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(root, ["agent-souls"])
+
+    assert result.exit_code == FAIL
+    assert "sha256 mismatch for genesis/AGENT_SOULS/research-agent.yaml" in result.output
 
 
 def test_agent_souls_rejects_arbiter_soul(tmp_path: Path, monkeypatch) -> None:

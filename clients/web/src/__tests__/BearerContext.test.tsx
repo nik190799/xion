@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { render, screen, act, waitFor } from "@testing-library/react";
 
 import {
   BearerProvider,
@@ -7,6 +7,31 @@ import {
   useBearer,
   type BearerCredential,
 } from "../auth/BearerContext";
+
+type BroadcastHandler = ((event: { data: unknown }) => void) | null;
+
+class MockBroadcastChannel {
+  static instances: MockBroadcastChannel[] = [];
+  onmessage: BroadcastHandler = null;
+
+  constructor(public readonly name: string) {
+    MockBroadcastChannel.instances.push(this);
+  }
+
+  postMessage(data: unknown) {
+    for (const instance of MockBroadcastChannel.instances) {
+      if (instance !== this && instance.name === this.name) {
+        instance.onmessage?.({ data });
+      }
+    }
+  }
+
+  close() {
+    MockBroadcastChannel.instances = MockBroadcastChannel.instances.filter(
+      (instance) => instance !== this,
+    );
+  }
+}
 
 function Probe() {
   const { credential, isSignedIn, signIn, signOut } = useBearer();
@@ -46,6 +71,8 @@ function Probe() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  MockBroadcastChannel.instances = [];
+  vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
 });
 
 describe("BearerContext", () => {
@@ -131,6 +158,28 @@ describe("BearerContext", () => {
       screen.getByTestId("sign-out").click();
     });
     expect(screen.getByTestId("state").textContent).toBe("signed-out");
+    expect(window.localStorage.getItem("xion:bearer")).toBeNull();
+  });
+
+  it("drops credential when another tab broadcasts key forget", async () => {
+    render(
+      <BearerProvider>
+        <Probe />
+      </BearerProvider>,
+    );
+    act(() => {
+      screen.getByTestId("sign-in-good").click();
+    });
+    expect(screen.getByTestId("state").textContent).toBe("signed-in:operator");
+
+    const otherTab = new MockBroadcastChannel("xion:keys");
+    act(() => {
+      otherTab.postMessage({ type: "forgotten" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state").textContent).toBe("signed-out");
+    });
     expect(window.localStorage.getItem("xion:bearer")).toBeNull();
   });
 });

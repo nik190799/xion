@@ -17,14 +17,16 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml requirements.lock README.md ./
 COPY orchestrator ./orchestrator
-COPY genesis/SOUL_PROMPT.md ./genesis/SOUL_PROMPT.md
+COPY xion_hermes_runtime ./xion_hermes_runtime
+COPY genesis ./genesis
+COPY xion-verify ./xion-verify
 COPY docker/entrypoint-xion-orchestrator-api.sh /usr/local/bin/entrypoint-xion-orchestrator-api.sh
 
 RUN chmod +x /usr/local/bin/entrypoint-xion-orchestrator-api.sh \
     && python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir ".[api]"
+    && python -m pip install --no-cache-dir ".[api]" ./xion-verify
 
 RUN mkdir -p /app/data
 

@@ -71,7 +71,9 @@ def _seed_cast_repo(tmp_path: Path, *, write_row: bool) -> None:
     )
     manifest_hash = hashlib.sha256(schema.read_bytes() + soul.read_bytes()).hexdigest()
     (tmp_path / "genesis" / "AGENT_SOULS" / "MANIFEST.txt").write_text(
-        f"manifest_payload_sha256: {manifest_hash}\n",
+        f"manifest_payload_sha256: {manifest_hash}\n"
+        f"genesis/AGENT_SOULS/_SCHEMA.md sha256: {_sha(schema)}\n"
+        f"genesis/AGENT_SOULS/research-agent.yaml sha256: {_sha(soul)}\n",
         encoding="utf-8",
     )
     ledger = tmp_path / "ledgers" / "AGENT_CAST_LEDGER.jsonl"

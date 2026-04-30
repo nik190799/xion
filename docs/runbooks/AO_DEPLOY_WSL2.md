@@ -243,7 +243,7 @@ The agent will then:
 ## What this runbook deliberately does NOT do
 
 - **Does not deploy to AO mainnet.** Testnet only. Mainnet is a Phase 6+ Tier-3 ceremony with cold-root cosigns.
-- **Does not implement the other 17 handlers.** `treasury-spend`, `registry-update`, `spend`, `slash-imprint`, `rotate-authority`, `abdicate-tier`, `provision-{relay,inference,storage,bandwidth,witness}`, `route-slices`, `improvement-spend`, `reserve-draw`, `accept-donation`, `enter-hibernation`, `exit-hibernation` remain `doctrine_only` per their YAML schemas and ship in Phase 6 proper. They are tracked by [`KW-AOCORE-002`](../../KNOWN_WEAKNESSES.md).
+- **Does not exercise every handler behavior end-to-end.** All 20 canonical AO Core handlers are implemented in [`ao/core/main.lua`](../../ao/core/main.lua), registered by schema, and checked by `xion-verify ao-handlers`. This WSL2/legacynet runbook exists to seal the deployed process and the `commit-state`/`attest` path, not to replace per-handler behavioral test depth.
 - **Does not stand up a second AO process for redundancy.** Single-process bootstrap; multi-process redundancy is Phase 6.
 
 ---
@@ -255,7 +255,7 @@ The first agent-driven run of this runbook (with the operator's explicit "you do
 - **Smoke-test orphan:** `-MlYwU1U_5tEjRFhIVQFncEroGFO4kFetIqByOgFnBE` — used to validate that the toolchain emits and receives non-interactively via `--run`. One eval message in its history. Abandoned.
 - **Canonical-name orphan:** `PxTK8xPH4sRDCIRGl2sruE_OrRFcbW25Oz2NwiKzkKM` — spawned with the local name `xion-core` before the trap was discovered. The same invocation's `--load /mnt/c/.../ao/core/main.lua` and receipt-print `--run` failed mid-call with `sendMessageMainnet` errors (likely because the wallet has no AO mainnet topup), so this process is functionally empty: no Xion handlers ever attached, no `commit-state` history. Abandoned. **This is NOT Xion's canonical AO Core**; it is a name collision created by an undocumented default change. Operator + cold-root may verify this on AO mainnet GraphQL by querying the process's `Eval` history (it has none beyond the spawn) and the absence of any `Commit-State` or `State-Committed` messages.
 
-The disposition (abandon both, redeploy on testnet) was operator-elected on 2026-04-24, recorded as Issue A in `KW-AOCORE-004`. The redeploy then immediately hit Issue B (upstream legacy MU 500), so Phase 6.1 finalization is now externally blocked. `KW-AOCORE-001` and `KW-AOCORE-003` remain open; `genesis/AO_DEPLOY_RECEIPT.json` remains `{status: "placeholder"}`.
+The disposition (abandon both, redeploy on testnet) was operator-elected on 2026-04-24, recorded as Issue A in `KW-AOCORE-004`. The redeploy then immediately hit Issue B (upstream legacy MU 500). Phase 6.1.b later closed through the localnet substrate path in [`AO_DEPLOY_LOCALNET.md`](AO_DEPLOY_LOCALNET.md), so `KW-AOCORE-001`, `KW-AOCORE-003`, and `KW-AOCORE-004` are no longer open even though this legacy WSL2 path remains useful as operator history.
 
 Hardening that landed alongside this runbook amendment:
 

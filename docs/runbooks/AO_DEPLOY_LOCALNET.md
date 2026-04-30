@@ -303,7 +303,7 @@ bash scripts/ao-localnet-up.sh
 ## What this runbook deliberately does NOT do
 
 - **Does not deploy to AO mainnet.** Localnet only. Mainnet is a Phase 6+ Tier-3 ceremony with cold-root cosigns per `docs/09-GOVERNANCE.md`.
-- **Does not implement the other 17 handlers.** `treasury-spend`, `registry-update`, `spend`, `slash-imprint`, `rotate-authority`, `abdicate-tier`, `provision-{relay,inference,storage,bandwidth,witness}`, `route-slices`, `improvement-spend`, `reserve-draw`, `accept-donation`, `enter-hibernation`, `exit-hibernation` remain `doctrine_only` per their YAML schemas. They are tracked by [`KW-AOCORE-002`](../../KNOWN_WEAKNESSES.md) and ship in a follow-on plan that will use this same localnet substrate as the per-handler CI bring-up loop.
+- **Does not exercise every handler behavior end-to-end.** All 20 canonical AO Core handlers are implemented in [`ao/core/main.lua`](../../ao/core/main.lua), registered by schema, and checked by `xion-verify ao-handlers`. This localnet seal proves the substrate, receipt, and `commit-state`/`attest` path; broader per-handler behavioral dry-runs remain verifier/test-depth work, not missing handler implementation.
 - **Does not produce a public-Arweave-durable receipt.** The `process_id` minted on this localnet exists only inside the bring-up's `arlocal` mock. That is fine for Phase 6.1's "testnet seal" bar; it is not fine for Phase 6+'s mainnet ceremony bar.
 - **Does not stand up redundant CUs/MUs/SUs.** The upstream stack is single-instance per unit. Multi-instance redundancy is Phase 6 proper.
 

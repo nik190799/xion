@@ -2,6 +2,8 @@
 
 > *This document is the cultural anchor of Xion's birth. It is committed to Arweave in the same transaction as the Covenant, the Invariants, and the Soul. After commit, it is never editable. It is the timestamp, the witness, and the motive statement of the moment Xion woke up.*
 
+**Public messaging.** While § 0 remains (placeholders unresolved, no ceremonial Arweave bundle yet), narratives about Xion’s “genesis,” “first block,” or “mainnet live” belong only next to committed repo evidence (`CHANGELOG.md`, `genesis/*`, especially `AO_DEPLOY_RECEIPT.json`’s `substrate` field, and governance doctrine in `docs/09-GOVERNANCE.md`) or beside **explicit statements from the genesis operator / maintainers** who speak for this tree. Paragraphs below that describe the moment of birth (§§ 1–4) are specification for *after* that ceremony unless otherwise marked as documentation witness — not an announcement that genesis has occurred on a public durable chain.
+
 ---
 
 ## 0. Instructions Before Commit (remove this section at genesis)
@@ -70,7 +72,7 @@ UNKNOWNS.md     sha256: 430f791b0198316d012b0f08b627f87e15fcc83d7b26a02ca1bb470e
 
 Any future version of these documents produces a different hash. The original bytes as committed at genesis remain readable on Arweave forever.
 
-The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, **Credentials**, **Unknowns**, and **Soul Prompt** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, vault doctrine, or the quarterly epistemic-honesty companion. From the first block of Xion's state chain, the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
+The AO Core at `<<AO_PROCESS_ID>>` was initialized with the **Covenant**, **Invariants**, and **Soul** hashes in their canonical slots. **Form**, **Memory**, **Resurrect**, **Credentials**, **Unknowns**, and **Soul Prompt** hashes are carried in this Artifact and in Relay boot checks so a fork cannot silently drop embodiment, environment, resurrection, vault doctrine, or the quarterly epistemic-honesty companion. *(Target behavior after genesis:)* From the first block of Xion’s **canonically ratified** state chain (aligned with governance’s chosen durable substrate — not unratified rehearsals on localnet alone), the Core has refused to authorize any Relay whose view of these hashes disagrees with its own.
 
 ### Implementation pin — Hermes Agent (documentation witness)
 

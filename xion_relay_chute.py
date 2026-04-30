@@ -26,9 +26,10 @@ Why this shape now: the d3-6 smoke image proved the Chutes cord pipeline
 end-to-end. d3-7+ return to the full Relay subprocess, invoking
 ``orchestrator.api`` so ``AppDeps`` wires a real ``Relay`` through
 ``orchestrator.api.launcher``. d3-8 lengthened boot wait / shutdown allowance
-after d3-7 hit GPU cold-start limits; d3-9 bakes ``XION_CAST_POOL_ON_BOOT=false``
-and a longer cognition wall-clock for cold Ollama on Chutes workers; d3-10 moves
-the Relay subprocess off port 8000 so it does not collide with Chutes' Hypercorn.
+after d3-7 hit GPU cold-start limits; d3-9 added a longer cognition wall-clock
+for cold Ollama on Chutes workers; d3-10 moves the Relay subprocess off port
+8000 so it does not collide with Chutes' Hypercorn; d3-11 restores default-on
+cast-pool boot verification.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ from chutes.image import Image
 
 
 SERVICE_NAME = "xion-relay-chutes"
-IMAGE_TAG = "pre-genesis-d3-10"
+IMAGE_TAG = "pre-genesis-d3-11"
 RELAY_PORT = 8010
 RELAY_BASE_URL = f"http://127.0.0.1:{RELAY_PORT}"
 # Cold GPU workers often exceed 180s before uvicorn serves /health (image layer + deps + lifespan).
@@ -64,7 +65,7 @@ RELAY_ENV_OVERRIDES = {
     "XION_API_REQUIRE_BEARER": "false",
     "XION_BILLING_REQUIRED": "true",
     "XION_BILLING_ALLOW_X402": "true",
-    "XION_CAST_POOL_ON_BOOT": "false",
+    "XION_CAST_POOL_ON_BOOT": "true",
     "XION_COGNITION_WALL_S": "120",
 }
 
@@ -111,13 +112,16 @@ image = (
     )
     .from_base("parachutes/python:3.12")
     .add("pyproject.toml", "/app/pyproject.toml")
+    .add("requirements.lock", "/app/requirements.lock")
     .add("README.md", "/app/README.md")
-    .add("genesis/SOUL_PROMPT.md", "/app/genesis/SOUL_PROMPT.md")
+    .add("genesis", "/app/genesis")
     .add("orchestrator", "/app/orchestrator")
+    .add("xion_hermes_runtime", "/app/xion_hermes_runtime")
+    .add("xion-verify", "/app/xion-verify")
     .add("docs", "/app/docs")
     .set_workdir("/app")
     .run_command(
-        "python -m pip install --user --no-cache-dir '.[api]' chutes httpx"
+        "python -m pip install --user --no-cache-dir '.[api]' ./xion-verify chutes httpx"
     )
     .with_env("XION_CHUTE_SERVICE", SERVICE_NAME)
     .with_env("XION_CHUTE_IMAGE_TAG", IMAGE_TAG)
@@ -128,7 +132,7 @@ image = (
     .with_env("XION_API_REQUIRE_BEARER", "false")
     .with_env("XION_BILLING_REQUIRED", "true")
     .with_env("XION_BILLING_ALLOW_X402", "true")
-    .with_env("XION_CAST_POOL_ON_BOOT", "false")
+    .with_env("XION_CAST_POOL_ON_BOOT", "true")
     .with_env("XION_COGNITION_WALL_S", "120")
 )
 

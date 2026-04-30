@@ -65,6 +65,11 @@ classifiers = [
 # docs/04-ARCHITECTURE.md § "The Arbiter" with the Covenant rationale.
 dependencies = []
 
+# Hermes Agent is pinned through a tiny vendored adapter package plus
+# `requirements.lock` until upstream exposes a stable installable package
+# boundary. `xion-verify hermes-runtime` checks this package's lock witness
+# against `genesis/HERMES_TOOL_ALLOWLIST.yaml`.
+
 [project.optional-dependencies]
 # The Arweave anchor loop (Phase 4b). Kept isolated from core so that:
 #   - The Arbiter hot path never depends on a network client.
@@ -148,19 +153,25 @@ xion-arbiter = "orchestrator.safety.__main__:main"
 # real AppDeps, and runs uvicorn with --workers 1 enforced and TLS
 # fail-closed for non-loopback binds. See docs/30-API-ADMISSION.md.
 xion-orchestrator-api = "orchestrator.api.__main__:main"
+# Read-only stdio MCP wrapper for contributor assistants. Requires the
+# separately installed `xion-verify` package because it wraps verifier facts.
+xion-mcp = "tools.xion_mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/xion-os"
 Source = "https://github.com/xion-os/xion-os"
 
 [tool.hatch.build.targets.wheel]
-packages = ["orchestrator"]
+packages = ["orchestrator", "tools", "xion_hermes_runtime"]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "orchestrator",
+    "tools",
+    "xion_hermes_runtime",
     "README.md",
     "pyproject.toml",
+    "requirements.lock",
 ]
 exclude = [
     "orchestrator/tests",

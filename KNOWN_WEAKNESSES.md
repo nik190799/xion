@@ -21,6 +21,17 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-DISCOVERY-LEAK-001 - Relay discovery endpoints reveal substrate/provider identity
+- **Domain:** SUBSTRATE
+- **Discovered:** 2026-04-30 (post-registry leak review)
+- **Severity:** medium
+- **Status:** open
+- **Description:** The public Relay registry currently publishes provider-native endpoints (`https://provider.pronto-ai.pp.ua:31503` for Akash and `https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai` for Chutes). These URLs make the current compute substrate and, in the Chutes case, the operator-linked account slug visible to anyone reading the registry or Arweave anchor.
+- **Why it exists:** Discovery must be public for third-party verifiability, and the first live registry used the forwarded/provider-issued URLs returned by Akash and Chutes so `xion-verify discovery` could prove the Relay was reachable without a separate naming layer.
+- **Mitigations:** The URL is a locator, not the Relay identity; the registry binds each row to an Ed25519 public key. Content-bearing endpoints remain gated by admission controls, and the registry already carries two substrate-diverse rows (Akash primary, Chutes secondary) rather than one single provider URL.
+- **Pay-down commitment:** Replace provider-native published endpoints with Xion-controlled endpoint names or another relay endpoint resolver layer that can rotate upstream leases without exposing operator/provider-specific hostnames. Keep at least three substrate-diverse Relay rows so coercion or suspension of any one named provider is survivable.
+- **Verifier:** `xion-verify discovery` covers current reachability and key binding; closure should add a registry/naming-layer check that rejects provider-native or operator-account-derived public endpoints unless explicitly waived for a deployment drill.
+
 ### KW-FLOOR-DEPLOY-001 - Open-weights floor is operator-laptop-hosted, not deployed with the Relay
 - **Domain:** OPS
 - **Discovered:** 2026-04-28 (post-funding pre-Genesis closure review)
@@ -136,11 +147,11 @@ Every entry has the same shape:
 - **Discovered:** 2026-04-25 (D2/D3 closure planning)
 - **Severity:** medium
 - **Status:** mitigated-residual
-- **Description:** `xion-verify vessel-registry` remains `NOT_YET_SEALED` because no production vessel has created an attestation or disavowal row.
+- **Description:** `xion-verify vessel-registry` is now a live verifier for the append-only Vessel registry shape and returns `NOT_YET_SEALED` only when no production vessel has created an attestation or disavowal row.
 - **Why it exists:** The registry should verify real vessel evidence; creating an empty green registry before a vessel exists would turn the verifier into a promise.
-- **Mitigations:** `docs/37-VESSELS.md` and addenda define the Compact and disavowal posture. `xion-verify vessel-compact` covers the reference Compact shape.
-- **Pay-down commitment:** Promote `xion-verify vessel-registry` with the first vessel attestation/disavowal artifact.
-- **Verifier:** `xion-verify vessel-registry` (`NOT_YET_SEALED` by design).
+- **Mitigations:** `docs/37-VESSELS.md` and addenda define the Compact and disavowal posture. `orchestrator.vessel_registry` writes hash-chained rows, `docs/schemas/ledger-vessel-registry.yaml` pins the row shape, and `xion-verify vessel-registry` verifies the chain without becoming an approval gate.
+- **Pay-down commitment:** Append the first real vessel attestation/disavowal artifact; until then the live verifier honestly returns `NOT_YET_SEALED` for an empty registry.
+- **Verifier:** `xion-verify vessel-registry` (live; empty registry is `NOT_YET_SEALED` by design).
 
 ### KW-BRIDGE-001 — AO to EVM bridge still depends on multisig attestation
 - **Domain:** SUBSTRATE
@@ -157,12 +168,12 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.9 Decentralization & Modular Substrate)
 - **Severity:** medium
-- **Status:** mitigated-residual
-- **Description:** Embeddings, SQLite vector memory, reranking, and `/forget` deletion are wired, but retrieval quality is not yet calibrated against a representative journal corpus.
-- **Why it exists:** The safe pre-Genesis slice proves substrate shape and deletion semantics before claiming semantic recall/precision.
-- **Mitigations:** `xion-verify memory-store-integrity`, `xion-verify embedder-health`, and `xion-verify rerank-improvement` cover structural correctness and a fixed-corpus improvement check.
-- **Pay-down commitment:** Add a replayable retrieval evaluation corpus after enough consented journal data exists; publish recall@k and rerank delta thresholds before promoting memory quality claims.
-- **Verifier:** Current structural verifiers listed above; future corpus mode for `xion-verify rerank-improvement`.
+- **Status:** closed (2026-04-30, Phase 7 preflight hardening)
+- **Description:** Embeddings, SQLite vector memory, reranking, `/forget` deletion, and a replayable reference corpus are wired. `docs/calibration/embed-calibration-report.json` records recall@k and MRR floors for the deterministic local BGE-M3 adapter.
+- **Why it exists:** The safe pre-Genesis slice needed a reproducible corpus before claiming even reference retrieval quality.
+- **Mitigations:** `orchestrator.cognition.embed_calibration` runs the fixed corpus through the vector store, `xion-verify embedder-health` enforces the published floors, and CI/pre-genesis run both `embedder-health` and `rerank-improvement`.
+- **Pay-down commitment:** Complete for the reference corpus. Future consented journal corpora can raise or specialize the floors through the same report-and-verifier path.
+- **Verifier:** `xion-verify embedder-health`; `xion-verify rerank-improvement`; `python -m orchestrator.cognition.embed_calibration`.
 
 ### KW-INVARIANT-19-001 — Trust-Earned Spend Authority is proposed but not yet ratified
 - **Domain:** GOVERNANCE
@@ -197,14 +208,14 @@ Every entry has the same shape:
 - **Pay-down commitment:** Complete for code-completable scope; deployed AO Core routing is tracked in `docs/PHASE_7_PREFLIGHT.md`.
 - **Verifier:** `xion-verify spend-posture`.
 
-### KW-CONTRIB-003 — MCP access is export-only; no live `xion-mcp` server exists
+### KW-CONTRIB-003 — MCP access is read-only and live through `xion-mcp`
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6a Contribution Protocol)
 - **Severity:** low
 - **Status:** closed (2026-04-25, Phase 6 completion plan)
 - **Description:** External coding assistants can consume `xion-verify mcp-export` and the read-only `tools/xion_mcp` server with Cursor / Claude Desktop install snippets.
 - **Why it exists:** The first safe slice keeps the surface read-only and verifier-backed before adding server lifecycle, packaging, and client-specific config.
-- **Mitigations:** `tools/xion_mcp` exposes only read-only tools and rejects write-like tool names.
+- **Mitigations:** `tools/xion_mcp` exposes only read-only tools, rejects write-like tool names, ships through the root `xion-mcp` console script, and is exercised in CI alongside `xion-verify mcp-export`.
 - **Pay-down commitment:** Complete.
 - **Verifier:** `pytest tools/xion_mcp/tests/test_server.py`; `xion-verify mcp-export`.
 
@@ -281,20 +292,20 @@ Every entry has the same shape:
 - **Status:** mitigated residual
 - **Description:** `docs/37a-AGENTIC-VESSELS.md` defines principal classes, agent-in-path declaration, attribution, retry posture, tool forwarding, `/forget` into agent memory, anonymous-to-authenticated upgrade, input authenticity, and receiving-side verification, but no real agent-mediated vessel manifest exists yet.
 - **Why it exists:** Verifying an agentic vessel requires a concrete Compact and evidence bundle; a generic static check cannot prove that a local or third-party agent actually preserves attribution and refusal boundaries.
-- **Mitigations:** Agentic surfaces are schema-bound in `docs/schemas/vessel-compact.yaml`; `xion-verify vessel-compact` is present as `NOT_YET_SEALED`; Phase 6.6 and 6.6a boundaries still govern internal Agent Souls and external contributor assistants.
-- **Pay-down commitment:** Promote the agentic section of `xion-verify vessel-compact` when the first agent-mediated vessel Compact lands.
-- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, agentic surface pending).
+- **Mitigations:** Agentic surfaces are schema-bound in `docs/schemas/vessel-compact.yaml`; `xion-verify vessel-compact` now enforces the static agentic section on the reference Compact; Phase 6.6 and 6.6a boundaries still govern internal Agent Souls and external contributor assistants.
+- **Pay-down commitment:** Add evidence-backed agent-mediated vessel fixtures when the first agent-in-path Compact lands.
+- **Verifier:** `xion-verify vessel-compact` (static section live; agent-in-path evidence pending).
 
 ### KW-VESSEL-DATA-001 — Vessel data-taxonomy enforcement awaits real Compacts
 - **Domain:** DATA
 - **Discovered:** 2026-04-25 (Phase 6.7 Vessel Integration Framework close)
 - **Severity:** medium
-- **Status:** mitigated residual
-- **Description:** `docs/37b-VESSEL-DATA-TAXONOMY.md` names vessel data classes and per-class `/export`, `/forget`, `/inspect`, retention, residency, and third-party boundary rules, but no live vessel currently emits a Compact mapping its stores and flows to those classes.
-- **Why it exists:** The taxonomy can be sealed before any vessel exists; enforcement needs real manifests, stores, and evidence.
-- **Mitigations:** The taxonomy is schema-bound in `docs/schemas/vessel-compact.yaml`; production vessel claims remain unsealed until they map every active class.
-- **Pay-down commitment:** Promote `xion-verify vessel-compact` data-taxonomy checks when the first reference Compact maps real local storage, telemetry, and cross-protocol bridge fields.
-- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, data taxonomy pending).
+- **Status:** closed (2026-04-30, Phase 7 preflight hardening)
+- **Description:** `docs/37b-VESSEL-DATA-TAXONOMY.md` names vessel data classes and per-class `/export`, `/forget`, `/inspect`, retention, residency, and third-party boundary rules. The reference Compact now maps local session, pending state, relayed transcript, and cross-protocol bridge data with explicit third-party recipients and availability references.
+- **Why it exists:** The taxonomy needed a concrete reference Compact and parser checks before any production vessel could claim sealed behavior.
+- **Mitigations:** `xion-verify vessel-compact` now enforces required per-class fields, allowed class IDs, duplicate class rejection, cross-protocol bridge recipient disclosure, and availability references.
+- **Pay-down commitment:** Complete for the reference web/podcast Compact. Production vessels must submit their own Compact and registry row before claiming sealed status.
+- **Verifier:** `xion-verify vessel-compact`.
 
 ### KW-VESSEL-AVAILABILITY-001 — Degraded vessel reachability has no test bench
 - **Domain:** RUNTIME
@@ -303,9 +314,9 @@ Every entry has the same shape:
 - **Status:** mitigated residual
 - **Description:** `docs/37c-VESSEL-AVAILABILITY-MODEL.md` defines `online_full`, `online_degraded`, `offline_floor`, `offline_cache`, and `lost_storage`, but there is no degraded-mode vessel test bench proving user-facing disclosure, `/forget` propagation, pending-write visibility, mid-conversation export, or crisis-fidelity behavior.
 - **Why it exists:** Availability behavior must be exercised against a real or fixture-backed vessel; doctrine alone cannot prove the UI or local runtime tells the truth under failure.
-- **Mitigations:** The reachability matrix is schema-bound in `docs/schemas/vessel-compact.yaml`; any vessel that cannot declare degraded behavior remains unsealed.
-- **Pay-down commitment:** Add fixture-based degraded-mode tests and promote the availability section of `xion-verify vessel-compact` with the first reference vessel.
-- **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, availability model pending).
+- **Mitigations:** The reachability matrix is schema-bound in `docs/schemas/vessel-compact.yaml`, and the reference Compact now declares all five reachability states. `xion-verify vessel-compact` rejects missing states or invalid proof postures; production UI/test-bench behavior remains unsealed.
+- **Pay-down commitment:** Add fixture-based degraded-mode UI/runtime tests with the first production vessel.
+- **Verifier:** `xion-verify vessel-compact` (static matrix live; behavior test bench pending).
 
 ### KW-VESSEL-INPUT-AUTH-001 — Input authenticity at vessel sensors is not mechanically verified
 - **Domain:** SAFETY
@@ -340,36 +351,36 @@ Every entry has the same shape:
 - **Pay-down commitment:** Keep the boundary visible in every Compact and verifier output; do not mark this closed unless the bridge is under Xion-controlled retention semantics.
 - **Verifier:** `xion-verify vessel-compact` (`NOT_YET_SEALED`, bridge boundary disclosure pending).
 
-### KW-HERMES-001 — Hermes runtime dependency is not yet an installable lockfile pin
+### KW-HERMES-001 — Hermes runtime dependency is lockfile-pinned through a vendored adapter
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
 - **Severity:** medium
-- **Status:** mitigated-residual
-- **Description:** `docs/HERMES_PIN_PROTOCOL.md`, `genesis/HERMES_TOOL_ALLOWLIST.yaml`, and `xion-verify hermes-runtime` now make the Hermes commit, default-deny allowlist, and disabled runtime flags mechanically verifiable. The remaining gap is that Hermes is still doctrine-pinned rather than present as an installable dependency/lockfile entry in the root runtime.
-- **Why it exists:** The current repository wraps and gates the cognition substrate before depending on an upstream package shape that may still change. Pulling Hermes into the root lockfile before the package boundary is stable would widen the supply-chain surface prematurely.
-- **Mitigations:** `xion-verify hermes-runtime` verifies the doctrine pin, allowlist hash, and disabled runtime flags; `xion-verify agent-souls` and `xion-verify agent-cast` prevent unallowlisted tools or unpinned cast faculties from entering the pool. `docs/HERMES_PIN_PROTOCOL.md` § "Pre-Genesis Posture" names the lockfile gap explicitly so Genesis does not imply an installable pin that does not exist.
-- **Pay-down commitment:** Close once Hermes is an installable dependency pinned in the runtime lockfile and `xion-verify hermes-runtime` compares the installed commit/package artifact against `genesis/GENESIS_ARTIFACT.md`.
+- **Status:** closed (2026-04-30, Phase 7 preflight hardening)
+- **Description:** `docs/HERMES_PIN_PROTOCOL.md`, `genesis/HERMES_TOOL_ALLOWLIST.yaml`, `requirements.lock`, `xion_hermes_runtime`, and `xion-verify hermes-runtime` now make the Hermes commit, default-deny allowlist, disabled runtime flags, and vendored adapter artifact mechanically verifiable.
+- **Why it exists:** The current repository wraps and gates the cognition substrate before depending on an upstream package shape that may still change. The conservative closure is a tiny vendored adapter package whose file hash and upstream Hermes commit are pinned in `requirements.lock`.
+- **Mitigations:** `xion-verify hermes-runtime` verifies the doctrine pin, allowlist hash, vendored adapter hash, and adapter Hermes commit; `xion-verify agent-souls` and `xion-verify agent-cast` prevent unallowlisted tools or unpinned cast faculties from entering the pool.
+- **Pay-down commitment:** Complete for Genesis. If upstream Hermes later exposes a stable installable package boundary, replace the vendored adapter through the same lockfile and verifier path.
 - **Verifier:** `xion-verify hermes-runtime`.
 
-### KW-AGENT-SOULS-001 — Specialists are prose-defined but not content-addressed Agent Souls
+### KW-AGENT-SOULS-001 — Specialists are content-addressed Agent Souls
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
 - **Severity:** medium
 - **Status:** closed (2026-04-25, Phase 6.6 Cognitive Substrate & Casting)
 - **Description:** The primary worker and specialists now have per-agent Soul files under `genesis/AGENT_SOULS/` with parent Soul hashes, tool subsets, cost envelopes, triggers, output destinations, and a manifest pinned in `genesis/GENESIS_ARTIFACT.md`.
 - **Why it exists:** The cognition doctrine defined the properties before the durable per-agent artifacts existed.
-- **Mitigations:** Closed by `genesis/AGENT_SOULS/_SCHEMA.md`, the five initial Agent Souls, `genesis/AGENT_SOULS/MANIFEST.txt`, and `xion-verify agent-souls`.
+- **Mitigations:** Closed by `genesis/AGENT_SOULS/_SCHEMA.md`, the five initial Agent Souls, `genesis/AGENT_SOULS/MANIFEST.txt`, and `xion-verify agent-souls`, which checks both manifest payload hash and per-file Soul hashes.
 - **Pay-down commitment:** Complete; future Agent Soul changes are versioned content-hash replacements through the Casting Pipeline.
 - **Verifier:** `xion-verify agent-souls` (Phase 6.6).
 
-### KW-CASTING-001 — Cast ledger is live; automatic Relay boot casting is not yet D2-wired
+### KW-CASTING-001 — Cast ledger is live and Relay boot casting is D2-wired
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.6 Cognitive Substrate planning)
 - **Severity:** medium
 - **Status:** closed (2026-04-25, Pre-Genesis hardening)
 - **Description:** `ledgers/AGENT_CAST_LEDGER.jsonl`, `orchestrator/cognition/casting.py`, `xion cast pool`, and `xion-verify agent-cast` now prove cast rows against Agent Soul hash, parent Soul hash, Hermes pin, and tool allowlist. The D2 Relay boot path now deterministically seeds the cast ledger when empty and refuses startup when `xion-verify agent-cast` fails.
 - **Why it exists:** The wrapper layer landed before the Casting Pipeline and live cast-pool verifier.
-- **Mitigations:** Automatic boot casting appends append-only rows; `xion-verify agent-cast` rejects rows with wrong hashes, wrong parent Soul, wrong Hermes pin, failed smoke tests, or `agent_id=arbiter`.
+- **Mitigations:** Automatic boot casting seeds append-only rows when the ledger is empty, verifies existing rows otherwise, and refuses startup when `xion-verify agent-cast` rejects wrong hashes, wrong parent Soul, wrong Hermes pin, failed smoke tests, or `agent_id=arbiter`.
 - **Pay-down commitment:** Complete for D2 boot. Future work may replace the deterministic seed with a live Hermes process pool, but the startup refusal property is sealed.
 - **Verifier:** `xion-verify agent-cast` (Phase 6.6).
 
@@ -406,28 +417,28 @@ Every entry has the same shape:
 - **Pay-down commitment:** Landed in Phase 6.4.b with `xion-verify topography` + `xion-verify nervous-system` and tests in `orchestrator/tests/test_modularity_invariants.py`.
 - **Verifier:** `xion-verify topography`, `xion-verify nervous-system`, `pytest orchestrator/tests/test_modularity_invariants.py`.
 
-### KW-PROOF-001 — user_proof_commit is passthrough-only; no client-side signing
+### KW-PROOF-001 — user_proof_commit is signed and verified
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Phase 6.3 Interaction Anchoring)
 - **Severity:** low
 - **Status:** closed (2026-04-25, Phase 6.3.b)
-- **Description:** The `user_proof_commit` field added to the ledgers in Phase 6.3 records whatever the client sends, but the orchestrator does not verify that the client actually signed anything.
+- **Description:** The web client generates an IndexedDB-backed Ed25519 keypair, signs `user_pubkey_b64|message`, and sends `user_proof`; the orchestrator verifies the signature before writing `user_proof_commit`.
 - **Why it exists:** Client-side Ed25519 key generation and signature logic were deferred to Phase 6.3.b to decouple the backend anchoring infrastructure from the frontend cryptography.
-- **Mitigations:** Algorithm-agnostic schema means Phase 6.3.b can ship without schema migration.
-- **Pay-down commitment:** Phase 6.3.b shipped client-side signing and `/forget` IndexedDB key wipe.
-- **Verifier:** `DEVELOPMENT_ROADMAP.md` (Phase 6.3.b stub).
+- **Mitigations:** Algorithm-agnostic schema avoided a ledger migration, and server-side verification rejects invalid proofs before ledger write.
+- **Pay-down commitment:** Complete; tests cover server proof verification and client proof emission paths.
+- **Verifier:** `pytest orchestrator/tests/test_user_proof.py`; `npm test` in `clients/web`.
 
 ### KW-PROOF-002 — IndexedDB wiping logic lacks cross-tab coordination
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-25 (Phase 6.3.b Client Proofs)
 - **Severity:** low
 - **Status:** closed (2026-04-25, Phase 6.4)
-- **Description:** When the user clicks "Forget my keys", the local IndexedDB is wiped, but other open tabs of the same origin are not notified to drop their in-memory key references.
+- **Description:** When the user clicks "Forget my keys", the local IndexedDB is wiped and other open tabs of the same origin receive a `BroadcastChannel("xion:keys")` message to drop in-memory credentials.
 - **Why it exists:** Cross-tab `BroadcastChannel` coordination was deferred to keep the Phase 6.3.b PR small.
-- **Mitigations:** A page reload clears the in-memory state.
+- **Mitigations:** `clients/web/src/lib/crypto.ts` broadcasts `{ type: "forgotten" }` after key wipe, and `BearerProvider` clears in-memory/localStorage credentials on receipt.
 - **Pay-down commitment:** Phase 6.4 added `BroadcastChannel` sync on the `xion:keys` channel to the Forget-my-keys flow, forcing all tabs to drop credentials and prompt for sign-in simultaneously.
-- **Verifier:** Manual testing (open two tabs, wipe in one, observe other tab drop credential).
-- **Verified by:** Manual verification.
+- **Verifier:** `npm test` in `clients/web` (BroadcastChannel coordination test).
+- **Verified by:** Automated Vitest coverage plus manual two-tab workflow.
 
 ### KW-ANCHOR-AO-001 — AnchorDaemon writes to local ledger only; AO Core sink deferred
 - **Domain:** RUNTIME
@@ -543,15 +554,11 @@ Every entry has the same shape:
 - **Discovered:** 2026-04-23 (Phase 6.0 AO Core Doctrine; reopened 2026-04-24, attempt-2 footnote added 2026-04-24)
 - **Severity:** medium
 - **Status:** closed (2026-04-25 by Phase 6.1.b finalization — committed receipt at `genesis/AO_DEPLOY_RECEIPT.json` names process id `7G35XZsoMbT7c8mkOt4cJALPJudpRzSnOUK0xaKs04Q` on the localnet substrate, signer `55Plp-xUQ5B-955uJYjtCT4kR0eEf63lhzGd__pw1jY`, first commit-state message id `MXKxwuycUWluvfL4oeW4-HUXUHTuq0riTl_LzjBZtEw`, lua source sha256 `97970eeef4b5e908f85c7f5b55b4f526adf2e64f2a2879f1d874412e0322c799` matching current bytes of `ao/core/main.lua`; verifier returns OK; closure path was `KW-AOCORE-004` path #2 — see `CHANGELOG.md` § "[Phase 6.1.b finalization]" for the full debrief and the six debugging traps that surfaced)
-- **Description:** The AO Core handler doctrine, the YAML schemas, the Lua skeleton (`ao/core/main.lua`), and the `xion-verify ao-handlers` verifier are all in-tree. What is **not** in-tree is a real AO testnet deployment of that Lua, a real receipt in `genesis/AO_DEPLOY_RECEIPT.json`, and a real seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`. The previous closure note (2026-04-23) claimed the handlers were "deployed to AO testnet," which was inaccurate — the receipt was a placeholder string and `xion-verify ao-handlers` had a `"dummy" in pid` bypass that returned OK without a network round-trip. That bypass has been removed in the Phase 6.1-residuals pass; the receipt now self-describes as `{status: "placeholder"}` and the verifier honestly returns NOT_YET_SEALED with a specific remediation message.
-- **Why it exists:** Three reasons stacked. (a) The 2026-04-23 closure note was premature. (b) The 2026-04-24 attempt-1 to do the real deploy hit an environment blocker: the canonical `aos` CLI install path (`npm i -g https://get_ao.g8way.io`) returned 404 from this network and the GitHub install (`npm i -g github:permaweb/aos`) failed at postinstall on this Windows + Node 22 + nvm setup with `ERR_UNSUPPORTED_ESM_URL_SCHEME` even with `--ignore-scripts`. Tracked separately as `KW-AOCORE-003`. (c) The 2026-04-24 attempt-2 (agent-driven, after the WSL2 + Node 20 install path was validated end-to-end) hit two new compounding blockers: `aos` 2.0 silently flipped its default network to AO mainnet (forbidden at this phase by `docs/09-GOVERNANCE.md`), and the legacy MU at `https://mu.ao-testnet.xyz` is currently returning HTTP 500 on every spawn attempt, blocking the testnet path even with the explicit `--legacy` flag. Tracked as `KW-AOCORE-004`. The two AO mainnet processes accidentally spawned during attempt-2 (`-MlYwU1U_5tEjRFhIVQFncEroGFO4kFetIqByOgFnBE`, `PxTK8xPH4sRDCIRGl2sruE_OrRFcbW25Oz2NwiKzkKM`) are orphaned by operator decision and are NOT Xion's canonical AO Core; this KW does not close on their existence.
-- **Mitigations:**
-  1. The `xion-verify ao-handlers` bypass is gone. Placeholder receipt now returns NOT_YET_SEALED with a precise remediation string naming exactly what a real receipt requires (`process_id`, `signer_address`, `lua_source_sha256`, `aos_version`, plus a seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl`).
-  2. The receipt at `genesis/AO_DEPLOY_RECEIPT.json` is now self-describing as a placeholder (`"status": "placeholder"`, all real fields explicitly null), so a future maintainer reading it cannot mistake it for a real receipt.
-  3. The verifier asserts `lua_source_sha256` against the current bytes of `ao/core/main.lua` once a real receipt lands, so a divergent Lua at the same deployed PID is caught.
-  4. Gateway-read uses stdlib `urllib.request` (not a third-party HTTP dep), with the gateway URL overridable via `XION_AO_GATEWAY_URL` (default `https://cu.ao-testnet.xyz`). Network failure resolves to NOT_YET_SEALED, never fake-green.
-- **Pay-down commitment:** Closes when the operator does the deploy on a working environment (a Linux box, a fresh macOS install, or a WSL2 shell where `aos` runs), replaces the placeholder receipt with the real one, sends a first `commit-state` message, and the orchestrator's STATE_CHAIN_LEDGER writer records the seed row. At that point `xion-verify ao-handlers` flips from NOT_YET_SEALED to OK without any verifier-code change.
-- **Verifier:** `xion-verify ao-handlers` (live; honest NOT_YET_SEALED on placeholder, OK only on real round-trip).
+- **Description:** This weakness is closed for the Phase 6.1.b seal path. The canonical AO Core Lua (`ao/core/main.lua`), all 20 handler schemas, the localnet receipt in `genesis/AO_DEPLOY_RECEIPT.json`, and the seed row in `ledgers/STATE_CHAIN_LEDGER.jsonl` are committed. The earlier placeholder/dummy-pid posture was removed before closure.
+- **Why it existed:** The 2026-04-23 closure note was premature; the first real deployment attempts exposed the Windows-native `aos` blocker and then the legacy MU 500 regression. The final elected closure path was the Xion-controlled localnet substrate authorized by `docs/28-AO-CORE.md`.
+- **Mitigations:** `xion-verify ao-handlers` rejects placeholder receipts, verifies the `ao/core/main.lua` source hash, and checks localnet CU tip parity against the state-chain ledger. The two accidental AO mainnet processes from attempt-2 remain explicitly orphaned and are not Xion's canonical AO Core.
+- **Pay-down commitment:** Closed. Future work is stronger per-handler behavioral dry-run coverage and eventual AO mainnet ceremony, not the Phase 6.1.b `commit-state`/`attest` seal.
+- **Verifier:** `xion-verify ao-handlers` (live).
 - **Progress (2026-04-25):** The seal mechanism is now end-to-end verified locally via `scripts/ao-localnet-seal.sh` against the `permaweb/ao-localnet` substrate from `KW-AOCORE-004` closure path #2 — exit 0 from `xion-verify ao-handlers` confirmed three times in a row (different fresh process IDs each run; see CHANGELOG). Six non-obvious traps surfaced and were fixed in-tree; full debrief lives under `KW-AOCORE-004` § "Progress (2026-04-25, seal mechanism end-to-end on operator workstation)" rather than being duplicated here. This KW **closed concurrently with `KW-AOCORE-004`** in the same PR — the receipt + first `STATE_CHAIN_LEDGER` row are committed as canon (process id `7G35XZsoMbT7c8mkOt4cJALPJudpRzSnOUK0xaKs04Q`).
 
 ### KW-AOCORE-003 — `aos` CLI install path is broken on this Windows + Node 22 + nvm setup
@@ -561,12 +568,9 @@ Every entry has the same shape:
 - **Status:** closed (2026-04-25 by elected workaround — `aos` runs in WSL2 + Node 20 LTS via `nvm`, where `npm i -g @permaweb/aos` succeeds and the resulting binary works against the localnet substrate; the seal script and runbook both pin this environment. The Windows-native + Node 22 install path remains broken upstream but is no longer in Xion's critical path. Re-open if a future workflow requires a Windows-native `aos` invocation.)
 - **Description:** Three install paths for the AO `aos` CLI were attempted on the current operator workstation (Windows 10 build 22631, Node 22.22.2 via nvm-for-windows, npm 10.9.7) and all three failed: (a) `npm i -g https://get_ao.g8way.io` returned 404; (b) `npm i -g github:permaweb/aos` failed at the keccak postinstall script with `ENOENT spawn cmd.exe`; (c) `npm i -g @permaweb/aos --ignore-scripts` succeeded but the resulting `aos` binary crashes immediately with `ERR_UNSUPPORTED_ESM_URL_SCHEME` (Node 22's strict ESM resolver vs the package's Windows-absolute-path import). The blocker is in the `aos` package or its interaction with this Node version on Windows; it is not a missing dep we can install.
 - **Why it exists:** `aos` is a third-party tool maintained by the AO ecosystem; its Windows + Node-22 compatibility is outside Xion's control surface.
-- **Mitigations:**
-  1. The Phase 6.1-residuals verifier change makes the install blocker observable: `xion-verify ao-handlers` returns NOT_YET_SEALED with a remediation message naming exactly what a real receipt requires.
-  2. The `xion-verify state-chain` verifier already returns NOT_YET_SEALED on an absent `ledgers/STATE_CHAIN_LEDGER.jsonl`, so no downstream verifier silently green-lights the missing deploy.
-  3. The Lua handlers (`ao/core/main.lua`) are independently parseable by the Lua-2-line probe in any Lua 5.3 REPL, so doctrine review does not depend on having `aos` installed.
-- **Pay-down commitment:** Closes when (a) the operator runs the deploy from a working environment (WSL2, Linux box, fresh macOS, or a Node 18 LTS sidecar where `aos` is known to work), or (b) the AO ecosystem ships a Node-22-compatible Windows install path. Whichever happens first.
-- **Verifier:** `xion-verify ao-handlers` (the closure of this KW is observable as that verifier flipping from NOT_YET_SEALED to OK).
+- **Mitigations:** The elected operator path is WSL2 + Node 20 LTS, pinned by the AO localnet runbooks and seal script. `xion-verify ao-handlers` is now green against the committed localnet receipt; Windows-native Node 22 is no longer on the critical path.
+- **Pay-down commitment:** Closed. Re-open only if a future workflow requires Windows-native `aos`, or if the WSL2 + Node 20 path stops working.
+- **Verifier:** `xion-verify ao-handlers`.
 
 ### KW-VELOCITY-002 â€” Auto-Research Loop runs against curated genesis source list only
 - **Domain:** `OPS`

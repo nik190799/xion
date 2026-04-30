@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "corpus_id": "xion-embed-reference-v1",
+  "description": "Small deterministic retrieval corpus for pre-Genesis embedding health. It uses doctrine-shaped prompts and synthetic records so the verifier can run without consented user data.",
+  "records": [
+    {
+      "id": "ao-anchor-batch",
+      "text": "AO anchor batch roots preserve interaction fidelity through Merkle rollups and state-chain receipts."
+    },
+    {
+      "id": "forget-export-inspect",
+      "text": "The vessel compact keeps export forget and inspect endpoints free even when billing or connectivity is degraded."
+    },
+    {
+      "id": "cast-agent-soul",
+      "text": "Agent Souls are content addressed and cast into Hermes with a default deny tool allowlist."
+    },
+    {
+      "id": "substrate-portability",
+      "text": "Substrate portability requires Akash and Chutes relay rows to survive discovery and dry run checks."
+    },
+    {
+      "id": "crisis-fidelity",
+      "text": "Crisis fidelity requires refusal resources and honest limitation disclosure during degraded vessel sessions."
+    }
+  ],
+  "queries": [
+    {
+      "query": "interaction anchor merkle batch root AO receipt",
+      "expected_record_id": "ao-anchor-batch"
+    },
+    {
+      "query": "free export forget inspect endpoints vessel billing degraded",
+      "expected_record_id": "forget-export-inspect"
+    },
+    {
+      "query": "content addressed agent soul hermes tool allowlist",
+      "expected_record_id": "cast-agent-soul"
+    },
+    {
+      "query": "akash chutes relay registry substrate portability dry run",
+      "expected_record_id": "substrate-portability"
+    },
+    {
+      "query": "crisis fidelity degraded session limitation disclosure resources",
+      "expected_record_id": "crisis-fidelity"
+    }
+  ]
+}

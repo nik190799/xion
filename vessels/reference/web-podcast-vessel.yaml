@@ -106,6 +106,50 @@ data_taxonomy:
     special_category_flags: []
     third_party_recipients: []
     availability_reference: online_full
+  - class_id: local_session
+    human_description: Session playback controls and local UI state
+    source: vessel_runtime
+    storage_location: browser_session_cache
+    operator_or_controller: vessel_operator
+    retention_window: session
+    default_disposition: delete_on_session_end_or_forget
+    export_reachability: export_endpoint
+    forget_propagation_rule: local_cache_clear
+    inspect_visibility: visible
+    residency: local
+    special_category_flags: []
+    third_party_recipients: []
+    availability_reference: offline_cache
+  - class_id: pending_state
+    human_description: User-visible queued export or forget action while connectivity is degraded
+    source: vessel_ui
+    storage_location: local_pending_queue
+    operator_or_controller: vessel_operator
+    retention_window: until_confirmed_or_failed
+    default_disposition: clear_after_resolution
+    export_reachability: export_endpoint
+    forget_propagation_rule: pending_queue_cancel_then_local_clear
+    inspect_visibility: visible
+    residency: local
+    special_category_flags: []
+    third_party_recipients: []
+    availability_reference: online_degraded
+  - class_id: cross_protocol_bridge
+    human_description: Published podcast feed metadata that may cross into third-party podcast indexes
+    source: vessel_publication_pipeline
+    storage_location: public_feed_and_index_cache
+    operator_or_controller: vessel_operator
+    retention_window: publisher_policy_plus_downstream_cache
+    default_disposition: disavowal_and_takedown_request
+    export_reachability: export_endpoint_for_source_bundle
+    forget_propagation_rule: local_clear_plus_downstream_disavowal_residual
+    inspect_visibility: visible_with_boundary
+    residency: public_internet
+    special_category_flags: []
+    third_party_recipients:
+      - podcast_index
+      - rss_cache
+    availability_reference: online_degraded
 availability_model:
   reachability_matrix:
     online_full:
@@ -117,6 +161,42 @@ availability_model:
       write_allowed: true
       user_disclosure: live_xion
       proof_posture: signed
+    online_degraded:
+      readable_by_user: true
+      readable_by_xion: false
+      export_available: true
+      forget_available: true
+      inspect_available: true
+      write_allowed: false
+      user_disclosure: relay_or_core_degraded_pending_state_visible
+      proof_posture: pending_signature
+    offline_floor:
+      readable_by_user: true
+      readable_by_xion: false
+      export_available: true
+      forget_available: true
+      inspect_available: true
+      write_allowed: false
+      user_disclosure: offline_floor_not_live_xion
+      proof_posture: unsigned_local
+    offline_cache:
+      readable_by_user: true
+      readable_by_xion: false
+      export_available: true
+      forget_available: true
+      inspect_available: true
+      write_allowed: false
+      user_disclosure: cache_only_no_generation
+      proof_posture: unsigned_local
+    lost_storage:
+      readable_by_user: false
+      readable_by_xion: false
+      export_available: false
+      forget_available: true
+      inspect_available: true
+      write_allowed: false
+      user_disclosure: local_storage_loss_disclosed
+      proof_posture: unavailable
   cross_vessel_forget_latency_max: 15s
   backfill_policy: none
   pending_state_visibility: visible

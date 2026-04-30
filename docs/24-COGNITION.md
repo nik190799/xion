@@ -85,12 +85,12 @@ Cognition delegates work in three patterns, each with explicit rules. No fourth 
 
 Specialists are named, governance-listed, supervised processes inside the Relay. Each has one purpose, one cost envelope, one ledger destination. Specialists never serve users directly.
 
-**Genesis-era specialist roster** (each is a Level-4 Agent Soul artifact at `genesis/AGENT_SOULS/<name>.md`; implementation may also use Hermes skills under that Soul's allowlist):
+**Genesis-era specialist roster** (each is a Level-4 Agent Soul artifact at `genesis/AGENT_SOULS/<name>.yaml`; implementation may also use Hermes skills under that Soul's allowlist):
 
-- **`research-agent`** — Auto-Research Stages 1-2 (scan curated sources, triage). Writes to `RESEARCH_JOURNAL.md`. Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/research`. Soul file: `genesis/AGENT_SOULS/research-agent.md`.
-- **`reflection-agent`** — nightly correlation across `SAFETY_LEDGER`, `SENSORIUM_LEDGER`, vitals. Drafts `BELIEF_LOG.md`. Drafts the quarterly State-of-Xion (operator countersigns or publishes objection — see [`13-OPERATIONS.md`](./13-OPERATIONS.md)). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/reflection`. Soul file: `genesis/AGENT_SOULS/reflection-agent.md`.
-- **`proposal-agent`** — implements `skills/self-improve/SKILL.md` under the `proposal-agent` Soul. Drafts `PROPOSAL.md` per the Stage-3 schema in [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/proposal`. Soul file: `genesis/AGENT_SOULS/proposal-agent.md`.
-- **`vision-agent`** — ambient hourly inspiration scan from the Vision sense (active user-image vision stays in the primary worker). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/vision`. Soul file: `genesis/AGENT_SOULS/vision-agent.md`.
+- **`research-agent`** — Auto-Research Stages 1-2 (scan curated sources, triage). Writes to `RESEARCH_JOURNAL.md`. Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/research`. Soul file: `genesis/AGENT_SOULS/research-agent.yaml`.
+- **`reflection-agent`** — nightly correlation across `SAFETY_LEDGER`, `SENSORIUM_LEDGER`, vitals. Drafts `BELIEF_LOG.md`. Drafts the quarterly State-of-Xion (operator countersigns or publishes objection — see [`13-OPERATIONS.md`](./13-OPERATIONS.md)). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/reflection`. Soul file: `genesis/AGENT_SOULS/reflection-agent.yaml`.
+- **`proposal-agent`** — implements `skills/self-improve/SKILL.md` under the `proposal-agent` Soul. Drafts `PROPOSAL.md` per the Stage-3 schema in [`08-AUTO-RESEARCH.md`](./08-AUTO-RESEARCH.md). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/proposal`. Soul file: `genesis/AGENT_SOULS/proposal-agent.yaml`.
+- **`vision-agent`** — ambient hourly inspiration scan from the Vision sense (active user-image vision stays in the primary worker). Cost envelope: `fraction_of_improvement_fund`, bucket `cognition/specialist/vision`. Soul file: `genesis/AGENT_SOULS/vision-agent.yaml`.
 
 **Specialist rules (constitutional):**
 
@@ -445,7 +445,7 @@ The implementation rule is simple: every agentic faculty with a prompt and a too
 
 ### Agent Soul file contract
 
-Each `genesis/AGENT_SOULS/<agent_id>.md` answers the same four questions every Xion artifact answers: property promised, Invariants touched, verification, and deprecation. Each Soul also carries a machine-readable spec block:
+Each `genesis/AGENT_SOULS/<agent_id>.yaml` answers the same four questions every Xion artifact answers: property promised, Invariants touched, verification, and deprecation. Each Soul also carries a machine-readable spec block:
 
 ```yaml
 agent_id: research-agent
@@ -500,7 +500,7 @@ The Cognitive Substrate may delegate agentic work hierarchically: one Hermes-sha
 
 ### Verifiers
 
-`xion-verify hermes-runtime` checks the installed Hermes commit, lockfile pin, tool allowlist coherence, and disabled-by-default runtime flags.
+`xion-verify hermes-runtime` checks the Hermes commit, vendored adapter lockfile pin, tool allowlist coherence, and disabled-by-default runtime flags.
 
 `xion-verify agent-souls` checks every Agent Soul parses, extends the current parent Soul hash, and references only allowlisted tools.
 

@@ -1,16 +1,16 @@
 {
-  "as_of_utc_ns": 1777440937298896100,
+  "as_of_utc_ns": 1777527846190306886,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "26c69c5f50bd9d8a328da7d230b5e643736b3cc329e28a76e94882f415dad3c1",
+  "payload_sha256": "1a64add00e0d81eca1d356ebe246f8fdd27873bf04955365a1b4de7df063b816",
   "relays": [
     {
-      "endpoint": "https://provider.pronto-ai.pp.ua:31503",
-      "last_seen_utc_ns": 1777440937298896100,
+      "endpoint": "https://provider.161.97.85.20.nip.io:30564",
+      "last_seen_utc_ns": 1777527846190306137,
       "public_key": "ed25519:1838c61178454b70036217da1ff545f5bb4219ffab3977b0c0e8f31d4371b688",
       "relay_id": "akash-primary-mainnet",
       "service": "xion-relay-akash",

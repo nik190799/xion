@@ -31,6 +31,10 @@ xion-verify mcp-export > xion-agent-facts.json
 python -m tools.xion_mcp.server
 ```
 
+Run from the repository root, or set `cwd` to the repository root in the MCP
+client configuration. Installed operator environments can use the equivalent
+`xion-mcp` console script after installing the root package and `xion-verify`.
+
 Cursor MCP configuration:
 
 ```json
@@ -38,7 +42,8 @@ Cursor MCP configuration:
   "mcpServers": {
     "xion": {
       "command": "python",
-      "args": ["-m", "tools.xion_mcp.server"]
+      "args": ["-m", "tools.xion_mcp.server"],
+      "cwd": "/path/to/xion-os"
     }
   }
 }
@@ -51,7 +56,8 @@ Claude Desktop MCP configuration:
   "mcpServers": {
     "xion": {
       "command": "python",
-      "args": ["-m", "tools.xion_mcp.server"]
+      "args": ["-m", "tools.xion_mcp.server"],
+      "cwd": "/path/to/xion-os"
     }
   }
 }

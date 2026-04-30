@@ -20,6 +20,8 @@ _REQUIRED_DISABLED_FLAGS = (
     "mcp_server_auto_discovery",
     "user_model_export",
 )
+_HERMES_LOCK_REL = "requirements.lock"
+_HERMES_ADAPTER_NAME = "xion-hermes-runtime"
 
 
 def _extract_artifact_value(text: str, key: str) -> str | None:
@@ -32,6 +34,27 @@ def load_allowlist(repo_root: Path) -> dict:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"{_ALLOWLIST_REL} top-level YAML value must be a mapping")
+    return data
+
+
+def _parse_hermes_lock(repo_root: Path) -> dict[str, str]:
+    lock_path = repo_root / _HERMES_LOCK_REL
+    if not lock_path.is_file():
+        return {}
+
+    data: dict[str, str] = {}
+    in_adapter = False
+    for raw in lock_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(_HERMES_ADAPTER_NAME):
+            in_adapter = True
+            data["requirement"] = line
+            continue
+        if in_adapter and "=" in line:
+            key, value = line.split("=", 1)
+            data[key.strip()] = value.strip()
     return data
 
 
@@ -91,23 +114,38 @@ def check_hermes_runtime(repo_root: Path) -> tuple[list[str], list[str]]:
             f"(artifact={artifact_allowlist_hash!r}, actual={current_allowlist_hash})"
         )
 
-    root_pyproject = repo_root / "pyproject.toml"
-    lockfile_candidates = (
-        repo_root / "uv.lock",
-        repo_root / "poetry.lock",
-        repo_root / "requirements.lock",
-        repo_root / "pdm.lock",
-    )
-    pyproject_text = root_pyproject.read_text(encoding="utf-8") if root_pyproject.is_file() else ""
-    has_hermes_dependency = "hermes" in pyproject_text.lower() or any(
-        p.is_file() and "hermes" in p.read_text(encoding="utf-8").lower()
-        for p in lockfile_candidates
-    )
-    if not has_hermes_dependency:
+    lock = _parse_hermes_lock(repo_root)
+    if not lock:
         notes.append(
             "runtime dependency pin is NOT_YET_SEALED: Hermes is doctrine-pinned, "
             "but no installable Hermes dependency/lockfile entry exists yet"
         )
+        return errors, notes
+
+    lock_commit = lock.get("hermes_agent_commit")
+    if lock_commit != allowlist_commit:
+        errors.append(
+            f"{_HERMES_LOCK_REL}: hermes_agent_commit mismatch "
+            f"(lock={lock_commit!r}, allowlist={allowlist_commit!r})"
+        )
+
+    artifact_rel = lock.get("artifact_path")
+    artifact_sha = lock.get("artifact_sha256")
+    if not artifact_rel:
+        errors.append(f"{_HERMES_LOCK_REL}: missing artifact_path for {_HERMES_ADAPTER_NAME}")
+    elif not artifact_sha:
+        errors.append(f"{_HERMES_LOCK_REL}: missing artifact_sha256 for {_HERMES_ADAPTER_NAME}")
+    else:
+        artifact_path = repo_root / artifact_rel
+        if not artifact_path.is_file():
+            errors.append(f"{_HERMES_LOCK_REL}: artifact_path not found: {artifact_rel}")
+        else:
+            current = sha256_file(artifact_path)
+            if artifact_sha != current:
+                errors.append(
+                    f"{_HERMES_LOCK_REL}: artifact_sha256 mismatch for {artifact_rel} "
+                    f"(lock={artifact_sha}, actual={current})"
+                )
 
     return errors, notes
 

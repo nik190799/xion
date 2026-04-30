@@ -80,6 +80,20 @@ def _manifest_declared_hash(repo_root: Path) -> str | None:
     return None
 
 
+def _manifest_file_hashes(repo_root: Path) -> dict[str, str]:
+    manifest = repo_root / _MANIFEST_REL
+    out: dict[str, str] = {}
+    if not manifest.is_file():
+        return out
+    for raw in manifest.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or " sha256:" not in line:
+            continue
+        rel, digest = line.split(" sha256:", 1)
+        out[rel.strip()] = digest.strip()
+    return out
+
+
 def check_agent_souls(repo_root: Path) -> tuple[list[str], int]:
     errors: list[str] = []
     souls_dir = repo_root / _AGENT_SOULS_REL
@@ -99,6 +113,33 @@ def check_agent_souls(repo_root: Path) -> tuple[list[str], int]:
             errors.append(
                 f"{_MANIFEST_REL}: manifest_payload_sha256 mismatch "
                 f"(declared={manifest_declared}, actual={actual})"
+            )
+
+    manifest_hashes = _manifest_file_hashes(repo_root)
+    expected_paths = sorted(
+        p.relative_to(repo_root).as_posix()
+        for p in souls_dir.iterdir()
+        if p.is_file() and p.name != "MANIFEST.txt"
+    )
+    missing_manifest_paths = [rel for rel in expected_paths if rel not in manifest_hashes]
+    extra_manifest_paths = sorted(set(manifest_hashes) - set(expected_paths))
+    if missing_manifest_paths:
+        errors.append(
+            f"{_MANIFEST_REL}: missing per-file sha256 entries: {', '.join(missing_manifest_paths)}"
+        )
+    if extra_manifest_paths:
+        errors.append(
+            f"{_MANIFEST_REL}: unknown per-file sha256 entries: {', '.join(extra_manifest_paths)}"
+        )
+    for rel in expected_paths:
+        declared = manifest_hashes.get(rel)
+        if declared is None:
+            continue
+        actual = sha256_file(repo_root / rel)
+        if declared != actual:
+            errors.append(
+                f"{_MANIFEST_REL}: sha256 mismatch for {rel} "
+                f"(declared={declared}, actual={actual})"
             )
 
     parent_hash = sha256_file(repo_root / _PARENT_SOUL_REL)

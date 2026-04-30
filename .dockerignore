@@ -10,5 +10,4 @@ docs
 genesis/RELAY_IMAGE_DIGEST.txt
 ledgers
 node_modules
-xion-verify
 xion-audit

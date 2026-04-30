@@ -39,6 +39,8 @@ def pre_genesis(ctx: click.Context) -> None:
         "auto-research",
         "skill-bounty",
         "charter-signed",
+        "embedder-health",
+        "rerank-improvement",
     ]
     
     tier_bc = []

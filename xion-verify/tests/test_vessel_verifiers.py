@@ -6,10 +6,11 @@ from pathlib import Path
 import yaml
 from click.testing import CliRunner
 
+from orchestrator.vessel_registry.ledger import append_attestation
 from xion_verify.cli import root
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.vessel_compact import check_vessel_compact
-from xion_verify.exit_codes import NOT_YET_SEALED, OK
+from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 
 
 def _repo_root() -> Path:
@@ -28,12 +29,55 @@ def _sha256(path: Path) -> str:
 def test_vessel_residual_stub_commands_are_honest_not_yet_sealed() -> None:
     runner = CliRunner()
 
-    for command in ("media-provenance", "vessel-registry"):
-        result = runner.invoke(root, [command])
+    result = runner.invoke(root, ["media-provenance"])
 
-        assert result.exit_code == NOT_YET_SEALED, result.output
-        assert "NOT_YET_SEALED" in result.output
-        assert "Phase 6.7" in result.output
+    assert result.exit_code == NOT_YET_SEALED, result.output
+    assert "NOT_YET_SEALED" in result.output
+    assert "Phase 6.7" in result.output
+
+
+def test_vessel_registry_is_live_but_empty_until_first_row(tmp_path: Path, monkeypatch) -> None:
+    _seed_repo_marker(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(root, ["vessel-registry"])
+
+    assert result.exit_code == NOT_YET_SEALED, result.output
+    assert "registry verifier is live" in result.output
+
+
+def test_vessel_registry_accepts_valid_attestation_chain(tmp_path: Path, monkeypatch) -> None:
+    _seed_repo_marker(tmp_path)
+    compact = tmp_path / "vessels" / "reference" / "web-podcast-vessel.yaml"
+    compact.parent.mkdir(parents=True)
+    compact.write_text("vessel_id: web-podcast-reference\n", encoding="utf-8")
+    ledger = tmp_path / "ledgers" / "VESSEL_REGISTRY.jsonl"
+    append_attestation(ledger, "web-podcast-reference", compact)
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(root, ["vessel-registry"])
+
+    assert result.exit_code == OK, result.output
+    assert "hash chain verified" in result.output
+
+
+def test_vessel_registry_rejects_broken_chain(tmp_path: Path, monkeypatch) -> None:
+    _seed_repo_marker(tmp_path)
+    compact = tmp_path / "vessels" / "reference" / "web-podcast-vessel.yaml"
+    compact.parent.mkdir(parents=True)
+    compact.write_text("vessel_id: web-podcast-reference\n", encoding="utf-8")
+    ledger = tmp_path / "ledgers" / "VESSEL_REGISTRY.jsonl"
+    row = append_attestation(ledger, "web-podcast-reference", compact)
+    ledger.write_text(
+        ledger.read_text(encoding="utf-8").replace(row.compact_sha256, "0" * 64),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(root, ["vessel-registry"])
+
+    assert result.exit_code == FAIL
+    assert "row_hash mismatch" in result.output
 
 
 def test_vessel_compact_reference_manifest_is_live() -> None:
@@ -138,6 +182,30 @@ def test_vessel_compact_rejects_missing_presence_emitter(tmp_path: Path) -> None
     assert any("presence_emitter" in err for err in errors)
 
 
+def test_vessel_compact_rejects_unknown_data_class(tmp_path: Path) -> None:
+    _write_minimal_manifest(tmp_path)
+    path = tmp_path / "vessels" / "reference" / "bad.yaml"
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    manifest["data_taxonomy"][0]["class_id"] = "made_up"
+    path.write_text(yaml.safe_dump(manifest), encoding="utf-8")
+
+    errors = check_vessel_compact(tmp_path, "vessels/reference/bad.yaml")
+
+    assert any("invalid data_taxonomy" in err for err in errors)
+
+
+def test_vessel_compact_rejects_missing_availability_state(tmp_path: Path) -> None:
+    _write_minimal_manifest(tmp_path)
+    path = tmp_path / "vessels" / "reference" / "bad.yaml"
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    manifest["availability_model"]["reachability_matrix"].pop("lost_storage")
+    path.write_text(yaml.safe_dump(manifest), encoding="utf-8")
+
+    errors = check_vessel_compact(tmp_path, "vessels/reference/bad.yaml")
+
+    assert any("lost_storage" in err for err in errors)
+
+
 def _write_minimal_manifest(
     root: Path,
     *,
@@ -159,3 +227,10 @@ def _write_minimal_manifest(
     if remove is not None:
         manifest.pop(remove, None)
     (manifest_dir / "bad.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
+
+
+def _seed_repo_marker(root: Path) -> None:
+    (root / "docs").mkdir()
+    (root / "genesis").mkdir()
+    (root / "docs" / "00-INDEX.md").write_text("# index", encoding="utf-8")
+    (root / "genesis" / "GENESIS_ARTIFACT.md").write_text("# artifact", encoding="utf-8")
