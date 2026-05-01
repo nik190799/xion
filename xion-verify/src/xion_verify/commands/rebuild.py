@@ -11,6 +11,7 @@ ID with BuildKit; use the same layout as this command when pinning or publishing
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -82,6 +83,9 @@ def rebuild() -> None:
 
         # Run docker build
         click.echo("rebuild: Running docker build...")
+        if shutil.which("docker") is None:
+            click.echo("rebuild: NOT_YET_SEALED — docker executable not found on this host")
+            sys.exit(NOT_YET_SEALED)
         res = subprocess.run(
             ["docker", "build", "--provenance=false", "-q", "."],
             cwd=str(clone_dir),

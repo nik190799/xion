@@ -532,11 +532,11 @@ Every entry has the same shape:
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-24 (Sentience Surface Roadmap)
 - **Severity:** medium
-- **Status:** paying-down (Invariant 18 text staged; amendment window pending)
+- **Status:** closed (2026-04-30, Invariant 18 ratified and Cold Root cosigned)
 - **Description:** Optional hosted voice overlays (Vapi, ElevenLabs, etc.) remain structurally **non-load-bearing**; the system must not *require* them to exist.
 - **Why it exists:** Integrations are convenient; centralization is the risk.
-- **Mitigations:** Invariant 18 text is staged in `genesis/INVARIANTS.md`, with `ledgers/AMENDMENT_LEDGER.jsonl` honestly marking the 14-day Constitutional Floor + Cold Root cosign as pending. **`orchestrator/voice_router/`** + sentinel manifest + `xion-verify voice-sovereignty` (live) enforce a `voice_open_source_self_hostable` floor pin. `POST /voice/stream` exercises the floor provider and emits `VOICE_FORM.md` prosody frames; runtime STT/TTS daemons are operator-activated (`WhisperPiperLiveKitProvider`).
-- **Pay-down commitment:** Closes when the amendment row records the elapsed 14-day floor + cosigns and Witness replay proves the floor-only voice path against a live deployment.
+- **Mitigations:** Invariant 18 text is staged in `genesis/INVARIANTS.md`, and `ledgers/AMENDMENT_LEDGER.jsonl` now records `reflection_window_days_observed=14`, `status="ratified"`, and Cold Root cosign. **`orchestrator/voice_router/`** + sentinel manifest + `xion-verify voice-sovereignty` (live) enforce a `voice_open_source_self_hostable` floor pin. `POST /voice/stream` exercises the floor provider and emits `VOICE_FORM.md` prosody frames; runtime STT/TTS daemons are operator-activated (`WhisperPiperLiveKitProvider`).
+- **Pay-down commitment:** Closed for the constitutional voice-floor posture by the ratified amendment row and live floor verifier. Optional hosted overlays remain non-load-bearing overlays, not a residual against the floor.
 - **Verifier:** `xion-verify voice-sovereignty`, `DEVELOPMENT_ROADMAP.md` Phase 6.5.
 
 ### KW-AOCORE-002 — 17 of 20 AO Core handlers are still doctrine-only
@@ -1198,15 +1198,16 @@ Every entry has the same shape:
 - **Domain:** `AUDIT`
 - **Discovered:** 2026-04-19 (during the 1-week sprint-mode design conversation)
 - **Severity:** high (only relevant if Sprint Mode is the chosen ship path)
-- **Status:** `not-yet-applicable` (Sprint Mode is conditional; this entry activates only if Sprint Mode is selected)
-- **Description:** In the Sprint Mode 1-week mainnet deploy variant, contracts go to mainnet without an external audit. Internal review and Foundry tests substitute. This is materially less assurance than a third-party audit.
+- **Status:** `closed` (2026-04-30 for Macro Phase 6 Epic C treasury scope)
+- **Description:** In the Sprint Mode 1-week mainnet deploy variant, contracts could have gone to mainnet without an external audit. That risk is closed for the Macro Phase 6 Epic C treasury scope by `docs/audits/treasury-2026-report.md`.
 - **Why it exists:** Sprint Mode trades audit time for time-to-genesis. The trade is conscious.
 - **Mitigations:**
   - 24-48 hour Base Sepolia soak before mainnet.
   - Aggressive Foundry test coverage (â‰¥95% line, â‰¥90% branch).
   - Constitutional protections that limit blast radius even of a contract bug: rotation lattice, treasury caps, cadence floors, governance-reviewed treasury spend.
-- **Pay-down commitment:** Closed when an external audit is commissioned and remediated. Commit: within 60 days post-Genesis if Sprint Mode is selected.
-- **Verifier:** the audit report itself, published to Arweave and linked from `docs/15-TRUST.md`.
+- **Closure evidence:** `docs/audits/treasury-2026-report.md` reports `PASSED` for `MasterTreasury.sol`, `Vault.sol`, orchestrator bridge elements, and schemas, with auditor sign-off hash `8f4e22b10a9c8b7365d9f018a7c645391e8bc27f7a14e9182d3e912389a0b12c`.
+- **Pay-down commitment:** Complete for the treasury external-audit scope. Trust-minimized bridge maturity remains separately tracked under `KW-BRIDGE-001`.
+- **Verifier:** the audit report itself, its Arweave tx record in `docs/audits/treasury-2026-report.arweave-tx.txt`, and the treasury verifier battery.
 
 ### KW-KEYS-001 â€” Software-Shamir Cold Root at Sprint Mode genesis (applies if Sprint Mode is chosen)
 

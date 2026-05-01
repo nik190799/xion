@@ -37,11 +37,22 @@ def request_fingerprint(ledger_path: Path | None) -> None:
     if not success_rows:
         click.echo("request-fingerprint: NOT_YET_SEALED: no successful provider-attempt rows yet")
         sys.exit(NOT_YET_SEALED)
+    required_fields = ("provider_fingerprint", "model_version", "reasoning_tokens", "tee_attestation")
+    fingerprinted_rows = []
     missing = []
     for row in success_rows:
-        for field in ("provider_fingerprint", "model_version", "reasoning_tokens", "tee_attestation"):
+        row_missing = []
+        for field in required_fields:
             if field not in row:
+                row_missing.append(field)
                 missing.append((row.get("seq"), field))
+        if not row_missing:
+            fingerprinted_rows.append(row)
+    if missing and not fingerprinted_rows:
+        click.echo(
+            "request-fingerprint: NOT_YET_SEALED: successful provider-attempt rows predate fingerprint fields",
+        )
+        sys.exit(NOT_YET_SEALED)
     if missing:
         click.echo(f"request-fingerprint: FAIL: missing fields {missing}", err=True)
         sys.exit(FAIL)
@@ -49,7 +60,7 @@ def request_fingerprint(ledger_path: Path | None) -> None:
     if tee_required:
         bad = [
             row.get("seq")
-            for row in success_rows
+            for row in fingerprinted_rows
             if row.get("provider_id") == "chutes" and not row.get("tee_attestation")
         ]
         if bad:

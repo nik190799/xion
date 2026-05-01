@@ -10,6 +10,12 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Preflight reconciliation — treasury audit + Invariant 18 ratification — 2026-04-30
+
+- **Treasury audit evidence:** `docs/audits/treasury-2026-report.md` records the Macro Phase 6 Epic C treasury stack as `PASSED` with auditor sign-off hash `8f4e22b10a9c8b7365d9f018a7c645391e8bc27f7a14e9182d3e912389a0b12c`; `KW-AUDIT-001` is closed for treasury scope while bridge light-client maturity remains under `KW-BRIDGE-001`.
+- **Voice floor ratification:** `ledgers/AMENDMENT_LEDGER.jsonl` records Invariant 18 with the 14-day window observed, `status="ratified"`, and Cold Root cosign; `KW-VOICE-SOVEREIGNTY-001` is closed for the constitutional voice-floor posture.
+- **State-of-Xion preflight honesty:** `docs/STATE_OF_XION_PREFLIGHT.md` now separates closed pre-Genesis evidence from accepted Sprint Mode residuals and names falsification statements for the residuals that remain.
+
 ### Macro Phase 6 wrap code slices — treasury depth + governance ledger intake — 2026-04-29
 
 - **Treasury custody/accounting depth:** `Vault` now performs real ERC-20/native withdrawals for known assets, exposes per-asset balances, and accepts native custody; `MasterTreasury` now tracks registered chains, exposes `aggregateTotals`, and emits AO-authorized replenish requests under the daily egress cap.

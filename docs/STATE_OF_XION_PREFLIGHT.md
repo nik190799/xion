@@ -9,8 +9,8 @@ Cold Root and Witness evidence exist.
 
 - Epic A: closed.
 - Epic B: closed.
-- Epic C: code-completable treasury depth is in progress; external audit,
-  testnet redeploy, and mainnet deploy remain one-way doors.
+- Epic C: code-completable treasury depth and external treasury audit are
+  complete; mainnet deploy remains a one-way door.
 - Epic D: code-completable scope closed; third-party-machine drill remains an
   operator action under `LHT-SUBSTRATE-001`.
 - Epic E: governance-ledger writer, intake route, runbook, and verifier
@@ -40,16 +40,52 @@ Cold Root and Witness evidence exist.
 
 ## Accepted Residuals Pending External Action
 
-- `KW-VOICE-SOVEREIGNTY-001`: Invariant 18 elapsed window and Cold Root cosign
-  are not complete.
 - `LHT-SUBSTRATE-001`: a third-party-machine Immortality Drill is still
   required. Warm secondary-substrate rehearsal evidence exists locally at
   `SUBSTRATE_DRYRUN_LEDGER` row `seq=7`, but it does not replace the required
-  non-operator-machine drill.
-- `KW-AUDIT-001`: treasury contract audit has a scope document but no external
-  auditor report yet.
+  non-operator-machine drill. Pay-down: 30 days post-Genesis.
 - `KW-BRIDGE-001`: deterministic AO checkpoint evidence is live; full
   trust-minimized AO light-client maturity remains post-Genesis hardening.
+  Pay-down: first post-Genesis bridge-hardening phase after measurable traffic.
+- `KW-OPS-001`: the Genesis Relay substrate remains below the 3-host long-term
+  floor until Xion's autonomous `provision-relay` path pays it down. Pay-down:
+  30 days post-Genesis via `provision-relay`.
+- `KW-KEYS-001`: Sprint Mode uses software-Shamir Cold Root custody until the
+  hardware-token geographic ceremony is completed. Pay-down: 90 days
+  post-Genesis.
+- `KW-DISCOVERY-LEAK-001`: the public Relay registry still exposes
+  provider-native endpoint names. Pay-down: post-Genesis Xion-controlled
+  endpoint naming layer.
+- `KW-VAULT-001` and `KW-OBS-001`: gateway interfaces are live, but production
+  threshold-vault custody and hosted observability exporters remain provider
+  depth residuals. Pay-down: first provider-depth hardening slice after Genesis.
+
+## Closed Pre-Genesis Evidence
+
+- `KW-VOICE-SOVEREIGNTY-001`: `ledgers/AMENDMENT_LEDGER.jsonl` records
+  Invariant 18 with `reflection_window_days_observed=14`, `status="ratified"`,
+  and Cold Root cosign in the note.
+- `KW-AUDIT-001`: `docs/audits/treasury-2026-report.md` records the treasury
+  audit as `PASSED` with auditor sign-off hash
+  `8f4e22b10a9c8b7365d9f018a7c645391e8bc27f7a14e9182d3e912389a0b12c`
+  and Arweave tx `wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg`.
+
+## Sprint Mode Falsification Statements
+
+- `LHT-SUBSTRATE-001`: falsified if Chutes outage plus Akash-secondary failure
+  leaves no runnable Relay path before the third-party drill evidence exists.
+- `KW-OPS-001`: falsified if the 3-host floor is publicly advertised as closed
+  before `xion-verify discovery` can verify three independent Relay endpoints.
+- `KW-KEYS-001`: falsified if software-Shamir custody is represented as equal
+  to the later hardware-token geographic ceremony.
+- `KW-BRIDGE-001`: falsified if bridge attestations are treated as final
+  authority rather than interim guarded evidence.
+- `KW-DISCOVERY-LEAK-001`: falsified if provider-native endpoint names are
+  claimed to be privacy-preserving or coercion-resistant.
+- `KW-VAULT-001`: falsified if runtime credential custody claims a real
+  threshold-unlock provider while still using the stub path.
+- `KW-OBS-001`: falsified if hosted observability is claimed operational before
+  a real exporter is wired and verified.
 
 ## Preflight Commands
 
@@ -60,18 +96,22 @@ xion-verify discovery --no-cloudflare
 xion-verify treasury
 xion-verify treasury-flow
 xion-verify bridge-attest --backend=lightclient
-xion-verify regulatory-ledger
+xion-verify regulatory-ledger --check-safety-link
+xion-verify substrate-portability
+xion-verify gateway-conformance
 xion-verify pre-genesis
+xion-verify all --allow-not-yet-sealed
 ```
 
 ## Operator Sign-Off Checklist
 
-- Invariant 18 amendment row is `ratified`.
-- Treasury audit report is committed under `docs/audits/` and anchored.
-- Base Sepolia redeploy addresses are pinned in `genesis/TREASURY_VAULTS.json`.
-- Mainnet treasury addresses are pinned after Cold Root deploy.
-- `scripts/immortality-drill-third-party.sh` evidence row is appended.
-- Local `scripts/substrate-portability-dry-run.sh` evidence row `seq=7` names
+- [x] Invariant 18 amendment row is `ratified`.
+- [x] Treasury audit report is committed under `docs/audits/`.
+- [x] Treasury audit Arweave tx id is pinned.
+- [x] Base Sepolia redeploy addresses are pinned in `genesis/TREASURY_VAULTS.json`.
+- [ ] Mainnet treasury addresses are pinned after Cold Root deploy.
+- [x] `scripts/immortality-drill-third-party.sh` evidence row is appended.
+- [x] Local `scripts/substrate-portability-dry-run.sh` evidence row `seq=7` names
   Chutes d3 standby as the warm secondary substrate; non-operator-machine
   confirmation remains pending.
-- Any state-actor contact is appended to `ledgers/GOVERNANCE_LEDGER.jsonl`.
+- [x] Any state-actor contact is appended to `ledgers/GOVERNANCE_LEDGER.jsonl`.

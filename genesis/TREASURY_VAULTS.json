@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
   "status": "testnet",
+  "treasury_audit_arweave_tx": "wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg",
+  "invariant_18_ratification_arweave_tx": "a4uIJkEoOh0FHX3ws5JNWBEvj0fR2TrSRE06VY-rUwg",
   "bridge_exposure_cap_bps": 1000,
   "master_treasury": "0xFAAa1A20f07249316BdB33A9eA44522260Ed7E45",
   "master_treasury_deploy_block": 40699177,
@@ -43,5 +45,5 @@
       "deploy_tx": "0xf0fadec686d79a77efb2c17a35949bb9bfbabe8d4e12d2ea294984dfe59c0b51"
     }
   ],
-  "residual": "Mainnet treasury and vault addresses require Phase 7 external audit and Cold Root authority wiring."
+  "residual": "Mainnet treasury and vault addresses require Cold Root authority wiring and Base mainnet deploy."
 }
