@@ -1198,16 +1198,31 @@ Every entry has the same shape:
 - **Domain:** `AUDIT`
 - **Discovered:** 2026-04-19 (during the 1-week sprint-mode design conversation)
 - **Severity:** high (only relevant if Sprint Mode is the chosen ship path)
-- **Status:** `closed` (2026-04-30 for Macro Phase 6 Epic C treasury scope)
-- **Description:** In the Sprint Mode 1-week mainnet deploy variant, contracts could have gone to mainnet without an external audit. That risk is closed for the Macro Phase 6 Epic C treasury scope by `docs/audits/treasury-2026-report.md`.
+- **Status:** `open` (reopened 2026-05-01)
+- **Description:** In the Sprint Mode 1-week mainnet deploy variant, contracts could go to mainnet without an external audit. A 2026-04-30 document at `docs/audits/treasury-2026-report.md` previously marked this risk closed, but the deploy preflight on 2026-05-01 proved that document was an internal review / self-attestation, not an externally signed audit, and that it did not correspond to currently deployable source bytes.
 - **Why it exists:** Sprint Mode trades audit time for time-to-genesis. The trade is conscious.
 - **Mitigations:**
   - 24-48 hour Base Sepolia soak before mainnet.
   - Aggressive Foundry test coverage (â‰¥95% line, â‰¥90% branch).
   - Constitutional protections that limit blast radius even of a contract bug: rotation lattice, treasury caps, cadence floors, governance-reviewed treasury spend.
-- **Closure evidence:** `docs/audits/treasury-2026-report.md` reports `PASSED` for `MasterTreasury.sol`, `Vault.sol`, orchestrator bridge elements, and schemas, with auditor sign-off hash `8f4e22b10a9c8b7365d9f018a7c645391e8bc27f7a14e9182d3e912389a0b12c`.
-- **Pay-down commitment:** Complete for the treasury external-audit scope. Trust-minimized bridge maturity remains separately tracked under `KW-BRIDGE-001`.
-- **Verifier:** the audit report itself, its Arweave tx record in `docs/audits/treasury-2026-report.arweave-tx.txt`, and the treasury verifier battery.
+- **Reopen evidence:** `forge script treasury/script/Deploy.s.sol:DeployTreasury` failed on 2026-05-01 before broadcast because current `contracts/treasury/MasterTreasury.sol` did not compile under `solc 0.8.24`. The Base Sepolia address pinned in `genesis/TREASURY_VAULTS.json` also lacks selectors added after the reviewed testnet deploy, so the deployed bytecode and reviewed source claim do not match.
+- **Pay-down commitment:** Closed only after either (a) an actual external audit signs a commit-specific report for the exact deployable bytecode, or (b) Sprint Mode proceeds explicitly as unaudited with the Base Sepolia soak, coverage report, and blast-radius caps documented in `docs/STATE_OF_XION_PREFLIGHT.md`.
+- **Verifier:** `forge test` and `forge coverage` from `contracts/`; `xion-verify treasury`; the correction document at `docs/audits/treasury-2026-report.CORRECTION.md`; and on-chain selector checks against the Base Sepolia / Base mainnet treasury addresses.
+
+### KW-AUDIT-002 — Treasury audit record and Base Sepolia bytecode/source mismatch
+
+- **Domain:** `AUDIT`
+- **Discovered:** 2026-05-01 during Base mainnet deploy preflight.
+- **Severity:** high
+- **Status:** `open`
+- **Description:** The Arweave-anchored document `docs/audits/treasury-2026-report.md` (tx `wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg`) claimed a `PASSED` audit and claimed the testnet deployment matched reviewed bytecode. Deploy preflight disproved that claim: current `MasterTreasury.sol` did not compile, and the pinned Base Sepolia `MasterTreasury` address responds to the older interface (`governance`, `bridgeExposureCapBps`, `vaultForChain`) but not to later selectors (`aoCoreAuthority`, `registeredChainCount`).
+- **Why it exists:** The report was produced as an internal agent-generated review but was described and anchored as if it were an external audit with a sign-off hash. The report's `Commit SHA` field was still a placeholder.
+- **Mitigations:**
+  - No Base mainnet treasury deploy may proceed while the correction is absent or while `KW-AUDIT-001` is represented as closed.
+  - The original Arweave tx cannot be deleted; future manifests must cite the correction tx beside it.
+  - `docs/audits/treasury-2026-report.md` is demoted to an internal review record, not an external audit.
+- **Pay-down commitment:** Closed when the correction document is published to Arweave, `genesis/TREASURY_VAULTS.json` points at both the original tx and the correction tx, and either an actual external audit or an explicit Sprint Mode unaudited-deploy acceptance replaces the false closure claim.
+- **Verifier:** `xion-verify treasury` must fail or warn if a manifest cites the original audit tx without the correction tx; until that verifier exists, the check is manual in `genesis/TREASURY_VAULTS.json` and `docs/STATE_OF_XION_PREFLIGHT.md`.
 
 ### KW-KEYS-001 â€” Software-Shamir Cold Root at Sprint Mode genesis (applies if Sprint Mode is chosen)
 
@@ -1224,6 +1239,22 @@ Every entry has the same shape:
   - The Abdication Schedule reduces the Operator's authority footprint over time, mechanically, regardless of how rigorous the original ceremony was.
 - **Pay-down commitment:** Closed when the Cold Root is migrated to a hardware-token geographic ceremony with at least three of the five shards held by independent custodians on three different continents. Commit: within 90 days post-Genesis if Sprint Mode is selected.
 - **Verifier:** `xion-verify authorities` (will report the custody distribution and timelock state).
+
+### KW-AO-AUTHORITY-DUALROLE-001 — `MasterTreasury` governance and AO Core authority share one operator-held Safe at Sprint Mode mainnet deploy
+
+- **Domain:** `AUTHORITIES`
+- **Discovered:** 2026-05-01 (during the Sprint Mode Base mainnet `MasterTreasury` deploy ceremony)
+- **Severity:** high
+- **Status:** `open`
+- **Description:** At Sprint Mode mainnet deploy, both `MasterTreasury.governance` and `MasterTreasury.aoCoreAuthority` are pinned to the same 2-of-3 Safe (`0x5A91E08D909854b594f07648D23440f4908529b4`, Base mainnet, SafeL2 v1.4.1). The Safe owners are operator-held EOAs (one MetaMask account, two paper keys), not AO-bonded keys. Both authority slots are declared `immutable` in `contracts/treasury/MasterTreasury.sol`, so neither can be rotated in place — replacement requires deploying a new `MasterTreasury` and re-registering all vaults.
+- **Why it exists:** The AO Core ↔ EVM bonding ceremony (threshold key shares published on Arweave, controlled by AO Core processes rather than human operators) does not exist at the time of this deploy. Sprint Mode chose to ship the treasury with a *real* multisig as a placeholder for AO authority rather than block on the bonding ceremony or fake the role with an EOA.
+- **Mitigations:**
+  - Per-vault `aoCoreAuthority` is set in `MasterTreasury.deployVault(chainId, aoCoreAuthority)`, so individual `Vault` contracts can have AO authority addresses distinct from the master, giving partial recovery without redeploying `MasterTreasury`.
+  - The 10% `bridgeExposureCapBps` and `DAILY_BRIDGE_EGRESS_CAP = 1_000_000 * 10**18` constants in `MasterTreasury.sol` cap blast radius even if the dual-role Safe is compromised.
+  - The Safe is 2-of-3 on Base mainnet with two paper-key owners stored offline, raising the bar above any single-key compromise of the operator.
+  - `KW-KEYS-001` separately tracks the broader operator-key custody slip; this entry is the contract-layer manifestation, not a duplicate.
+- **Pay-down commitment:** Closed when (a) the AO Core ↔ EVM bonding ceremony exists and produces an AO-controlled EVM authority address, and (b) `MasterTreasury` is redeployed on Base with `governance` set to the operator/Cold-Root governance Safe and `aoCoreAuthority` set to the AO-controlled address, with all registered vaults migrated and `genesis/TREASURY_VAULTS.json` repinned. Commit: within 180 days of the AO bonding ceremony being available, or 365 days post-Genesis, whichever is earlier.
+- **Verifier:** `xion-verify treasury` (reads `genesis/TREASURY_VAULTS.json`, which records the dual-role address explicitly); on-chain check via `cast call <MasterTreasury> 'governance()(address)'` and `'aoCoreAuthority()(address)'` returning the *same* Safe address is the falsifying observation while this KW is open, and *different* addresses (governance Safe ≠ AO-bonded address) is the closure observation.
 
 ---
 

@@ -9,8 +9,9 @@ Cold Root and Witness evidence exist.
 
 - Epic A: closed.
 - Epic B: closed.
-- Epic C: code-completable treasury depth and external treasury audit are
-  complete; mainnet deploy remains a one-way door.
+- Epic C: code-completable treasury depth is present, but the claimed external
+  treasury audit is reopened after deploy preflight falsified the audit record;
+  mainnet deploy remains blocked until corrected evidence exists.
 - Epic D: code-completable scope closed; third-party-machine drill remains an
   operator action under `LHT-SUBSTRATE-001`.
 - Epic E: governance-ledger writer, intake route, runbook, and verifier
@@ -65,10 +66,23 @@ Cold Root and Witness evidence exist.
 - `KW-VOICE-SOVEREIGNTY-001`: `ledgers/AMENDMENT_LEDGER.jsonl` records
   Invariant 18 with `reflection_window_days_observed=14`, `status="ratified"`,
   and Cold Root cosign in the note.
-- `KW-AUDIT-001`: `docs/audits/treasury-2026-report.md` records the treasury
-  audit as `PASSED` with auditor sign-off hash
-  `8f4e22b10a9c8b7365d9f018a7c645391e8bc27f7a14e9182d3e912389a0b12c`
-  and Arweave tx `wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg`.
+
+## Reopened Pre-Genesis Evidence
+
+- `KW-AUDIT-001`: reopened on 2026-05-01. The Arweave-pinned
+  `docs/audits/treasury-2026-report.md` tx
+  `wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg` was an internal review /
+  self-attestation, not an external audit. Deploy preflight also found that
+  current `contracts/treasury/MasterTreasury.sol` did not compile and that the
+  pinned Base Sepolia deployment predates the current source interface.
+- `KW-AUDIT-002`: opened to track the permanent audit-record correction. The
+  correction file is `docs/audits/treasury-2026-report.CORRECTION.md`;
+  Arweave correction publication remains pending.
+- Contract preflight after the correction: `forge test --match-contract
+  TreasuryTest -vvv` passes 10/10 after the `MasterTreasury` compile fix.
+  Full `forge test -vvv` remains blocked by 9 `EmissionController` failures in
+  scheduled-mint cap-exhaustion / slowdown tests (`DailyEgressCapExceeded`).
+  Those tokenomics failures are not waived for Genesis.
 
 ## Sprint Mode Falsification Statements
 
@@ -106,9 +120,11 @@ xion-verify all --allow-not-yet-sealed
 ## Operator Sign-Off Checklist
 
 - [x] Invariant 18 amendment row is `ratified`.
-- [x] Treasury audit report is committed under `docs/audits/`.
-- [x] Treasury audit Arweave tx id is pinned.
-- [x] Base Sepolia redeploy addresses are pinned in `genesis/TREASURY_VAULTS.json`.
+- [ ] Treasury audit report is corrected and either externally signed or
+  explicitly accepted as unaudited Sprint Mode evidence.
+- [ ] Treasury audit correction Arweave tx id is pinned beside the original tx.
+- [x] Base Sepolia redeploy addresses are pinned in `genesis/TREASURY_VAULTS.json`,
+  but the pinned deployment predates the current `MasterTreasury` source interface.
 - [ ] Mainnet treasury addresses are pinned after Cold Root deploy.
 - [x] `scripts/immortality-drill-third-party.sh` evidence row is appended.
 - [x] Local `scripts/substrate-portability-dry-run.sh` evidence row `seq=7` names

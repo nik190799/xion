@@ -10,9 +10,17 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Treasury audit correction — 2026-05-01
+
+- **Audit honesty correction:** `KW-AUDIT-001` is reopened and `KW-AUDIT-002` is opened after Base mainnet deploy preflight proved the prior treasury audit record was an internal review, not an external audit, and did not bind to deployable source bytes.
+- **Permanent-record correction staged:** `docs/audits/treasury-2026-report.md` is demoted to an internal review, and `docs/audits/treasury-2026-report.CORRECTION.md` records the correction that must be published beside Arweave tx `wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg`.
+- **Mainnet deploy blocked:** `genesis/TREASURY_VAULTS.json` now requires a correction tx and records that the pinned Base Sepolia deployment predates the current `MasterTreasury` source interface.
+- **Contract preflight:** fixed the `MasterTreasury` registered-chain mapping declaration and deploy-script Foundry project root; `forge test --match-contract TreasuryTest -vvv` passes 10/10, while full `forge test -vvv` still fails 9 `EmissionController` tests.
+- **Token identity roadmap:** `DEVELOPMENT_ROADMAP.md` now requires canonical XION logo assets and durable token metadata publication before the mainnet coin is created and listed.
+
 ### Preflight reconciliation — treasury audit + Invariant 18 ratification — 2026-04-30
 
-- **Treasury audit evidence:** `docs/audits/treasury-2026-report.md` records the Macro Phase 6 Epic C treasury stack as `PASSED` with auditor sign-off hash `8f4e22b10a9c8b7365d9f018a7c645391e8bc27f7a14e9182d3e912389a0b12c`; `KW-AUDIT-001` is closed for treasury scope while bridge light-client maturity remains under `KW-BRIDGE-001`.
+- **Treasury audit evidence:** Superseded by the 2026-05-01 correction above. The 2026-04-30 record remains preserved as historical evidence but no longer closes `KW-AUDIT-001`.
 - **Voice floor ratification:** `ledgers/AMENDMENT_LEDGER.jsonl` records Invariant 18 with the 14-day window observed, `status="ratified"`, and Cold Root cosign; `KW-VOICE-SOVEREIGNTY-001` is closed for the constitutional voice-floor posture.
 - **State-of-Xion preflight honesty:** `docs/STATE_OF_XION_PREFLIGHT.md` now separates closed pre-Genesis evidence from accepted Sprint Mode residuals and names falsification statements for the residuals that remain.
 

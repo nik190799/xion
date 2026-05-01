@@ -12,7 +12,8 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO"
+CONTRACTS="$REPO/contracts"
+cd "$CONTRACTS"
 
 : "${BASE_MAINNET_RPC:?set BASE_MAINNET_RPC}"
 : "${XION_DEPLOYER_PRIVATE_KEY:?set XION_DEPLOYER_PRIVATE_KEY}"
@@ -26,7 +27,7 @@ if ! command -v forge >/dev/null 2>&1; then
 fi
 
 CMD=(
-  forge script contracts/treasury/script/Deploy.s.sol:DeployTreasury
+  forge script treasury/script/Deploy.s.sol:DeployTreasury
   --rpc-url "$BASE_MAINNET_RPC"
   --broadcast
   --private-key "$XION_DEPLOYER_PRIVATE_KEY"
@@ -38,14 +39,16 @@ fi
 
 "${CMD[@]}"
 
-python - <<'PY'
+REPO_ROOT="$REPO" CONTRACTS_DIR="$CONTRACTS" python - <<'PY'
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
-root = Path.cwd()
-broadcast_dir = root / "broadcast" / "Deploy.s.sol" / "8453"
+root = Path(os.environ["REPO_ROOT"])
+contracts_dir = Path(os.environ["CONTRACTS_DIR"])
+broadcast_dir = contracts_dir / "broadcast" / "Deploy.s.sol" / "8453"
 latest = broadcast_dir / "run-latest.json"
 if not latest.is_file():
     raise SystemExit(f"deploy-treasury-mainnet: missing {latest}")

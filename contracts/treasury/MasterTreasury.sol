@@ -19,7 +19,7 @@ contract MasterTreasury {
     uint256 public currentBridgeEgressDay;
     uint256 public bridgeEgressValueToday;
     mapping(uint256 chainId => address vault) public vaultForChain;
-    mapping(uint256 chainId => bool registeredChain);
+    mapping(uint256 chainId => bool registered) public registeredChain;
     uint256[] private _registeredChainIds;
 
     event VaultRegistered(uint256 indexed chainId, address indexed vault);
@@ -46,8 +46,8 @@ contract MasterTreasury {
         _;
     }
 
-    function deployVault(uint256 chainId, address aoCoreAuthority) external onlyGovernance returns (address vault) {
-        Vault created = new Vault(aoCoreAuthority);
+    function deployVault(uint256 chainId, address vaultAuthority) external onlyGovernance returns (address vault) {
+        Vault created = new Vault(vaultAuthority);
         vault = address(created);
         _registerVault(chainId, vault);
         emit VaultRegistered(chainId, vault);

@@ -25,6 +25,7 @@ contract TreasuryTest is Test {
     address internal constant CORE = address(0xC0DE);
     address internal constant USER = address(0xB0B);
     address internal constant TOKEN = address(0x1000);
+    address internal constant NATIVE_ASSET = address(0);
 
     function test_bridgeCapRevertsWhenExceeded() public {
         MasterTreasury treasury = new MasterTreasury(GOV, 1_000, CORE);
@@ -90,13 +91,13 @@ contract TreasuryTest is Test {
         vm.deal(address(vault), 5 ether);
 
         vm.prank(CORE);
-        vault.tagAsset(Vault.NATIVE_ASSET(), true);
+        vault.tagAsset(NATIVE_ASSET, true);
         vm.prank(CORE);
-        vault.withdraw(Vault.NATIVE_ASSET(), payable(USER), 2 ether);
+        vault.withdraw(NATIVE_ASSET, payable(USER), 2 ether);
 
         assertEq(USER.balance, 2 ether);
         assertEq(address(vault).balance, 3 ether);
-        assertEq(vault.balanceOf(Vault.NATIVE_ASSET()), 3 ether);
+        assertEq(vault.balanceOf(NATIVE_ASSET), 3 ether);
     }
 
     function test_vaultWithdrawUnknownAssetReverts() public {
