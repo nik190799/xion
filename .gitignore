@@ -165,6 +165,7 @@ SAFETY_LEDGER_ANCHORS.jsonl
 REQUEST_LEDGER.jsonl
 PAYMENT_LEDGER.jsonl
 RESEARCH_SPEND_LEDGER.jsonl
+ledgers/ALERT_LOG.jsonl
 
 # Broker state files written by the Phase 5g+ SqliteBroker when an operator
 # sets XION_BROKER_DB_PATH. SQLite-WAL posture means two sidecar files exist
