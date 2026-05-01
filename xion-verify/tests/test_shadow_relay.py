@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 
 import pytest
@@ -31,7 +30,7 @@ def test_shadow_relay_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
 
     # Mock the async check function to return no errors
     from xion_verify.commands import shadow_relay as sr_module
-    
+
     async def mock_check(port: int) -> list[str]:
         return []
 

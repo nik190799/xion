@@ -632,11 +632,11 @@ def test_broker_backed_store_two_workers_share_one_global_bucket(
     """Multi-worker budget-coherence property (closes KW-RATE-001):
     two workers sharing one broker DB see one global bucket per
     principal. A principal hitting worker A then worker B exhausts
-    the global budget in N total requests, not N × workers requests.
+    the global budget in N total requests, not N x workers requests.
 
     This is the core property Phase 5g+ closes. In the 5g-iv in-process
     posture, two workers would each allow N admits before rejecting —
-    a 2× budget inflation. With the broker, the 1st admit on worker A
+    a 2x budget inflation. With the broker, the 1st admit on worker A
     and the 1st admit on worker B share the same SQLite-backed bucket;
     the (N+1)th admit across both workers rejects.
     """

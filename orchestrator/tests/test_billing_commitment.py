@@ -13,8 +13,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 
-import pytest
-
 from orchestrator.billing.commitment import (
     Commitment,
     CommitmentRejectReason,
@@ -23,7 +21,6 @@ from orchestrator.billing.commitment import (
     verify_b1_attestation,
     verify_b2_x402_shape,
 )
-
 
 # ---------------------------------------------------------- parser: common
 

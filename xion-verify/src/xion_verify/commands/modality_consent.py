@@ -1,9 +1,12 @@
 """`xion-verify modality-consent` — verify Phase 6.4 modality consent."""
 
 import sys
+
 import click
-from xion_verify.exit_codes import OK, FAIL
+
+from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
+
 
 @click.command(name="modality-consent", help="Verify Phase 6.4 modality consent configurations.")
 def modality_consent() -> None:
@@ -54,7 +57,8 @@ def modality_consent() -> None:
     # 4. Store API round-trip
     import tempfile
     from pathlib import Path
-    from orchestrator.consent.store import write_consent, read_consent
+
+    from orchestrator.consent.store import read_consent, write_consent
     with tempfile.TemporaryDirectory() as tmpdir:
         store_path = Path(tmpdir) / "CONSENT_LEDGER.jsonl"
         write_consent(store_path, "test-principal", default_consent.model_dump())

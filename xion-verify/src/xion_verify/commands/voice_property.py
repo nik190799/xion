@@ -6,12 +6,12 @@ and asserts the SOUL_PROMPT slot is byte-equal to `genesis/SOUL_PROMPT.md` body.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
+
 
 @click.command(
     name="voice-property",
@@ -19,18 +19,18 @@ from xion_verify.repo import RepoRootNotFound, find_repo_root
 )
 def voice_property() -> None:
     try:
-        repo_root = find_repo_root()
+        find_repo_root()
     except RepoRootNotFound as exc:
         click.echo(f"voice-property: FAIL: {exc}", err=True)
         sys.exit(FAIL)
 
     try:
-        from orchestrator.cognition.soul_prompt import load_soul_prompt
         from orchestrator.cognition.context import assemble_context
+        from orchestrator.cognition.soul_prompt import load_soul_prompt
     except ImportError as exc:
         click.echo(f"voice-property: FAIL: Could not import orchestrator modules: {exc}", err=True)
         sys.exit(FAIL)
-        
+
     try:
         soul_prompt = load_soul_prompt()
     except Exception as exc:
@@ -44,7 +44,7 @@ def voice_property() -> None:
         recent_journal=["user: hello", "xion: hi"],
         retrieved_context=["user: past"]
     )
-    
+
     # Assert structural property
     if not context.startswith(soul_prompt.strip()):
         click.echo(
@@ -53,6 +53,6 @@ def voice_property() -> None:
             err=True
         )
         sys.exit(FAIL)
-        
+
     click.echo("voice-property: OK (SOUL_PROMPT structurally anchors the context window)")
     sys.exit(OK)

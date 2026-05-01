@@ -6,6 +6,7 @@ from typing import Any
 
 from orchestrator.cognition.prompt_composer import IsolatingPromptComposer
 
+
 def assemble_context(
     soul_prompt: str,
     sensorium_snapshot: dict[str, Any] | None,

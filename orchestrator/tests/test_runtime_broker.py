@@ -30,11 +30,9 @@ from orchestrator.runtime.broker import (
     Broker,
     BrokerConfig,
     BrokerError,
-    RateCheck,
     SqliteBroker,
     load_broker_from_env,
 )
-
 
 # --- Fixtures ------------------------------------------------------------
 
@@ -336,7 +334,7 @@ class TestRateLimit:
     def test_multi_worker_global_coherence(self, broker_path: Path) -> None:
         """Three 'worker' connections share one broker DB. A principal
         hitting all three workers in parallel exhausts exactly
-        ``budget`` events globally, not ``N × budget``. This is the
+        ``budget`` events globally, not ``N x budget``. This is the
         exact KW-RATE-001 pay-down property."""
         config = BrokerConfig(
             db_path=broker_path,

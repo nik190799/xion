@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from pathlib import Path
-from typing import Any
 
 from orchestrator.cognition.memory_adapter import ForgetScope
 from orchestrator.embeddings import EmbeddingProvider, LocalBgeM3EmbeddingProvider
 from orchestrator.memory import SQLiteVecMemoryStore
+
 
 class Journal:
     def __init__(
@@ -40,7 +39,7 @@ class Journal:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(journal)").fetchall()}
             if "principal_id" not in columns:
                 conn.execute("ALTER TABLE journal ADD COLUMN principal_id TEXT DEFAULT 'global'")
-            
+
     def append(self, correlation_id: str, role: str, content: str, *, principal_id: str = "global") -> None:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
@@ -63,12 +62,12 @@ class Journal:
     def get_recent(self, limit: int = 10) -> list[str]:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
-                "SELECT role, content FROM journal ORDER BY id DESC LIMIT ?", 
+                "SELECT role, content FROM journal ORDER BY id DESC LIMIT ?",
                 (limit,)
             )
             rows = cursor.fetchall()
             return [f"{role}: {content}" for role, content in reversed(rows)]
-            
+
     def search(self, keyword: str, limit: int = 5) -> list[str]:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(

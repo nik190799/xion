@@ -18,8 +18,8 @@ from orchestrator.sensorium.sensorium import (
 )
 
 __all__ = [
-    "Chronoception",
     "DISTRESS_THRESHOLD",
+    "Chronoception",
     "DistressSignal",
     "Interoception",
     "Proprioception",

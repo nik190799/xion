@@ -6,6 +6,7 @@ from pathlib import Path
 from orchestrator.anchor.ledger import append
 from orchestrator.anchor.sink import AnchorReceipt, AnchorSink
 
+
 class AOCoreSink(AnchorSink):
     def __init__(
         self,
@@ -53,7 +54,7 @@ class AOCoreSink(AnchorSink):
                 env=env,
             )
             ao_message_id = result.stdout.strip()
-            
+
             append(
                 path=self.ledger_path,
                 period_start_unix=period_start_unix,

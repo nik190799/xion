@@ -8,7 +8,6 @@ Tier B and C entries must return NOT_YET_SEALED (for now).
 from __future__ import annotations
 
 import sys
-from typing import Any
 
 import click
 
@@ -42,7 +41,7 @@ def pre_genesis(ctx: click.Context) -> None:
         "embedder-health",
         "rerank-improvement",
     ]
-    
+
     tier_bc = []
 
     click.echo("pre-genesis: Starting composite drill...")
@@ -54,7 +53,7 @@ def pre_genesis(ctx: click.Context) -> None:
         if not cmd:
             click.echo(f"pre-genesis: FAIL: Command '{cmd_name}' not found in _REAL_COMMANDS.", err=True)
             sys.exit(FAIL)
-        
+
         try:
             ctx.invoke(cmd)
         except SystemExit as exc:
@@ -78,7 +77,7 @@ def pre_genesis(ctx: click.Context) -> None:
             if not cmd:
                 click.echo(f"pre-genesis: FAIL: Command '{cmd_name}' not found.", err=True)
                 sys.exit(FAIL)
-        
+
         try:
             ctx.invoke(cmd)
         except SystemExit as exc:

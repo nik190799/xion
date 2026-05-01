@@ -46,7 +46,6 @@ from orchestrator.volition import (
     compute_drive_vector,
 )
 
-
 # ------------------------------------------------------- pure-function shape
 
 

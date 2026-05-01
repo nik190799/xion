@@ -465,7 +465,7 @@ def verify_ao_handlers() -> None:
         repo_root = find_repo_root()
     except RepoRootNotFound as exc:
         click.echo(f"ao-handlers: FAIL: {exc}", err=True)
-        raise click.exceptions.Exit(FAIL)
+        raise click.exceptions.Exit(FAIL) from exc
 
     schemas_dir = repo_root / _SCHEMAS_DIRNAME
     if not schemas_dir.is_dir():

@@ -21,10 +21,12 @@ import click
 
 from xion_verify import __version__
 from xion_verify.commands import REGISTERED_COMMANDS
-from xion_verify.commands.ao_handlers import verify_ao_handlers
 from xion_verify.commands.abdication import abdication_schedule, abdication_status
+from xion_verify.commands.agent_cast import agent_cast
+from xion_verify.commands.agent_souls import agent_souls
 from xion_verify.commands.amendments import amendments
 from xion_verify.commands.ao_deploy import identity, sister_fork_readiness, state_tip
+from xion_verify.commands.ao_handlers import verify_ao_handlers
 from xion_verify.commands.api_tokens import api_tokens
 from xion_verify.commands.arbiter_determinism import arbiter_determinism
 from xion_verify.commands.arbiter_up import arbiter_up
@@ -41,8 +43,6 @@ from xion_verify.commands.chutes_topup_multisig import chutes_topup_multisig
 from xion_verify.commands.cognition import cognition
 from xion_verify.commands.cognition_disjoint import cognition_disjoint
 from xion_verify.commands.cognition_loop_bounded import cognition_loop_bounded
-from xion_verify.commands.agent_cast import agent_cast
-from xion_verify.commands.agent_souls import agent_souls
 from xion_verify.commands.constitutional import (
     covenant,
     credentials,
@@ -53,12 +53,12 @@ from xion_verify.commands.constitutional import (
     soul,
     unknowns,
 )
-from xion_verify.commands.covenant_addenda import covenant_addenda
 from xion_verify.commands.contracts_deployed import authorities, liquidity_lock, supply
 from xion_verify.commands.cost_pressure import cost_pressure
+from xion_verify.commands.covenant_addenda import covenant_addenda
 from xion_verify.commands.credentials_vault import credentials_vault
-from xion_verify.commands.crypto_currency import crypto_currency
 from xion_verify.commands.crisis_fidelity import crisis_fidelity
+from xion_verify.commands.crypto_currency import crypto_currency
 from xion_verify.commands.cutoff_events import cutoff_events
 from xion_verify.commands.discovery import discovery
 from xion_verify.commands.drive import drive
@@ -67,8 +67,8 @@ from xion_verify.commands.embedder_health import embedder_health
 from xion_verify.commands.gateway_conformance import gateway_conformance
 from xion_verify.commands.hermes_runtime import hermes_runtime
 from xion_verify.commands.hermes_version import hermes_version
-from xion_verify.commands.image_digest import image_digest
 from xion_verify.commands.identity_bindings import identity_bindings
+from xion_verify.commands.image_digest import image_digest
 from xion_verify.commands.inference_provider_chutes import inference_provider_chutes
 from xion_verify.commands.inference_sovereignty import inference_sovereignty
 from xion_verify.commands.interaction_anchor import cli as interaction_anchor
@@ -78,8 +78,8 @@ from xion_verify.commands.local import local_cmd
 from xion_verify.commands.mcp_export import mcp_export
 from xion_verify.commands.measurement_vocabulary import measurement_vocabulary
 from xion_verify.commands.memory_store_integrity import memory_store_integrity
-from xion_verify.commands.model_promotion_discipline import model_promotion_discipline
 from xion_verify.commands.modality_consent import modality_consent
+from xion_verify.commands.model_promotion_discipline import model_promotion_discipline
 from xion_verify.commands.nervous_system import nervous_system_cli
 from xion_verify.commands.new import new_cmd
 from xion_verify.commands.not_yet_sealed import STUB_COMMANDS, STUB_NAMES
@@ -98,31 +98,31 @@ from xion_verify.commands.registries import registries
 from xion_verify.commands.regulatory_ledger import regulatory_ledger
 from xion_verify.commands.replay_corpus import replay_corpus
 from xion_verify.commands.request_fingerprint import request_fingerprint
-from xion_verify.commands.research_sources import research_sources
 from xion_verify.commands.rerank_improvement import rerank_improvement
+from xion_verify.commands.research_sources import research_sources
 from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
-from xion_verify.commands.shadow_relay import shadow_relay
 from xion_verify.commands.shadow_divergence import shadow_divergence
+from xion_verify.commands.shadow_relay import shadow_relay
 from xion_verify.commands.skill_bounty import skill_bounty
 from xion_verify.commands.soul_prompt import soul_prompt
+from xion_verify.commands.sovereign_profile import sovereign_profile
 from xion_verify.commands.spend_discipline import spend_discipline
 from xion_verify.commands.spend_posture import spend_posture
-from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.spof import spof
-from xion_verify.commands.sovereign_profile import sovereign_profile
+from xion_verify.commands.state_chain import state_chain
 from xion_verify.commands.substrate_portability import substrate_portability
 from xion_verify.commands.substrates import substrates
-from xion_verify.commands.sustainability import sustainability
 from xion_verify.commands.supervisor_singleton import supervisor_singleton
+from xion_verify.commands.sustainability import sustainability
 from xion_verify.commands.tool_resolver_mcp import tool_resolver_mcp
 from xion_verify.commands.topography import topography_cli
 from xion_verify.commands.treasury import treasury
 from xion_verify.commands.treasury_buckets import foundation_reserve, improvement_fund, reserve, treasury_flow
-from xion_verify.commands.vitals import vitals
 from xion_verify.commands.vessel_compact import vessel_compact
 from xion_verify.commands.vessel_registry import vessel_registry
+from xion_verify.commands.vitals import vitals
 from xion_verify.commands.voice_form import voice_form
 from xion_verify.commands.voice_property import voice_property
 from xion_verify.commands.voice_sovereignty import voice_sovereignty

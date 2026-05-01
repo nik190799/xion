@@ -5,7 +5,10 @@ Wraps request-scoped Hermes agents in a long-lived asyncio task loop that manage
 wake/sleep cycles and feeds them from the SENSORIUM_LEDGER.
 """
 import asyncio
-from typing import Any, Callable, Coroutine
+import contextlib
+from collections.abc import Callable, Coroutine
+from typing import Any
+
 
 class DaemonWrapper:
     def __init__(self, name: str, run_cycle: Callable[[], Coroutine[Any, Any, None]], sleep_s: float = 60.0):
@@ -25,10 +28,8 @@ class DaemonWrapper:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
     async def _loop(self) -> None:

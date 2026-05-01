@@ -20,6 +20,7 @@ Property under test (per ``docs/04-ARCHITECTURE.md`` § "The Supervisor
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,6 @@ import pytest
 from orchestrator.relay import Relay
 from orchestrator.sensorium.ledger import iter_rows, verify_chain
 from orchestrator.supervisor import Supervisor
-
 
 # ---------- fixtures ---------------------------------------------------------
 
@@ -219,10 +219,8 @@ def test_run_exits_cleanly_on_task_cancel(
         task = asyncio.create_task(s.run())
         await asyncio.sleep(0.08)
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
     asyncio.run(_drive())
     rows = list(iter_rows(sensorium_ledger_path))

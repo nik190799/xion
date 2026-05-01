@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import click
 import yaml
@@ -48,7 +47,7 @@ _FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "elapsed-time authority gate",
         re.compile(
-            r"\b(after|for|until|once|when)\s+\d+(?:[-–]\d+)?\s+"
+            r"\b(after|for|until|once|when)\s+\d+(?:[-\N{EN DASH}]\d+)?\s+"
             r"(seconds?|minutes?|hours?|days?|weeks?|months?|years?)\b",
             re.IGNORECASE,
         ),

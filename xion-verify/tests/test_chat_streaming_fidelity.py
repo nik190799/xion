@@ -15,7 +15,6 @@ from orchestrator.safety.types import Decision
 from xion_verify.commands.chat_streaming_fidelity import chat_streaming_fidelity
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 
-
 _SHA_STAND = "a" * 64
 
 
@@ -304,5 +303,5 @@ def test_non_hex_stream_id_caught_by_chain_verifier(synthetic_repo: Path) -> Non
     row["stream_id"] = "ZZ" * 16  # invalid hex
     lines[0] = json.dumps(row, sort_keys=True, separators=(",", ":")).encode("utf-8")
     payment.write_bytes(b"\n".join(lines) + b"\n")
-    code, out = _invoke(synthetic_repo)
+    code, _out = _invoke(synthetic_repo)
     assert code == FAIL

@@ -27,7 +27,6 @@ from orchestrator.sensorium import (
     SensoriumState,
 )
 
-
 # ------------------------------------------------------------- Enum invariants
 
 

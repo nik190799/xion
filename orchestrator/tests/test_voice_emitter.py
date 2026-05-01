@@ -1,5 +1,6 @@
 """Voice emitter prosody frame composition."""
 
+from orchestrator.senses.voice_emitter import compose_voice_frame
 from orchestrator.sensorium.sensorium import (
     Chronoception,
     DistressSignal,
@@ -7,7 +8,6 @@ from orchestrator.sensorium.sensorium import (
     Proprioception,
     SensoriumState,
 )
-from orchestrator.senses.voice_emitter import compose_voice_frame
 
 
 def _state(distress: float) -> SensoriumState:

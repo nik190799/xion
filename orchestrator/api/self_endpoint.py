@@ -8,8 +8,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 
 from orchestrator.api.admission import admission_dependency
-from orchestrator.runtime import default_worker_id
 from orchestrator.api.models import SelfResponse
+from orchestrator.runtime import default_worker_id
 from orchestrator.sensorium.nervous_views import (
     GovernanceView,
     SensoriumView,

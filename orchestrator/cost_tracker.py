@@ -6,10 +6,10 @@ headroom, or write the future Spend Authority ledger.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
 import math
 import time
+from dataclasses import dataclass, field
+from enum import Enum
 
 from orchestrator.sensorium.receptors._util import sense_signal
 from orchestrator.signals.bus import SignalBus

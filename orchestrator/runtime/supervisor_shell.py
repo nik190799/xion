@@ -49,12 +49,15 @@ What this module deliberately does NOT do:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import threading
 import time
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any
 
+from orchestrator.runtime.broker import Broker
 from orchestrator.sensorium import (
     Chronoception,
     DistressSignal,
@@ -62,8 +65,6 @@ from orchestrator.sensorium import (
     Proprioception,
     SensoriumState,
 )
-
-from orchestrator.runtime.broker import Broker
 
 if TYPE_CHECKING:
     from orchestrator.relay import Relay
@@ -138,10 +139,10 @@ class BrokerSupervisorShell:
         broker: Broker,
         worker_id: str,
         leader_renew_s: float,
-        supervisor_factory: Callable[..., "Supervisor"],
+        supervisor_factory: Callable[..., Supervisor],
         sensorium_ledger_path: Path | None,
         tick_cadence_s: float,
-        relay: "Relay",
+        relay: Relay,
         follower_poll_s: float = _DEFAULT_FOLLOWER_POLL_S,
         presence_bus: Any | None = None,
         signal_bus: Any | None = None,
@@ -186,7 +187,7 @@ class BrokerSupervisorShell:
             return self._role
 
     @property
-    def _current_supervisor(self) -> "Supervisor | None":
+    def _current_supervisor(self) -> Supervisor | None:
         with self._role_lock:
             return self._leader_supervisor
 
@@ -321,7 +322,7 @@ class BrokerSupervisorShell:
                         timeout=self._leader_renew_s,
                     )
                     break  # stop_event fired
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
                 still_leader = self._broker.renew_leader(
@@ -338,14 +339,10 @@ class BrokerSupervisorShell:
                         supervisor_task,
                         timeout=max(1.0, 2.0 * self._tick_cadence_s),
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     supervisor_task.cancel()
-                    try:
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
                         await supervisor_task
-                    except (asyncio.CancelledError, Exception):
-                        # Cancellation or a terminal error in a
-                        # cancelled Supervisor is fine at this point.
-                        pass
             with self._role_lock:
                 self._leader_supervisor = None
                 if not self._stop_event.is_set():
@@ -359,7 +356,7 @@ class BrokerSupervisorShell:
                 timeout=self._follower_poll_s,
             )
             return
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         if self._stop_event.is_set():
             return
@@ -377,7 +374,7 @@ class BrokerSupervisorShell:
 
     # ----- Helpers --------------------------------------------------------
 
-    def _build_leader_supervisor(self) -> "Supervisor":
+    def _build_leader_supervisor(self) -> Supervisor:
         """Construct a Supervisor wired with a broker-publish hook.
 
         Uses the factory passed at construction time so tests can
@@ -415,6 +412,6 @@ def default_worker_id() -> str:
 
 __all__ = [
     "BrokerSupervisorShell",
-    "deserialize_sensorium_state",
     "default_worker_id",
+    "deserialize_sensorium_state",
 ]

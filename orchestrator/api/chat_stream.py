@@ -21,7 +21,7 @@ Constitutional properties (seven, pinned in architecture.md):
   P6. Client disconnect propagates to provider as real cancel (Commit 3).
   P7. Ledger rows are written after moderation, never speculatively.
 
-    Phase 5g-ii Commit 2 lands P1–P5 and P7. Commit 3 adds P6:
+    Phase 5g-ii Commit 2 lands P1-P5 and P7. Commit 3 adds P6:
     ``request.is_disconnected()`` is polled between chunks; when the
     client disconnects, the provider's async generator is closed
     (which propagates ``asyncio.CancelledError`` into its ``httpx``
@@ -45,6 +45,7 @@ channel is an event.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import secrets
 import sys
@@ -67,7 +68,6 @@ from orchestrator.inference_router.provider import (
 
 from .chat import _gate_commitment, _principle_to_int, _voice_sensorium_state
 from .models import (
-    MIN_MAX_TOKENS,
     ChatRequest,
     ChatResponse,
     NoFloorEnvelope,
@@ -115,7 +115,6 @@ def register_chat_stream_route(app: FastAPI) -> None:
     single ``done`` event because by then the SSE headers are already
     committed.
     """
-    from fastapi import Depends
 
     from .admission import admission_dependency
 
@@ -142,7 +141,11 @@ def register_chat_stream_route(app: FastAPI) -> None:
         user_proof_commit = None
         user_proof_algorithm = None
         if req.user_proof is not None:
-            from orchestrator.cognition.user_proof import verify_ed25519_proof, compute_proof_commit, InvalidSignatureError
+            from orchestrator.cognition.user_proof import (
+                InvalidSignatureError,
+                compute_proof_commit,
+                verify_ed25519_proof,
+            )
             try:
                 verify_ed25519_proof(
                     req.user_proof.user_pubkey_b64,
@@ -151,7 +154,7 @@ def register_chat_stream_route(app: FastAPI) -> None:
                 )
             except InvalidSignatureError as e:
                 return JSONResponse(status_code=400, content={"error": "invalid_user_proof", "detail": str(e)})
-            
+
             user_proof_commit = compute_proof_commit(req.user_proof.user_pubkey_b64, req.message)
             user_proof_algorithm = req.user_proof.algorithm
 
@@ -234,8 +237,8 @@ async def _stream_body(
     req: ChatRequest,
     request: Request,
     commitment: Commitment,
-    billing_config: "BillingConfig",
-    pricing_config: "PricingConfig",
+    billing_config: BillingConfig,
+    pricing_config: PricingConfig,
     deadline_s: float,
     stream_id: str,
     voice_sensorium_state: Any = None,
@@ -397,17 +400,17 @@ async def _stream_body(
     seq = 0
     terminal: GenerationResult | None = None
     turn_deadline_monotonic = time.monotonic() + deadline_s
-    
+
     from orchestrator.inference_router.model_registry import get_min_max_tokens
     model_id_configured = getattr(provider, "model", None)
     effective_max_tokens = max(
         req.max_tokens,
         get_min_max_tokens(provider_id, model_id_configured),
     )
-    
+
     supervisor = getattr(app.state, "supervisor", None)
     snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
-    
+
     from orchestrator.cognition.loop import chat_cognition_budget, stream_run_turn
     gen = stream_run_turn(
         provider,
@@ -483,10 +486,8 @@ async def _stream_body(
         # the provider generator, write a cancelled row, re-
         # raise so ASGI knows we respected the cancel. No ``done``
         # event goes on the wire.
-        try:
+        with contextlib.suppress(Exception):
             await gen.aclose()
-        except Exception:
-            pass
         _finalize_stream_ledger(
             app,
             commitment,
@@ -504,7 +505,7 @@ async def _stream_body(
             ),
         )
         raise
-    except (asyncio.TimeoutError, TimeoutError):
+    except TimeoutError:
         yield _sse(StreamErrorEvent(
             kind="error",
             error="deadline_exceeded",
@@ -694,8 +695,8 @@ async def _stream_body(
 def _finalize_stream_ledger(
     app: FastAPI,
     commitment: Commitment,
-    pricing_config: "PricingConfig",
-    billing_config: "BillingConfig",
+    pricing_config: PricingConfig,
+    billing_config: BillingConfig,
     outcome: _StreamOutcome,
 ) -> None:
     """Write the PAYMENT_LEDGER row after the stream body has emitted
@@ -767,14 +768,14 @@ def _sse(event: StreamChunkEvent | StreamDoneEvent | StreamErrorEvent) -> bytes:
     ``docs/32-CHAT-STREAMING.md`` § "SSE wire format".
     """
     payload = event.model_dump_json()
-    return f"data: {payload}\n\n".encode("utf-8")
+    return f"data: {payload}\n\n".encode()
 
 
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _refusal_body(r: "RelayResult", *, stage: str) -> RefusalEnvelope:
+def _refusal_body(r: RelayResult, *, stage: str) -> RefusalEnvelope:
     verdict = r.verdict
     principle_code = _principle_to_int(verdict.principle_id) if verdict.principle_id else 3
     reason = "covenant_refuse" if verdict.decision.value == "refuse" else "covenant_escalate"

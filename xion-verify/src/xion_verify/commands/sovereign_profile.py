@@ -65,8 +65,8 @@ def sovereign_profile() -> None:
             errors.append("XION_ARWEAVE_GATEWAYS must contain at least 2 gateways")
 
     try:
-        from orchestrator.safety import providers as safety_providers  # noqa: F401
         from orchestrator.inference_router import providers as inference_providers
+        from orchestrator.safety import providers as safety_providers  # noqa: F401
     except Exception as exc:
         errors.append(f"provider packages failed import: {type(exc).__name__}: {exc}")
     else:

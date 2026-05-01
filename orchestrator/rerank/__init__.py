@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .provider import IdentityReranker, RerankCandidate, RerankResult, Reranker
+from .provider import IdentityReranker, RerankCandidate, Reranker, RerankResult
 from .providers import ChutesTeiReranker, LocalBgeM3Reranker
 
 __all__ = [

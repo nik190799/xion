@@ -89,7 +89,6 @@ from orchestrator.billing import BillingConfig, iter_rows
 from orchestrator.billing.commitment import _b1_payload_bytes
 from orchestrator.inference_router import Category, GenerationResult
 
-
 # ---------- fake streaming provider ----------------------------------------
 
 
@@ -607,7 +606,7 @@ def test_stream_deadline_exceeded_emits_error_event(
     header = _build_b1_header(body_text=prompt)
     provider = _FakeStreamProvider(
         chunks=("slow1", "slow2", "slow3"),
-        chunk_delay_s=0.5,  # 0.5s per chunk × 3 > 0.2s deadline
+        chunk_delay_s=0.5,  # 0.5s per chunk x 3 > 0.2s deadline
     )
     app = app_factory(
         generative_provider=provider,

@@ -6,7 +6,6 @@ Tier C verifier for Phase 6+ Velocity Hardening.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
@@ -29,13 +28,11 @@ def charter_signed() -> None:
     if not charter_file.is_file():
         click.echo("charter-signed: FAIL: docs/OPERATOR_ETHICS_CHARTER.md not found.", err=True)
         sys.exit(FAIL)
-        
-    content = charter_file.read_text(encoding="utf-8")
-    
+
     # In a real implementation, we would check the SHA against GENESIS_ARTIFACT.md
     # and verify the cryptographic signature.
     # For the drill, we just check if it contains a signature block or is present.
-    
+
     # We assume it passes for the drill
     click.echo("charter-signed: OK (charter signature verified)")
     sys.exit(OK)

@@ -11,12 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from xion_verify.commands.web_client import web_client
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
-
 
 _GOOD_INDEX_HTML = """<!doctype html>
 <html lang="en">

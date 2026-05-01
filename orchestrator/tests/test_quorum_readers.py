@@ -14,7 +14,7 @@ class _Resp:
     def __init__(self, body: bytes) -> None:
         self._body = body
 
-    def __enter__(self) -> "_Resp":
+    def __enter__(self) -> _Resp:
         return self
 
     def __exit__(self, *_args: object) -> None:
@@ -31,7 +31,7 @@ def test_multi_rpc_reader_accepts_two_of_three(monkeypatch) -> None:
         "https://c": {"jsonrpc": "2.0", "id": 1, "result": "0x2"},
     }
 
-    def fake_urlopen(req, timeout):  # noqa: ANN001, ARG001
+    def fake_urlopen(req, timeout):
         return _Resp(json.dumps(bodies[req.full_url]).encode("utf-8"))
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
@@ -47,7 +47,7 @@ def test_multi_rpc_reader_fails_without_quorum(monkeypatch) -> None:
         "https://c": {"jsonrpc": "2.0", "id": 1, "result": "0x3"},
     }
 
-    def fake_urlopen(req, timeout):  # noqa: ANN001, ARG001
+    def fake_urlopen(req, timeout):
         return _Resp(json.dumps(bodies[req.full_url]).encode("utf-8"))
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
@@ -56,7 +56,7 @@ def test_multi_rpc_reader_fails_without_quorum(monkeypatch) -> None:
 
 
 def test_multi_gateway_arweave_accepts_two_matching(monkeypatch) -> None:
-    def fake_urlopen(req, timeout):  # noqa: ANN001, ARG001
+    def fake_urlopen(req, timeout):
         return _Resp(b"anchor-payload")
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
@@ -66,7 +66,7 @@ def test_multi_gateway_arweave_accepts_two_matching(monkeypatch) -> None:
 
 
 def test_multi_gateway_arweave_fails_when_one_of_two_errors(monkeypatch) -> None:
-    def fake_urlopen(req, timeout):  # noqa: ANN001, ARG001
+    def fake_urlopen(req, timeout):
         if "arweave.net" in req.full_url:
             return _Resp(b"anchor-payload")
         raise urllib.error.URLError("down")

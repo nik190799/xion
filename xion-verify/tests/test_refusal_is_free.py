@@ -17,7 +17,6 @@ from orchestrator.safety.types import Decision
 from xion_verify.commands.refusal_is_free import refusal_is_free
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 
-
 _SHA_STAND = "a" * 64  # synthetic 64-char hex for source_sha256
 
 

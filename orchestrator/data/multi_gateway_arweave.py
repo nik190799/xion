@@ -25,7 +25,7 @@ class MultiGatewayArweaveReader:
             base = gateway if gateway.endswith("/") else gateway + "/"
             url = urljoin(base, f"tx/{safe_tx}/data")
             req = urllib.request.Request(url, headers={"User-Agent": "xion-os/quorum"})
-            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:  # noqa: S310
+            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
                 return resp.read()
 
         return require_quorum(list(self.gateways), fetch, min_endpoints=2)

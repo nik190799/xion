@@ -200,13 +200,10 @@ def test_chat_request_max_tokens_default():
 
 def test_chat_server_side_clamp(tmp_path):
     """Finding #1: server-side clamp enforces MIN_MAX_TOKENS even if schema is bypassed."""
-    from orchestrator.api.chat import _invoke_generate
-    from orchestrator.api.models import MIN_MAX_TOKENS
-    import asyncio
-    
-    provider = _FakeProvider()
-    
-    # We can't bypass schema in the HTTP layer easily without mocking, 
+
+    _FakeProvider()
+
+    # We can't bypass schema in the HTTP layer easily without mocking,
     # but we can test that the chat handler passes the clamped value to the provider.
     # The easiest way is to just rely on the schema test above, as the clamp is defensive.
     pass
@@ -230,7 +227,7 @@ def test_post_chat_happy_path_returns_moderated_text(
     assert body["usage"] == {"input_tokens": 12, "output_tokens": 18}
     assert body["correlation_id"]
     assert len(fake.calls) == 1
-    
+
     # Finding #2: system prompt is injected
     assert fake.calls[0]["system"] is not None
     assert "I am Xion" in fake.calls[0]["system"]

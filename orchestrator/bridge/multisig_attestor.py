@@ -17,7 +17,7 @@ class MultisigBridgeAttestor:
 
     def attest(self, *, source_chain: str, target_chain: str, event_id: str, payload: dict[str, Any]) -> BridgeAttestation:
         payload_hash = canonical_payload_hash(payload)
-        signature = hashlib.sha256(f"{self.signer_set_id}:{self.threshold}:{event_id}:{payload_hash}".encode("utf-8")).hexdigest()
+        signature = hashlib.sha256(f"{self.signer_set_id}:{self.threshold}:{event_id}:{payload_hash}".encode()).hexdigest()
         return BridgeAttestation(
             source_chain=source_chain,
             target_chain=target_chain,

@@ -26,7 +26,7 @@ def _get_plugin_names(plugin_dir: Path) -> set[str]:
     """Return the names of all plugins in a directory."""
     if not plugin_dir.is_dir():
         return set()
-    
+
     plugins = set()
     for child in plugin_dir.iterdir():
         if child.name.startswith("_") and child.name != "__init__.py":
@@ -35,7 +35,7 @@ def _get_plugin_names(plugin_dir: Path) -> set[str]:
             plugins.add(child.stem)
         elif child.is_dir() and (child / "__init__.py").is_file():
             plugins.add(child.name)
-    
+
     plugins.discard("__init__")
     return plugins
 
@@ -43,26 +43,26 @@ def _get_plugin_names(plugin_dir: Path) -> set[str]:
 def check_disjoint(repo_root: Path) -> list[str]:
     """Walk plugin directories and assert no cross-imports between siblings."""
     errors = []
-    
+
     for rel_dir in _PLUGIN_DIRS:
         plugin_dir = repo_root / rel_dir
         if not plugin_dir.is_dir():
             continue
-            
+
         base_module = rel_dir.replace("/", ".")
         plugins = _get_plugin_names(plugin_dir)
-        
+
         for plugin in plugins:
             plugin_path_py = plugin_dir / f"{plugin}.py"
             plugin_path_dir = plugin_dir / plugin
-            
+
             files_to_check = []
             if plugin_path_py.is_file():
                 files_to_check.append((plugin_path_py, plugin))
             if plugin_path_dir.is_dir():
                 for py_file in plugin_path_dir.rglob("*.py"):
                     files_to_check.append((py_file, plugin))
-                    
+
             for file_path, p_name in files_to_check:
                 try:
                     content = file_path.read_text(encoding="utf-8")

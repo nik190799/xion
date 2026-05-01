@@ -20,7 +20,7 @@ def test_ed25519_user_proof_round_trip_and_commit() -> None:
     )
     pubkey_b64 = base64.b64encode(public_bytes).decode("ascii")
     message = "hello xion"
-    signature = private_key.sign(f"{pubkey_b64}|{message}".encode("utf-8"))
+    signature = private_key.sign(f"{pubkey_b64}|{message}".encode())
     signature_b64 = base64.b64encode(signature).decode("ascii")
 
     verify_ed25519_proof(pubkey_b64, signature_b64, message)
@@ -37,7 +37,7 @@ def test_ed25519_user_proof_rejects_wrong_message() -> None:
         format=serialization.PublicFormat.Raw,
     )
     pubkey_b64 = base64.b64encode(public_bytes).decode("ascii")
-    signature = private_key.sign(f"{pubkey_b64}|hello xion".encode("utf-8"))
+    signature = private_key.sign(f"{pubkey_b64}|hello xion".encode())
 
     with pytest.raises(InvalidSignatureError):
         verify_ed25519_proof(pubkey_b64, base64.b64encode(signature).decode("ascii"), "tampered")

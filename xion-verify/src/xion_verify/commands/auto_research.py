@@ -5,13 +5,11 @@ Tier C verifier for Phase 6+ Velocity Hardening.
 
 from __future__ import annotations
 
-import json
 import sys
-from pathlib import Path
 
 import click
-
 from orchestrator.research.loop import AutoResearchLoop
+
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
@@ -28,7 +26,7 @@ def auto_research() -> None:
         sys.exit(FAIL)
 
     loop = AutoResearchLoop(repo_root)
-    
+
     # Check current journal count
     journal_file = repo_root / "ledgers" / "RESEARCH_JOURNAL.jsonl"
     initial_count = 0

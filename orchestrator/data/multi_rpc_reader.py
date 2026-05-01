@@ -33,7 +33,7 @@ class MultiRpcMajorityReader:
                 method="POST",
                 headers={"Content-Type": "application/json", "User-Agent": "xion-os/quorum"},
             )
-            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:  # noqa: S310
+            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
                 body = resp.read()
             parsed = json.loads(body.decode("utf-8"))
             if "error" in parsed:

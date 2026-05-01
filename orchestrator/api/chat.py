@@ -69,7 +69,6 @@ from orchestrator.relay.ledger import (
 )
 
 from .models import (
-    MIN_MAX_TOKENS,
     ChatRequest,
     ChatResponse,
     NoFloorEnvelope,
@@ -120,7 +119,6 @@ def register_chat_route(app: FastAPI) -> None:
     before payment (so an unauthenticated scraper cannot probe
     pricing-validity by spamming 402-bait requests).
     """
-    from fastapi import Depends
 
     from .admission import admission_dependency
 
@@ -147,7 +145,11 @@ def register_chat_route(app: FastAPI) -> None:
         user_proof_commit = None
         user_proof_algorithm = None
         if req.user_proof is not None:
-            from orchestrator.cognition.user_proof import verify_ed25519_proof, compute_proof_commit, InvalidSignatureError
+            from orchestrator.cognition.user_proof import (
+                InvalidSignatureError,
+                compute_proof_commit,
+                verify_ed25519_proof,
+            )
             try:
                 verify_ed25519_proof(
                     req.user_proof.user_pubkey_b64,
@@ -156,7 +158,7 @@ def register_chat_route(app: FastAPI) -> None:
                 )
             except InvalidSignatureError as e:
                 return JSONResponse(status_code=400, content={"error": "invalid_user_proof", "detail": str(e)})
-            
+
             user_proof_commit = compute_proof_commit(req.user_proof.user_pubkey_b64, req.message)
             user_proof_algorithm = req.user_proof.algorithm
 
@@ -247,7 +249,7 @@ def register_chat_route(app: FastAPI) -> None:
         # exhausted, the handler surfaces the last failure's typed
         # class (P4).
         router = getattr(app.state, "router", None)
-        ordered: list["GenerativeProvider"] = (
+        ordered: list[GenerativeProvider] = (
             router.select_ordered() if router is not None else []
         )
         ordered = [
@@ -282,7 +284,7 @@ def register_chat_route(app: FastAPI) -> None:
 
         last_failure_class: str = "unknown_provider_error"
         last_provider_id: str | None = None
-        result: "GenerationResult | None" = None
+        result: GenerationResult | None = None
         provider_id: str | None = None
 
         from orchestrator.cognition.loop import chat_cognition_budget, run_turn
@@ -310,7 +312,7 @@ def register_chat_route(app: FastAPI) -> None:
             try:
                 supervisor = getattr(app.state, "supervisor", None)
                 snapshot_dict = supervisor.latest_snapshot().to_dict() if supervisor and supervisor.latest_snapshot() else None
-                
+
                 result = await asyncio.wait_for(
                     asyncio.to_thread(
                         run_turn,
@@ -326,7 +328,7 @@ def register_chat_route(app: FastAPI) -> None:
                     ),
                     timeout=turn_timeout_s,
                 )
-            except (TimeoutError, asyncio.TimeoutError) as exc:
+            except TimeoutError as exc:
                 failure_class = (
                     exc.failure_reason_class
                     if isinstance(exc, ProviderError)
@@ -514,7 +516,7 @@ def register_chat_route(app: FastAPI) -> None:
 def _gate_commitment(
     *,
     raw_header: str | None,
-    billing_config: "BillingConfig",
+    billing_config: BillingConfig,
     posted_price: int,
     body_sha256: str,
     now_utc_ns: int,
@@ -753,7 +755,7 @@ def _stream_voice_consented(principal_id: str) -> bool:
 
 
 def _invoke_generate(
-    provider: "GenerativeProvider",
+    provider: GenerativeProvider,
     prompt: str,
     system: str | None,
     max_tokens: int,
@@ -768,7 +770,7 @@ def _invoke_generate(
     )
 
 
-def _refusal_body(r: "RelayResult", *, stage: str) -> RefusalEnvelope:
+def _refusal_body(r: RelayResult, *, stage: str) -> RefusalEnvelope:
     """Build a 451 ``RefusalEnvelope`` model (not yet serialised) from
     a Relay verdict. Kept as a pure function so ``_finalize`` can
     ledger-write before the body is serialised to JSON."""

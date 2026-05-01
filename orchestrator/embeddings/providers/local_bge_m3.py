@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 
 from orchestrator.embeddings.provider import EmbeddingBatch, l2_normalize
 
-
 _DEFAULT_MODEL = "BAAI/bge-m3"
 
 

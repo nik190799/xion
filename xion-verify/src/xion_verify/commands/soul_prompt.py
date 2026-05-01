@@ -7,13 +7,13 @@ and declares the Covenant Block.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.hashing import sha256_file
 from xion_verify.repo import RepoRootNotFound, find_repo_root
+
 
 # Late import to avoid pulling orchestrator deps into the top level
 # of xion-verify, but we need the constant.
@@ -41,10 +41,10 @@ def soul_prompt() -> None:
     if not prompt_file.is_file():
         click.echo("soul-prompt: FAIL: genesis/SOUL_PROMPT.md not found.", err=True)
         sys.exit(FAIL)
-        
+
     actual_hash = sha256_file(prompt_file)
     expected_hash = _get_pinned_hash()
-    
+
     if actual_hash != expected_hash:
         click.echo(
             f"soul-prompt: FAIL: genesis/SOUL_PROMPT.md hash mismatch\n"
@@ -53,12 +53,12 @@ def soul_prompt() -> None:
             err=True,
         )
         sys.exit(FAIL)
-        
+
     content = prompt_file.read_text(encoding="utf-8")
     if "## Covenant Block" not in content:
         click.echo("soul-prompt: FAIL: genesis/SOUL_PROMPT.md does not declare the Covenant Block.", err=True)
         sys.exit(FAIL)
-        
+
     genesis_artifact = repo_root / "genesis" / "GENESIS_ARTIFACT.md"
     if genesis_artifact.is_file():
         artifact_content = genesis_artifact.read_text(encoding="utf-8")
@@ -69,11 +69,11 @@ def soul_prompt() -> None:
                 if len(parts) == 2:
                     artifact_hash = parts[1].strip()
                 break
-        
+
         if artifact_hash is None:
             click.echo("soul-prompt: FAIL: genesis/GENESIS_ARTIFACT.md does not contain a SOUL_PROMPT.md sha256 row.", err=True)
             sys.exit(FAIL)
-            
+
         if artifact_hash != expected_hash:
             click.echo(
                 f"soul-prompt: FAIL: genesis/GENESIS_ARTIFACT.md hash mismatch\n"
@@ -85,6 +85,6 @@ def soul_prompt() -> None:
     else:
         click.echo("soul-prompt: FAIL: genesis/GENESIS_ARTIFACT.md not found.", err=True)
         sys.exit(FAIL)
-    
+
     click.echo("soul-prompt: OK (SOUL_PROMPT.md sha256 matches pin and declares Covenant Block)")
     sys.exit(OK)

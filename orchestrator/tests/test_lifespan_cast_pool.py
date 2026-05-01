@@ -7,6 +7,7 @@ import pytest
 
 def test_lifespan_auto_casts_pool_before_serving(app_factory, monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
+
     import orchestrator.api.lifespan as lifespan_module
 
     calls: list[str] = []
@@ -28,6 +29,7 @@ def test_lifespan_refuses_boot_when_cast_pool_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from fastapi.testclient import TestClient
+
     import orchestrator.api.lifespan as lifespan_module
 
     def fail_cast_pool() -> None:
@@ -36,9 +38,8 @@ def test_lifespan_refuses_boot_when_cast_pool_fails(
     monkeypatch.setattr(lifespan_module, "_ensure_agent_cast_pool_at_boot", fail_cast_pool)
     app = app_factory(cast_pool_on_boot=True)
 
-    with pytest.raises(RuntimeError, match="agent-cast failed"):
-        with TestClient(app):
-            pass
+    with pytest.raises(RuntimeError, match="agent-cast failed"), TestClient(app):
+        pass
 
 
 def test_cast_pool_seed_then_verify(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -42,8 +42,8 @@ _LEGACY_LABEL = {
 
 def get_composite_vitals(
     *,
-    bus: "SignalBus | None" = None,
-    state: "SensoriumState | None" = None,
+    bus: SignalBus | None = None,
+    state: SensoriumState | None = None,
 ) -> list[VitalDomain]:
     from orchestrator.senses.vitals_emitter import _compute_vitals
     from orchestrator.vitals.mapping import (
@@ -52,6 +52,8 @@ def get_composite_vitals(
     )
 
     if state is None:
+        import time
+
         from orchestrator.sensorium import (
             Chronoception,
             DistressSignal,
@@ -59,7 +61,6 @@ def get_composite_vitals(
             Proprioception,
             SensoriumState,
         )
-        import time
 
         state = SensoriumState(
             interoception=Interoception(

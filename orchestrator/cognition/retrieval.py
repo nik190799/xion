@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from .journal import Journal
 from orchestrator.rerank import IdentityReranker, RerankCandidate, Reranker
+
+from .journal import Journal
+
 
 class JournalIndex:
     """Back-compat index facade for callers importing cognition.journal_index."""
@@ -42,12 +44,12 @@ def retrieve_context(
     results = []
     for kw in keywords:
         results.extend(journal.search(kw))
-    
+
     seen = set()
     unique_results = []
     for res in results:
         if res not in seen:
             seen.add(res)
             unique_results.append(res)
-            
+
     return unique_results[:top_k]

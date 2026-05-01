@@ -17,12 +17,12 @@ def test_cost_pressure_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
 
     # Pre-create the ledger so we can test append
     (tmp_path / "ledgers").mkdir()
-    
+
     runner = CliRunner()
     result = runner.invoke(root, ["cost-pressure"])
     assert result.exit_code == 0
     assert "OK (synthetic price-drop test passed)" in result.output
-    
+
     # Verify the proposal was written
     proposal_file = tmp_path / "ledgers" / "PROPOSAL_LEDGER.jsonl"
     assert proposal_file.is_file()

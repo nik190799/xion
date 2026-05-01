@@ -184,7 +184,6 @@ def chat_streaming_fidelity() -> None:
     rows_by_stream: dict[str, list[dict[str, Any]]] = defaultdict(list)
     stream_rows_total = 0
     cancelled_without_stream_id: list[dict[str, Any]] = []
-    non_stream_cancelled: list[dict[str, Any]] = []
 
     for row in iter_payment_rows(payment_path):
         outcome = str(row["outcome"])
@@ -307,20 +306,19 @@ def chat_streaming_fidelity() -> None:
             )
 
         # Property F: egress-refuse-with-paired-refuse.
-        if outcome == "refunded" and str(refusal_stage) == "egress":
-            if not paired_refuse:
-                s_seqs = (
-                    ",".join(str(s["seq"]) for s in paired)
-                    if paired
-                    else "<none>"
-                )
-                _fail(
-                    f"stream_id={stream_id!r} cid={cid!r}: PAYMENT "
-                    f"refused at stage=egress but NO matching SAFETY "
-                    f"verdict=refuse row. paired_safety_seqs="
-                    f"{{{s_seqs}}}. Property F "
-                    "(egress-refuse-with-paired-refuse)."
-                )
+        if outcome == "refunded" and str(refusal_stage) == "egress" and not paired_refuse:
+            s_seqs = (
+                ",".join(str(s["seq"]) for s in paired)
+                if paired
+                else "<none>"
+            )
+            _fail(
+                f"stream_id={stream_id!r} cid={cid!r}: PAYMENT "
+                f"refused at stage=egress but NO matching SAFETY "
+                f"verdict=refuse row. paired_safety_seqs="
+                f"{{{s_seqs}}}. Property F "
+                "(egress-refuse-with-paired-refuse)."
+            )
 
     click.echo(
         f"chat-streaming-fidelity: OK  {stream_rows_total} streaming "

@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from orchestrator.api.admission import admission_dependency
 from orchestrator.api.chat import _stream_voice_consented, _voice_sensorium_state
-from orchestrator.api.models import ChatRequest, MIN_MAX_TOKENS
+from orchestrator.api.models import MIN_MAX_TOKENS, ChatRequest
 from orchestrator.senses.voice_emitter import compose_voice_frame
 
 router = APIRouter()
@@ -256,7 +256,7 @@ def _select_text_provider(app: Any) -> Any | None:
 
 
 def _sse(event: VoiceStreamEvent) -> bytes:
-    return f"data: {event.model_dump_json()}\n\n".encode("utf-8")
+    return f"data: {event.model_dump_json()}\n\n".encode()
 
 
-__all__ = ["VoiceStreamRequest", "VoiceStreamEvent", "router"]
+__all__ = ["VoiceStreamEvent", "VoiceStreamRequest", "router"]

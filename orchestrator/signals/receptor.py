@@ -45,7 +45,7 @@ def _import_submodules(package_name: str) -> None:
             continue
         try:
             importlib.import_module(name)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
 
 

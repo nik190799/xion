@@ -6,7 +6,7 @@ a <= 1 Hz poll.
 """
 import json
 import time
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from orchestrator.sensorium import SensoriumState
 from orchestrator.sensorium.presence_bus import PresenceBus
@@ -24,7 +24,7 @@ METHODOLOGY_HASHES = {
 
 def _compute_vitals(state: SensoriumState) -> list[dict]:
     vitals = []
-    
+
     # Domain 1: Financial Vitality (objective)
     # Healthy: ladder step <= 1 -> cost_pressure is low
     d1_reading = max(0.0, 1.0 - state.interoception.cost_pressure)
@@ -36,7 +36,7 @@ def _compute_vitals(state: SensoriumState) -> list[dict]:
         "methodology_sha256": METHODOLOGY_HASHES["1 — Financial Vitality"],
         "subjective": False
     })
-    
+
     # Domain 2: Substrate Vitality (objective)
     d2_healthy = state.proprioception.relay_healthy and state.proprioception.arbiter_healthy
     d2_reading = 1.0 if d2_healthy else 0.0
@@ -60,7 +60,7 @@ def _compute_vitals(state: SensoriumState) -> list[dict]:
         "methodology_sha256": METHODOLOGY_HASHES["3 — Constitutional Integrity"],
         "subjective": False
     })
-    
+
     return vitals
 
 
@@ -68,16 +68,16 @@ async def stream_vitals(presence_bus: PresenceBus) -> AsyncIterator[str]:
     """Push-on-band-change + <= 1 Hz poll."""
     last_bands: dict[str, str] = {}
     last_emit_s = 0.0
-    
+
     # Read directly from the subscription since it pushes at the Supervisor tick rate
     # which is <= 1 Hz (10 seconds default).
     async for state in presence_bus.subscribe():
         vitals = _compute_vitals(state)
         current_bands = {v["domain"]: v["band"] for v in vitals}
-        
+
         now_s = time.monotonic()
         band_changed = current_bands != last_bands
-        
+
         # Emit if bands changed or if we just haven't emitted recently (1Hz poll baseline)
         if band_changed or (now_s - last_emit_s >= 1.0):
             payload = {

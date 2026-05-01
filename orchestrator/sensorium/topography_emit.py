@@ -6,9 +6,9 @@ import json
 import os
 import socket
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from orchestrator.sensorium.receptors._util import sense_signal, METH_LEGACY
+from orchestrator.sensorium.receptors._util import METH_LEGACY, sense_signal
 from orchestrator.signals.envelope import Signal
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ def _lineage() -> dict[str, Any]:
 
 
 def emit_topography_signals(
-    app: "FastAPI",
+    app: FastAPI,
     *,
     worker_id: str,
 ) -> list[Signal]:
@@ -100,7 +100,7 @@ def emit_topography_signals(
     return out
 
 
-def build_api_surface(app: "FastAPI") -> list[dict[str, Any]]:
+def build_api_surface(app: FastAPI) -> list[dict[str, Any]]:
     """One row per route for ``/self`` (path, methods, flags)."""
     rows: list[dict[str, Any]] = []
     for r in app.router.routes:  # type: ignore[union-attr]
@@ -145,7 +145,7 @@ def emit_default_mapping_hydration() -> list[Signal]:
     ]
 
 
-def ensure_mapping_hydration(bus: "Any") -> None:
+def ensure_mapping_hydration(bus: Any) -> None:
     from orchestrator.signals.bus import SignalBus
 
     if not isinstance(bus, SignalBus):

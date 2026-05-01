@@ -32,6 +32,13 @@ import os
 import time
 from pathlib import Path
 
+# Deferred import for Sensorium integration (Phase 5c). `orchestrator.sensorium`
+# imports are cheap, but the Arbiter is intentionally importable without the
+# Sensorium package present (the Arbiter's ruleset predates the Sensorium and
+# must keep working on sister-Core forks that have not shipped Phase 5c yet).
+# The type is referenced only in type hints and a runtime isinstance check.
+from typing import TYPE_CHECKING
+
 from orchestrator.safety import ledger
 from orchestrator.safety.llm_arbiter import (
     Provider,
@@ -41,13 +48,6 @@ from orchestrator.safety.llm_arbiter import (
 )
 from orchestrator.safety.rules import apply_rules
 from orchestrator.safety.types import Decision, EscalationReason, LlmJudgement, Verdict
-
-# Deferred import for Sensorium integration (Phase 5c). `orchestrator.sensorium`
-# imports are cheap, but the Arbiter is intentionally importable without the
-# Sensorium package present (the Arbiter's ruleset predates the Sensorium and
-# must keep working on sister-Core forks that have not shipped Phase 5c yet).
-# The type is referenced only in type hints and a runtime isinstance check.
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from orchestrator.sensorium import SensoriumState
@@ -102,7 +102,7 @@ def _default_sensorium_ledger_path() -> Path:
 
 
 def _distress_escalation_from_state(
-    sensorium_state: "SensoriumState | None",
+    sensorium_state: SensoriumState | None,
 ) -> str | None:
     """Return a summary string if Sensorium distress crosses threshold, else None.
 
@@ -189,7 +189,7 @@ def gate(
     llm_provider: Provider | None = None,
     enable_llm_arbiter: bool | None = None,
     append_to_ledger: bool = True,
-    sensorium_state: "SensoriumState | None" = None,
+    sensorium_state: SensoriumState | None = None,
     sensorium_ledger_path: Path | None = None,
     relay_id: str | None = None,
 ) -> Verdict:

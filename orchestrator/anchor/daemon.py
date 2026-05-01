@@ -11,7 +11,7 @@ import json
 import logging
 from pathlib import Path
 
-from orchestrator.anchor.ledger import AnchorRecord, read_chain as read_anchor_chain
+from orchestrator.anchor.ledger import read_chain as read_anchor_chain
 from orchestrator.anchor.merkle import build_leaf, compute_root
 from orchestrator.anchor.sink import AnchorSink
 
@@ -61,11 +61,11 @@ class AnchorDaemon:
             return []
 
         # Figure out the timestamp field name for the kind
-        # safety: as_of_utc_ns or timestamp_utc_ns? 
+        # safety: as_of_utc_ns or timestamp_utc_ns?
         # For SAFETY_LEDGER: it's not documented in anchor daemon spec but wait.
         # In SAFETY_LEDGER it's `timestamp_utc_ns` or maybe `as_of_utc_ns`?
         # Actually Phase 4a SAFETY_LEDGER row schema uses `timestamp_utc_ns`?
-        # Let's check docs/schemas. Wait, REQUEST_LEDGER has request_arrived_utc_ns 
+        # Let's check docs/schemas. Wait, REQUEST_LEDGER has request_arrived_utc_ns
         # or responded_utc_ns. PAYMENT_LEDGER has timestamp_utc_ns.
         ts_fields = {
             "request": "request_arrived_utc_ns",
@@ -109,9 +109,9 @@ class AnchorDaemon:
             # Need to compute Merkle tree over correlation_id leaves.
             # leaf = {correlation_id, ledger_kind, source_row_sha256}
             # Note: For v2 REQUEST_LEDGER, there can be multiple rows per correlation_id.
-            # We sort leaves by correlation_id to ensure a canonical tree shape, 
+            # We sort leaves by correlation_id to ensure a canonical tree shape,
             # and to allow binary search or consistent proof generation.
-            
+
             leaf_data = []
             for row in rows:
                 cid = row.get("correlation_id")
@@ -119,7 +119,7 @@ class AnchorDaemon:
                     continue
                 h = _sha256_canonical(row)
                 leaf_data.append((cid, h))
-                
+
             if not leaf_data:
                 continue
 
@@ -156,7 +156,7 @@ class AnchorDaemon:
                 self.tick(now_s)
             except Exception as e:
                 logger.exception("AnchorDaemon tick failed: %s", e)
-                
+
             # Sleep until next window + margin
             now_s = int(time.time())
             next_window = ((now_s // self.window_size_seconds) + 1) * self.window_size_seconds

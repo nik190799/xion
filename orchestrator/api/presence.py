@@ -4,16 +4,17 @@ GET /presence/state + /presence/stream SSE.
 Enforces modality consent and connection-level overrides.
 """
 import asyncio
+import contextlib
 import os
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
 from orchestrator.api.admission import admission_dependency
-from orchestrator.consent.store import read_consent
 from orchestrator.api.memory import ModalityConsent
+from orchestrator.consent.store import read_consent
 from orchestrator.senses.visual_emitter import stream_visuals
 from orchestrator.senses.vitals_emitter import stream_vitals
 
@@ -62,10 +63,8 @@ async def get_presence_stream(
             try:
                 async for payload in stream_func(presence_bus):
                     # Drop payloads if queue is full (client is too slow)
-                    try:
+                    with contextlib.suppress(asyncio.QueueFull):
                         queue.put_nowait(payload)
-                    except asyncio.QueueFull:
-                        pass
             except asyncio.CancelledError:
                 pass
 
@@ -77,16 +76,16 @@ async def get_presence_stream(
         try:
             while True:
                 consent = _get_consent(principal_id)
-                serve_visual = consent.stream_visual and bool(visual)
-                serve_vitals = consent.stream_vitals and bool(vitals)
-                if not serve_visual and not serve_vitals:
+                current_serve_visual = consent.stream_visual and bool(visual)
+                current_serve_vitals = consent.stream_vitals and bool(vitals)
+                if not current_serve_visual and not current_serve_vitals:
                     for t in tasks:
                         t.cancel()
                     yield "event: closed\ndata: {}\n\n"
                     break
                 try:
                     payload = await asyncio.wait_for(queue.get(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 yield f"data: {payload}\n\n"
         finally:

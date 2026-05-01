@@ -299,12 +299,12 @@ MIN_MAX_TOKENS = 1024
 
 class UserProof(BaseModel):
     """Client-side Ed25519 proof of the message.
-    
+
     If present, the orchestrator MUST verify the signature before processing
     the turn. Malformed or invalid signatures fail-closed with HTTP 400.
     """
     model_config = ConfigDict(extra="forbid", frozen=True)
-    
+
     user_pubkey_b64: str
     signature_b64: str
     algorithm: Literal["ed25519"]
@@ -586,7 +586,7 @@ class FiveSliceBreakdown(BaseModel):
         ge=0.0,
         le=1.0,
         description=(
-            "Funds the Rainy-Day Reserve until 6–12 months runway target; "
+            "Funds the Rainy-Day Reserve until 6-12 months runway target; "
             "then redirects per governance. Genesis Default: 0.05 (5%)."
         ),
     )
@@ -594,7 +594,7 @@ class FiveSliceBreakdown(BaseModel):
         ge=0.0,
         le=1.0,
         description=(
-            "Forecast-error padding. Genesis Default: 0.03–0.05 band; "
+            "Forecast-error padding. Genesis Default: 0.03-0.05 band; "
             "0.03 at lifespan default."
         ),
     )

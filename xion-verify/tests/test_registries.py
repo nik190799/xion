@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import pytest
@@ -11,17 +10,17 @@ from xion_verify.commands.registries import _check_module_conforms, _get_plugin_
 def test_get_plugin_modules(tmp_path: Path) -> None:
     skills_dir = tmp_path / "skills"
     skills_dir.mkdir()
-    
+
     (skills_dir / "skill_a.py").write_text("")
-    
+
     skill_b_dir = skills_dir / "skill_b"
     skill_b_dir.mkdir()
     (skill_b_dir / "__init__.py").write_text("")
-    
+
     # Should ignore this
     (skills_dir / "not_a_module").mkdir()
     (skills_dir / "not_a_module" / "foo.txt").write_text("")
-    
+
     modules = _get_plugin_modules(tmp_path, "skills")
     assert "skills.skill_a" in modules
     assert "skills.skill_b" in modules
@@ -30,13 +29,13 @@ def test_get_plugin_modules(tmp_path: Path) -> None:
 
 def test_check_module_conforms_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(tmp_path))
-    
+
     (tmp_path / "my_plugin.py").write_text(
         "class MySense:\n"
         "    name = 'my_sense'\n"
         "    def perceive(self): pass\n"
     )
-    
+
     from typing import Protocol
 
     class Sense(Protocol):
@@ -49,12 +48,12 @@ def test_check_module_conforms_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
 def test_check_module_conforms_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(tmp_path))
-    
+
     (tmp_path / "bad_plugin.py").write_text(
         "class BadSense:\n"
         "    pass\n"
     )
-    
+
     from typing import Protocol
 
     class Sense(Protocol):
@@ -68,7 +67,7 @@ def test_check_module_conforms_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 def test_check_module_conforms_with_all(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(tmp_path))
-    
+
     (tmp_path / "all_plugin.py").write_text(
         "__all__ = ['GoodSense']\n"
         "class BadSense:\n"
@@ -77,7 +76,7 @@ def test_check_module_conforms_with_all(tmp_path: Path, monkeypatch: pytest.Monk
         "    name = 'good'\n"
         "    def perceive(self): pass\n"
     )
-    
+
     from typing import Protocol
 
     class Sense(Protocol):

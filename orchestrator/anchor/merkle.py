@@ -19,7 +19,7 @@ def _sha256_hex(data: bytes) -> str:
 
 def build_leaf(correlation_id: str, ledger_kind: str, source_row_sha256: str) -> bytes:
     """Builds a canonical JSON leaf payload and hashes it.
-    
+
     This exact canonicalization must be preserved, as clients will
     recreate it to verify their inclusion proofs.
     """
@@ -41,7 +41,7 @@ def compute_root(leaves: list[bytes]) -> str:
     """Computes the Merkle root of a list of hashed leaves. Returns hex string."""
     if not leaves:
         raise ValueError("Cannot compute root of empty tree")
-    
+
     current_level = leaves
     while len(current_level) > 1:
         next_level = []
@@ -50,7 +50,7 @@ def compute_root(leaves: list[bytes]) -> str:
             right = current_level[i + 1] if i + 1 < len(current_level) else left
             next_level.append(_sha256(left + right))
         current_level = next_level
-        
+
     return current_level[0].hex()
 
 
@@ -58,11 +58,11 @@ def compute_proof(leaves: list[bytes], target_index: int) -> list[str]:
     """Computes inclusion proof for a leaf at target_index. Returns list of hex strings."""
     if not leaves or target_index < 0 or target_index >= len(leaves):
         raise ValueError("Invalid target_index or empty leaves")
-        
+
     proof = []
     current_level = leaves
     curr_idx = target_index
-    
+
     while len(current_level) > 1:
         if curr_idx % 2 == 0:
             sibling_idx = curr_idx + 1 if curr_idx + 1 < len(current_level) else curr_idx
@@ -70,16 +70,16 @@ def compute_proof(leaves: list[bytes], target_index: int) -> list[str]:
         else:
             sibling_idx = curr_idx - 1
             proof.append(current_level[sibling_idx].hex())
-            
+
         next_level = []
         for i in range(0, len(current_level), 2):
             left = current_level[i]
             right = current_level[i + 1] if i + 1 < len(current_level) else left
             next_level.append(_sha256(left + right))
-            
+
         current_level = next_level
         curr_idx //= 2
-        
+
     return proof
 
 
@@ -87,13 +87,10 @@ def verify_proof(leaf_hash: bytes, proof: list[str], root: str, target_index: in
     """Verifies a Merkle inclusion proof."""
     curr_hash = leaf_hash
     idx = target_index
-    
+
     for sibling_hex in proof:
         sibling_bytes = bytes.fromhex(sibling_hex)
-        if idx % 2 == 0:
-            curr_hash = _sha256(curr_hash + sibling_bytes)
-        else:
-            curr_hash = _sha256(sibling_bytes + curr_hash)
+        curr_hash = _sha256(curr_hash + sibling_bytes) if idx % 2 == 0 else _sha256(sibling_bytes + curr_hash)
         idx //= 2
-        
+
     return curr_hash.hex() == root

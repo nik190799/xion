@@ -19,7 +19,6 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-
 from orchestrator.safety.api import gate
 from orchestrator.safety.ledger import build_verdict
 from orchestrator.safety.types import Decision
@@ -31,6 +30,7 @@ from orchestrator.sensorium import (
     SensoriumState,
 )
 from orchestrator.sensorium.ledger import append_distress, append_tick_commit
+
 from xion_verify.commands.crisis_fidelity import crisis_fidelity
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 

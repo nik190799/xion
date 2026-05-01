@@ -229,11 +229,11 @@ def web_client(dist_path_arg: Path | None) -> None:
     # ---- Structural summary
     file_count = sum(1 for _ in dist.rglob("*") if _.is_file())
     click.echo(f"web-client: OK  dist={dist}  files={file_count}")
-    click.echo(f"  index.html carries Content-Security-Policy meta (default-src 'self')")
+    click.echo("  index.html carries Content-Security-Policy meta (default-src 'self')")
     click.echo(f"  origins scanned: {len(origins)} unique")
     if allowed_counts:
         for reason, count in sorted(allowed_counts.items()):
-            click.echo(f"    allowlist match × {count}: {reason}")
+            click.echo(f"    allowlist match x {count}: {reason}")
     else:
         click.echo("    all origins self-same (no allowlist matches needed)")
     raise SystemExit(OK)

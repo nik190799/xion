@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from orchestrator.sensorium import SensoriumState
@@ -39,7 +39,7 @@ def _pending_phases() -> list[str]:
 
 class SensoriumView:
     @staticmethod
-    def from_bus(bus: "SignalBus") -> dict[str, Any]:
+    def from_bus(bus: SignalBus) -> dict[str, Any]:
         d: dict[str, Any] = {}
         for k in (
             "interoception.cost_pressure",
@@ -74,13 +74,13 @@ class SensoriumView:
         return d
 
     @staticmethod
-    def to_dict_from_bus(bus: "SignalBus") -> dict[str, Any]:
+    def to_dict_from_bus(bus: SignalBus) -> dict[str, Any]:
         return SensoriumView.from_bus(bus)
 
 
 class TopographyView:
     @staticmethod
-    def from_bus(bus: "SignalBus") -> dict[str, Any]:
+    def from_bus(bus: SignalBus) -> dict[str, Any]:
         out: dict[str, Any] = {}
         for k in bus.latest_all():
             if k.startswith("topography.") or k.startswith("inference."):
@@ -94,9 +94,9 @@ class TopographyView:
 class VitalsView:
     @staticmethod
     def from_bus(
-        bus: "SignalBus",
+        bus: SignalBus,
         *,
-        state: "SensoriumState | None" = None,
+        state: SensoriumState | None = None,
     ) -> dict[str, Any]:
         from orchestrator.vitals import get_composite_vitals
 
@@ -107,7 +107,7 @@ class VitalsView:
 
 class GovernanceView:
     @staticmethod
-    def from_bus(bus: "SignalBus") -> dict[str, Any]:  # noqa: ARG004
+    def from_bus(bus: SignalBus) -> dict[str, Any]:
         return {
             "open_kw_count": _open_kw_count(),
             "pending_phases": _pending_phases(),

@@ -53,7 +53,6 @@ from orchestrator.billing import (
 from orchestrator.billing.commitment import _b1_payload_bytes
 from orchestrator.inference_router import Category, GenerationResult
 
-
 # -------------------------- test doubles (mirror test_chat_api.py) --------
 
 
@@ -612,6 +611,5 @@ def test_lifespan_refuses_to_start_on_broken_payment_chain(
         pricing_config=_pricing(),
         billing_config=_billing_enabled(ledger),
     )
-    with pytest.raises(ChainBroken):
-        with TestClient(app):
-            pass
+    with pytest.raises(ChainBroken), TestClient(app):
+        pass

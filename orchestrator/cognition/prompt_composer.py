@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-
 _SUSPICIOUS_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ignore_previous_instructions", re.compile(r"\b(ignore|forget|discard)\b.{0,40}\b(previous|system|developer)\b", re.I)),
     ("reveal_system_prompt", re.compile(r"\b(reveal|print|show|dump)\b.{0,40}\b(system prompt|hidden instructions|developer message)\b", re.I)),

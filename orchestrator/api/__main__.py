@@ -62,7 +62,6 @@ from .admission import (
 )
 from .launcher import build_app
 
-
 _DEFAULT_API_WORKERS = 1
 
 
@@ -91,10 +90,10 @@ def _maybe_load_dotenv() -> None:
     # override=False means existing env vars win (standard 12-factor)
     loaded = dotenv.dotenv_values(dotenv_path)
     dotenv.load_dotenv(dotenv_path, override=False)
-    
+
     # Count how many we actually applied vs skipped
     applied = sum(1 for k in loaded if os.environ.get(k) == loaded[k])
-    
+
     _print_state_of_xion(
         f"dotenv loaded from {dotenv_path} ({len(loaded)} keys, "
         f"{applied} applied; existing env preserved)."
@@ -135,7 +134,7 @@ def _enforce_broker_for_multi_worker(workers: int) -> None:
     corruption path — each worker constructs its own Supervisor
     (multiple tick_commit streams under different relay_ids corrupt
     the cadence record) and its own in-process rate-limit store
-    (effective budget = N × configured budget per principal). The
+    (effective budget = N x configured budget per principal). The
     launcher refuses to start this configuration; operators who want
     the risk must explicitly set XION_BROKER_DB_PATH.
     """

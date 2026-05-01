@@ -179,7 +179,7 @@ def verify_chain(path: Path) -> tuple[int, str]:
             sv = int(row["schema_version"])
         except (TypeError, ValueError, KeyError):
             raise ChainBroken(f"seq={seq}: schema_version missing or non-int") from None
-        
+
         if sv != SCHEMA_VERSION:
             raise ChainBroken(f"seq={seq}: schema_version={sv} not supported")
 

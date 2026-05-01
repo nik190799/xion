@@ -15,7 +15,7 @@ def test_soul_prompt_ok(synthetic_repo, monkeypatch):
     path = synthetic_repo / "genesis" / "SOUL_PROMPT.md"
     content = path.read_bytes()
     new_hash = hashlib.sha256(content).hexdigest()
-    
+
     import xion_verify.commands.soul_prompt
     original_get = xion_verify.commands.soul_prompt._get_pinned_hash
     xion_verify.commands.soul_prompt._get_pinned_hash = lambda: new_hash
@@ -46,7 +46,7 @@ def test_soul_prompt_hash_mismatch(synthetic_repo, monkeypatch):
     monkeypatch.chdir(synthetic_repo)
     path = synthetic_repo / "genesis" / "SOUL_PROMPT.md"
     path.write_text(path.read_text() + "\nmutated", encoding="utf-8")
-    
+
     runner = CliRunner()
     result = runner.invoke(cli, ["soul-prompt"])
     assert result.exit_code == FAIL
@@ -61,16 +61,16 @@ def test_soul_prompt_missing_covenant_block(synthetic_repo, monkeypatch):
     content = path.read_text(encoding="utf-8")
     content = content.replace("## Covenant Block", "## Something Else")
     path.write_text(content, encoding="utf-8")
-    
+
     # We also need to update the hash so it doesn't fail on hash mismatch first
     import hashlib
     new_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    
+
     # Mock the pinned hash
     import xion_verify.commands.soul_prompt
     original_get = xion_verify.commands.soul_prompt._get_pinned_hash
     xion_verify.commands.soul_prompt._get_pinned_hash = lambda: new_hash
-    
+
     try:
         runner = CliRunner()
         result = runner.invoke(cli, ["soul-prompt"])

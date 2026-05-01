@@ -6,7 +6,6 @@ Returns OK or honest NOT_YET_SEALED per domain.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
@@ -35,7 +34,7 @@ def vitals() -> None:
     domains = get_composite_vitals()
     all_ok = True
     all_not_yet_sealed = True
-    
+
     click.echo("--- Vital Signs ---")
     for d in domains:
         if d.band == "not_yet_sealed":
@@ -44,16 +43,16 @@ def vitals() -> None:
         else:
             click.echo(f"  {d.name}: {d.band.upper()} (reading: {d.reading})")
             all_not_yet_sealed = False
-            
+
     if all_not_yet_sealed:
         click.echo("vitals: NOT_YET_SEALED — All domains are NOT_YET_SEALED")
         sys.exit(NOT_YET_SEALED)
-        
+
     if not all_ok:
         # If some are OK and some are NOT_YET_SEALED, we return NOT_YET_SEALED
         # so the overall `xion-verify all` knows it's not fully sealed.
         click.echo("vitals: NOT_YET_SEALED — Some domains are NOT_YET_SEALED")
         sys.exit(NOT_YET_SEALED)
-        
+
     click.echo("vitals: OK")
     sys.exit(OK)

@@ -69,6 +69,7 @@ What this verifier deliberately does NOT do.
 
 from __future__ import annotations
 
+import itertools
 import os
 import sys
 from pathlib import Path
@@ -203,7 +204,7 @@ def supervisor_singleton(
     # up; sorting by as_of_utc_ns would silently mask the very bug
     # Property B is there to catch.
     transitions: list[tuple[str, str, int, int]] = []  # (from, to, prev_ns, next_ns)
-    for prev, curr in zip(tick_rows, tick_rows[1:]):
+    for prev, curr in itertools.pairwise(tick_rows):
         prev_rid = str(prev["relay_id"])
         curr_rid = str(curr["relay_id"])
         if prev_rid != curr_rid:
@@ -232,7 +233,6 @@ def supervisor_singleton(
 
     # Group rows into contiguous runs of identical relay_id; assert
     # as_of_utc_ns strictly monotonic inside each.
-    epoch_start_idx = 0
     for i in range(1, len(tick_rows)):
         if tick_rows[i]["relay_id"] == tick_rows[i - 1]["relay_id"]:
             if (
@@ -250,7 +250,7 @@ def supervisor_singleton(
                     "KW-API-002 named)."
                 )
         else:
-            epoch_start_idx = i
+            pass
 
     # ----- Property C: no concurrent-leader time-range overlap ----------
 

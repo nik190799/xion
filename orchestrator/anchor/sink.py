@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
-from orchestrator.anchor.ledger import AnchorRecord, append
+from orchestrator.anchor.ledger import append
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class AnchorReceipt:
 
 class AnchorSink(ABC):
     """Abstract destination for an AnchorRecord."""
-    
+
     @abstractmethod
     def submit(
         self,
@@ -35,7 +35,7 @@ class AnchorSink(ABC):
         leaf_correlation_ids: list[str],
     ) -> AnchorReceipt:
         """Publishes the anchor batch and writes the ANCHOR_LEDGER row.
-        
+
         The implementation MUST call `ledger.append` and return the receipt.
         """
         pass
@@ -43,7 +43,7 @@ class AnchorSink(ABC):
 
 class LocalLedgerSink(AnchorSink):
     """Phase 6.3 sink: writes to ANCHOR_LEDGER locally, no network."""
-    
+
     def __init__(self, ledger_path: str):
         self.ledger_path = ledger_path
 

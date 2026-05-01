@@ -53,10 +53,10 @@ def _find_repo_root() -> Path:
 
 def load_soul_prompt() -> str:
     """Read and hash-verify genesis/SOUL_PROMPT.md.
-    
+
     Returns the body of the prompt (the Covenant Block onward, with the
     topmost `# SOUL_PROMPT.md ...` header stripped).
-    
+
     Caches the result in-memory keyed on the file's mtime so the
     orchestrator does not re-hash per request.
     """
@@ -64,7 +64,7 @@ def load_soul_prompt() -> str:
 
     repo_root = _find_repo_root()
     path = repo_root / "genesis" / "SOUL_PROMPT.md"
-    
+
     try:
         stat = os.stat(path)
     except FileNotFoundError:
@@ -85,7 +85,7 @@ def load_soul_prompt() -> str:
         )
 
     text = raw.decode("utf-8")
-    
+
     # Strip the topmost header and intro paragraph if present,
     # starting the prompt at the Covenant Block.
     lines = text.splitlines()
@@ -94,9 +94,9 @@ def load_soul_prompt() -> str:
         if line.startswith("## Covenant Block"):
             start_idx = i
             break
-            
+
     body = "\n".join(lines[start_idx:])
-    
+
     _cached_body = body
     _cached_mtime = stat.st_mtime
     return body
