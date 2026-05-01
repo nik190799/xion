@@ -16,6 +16,7 @@ from typing import Any
 
 import uvicorn
 
+from orchestrator.api.admission import AdmissionConfig
 from orchestrator.api.app import AppDeps, create_app
 from orchestrator.relay.relay import Relay
 
@@ -88,7 +89,23 @@ def main() -> None:
     # Create a Relay marked role=canary
     relay = Relay(relay_id="shadow-canary-1")
 
-    deps = AppDeps(relay=relay)
+    # Loopback canary: do not inherit XION_API_REQUIRE_BEARER (defaults to
+    # true in load_admission_config_from_env). CI and local replay only
+    # hit /health without bearer tokens.
+    deps = AppDeps(
+        relay=relay,
+        admission_config=AdmissionConfig(
+            require_bearer=False,
+            tokens={},
+            rate_budget=60,
+            rate_window_s=60,
+            health_rate_budget=600,
+            api_host="127.0.0.1",
+            api_port=port,
+            tls_cert_path=None,
+            tls_key_path=None,
+        ),
+    )
     app = create_app(deps)
 
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
