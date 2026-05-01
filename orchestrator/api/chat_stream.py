@@ -138,10 +138,6 @@ def register_chat_stream_route(app: FastAPI) -> None:
         billing_config: BillingConfig = app.state.billing_config
 
         deadline_s = float(getattr(app.state, "chat_deadline_s", _DEFAULT_DEADLINE_S))
-        from orchestrator.cognition.loop import chat_cognition_budget
-
-        cog_budget = chat_cognition_budget()
-        deadline_s = max(deadline_s, cog_budget.wall_clock_s)
 
         user_proof_commit = None
         user_proof_algorithm = None

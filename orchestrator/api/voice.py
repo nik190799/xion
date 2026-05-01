@@ -168,7 +168,7 @@ async def _voice_stream_body(
         )
         chat_deadline = float(getattr(app.state, "chat_deadline_s", 30.0))
         cog_budget = chat_cognition_budget()
-        turn_timeout_s = max(chat_deadline, cog_budget.wall_clock_s)
+        turn_timeout_s = min(chat_deadline, cog_budget.wall_clock_s)
         result = await asyncio.wait_for(
             asyncio.to_thread(
                 run_turn,

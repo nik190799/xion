@@ -289,7 +289,11 @@ def register_chat_route(app: FastAPI) -> None:
         from orchestrator.inference_router.model_registry import get_min_max_tokens
 
         cog_budget = chat_cognition_budget()
-        turn_timeout_s = max(deadline_s, cog_budget.wall_clock_s)
+        # Outer asyncio bound must not exceed the same wall clock used inside
+        # ``run_turn`` (``min(deadline_s, budget.wall_clock_s)``); using
+        # ``max`` would let a slow blocked provider outlive a short
+        # ``chat_deadline_s`` and break timeout / fallback contracts.
+        turn_timeout_s = min(deadline_s, cog_budget.wall_clock_s)
 
         for attempt_index, provider in enumerate(ordered):
             provider_id = (

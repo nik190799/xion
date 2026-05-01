@@ -146,6 +146,7 @@ class BrokerSupervisorShell:
         presence_bus: Any | None = None,
         signal_bus: Any | None = None,
         receptor_registry: Any | None = None,
+        observability: Any | None = None,
     ) -> None:
         if not worker_id:
             raise ValueError("worker_id must be non-empty")
@@ -164,6 +165,7 @@ class BrokerSupervisorShell:
         self._presence_bus = presence_bus
         self._signal_bus = signal_bus
         self._receptor_registry = receptor_registry
+        self._observability = observability
 
         self._stop_event = threading.Event()
         self._role_lock = threading.Lock()
@@ -389,6 +391,7 @@ class BrokerSupervisorShell:
             presence_bus=self._presence_bus,
             signal_bus=self._signal_bus,
             receptor_registry=self._receptor_registry,
+            observability=self._observability,
         )
 
 

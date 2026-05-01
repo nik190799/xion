@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 
 import click
 import pytest
@@ -46,6 +45,8 @@ def test_pre_genesis_ok(monkeypatch: pytest.MonkeyPatch) -> None:
             "auto-research",
             "skill-bounty",
             "charter-signed",
+            "embedder-health",
+            "rerank-improvement",
         ]
     })
 
@@ -75,6 +76,8 @@ def test_pre_genesis_fail_tier_a(monkeypatch: pytest.MonkeyPatch) -> None:
             "auto-research",
             "skill-bounty",
             "charter-signed",
+            "embedder-health",
+            "rerank-improvement",
         ]
     }
     real_cmds["vitals"] = mock_fail  # One fails
