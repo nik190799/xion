@@ -5,8 +5,8 @@ from pathlib import Path
 
 import yaml
 from click.testing import CliRunner
-
 from orchestrator.vessel_registry.ledger import append_attestation
+
 from xion_verify.cli import root
 from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.vessel_compact import check_vessel_compact

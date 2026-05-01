@@ -9,10 +9,9 @@ elsewhere.
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 if TYPE_CHECKING:
     from orchestrator.signals.bus import SignalBus
@@ -78,7 +77,7 @@ def _coerce_01_for_kind(kind: str, sig_val: Any) -> float:
 
 def aggregate_domain(
     domain: str,
-    bus: "SignalBus",
+    bus: SignalBus,
 ) -> tuple[float, str] | None:
     """Return (reading 0..1, band) or None if this domain is not_sealed in mapping."""
     spec = VITAL_MAPPING.get(domain)

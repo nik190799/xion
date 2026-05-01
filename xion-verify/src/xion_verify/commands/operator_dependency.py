@@ -6,7 +6,6 @@ Promoted to FAIL (not flag) on cloudflare-in-CRITICAL.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
@@ -31,7 +30,7 @@ def operator_dependency() -> None:
         sys.exit(FAIL)
 
     content = abdication_file.read_text(encoding="utf-8")
-    
+
     # Parse the table to find Cloudflare and GitHub
     github_found = False
     for line in content.splitlines():

@@ -7,9 +7,10 @@ import json
 import time
 from pathlib import Path
 
+
 def write_consent(path: Path | str, principal_id: str, consent: dict) -> None:
     """Append a consent record to the store.
-    
+
     Last write for a given principal_id is the canonical state.
     """
     record = {
@@ -22,18 +23,18 @@ def write_consent(path: Path | str, principal_id: str, consent: dict) -> None:
 
 def read_consent(path: Path | str, principal_id: str) -> dict | None:
     """Read the latest consent record for a given principal_id.
-    
+
     Returns None if no record exists.
     """
     p = Path(path)
     if not p.is_file():
         return None
-        
+
     latest = None
     # We read the whole file and take the last match.
     # In a real database this would be an indexed query. For a local JSONL,
     # and given the scale of settings changes per user, reading the file is OK.
-    with open(p, "r", encoding="utf-8") as f:
+    with open(p, encoding="utf-8") as f:
         for line in f:
             if not line.strip():
                 continue
@@ -43,5 +44,5 @@ def read_consent(path: Path | str, principal_id: str) -> dict | None:
                     latest = record.get("consent")
             except json.JSONDecodeError:
                 pass
-                
+
     return latest

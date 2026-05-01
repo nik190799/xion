@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
-
 from orchestrator.vessel_registry.ledger import verify_registry
+
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 

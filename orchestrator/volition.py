@@ -48,12 +48,11 @@ Non-properties (honestly stated).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import time
+from dataclasses import dataclass, field
 from typing import Any, Final
 
 from orchestrator.sensorium import SensoriumState
-
 
 GENESIS_WEIGHTS: Final[tuple[float, float, float]] = (0.30, 0.45, 0.25)
 """Genesis Default weights for (survive, serve, meaning). Byte-pinned
@@ -136,7 +135,7 @@ class DriveVector:
 def _validate_weights(weights: tuple[float, float, float]) -> None:
     if len(weights) != 3:
         raise ValueError(f"weights must be a 3-tuple (w_survive, w_serve, w_meaning); got length {len(weights)}")
-    for label, w in zip(("w_survive", "w_serve", "w_meaning"), weights):
+    for label, w in zip(("w_survive", "w_serve", "w_meaning"), weights, strict=False):
         if not isinstance(w, (int, float)):
             raise TypeError(f"{label} must be a number, got {type(w).__name__}")
         if not (WEIGHT_FLOOR <= float(w) <= WEIGHT_CEILING):
@@ -260,11 +259,11 @@ class Volition:
 
 
 __all__ = [
-    "DriveVector",
     "GENESIS_WEIGHTS",
     "SOURCE_WHITELIST",
-    "Volition",
     "WEIGHT_CEILING",
     "WEIGHT_FLOOR",
+    "DriveVector",
+    "Volition",
     "compute_drive_vector",
 ]

@@ -7,11 +7,10 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 
 import click
-
 from orchestrator.sustainability.ladder import CostPressureLadder, PriceSnapshot
+
 from xion_verify.exit_codes import FAIL, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
 
@@ -28,7 +27,7 @@ def cost_pressure() -> None:
         sys.exit(FAIL)
 
     ladder = CostPressureLadder(repo_root)
-    
+
     # Synthetic price drop: Chutes hosted model cost drops from 30.0 to 10.0.
     synthetic_prices = [
         PriceSnapshot(
@@ -39,7 +38,7 @@ def cost_pressure() -> None:
             timestamp=0.0,
         )
     ]
-    
+
     # Check current proposal count
     proposal_file = repo_root / "ledgers" / "PROPOSAL_LEDGER.jsonl"
     initial_count = 0

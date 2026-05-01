@@ -72,22 +72,16 @@ class BillingConfig:
     b1_freshness_window_ns: int = 300_000_000_000  # 5 minutes default
 
     def __post_init__(self) -> None:
-        if self.billing_required and self.operator_attestation_secret is None:
-            # With billing required AND no B1 secret, the Relay has
-            # no way to attest anything locally. If the operator ALSO
-            # disables x402, no commitment posture can succeed — 402
-            # all the way down. This is a misconfiguration: refuse to
-            # start. (The operator who wants pure B2 keeps billing on
-            # + sets XION_BILLING_ALLOW_X402=true + leaves the secret
-            # unset, in which case billing_required-with-no-secret is
-            # legal only if allow_x402 is True.)
-            if not self.allow_x402:
-                raise BillingConfigError(
-                    "billing_required=true but neither B1 nor B2 posture "
-                    "is available: set XION_OPERATOR_ATTESTATION_SECRET "
-                    "and/or XION_BILLING_ALLOW_X402=true, or set "
-                    "XION_BILLING_REQUIRED=false for 5g-i-compat mode."
-                )
+        if self.billing_required and self.operator_attestation_secret is None and not self.allow_x402:
+            # With billing required AND no B1 secret, the Relay has no
+            # way to attest anything locally. If the operator ALSO disables
+            # x402, no commitment posture can succeed - 402 all the way down.
+            raise BillingConfigError(
+                "billing_required=true but neither B1 nor B2 posture "
+                "is available: set XION_OPERATOR_ATTESTATION_SECRET "
+                "and/or XION_BILLING_ALLOW_X402=true, or set "
+                "XION_BILLING_REQUIRED=false for 5g-i-compat mode."
+            )
         if len(self.architecture_sha256) != 64:
             raise BillingConfigError(
                 "architecture_sha256 must be 64 hex chars"
@@ -194,10 +188,7 @@ def load_billing_config_from_env(
     secret = _read_secret_env("XION_OPERATOR_ATTESTATION_SECRET")
 
     raw_path = os.environ.get("XION_PAYMENT_LEDGER", "").strip()
-    if raw_path:
-        ledger_path = Path(raw_path)
-    else:
-        ledger_path = _default_payment_ledger_path()
+    ledger_path = Path(raw_path) if raw_path else _default_payment_ledger_path()
 
     if architecture_sha256 is None:
         architecture_sha256 = _architecture_sha256()

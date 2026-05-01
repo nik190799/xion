@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -18,7 +17,6 @@ from click.testing import CliRunner
 
 from xion_verify.cli import root
 from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
-
 
 # ---------------------------------------------------------------------------
 # Real-repo smoke tests
@@ -97,7 +95,7 @@ def _write_blob(path: Path, contents: bytes) -> str:
     return hashlib.sha256(contents).hexdigest()
 
 
-def _run(repo: Path, monkeypatch) -> "tuple[int, str]":
+def _run(repo: Path, monkeypatch) -> tuple[int, str]:
     monkeypatch.chdir(repo)
     runner = CliRunner()
     r = runner.invoke(root, ["inference-sovereignty"], catch_exceptions=False)

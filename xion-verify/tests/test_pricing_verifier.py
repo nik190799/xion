@@ -8,7 +8,6 @@ from click.testing import CliRunner
 from xion_verify.commands.pricing import pricing
 from xion_verify.exit_codes import FAIL, OK
 
-
 _PRICING_ENV_VARS = (
     "XION_POSTED_PRICE_MICRO_XION",
     "XION_PRICE_SLICE_VARIABLE_COST",

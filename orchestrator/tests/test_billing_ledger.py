@@ -26,7 +26,6 @@ from orchestrator.billing.ledger import (
     verify_chain,
 )
 
-
 _DUMMY_SHA = "a" * 64
 
 
@@ -135,7 +134,10 @@ def test_build_refuses_disabled_with_nonzero_money() -> None:
         "committed_XION": 100,
         "settled_XION": 100,
     }
-    with pytest.raises(ValueError, match="committed_XION must equal|posture=disabled requires"):
+    with pytest.raises(
+        ValueError,
+        match=r"committed_XION must equal|posture=disabled requires",
+    ):
         build_payment_row(seq=0, prev_hash=ZERO_HASH, **kwargs)
 
 

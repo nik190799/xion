@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from collections.abc import AsyncIterator, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from orchestrator.signals.envelope import Signal
 from orchestrator.signals.schema import SignalSchemaError, validate_signal

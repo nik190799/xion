@@ -48,7 +48,6 @@ from typing import Any, Literal, Protocol, runtime_checkable
 
 from orchestrator.inference_router.router import Category
 
-
 # --------------------------------------------------------------------------
 # Typed provider exceptions (Phase 5g-vii).
 #
@@ -239,7 +238,7 @@ class Message:
     content_parts: list[ContentPart]
 
     @classmethod
-    def text(cls, role: Literal["system", "developer", "user", "assistant", "tool"], text: str) -> "Message":
+    def text(cls, role: Literal["system", "developer", "user", "assistant", "tool"], text: str) -> Message:
         return cls(role=role, content_parts=[TextPart(text=text)])
 
     def to_openai(self) -> dict[str, Any]:

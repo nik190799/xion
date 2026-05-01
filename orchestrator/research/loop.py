@@ -15,11 +15,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from orchestrator.safety.api import gate
 from orchestrator.vitals import get_composite_vitals
 
 logger = logging.getLogger("xion.research.loop")
@@ -37,7 +36,7 @@ class AutoResearchLoop:
     def run_cycle(self) -> None:
         """Run one full cycle of the Auto-Research Loop."""
         logger.info("Starting Auto-Research Loop cycle...")
-        
+
         # 1. Scan
         sources = self._scan()
         if not sources:
@@ -82,41 +81,41 @@ class AutoResearchLoop:
     def _triage(self, sources: list[str]) -> dict[str, Any]:
         # Write to RESEARCH_JOURNAL
         self.research_journal.parent.mkdir(parents=True, exist_ok=True)
-        
-        entry_id = f"rj-{int(datetime.now(timezone.utc).timestamp())}"
+
+        entry_id = f"rj-{int(datetime.now(UTC).timestamp())}"
         row = {
             "entry_id": entry_id,
             "prev_hash": "mock",
             "this_hash": "mock",
             "signature": "mock",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "scan_sources": sources,
             "findings": ["Found an optimization"],
             "synthesis": "We should implement this optimization.",
         }
-        
+
         with self.research_journal.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
-            
+
         return {"title": "Optimization", "description": "Implement optimization", "tier": 0}
 
     def _propose(self, findings: dict[str, Any]) -> str:
         self.proposal_ledger.parent.mkdir(parents=True, exist_ok=True)
-        
-        proposal_id = f"prop-{int(datetime.now(timezone.utc).timestamp())}"
+
+        proposal_id = f"prop-{int(datetime.now(UTC).timestamp())}"
         row = {
             "proposal_id": proposal_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "title": findings["title"],
             "description": findings["description"],
             "tier": findings["tier"],
             "status": "proposed",
             "source": "auto-research",
         }
-        
+
         with self.proposal_ledger.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
-            
+
         return proposal_id
 
     def _harm_analysis(self, proposal_id: str) -> bool:
@@ -134,6 +133,6 @@ class AutoResearchLoop:
 
     def _observe(self, proposal_id: str) -> None:
         # Read vitals
-        vitals = get_composite_vitals()
+        get_composite_vitals()
         # Mock observe passing
         pass

@@ -18,18 +18,18 @@ def test_auto_research_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
 
     # Pre-create the ledgers so we can test append
     (tmp_path / "ledgers").mkdir()
-    
+
     runner = CliRunner()
     result = runner.invoke(root, ["auto-research"])
     assert result.exit_code == 0
     assert "OK (loop alive, journal advancing, zero unresolved blocks, budget respected)" in result.output
-    
+
     # Verify the journal was written
     journal_file = tmp_path / "ledgers" / "RESEARCH_JOURNAL.jsonl"
     assert journal_file.is_file()
     content = journal_file.read_text(encoding="utf-8")
     assert "Found an optimization" in content
-    
+
     # Verify the proposal was written
     proposal_file = tmp_path / "ledgers" / "PROPOSAL_LEDGER.jsonl"
     assert proposal_file.is_file()

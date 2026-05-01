@@ -24,9 +24,9 @@ rule; it does not replace it.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from enum import Enum
-import time
 from typing import Any, Literal
 
 
@@ -76,7 +76,7 @@ class Interoception:
     @staticmethod
     def from_placeholders(
         *, treasury_stress: float, cost_pressure: float
-    ) -> "Interoception":
+    ) -> Interoception:
         t = max(0.0, min(1.0, float(treasury_stress)))
         c = max(0.0, min(1.0, float(cost_pressure)))
         surv = max(t, c)
@@ -110,7 +110,7 @@ class Chronoception:
         now_utc_ns: int | None = None,
         degraded_since_utc_ns: int | None = None,
         monotonic_drift_ns: int = 0,
-    ) -> "Chronoception":
+    ) -> Chronoception:
         """Compute a `Chronoception` reading from raw wall-clock tick
         inputs. Missing / zero `last_checkpoint_utc_ns` means "no
         checkpoint observed yet" and saturates to `0.0` staleness (the
@@ -156,7 +156,7 @@ class Proprioception:
         arbiter_healthy: bool = True,
         watchdog_fires_recent: int = 0,
         as_of_utc_ns: int | None = None,
-    ) -> "Proprioception":
+    ) -> Proprioception:
         if watchdog_fires_recent < 0:
             raise ValueError("watchdog_fires_recent must be non-negative")
         return Proprioception(
@@ -208,7 +208,7 @@ class DistressSignal:
             )
 
     @staticmethod
-    def from_candidate_text(text: str) -> "DistressSignal":
+    def from_candidate_text(text: str) -> DistressSignal:
         """Phase 5c textual heuristic. Keyword-overlap based; deliberately
         narrow. Saturates in three steps: 0 hits -> 0.0, 1 -> 0.4,
         2 -> 0.7, ≥3 -> 1.0. The Arbiter's `crisis` rule remains the
@@ -330,8 +330,8 @@ class Sensorium:
 
 
 __all__ = [
-    "Chronoception",
     "DISTRESS_THRESHOLD",
+    "Chronoception",
     "DistressSignal",
     "Interoception",
     "Proprioception",

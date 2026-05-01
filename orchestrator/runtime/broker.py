@@ -45,10 +45,10 @@ import json
 import os
 import sqlite3
 import threading
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Protocol, runtime_checkable
-
+from typing import Any, Protocol, runtime_checkable
 
 # --- Errors --------------------------------------------------------------
 

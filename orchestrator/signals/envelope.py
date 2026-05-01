@@ -21,7 +21,7 @@ class Signal:
         return asdict(self)
 
     @staticmethod
-    def from_dict(d: dict[str, Any]) -> "Signal":
+    def from_dict(d: dict[str, Any]) -> Signal:
         return Signal(
             kind=str(d["kind"]),
             source=str(d["source"]),

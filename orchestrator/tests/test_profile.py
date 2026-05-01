@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 
@@ -10,7 +12,7 @@ def test_sovereign_profile_is_frozen_and_disallows_centralized(monkeypatch) -> N
     profile = current_profile()
     assert profile.name == "sovereign"
     assert profile.allows_centralized_fallbacks is False
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         profile.allows_centralized_fallbacks = True  # type: ignore[misc]
 
 

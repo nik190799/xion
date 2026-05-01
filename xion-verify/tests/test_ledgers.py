@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,7 @@ def test_ledgers_ok_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     (tmp_path / "genesis" / "GENESIS_ARTIFACT.md").write_text("")
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "00-INDEX.md").write_text("")
-    
+
     runner = CliRunner()
     result = runner.invoke(root, ["ledgers"])
     assert result.exit_code == 0
@@ -26,12 +25,12 @@ def test_ledgers_fail_invalid_json(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     (tmp_path / "genesis" / "GENESIS_ARTIFACT.md").write_text("")
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "00-INDEX.md").write_text("")
-    
+
     ledgers_dir = tmp_path / "ledgers"
     ledgers_dir.mkdir()
-    
+
     (ledgers_dir / "SAFETY_LEDGER.jsonl").write_text("not json\n")
-    
+
     runner = CliRunner()
     result = runner.invoke(root, ["ledgers"])
     assert result.exit_code == 1

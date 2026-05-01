@@ -1,11 +1,13 @@
 """`xion-verify presence` — verify visual/vitals emitters."""
 
-import sys
 import asyncio
+import sys
+
 import click
-from typing import Any
-from xion_verify.exit_codes import OK, NOT_YET_SEALED, FAIL
+
+from xion_verify.exit_codes import FAIL, NOT_YET_SEALED, OK
 from xion_verify.repo import RepoRootNotFound, find_repo_root
+
 
 @click.command(name="presence", help="Verify Phase 6.4 presence emitters (visual, vitals).")
 def presence() -> None:
@@ -17,17 +19,23 @@ def presence() -> None:
 
     sys.path.insert(0, str(repo_root))
     try:
-        from orchestrator.sensorium.presence_bus import PresenceBus
         from orchestrator.senses.visual_emitter import stream_visuals
         from orchestrator.senses.vitals_emitter import stream_vitals
-        from orchestrator.sensorium import SensoriumState, Interoception, Chronoception, Proprioception, DistressSignal
+        from orchestrator.sensorium import (
+            Chronoception,
+            DistressSignal,
+            Interoception,
+            Proprioception,
+            SensoriumState,
+        )
+        from orchestrator.sensorium.presence_bus import PresenceBus
     except ImportError as e:
         click.echo(f"presence: FAIL: Could not import orchestrator modules: {e}", err=True)
         sys.exit(FAIL)
 
     async def _run_checks():
         bus = PresenceBus()
-        
+
         # Synthetic state
         state = SensoriumState(
             interoception=Interoception(survival_pressure=0.0),
@@ -46,52 +54,52 @@ def presence() -> None:
             distress=DistressSignal(0.0, "textual", 1000),
             as_of_utc_ns=1000
         )
-        
+
         # Start emitters
         # We need to run them as tasks so they can run concurrently with our polling
         visual_gen = stream_visuals(bus)
         vitals_gen = stream_vitals(bus)
-        
+
         # We need to wrap the generators in tasks to start them
         async def get_visual():
             return await anext(visual_gen)
-            
+
         async def get_vitals():
             return await anext(vitals_gen)
-            
+
         visual_task = asyncio.create_task(get_visual())
         vitals_task = asyncio.create_task(get_vitals())
-        
+
         # Publish
         bus.publish(state)
-        
+
         # The visual emitter has a background task that reads from the bus.
         # We need to give it a moment to consume the state we just published.
         # Then we can pull the first frame.
-        
+
         # Give the background task a chance to run
         await asyncio.sleep(0.2)
-        
+
         # The first iteration of the visual stream might yield nothing if the state
         # hasn't propagated yet. Let's make sure we have the state published.
         bus.publish(state)
         await asyncio.sleep(0.2)
-        
+
         # Wait for the tasks to complete
         import json
-        
+
         visual_frame_str = await asyncio.wait_for(visual_task, timeout=2.0)
         vitals_frame_str = await asyncio.wait_for(vitals_task, timeout=2.0)
-        
+
         visual_frame = json.loads(visual_frame_str)
         vitals_frame = json.loads(vitals_frame_str)
-        
+
         # Assert visual shape
         assert visual_frame["type"] == "visual"
         assert "valence" in visual_frame["mood"]
         assert "energy" in visual_frame["mood"]
         assert "focus" in visual_frame["mood"]
-        
+
         # Assert vitals shape
         assert vitals_frame["type"] == "vitals"
         assert len(vitals_frame["vitals"]) == 3

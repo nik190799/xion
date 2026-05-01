@@ -14,7 +14,7 @@ def test_skill_bounty_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     (tmp_path / "genesis" / "GENESIS_ARTIFACT.md").touch()
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "00-INDEX.md").touch()
-    
+
     # Needs docs/24-COGNITION.md for firewall check
     (tmp_path / "docs" / "24-COGNITION.md").write_text("# Cognition\n", encoding="utf-8")
 

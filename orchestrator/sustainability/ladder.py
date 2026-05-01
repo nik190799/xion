@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger("xion.sustainability.ladder")
@@ -82,7 +82,7 @@ class CostPressureLadder:
         self.proposal_ledger.parent.mkdir(parents=True, exist_ok=True)
 
         row = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "title": title,
             "description": description,
             "tier": tier,

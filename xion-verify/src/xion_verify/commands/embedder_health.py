@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import json
+import sys
 
 import click
 
@@ -14,8 +14,8 @@ from xion_verify.repo import RepoRootNotFound, find_repo_root
 @click.command(name="embedder-health")
 def embedder_health() -> None:
     try:
-        from orchestrator.embeddings import LocalBgeM3EmbeddingProvider
         from orchestrator.cognition.embed_calibration import assert_thresholds, run_calibration
+        from orchestrator.embeddings import LocalBgeM3EmbeddingProvider
 
         provider = LocalBgeM3EmbeddingProvider()
         batch = provider.embed(["xion covenant memory retrieval", "xion covenant memory retrieval"])

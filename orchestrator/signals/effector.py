@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import importlib
 import inspect
-import os
 import pkgutil
 import sys
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from orchestrator.signals.bus import SignalBus
-    from orchestrator.signals.reflex import ReflexArc, ReflexRegistry
+    from orchestrator.signals.reflex import ReflexArc
 
 from orchestrator.signals.envelope import Signal
 
@@ -22,7 +21,7 @@ class Effector(Protocol):
     effector_id: str
     consumed_kinds: frozenset[str]
     output_channel: str
-    def run(self, bus: "SignalBus") -> AsyncIterator[bytes]: ...  # noqa: E704
+    def run(self, bus: SignalBus) -> AsyncIterator[bytes]: ...
 
 
 @dataclass
@@ -33,14 +32,14 @@ class _ReflexState:
 
 class EffectorRegistry:
     def __init__(self) -> None:
-        self._on_reflex_handlers: list[Callable[["ReflexArc", Signal], None]] = []
+        self._on_reflex_handlers: list[Callable[[ReflexArc, Signal], None]] = []
         self._reflex_state = _ReflexState()
 
-    def on_reflex(self, arc: "ReflexArc", signal: Signal) -> None:
+    def on_reflex(self, arc: ReflexArc, signal: Signal) -> None:
         for h in self._on_reflex_handlers:
             h(arc, signal)
 
-    def register_reflex_handler(self, fn: Callable[["ReflexArc", Signal], None]) -> None:
+    def register_reflex_handler(self, fn: Callable[[ReflexArc, Signal], None]) -> None:
         self._on_reflex_handlers.append(fn)
 
     def set_off_channel_hook(self, fn: Callable[[], None] | None) -> None:
@@ -62,7 +61,7 @@ def discover_effectors(repo_root: Path | None = None) -> list[type[Effector]]:
         if m.ispkg and m.name not in ("__pycache__",):
             try:
                 importlib.import_module(f"{base}.{m.name}")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
     for mod_name, mod in list(sys.modules.items()):
         if not mod_name.startswith("orchestrator.senses.effectors."):

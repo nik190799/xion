@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -224,7 +224,7 @@ def _check_availability_model(schema: dict[str, Any], manifest: dict[str, Any]) 
             errors.append(f"availability_model missing required declaration: {field}")
     matrix = model.get("reachability_matrix")
     if not isinstance(matrix, dict):
-        return errors + ["availability_model.reachability_matrix must be a mapping"]
+        return [*errors, "availability_model.reachability_matrix must be a mapping"]
     required_fields = tuple(schema.get("availability_model", {}).get("required_matrix_fields", []))
     proof_allowed = set(schema.get("availability_model", {}).get("proof_posture_allowed", []))
     for state in schema.get("availability_model", {}).get("reachability_states", []):

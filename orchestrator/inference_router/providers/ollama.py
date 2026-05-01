@@ -295,52 +295,51 @@ class OllamaGenerativeProvider:
         finish = "stop"
 
         try:
-            async with httpx.AsyncClient(timeout=deadline_s) as client:
-                async with client.stream(
-                    "POST",
-                    url,
-                    json=body_dict,
-                    headers={
-                        "Content-Type": "application/json",
-                        "User-Agent": "xion-os/0.3.0 (+phase-5g-ii)",
-                    },
-                ) as resp:
-                    if not (200 <= resp.status_code < 300):
-                        raw_bytes = await resp.aread()
-                        snippet = raw_bytes[:512].decode("utf-8", errors="replace")
-                        status = resp.status_code
-                        if status == 403:
-                            raise ModerationRefusalError(
-                                f"ollama HTTP {status}: {snippet}",
-                                provider_id=_PROVIDER_ID,
-                            )
-                        if 500 <= status < 600:
-                            raise ProviderUnreachableError(
-                                f"ollama HTTP {status}: {snippet}",
-                                provider_id=_PROVIDER_ID,
-                            )
-                        raise UnknownProviderError(
+            async with httpx.AsyncClient(timeout=deadline_s) as client, client.stream(
+                "POST",
+                url,
+                json=body_dict,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "xion-os/0.3.0 (+phase-5g-ii)",
+                },
+            ) as resp:
+                if not (200 <= resp.status_code < 300):
+                    raw_bytes = await resp.aread()
+                    snippet = raw_bytes[:512].decode("utf-8", errors="replace")
+                    status = resp.status_code
+                    if status == 403:
+                        raise ModerationRefusalError(
                             f"ollama HTTP {status}: {snippet}",
                             provider_id=_PROVIDER_ID,
                         )
-                    async for line in resp.aiter_lines():
-                        if not line.strip():
-                            continue
-                        try:
-                            event = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-                        chunk = event.get("response")
-                        if isinstance(chunk, str) and chunk:
-                            yield chunk
-                        if event.get("done"):
-                            usage_in = int(event.get("prompt_eval_count") or 0)
-                            usage_out = int(event.get("eval_count") or 0)
-                            returned = event.get("model")
-                            if isinstance(returned, str) and returned:
-                                model_id = returned
-                            finish = "length" if event.get("done_reason") == "length" else "stop"
-                            break
+                    if 500 <= status < 600:
+                        raise ProviderUnreachableError(
+                            f"ollama HTTP {status}: {snippet}",
+                            provider_id=_PROVIDER_ID,
+                        )
+                    raise UnknownProviderError(
+                        f"ollama HTTP {status}: {snippet}",
+                        provider_id=_PROVIDER_ID,
+                    )
+                async for line in resp.aiter_lines():
+                    if not line.strip():
+                        continue
+                    try:
+                        event = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    chunk = event.get("response")
+                    if isinstance(chunk, str) and chunk:
+                        yield chunk
+                    if event.get("done"):
+                        usage_in = int(event.get("prompt_eval_count") or 0)
+                        usage_out = int(event.get("eval_count") or 0)
+                        returned = event.get("model")
+                        if isinstance(returned, str) and returned:
+                            model_id = returned
+                        finish = "length" if event.get("done_reason") == "length" else "stop"
+                        break
         except TimeoutError as e:
             raise ProviderTimeoutError(
                 f"ollama stream transport timeout: {e}",

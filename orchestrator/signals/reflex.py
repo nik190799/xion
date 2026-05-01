@@ -26,7 +26,7 @@ class ReflexRegistry:
         self._arcs: list[ReflexArc] = []
         self._effectors: EffectorRegistry | None = None
 
-    def bind_effectors(self, reg: "EffectorRegistry | None") -> None:
+    def bind_effectors(self, reg: EffectorRegistry | None) -> None:
         self._effectors = reg
 
     def register(self, arc: ReflexArc) -> None:

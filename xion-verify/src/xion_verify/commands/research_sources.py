@@ -6,7 +6,6 @@ Requires operator curation signature for RESEARCH_SOURCES.md entries.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
@@ -33,7 +32,7 @@ def research_sources() -> None:
         sys.exit(OK)
 
     content = sources_file.read_text(encoding="utf-8")
-    
+
     # Simple check: look for a signature block or specific formatting
     if "Operator Signature:" not in content and "Curation Signature:" not in content:
         click.echo("research-sources: FAIL: Missing operator curation signature in RESEARCH_SOURCES.md", err=True)

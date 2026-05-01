@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -40,7 +41,7 @@ def require_quorum(
             endpoint = futures[future]
             try:
                 observations[endpoint] = future.result()
-            except BaseException as exc:  # noqa: BLE001 - endpoint errors are data.
+            except BaseException as exc:
                 observations[endpoint] = exc
 
     successes: list[tuple[str, T]] = [

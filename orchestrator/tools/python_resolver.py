@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from orchestrator.tools.resolver import ToolResult, ToolSpec
 
@@ -29,7 +30,7 @@ def _repo_root() -> Path:
 class PythonToolResolver:
     resolver_id: str = "python-resolver"
     repo_root: Path = field(default_factory=_repo_root)
-    journal: "Journal | None" = None
+    journal: Journal | None = None
 
     def list_tools(self) -> list[ToolSpec]:
         return [

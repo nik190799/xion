@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import threading
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +91,7 @@ class AnchorRecord:
             raise ValueError("batch_size must be positive")
         if len(self.leaf_correlation_ids) != self.batch_size:
             raise ValueError("leaf_correlation_ids length must match batch_size")
-        
+
         # Enforce sorted order
         if self.leaf_correlation_ids != sorted(self.leaf_correlation_ids):
             raise ValueError("leaf_correlation_ids must be strictly sorted")
@@ -122,7 +121,7 @@ def read_chain(path: str | Path) -> Iterator[AnchorRecord]:
     p = Path(path)
     if not p.exists():
         return
-        
+
     with p.open("r", encoding="utf-8") as f:
         for line in f:
             if not line.strip():
@@ -131,7 +130,7 @@ def read_chain(path: str | Path) -> Iterator[AnchorRecord]:
             try:
                 yield AnchorRecord(**d)
             except ValueError as e:
-                raise ChainBrokenError(f"Invalid record: {e}")
+                raise ChainBrokenError(f"Invalid record: {e}") from e
 
 
 def verify_chain(path: str | Path) -> list[AnchorRecord]:
@@ -141,10 +140,9 @@ def verify_chain(path: str | Path) -> list[AnchorRecord]:
     Raises ChainBrokenError on any mismatch.
     """
     records = []
-    expected_seq = 0
     expected_prev = ZERO_HASH
 
-    for rec in read_chain(path):
+    for expected_seq, rec in enumerate(read_chain(path)):
         if rec.seq != expected_seq:
             raise ChainBrokenError(f"seq gap/overlap: expected {expected_seq}, got {rec.seq}")
         if rec.prev_hash != expected_prev:
@@ -155,7 +153,6 @@ def verify_chain(path: str | Path) -> list[AnchorRecord]:
             raise ChainBrokenError(f"this_hash mismatch at seq {rec.seq}")
 
         records.append(rec)
-        expected_seq += 1
         expected_prev = rec.this_hash
 
     return records
@@ -187,7 +184,7 @@ def append(
     """Appends a new record to the chain. Verifies chain on write."""
     p = Path(path)
     lock = _lock_for(p)
-    
+
     with lock:
         next_seq, prev_hash = chain_tip(p)
 

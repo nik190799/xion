@@ -118,12 +118,12 @@ def drive() -> None:
 
     errors: list[str] = []
 
-    if GENESIS_WEIGHTS != doctrine_weights:
+    if doctrine_weights != GENESIS_WEIGHTS:
         errors.append(
             f"GENESIS_WEIGHTS drift: code={GENESIS_WEIGHTS} vs doctrine={doctrine_weights}"
         )
 
-    for label, w in zip(("w_survive", "w_serve", "w_meaning"), GENESIS_WEIGHTS):
+    for label, w in zip(("w_survive", "w_serve", "w_meaning"), GENESIS_WEIGHTS, strict=False):
         if not (WEIGHT_FLOOR <= w <= WEIGHT_CEILING):
             errors.append(
                 f"GENESIS_WEIGHTS.{label}={w} outside [{WEIGHT_FLOOR}, {WEIGHT_CEILING}]"

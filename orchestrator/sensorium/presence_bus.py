@@ -5,8 +5,10 @@ Pub/sub bus for distributing SensoriumState snapshots to downstream emitters
 the emitter loops.
 """
 import asyncio
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+
 from orchestrator.sensorium import SensoriumState
+
 
 class PresenceBus:
     def __init__(self) -> None:
@@ -14,7 +16,7 @@ class PresenceBus:
 
     def publish(self, state: SensoriumState) -> None:
         """Publish a fresh state to all active subscribers.
-        
+
         Called by the Supervisor's tick loop. Non-blocking.
         """
         for q in self._queues:
@@ -22,7 +24,7 @@ class PresenceBus:
 
     async def subscribe(self) -> AsyncIterator[SensoriumState]:
         """Yield states as they are published.
-        
+
         Safe for multiple concurrent subscribers (e.g. per-SSE-connection).
         """
         q: asyncio.Queue[SensoriumState] = asyncio.Queue()

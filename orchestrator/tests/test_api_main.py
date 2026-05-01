@@ -4,7 +4,6 @@ Finding #3: XION_DOTENV_PATH opt-in loader.
 """
 
 import os
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -46,7 +45,7 @@ def test_maybe_load_dotenv_success(tmp_path, capsys):
         clear=True,
     ):
         _maybe_load_dotenv()
-        
+
         # New key should be added
         assert os.environ.get("XION_TEST_KEY") == "from_file"
         # Existing key should be preserved (override=False)

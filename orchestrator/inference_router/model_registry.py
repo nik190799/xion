@@ -23,7 +23,7 @@ _REGISTRY: dict[tuple[str, str], int] = {
 
 def get_min_max_tokens(provider_id: str, model_id: str | None) -> int:
     """Return the minimum max_tokens required by the model.
-    
+
     Falls back to GLOBAL_MIN_MAX_TOKENS if unknown.
     """
     if model_id is None:

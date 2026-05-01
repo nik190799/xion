@@ -267,7 +267,7 @@ def test_v2_clean_fallback_turn_passes(synthetic_repo: Path):
 def test_v2_orphan_correlation_id_fails_property_7(synthetic_repo: Path):
     """v2 row with a correlation_id that has no v1 peer = Property 7
     violation."""
-    safety_path, request_path, _real_cid = _seed_v1_turn(synthetic_repo)
+    _safety_path, request_path, _real_cid = _seed_v1_turn(synthetic_repo)
     fake_cid = "deadbeefdeadbeef:" + "0" * 32
     append_provider_attempt(request_path, _v2_row(fake_cid))
     code, err = _invoke(synthetic_repo)

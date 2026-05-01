@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,7 @@ def test_rebuild_no_digest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     (tmp_path / "genesis" / "GENESIS_ARTIFACT.md").write_text("")
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "00-INDEX.md").write_text("")
-    
+
     runner = CliRunner()
     result = runner.invoke(root, ["rebuild"])
     assert result.exit_code == 2
@@ -27,7 +26,7 @@ def test_rebuild_empty_digest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "00-INDEX.md").write_text("")
     (tmp_path / "genesis" / "RELAY_IMAGE_DIGEST.txt").write_text("")
-    
+
     runner = CliRunner()
     result = runner.invoke(root, ["rebuild"])
     assert result.exit_code == 1

@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 #
 #   improvement_slice  : 0.08  (8%)
 #   reserve_slice      : 0.05  (5%)
-#   small_buffer       : 0.03  (3%; within the 3–5% Genesis Default band)
+#   small_buffer       : 0.03  (3%; within the 3-5% Genesis Default band)
 #
 # variable_cost and overhead_slice sum to the remaining 0.84. Genesis
 # Default pins them at 0.40 and 0.44 so neither slice dominates; an
@@ -319,7 +319,7 @@ def load_pricing_config_from_env(
     )
 
 
-def register_pricing_route(app: "FastAPI") -> None:
+def register_pricing_route(app: FastAPI) -> None:
     """Wire ``GET /pricing`` into ``app``.
 
     Reads ``app.state.pricing_config`` (populated by the lifespan) and

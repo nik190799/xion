@@ -33,7 +33,6 @@ from orchestrator.api import (
     load_pricing_config_from_env,
 )
 
-
 # ----------------------------------------------------- PricingConfig unit
 
 
@@ -60,7 +59,7 @@ def test_pricing_config_genesis_defaults_sum_to_one() -> None:
         "docs/07-ECONOMY.md pins reserve_slice at 5%"
     )
     assert 0.03 <= cfg.small_buffer <= 0.05, (
-        "docs/07-ECONOMY.md pins small_buffer to the 3–5% band"
+        "docs/07-ECONOMY.md pins small_buffer to the 3-5% band"
     )
     assert cfg.governance_revision_id == "genesis-default-v1"
     assert cfg.per_message_price_micro_XION >= 0
@@ -70,7 +69,7 @@ def test_pricing_config_genesis_defaults_sum_to_one() -> None:
 def test_pricing_config_rejects_unbalanced_split() -> None:
     """A five-slice split whose sum exceeds the tolerance must refuse
     to construct. This is the constitutional fail-closed."""
-    with pytest.raises(PricingConfigError, match="sum to 1.0"):
+    with pytest.raises(PricingConfigError, match=r"sum to 1\.0"):
         PricingConfig(
             per_message_price_micro_XION=1000,
             variable_cost=0.50,
@@ -298,7 +297,7 @@ def test_pricing_endpoint_rejects_extra_fields_via_model() -> None:
         # Unknown field — must be rejected by extra='forbid'.
         "debug_commitment": "not-allowed",
     }
-    with pytest.raises(Exception) as exc:  # noqa: BLE001 — pydantic.ValidationError
+    with pytest.raises(Exception) as exc:
         PricingResponse.model_validate(body)
     assert "debug_commitment" in str(exc.value)
 
@@ -316,12 +315,11 @@ def test_lifespan_refuses_to_start_on_bad_pricing_env(
     ``TestClient`` context manager."""
     monkeypatch.setenv("XION_PRICE_SLICE_VARIABLE_COST", "0.80")
     # Leave the other env vars unset so Genesis Defaults apply;
-    # 0.80 + 0.44 + 0.08 + 0.05 + 0.03 = 1.40 — over by 0.40.
+    # 0.80 + 0.44 + 0.08 + 0.05 + 0.03 = 1.40 - over by 0.40.
     app = app_factory()  # no pricing_config override → env loader runs
-    with pytest.raises(PricingConfigError, match="sum to 1.0"):
-        with TestClient(app):
-            # Never reached; the lifespan raises during startup.
-            pass
+    with pytest.raises(PricingConfigError, match=r"sum to 1\.0"), TestClient(app):
+        # Never reached; the lifespan raises during startup.
+        pass
 
 
 def test_lifespan_default_timestamp_is_monotonic(

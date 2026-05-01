@@ -44,17 +44,17 @@ def _verify_ledger(repo_root: Path, name: str) -> tuple[int, list[str]]:
     # For Phase 6+ Pre-Genesis Velocity Hardening, we just check if the file exists
     # or return 0 if it's not yet created (since ledgers are append-only and might be empty at genesis).
     # But wait, the plan says "walks all ten chains".
-    
+
     # Let's assume ledgers are stored in `ledgers/` or `data/` or we just mock it for now
     # if they don't exist yet.
     # Actually, the plan says "xion-verify ledgers walks all ten chains".
     # Let's check if there are any ledgers in the repo.
     ledger_path = repo_root / "ledgers" / f"{name}.jsonl"
-    
+
     if not ledger_path.is_file():
         # Empty ledger is valid at genesis
         return 0, []
-        
+
     errors = []
     count = 0
     try:
@@ -69,7 +69,7 @@ def _verify_ledger(repo_root: Path, name: str) -> tuple[int, list[str]]:
                     errors.append(f"{name} line {line_idx + 1}: invalid JSON")
     except Exception as e:
         errors.append(f"Failed to read {name}: {e}")
-        
+
     return count, errors
 
 

@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator
-from .context import assemble_context
-from .journal import Journal
-from .retrieval import retrieve_context
-from .hermes.depth import DepthEnforcer
+from typing import Any
+
 from orchestrator.inference_router.provider import Message
 from orchestrator.tools import PythonToolResolver
+
+from .context import assemble_context
+from .hermes.depth import DepthEnforcer
+from .journal import Journal
+from .retrieval import retrieve_context
 
 _JOURNAL: Journal | None = None
 _DEPTH_ENFORCER = DepthEnforcer(max_depth=1)
@@ -56,13 +59,13 @@ def run_turn(
     _DEPTH_ENFORCER.check_depth(budget.delegation_depth)
     started = time.monotonic()
     effective_deadline_s = min(deadline_s, budget.wall_clock_s)
-    
+
     journal = _journal()
     journal.append(correlation_id, "user", prompt, principal_id=principal_id)
-    
+
     retrieved = retrieve_context(journal, prompt, principal_id=principal_id)
     recent = journal.get_recent(limit=5)
-    
+
     full_system_prompt = assemble_context(
         soul_prompt=soul_prompt,
         sensorium_snapshot=sensorium_snapshot,
@@ -71,7 +74,7 @@ def run_turn(
         user_prompt=prompt,
         correlation_id=correlation_id,
     )
-    
+
     result = None
     for _iteration in range(budget.iteration_count):
         remaining_s = (
@@ -101,10 +104,10 @@ def run_turn(
                 deadline_s=remaining_s,
             )
         break
-    
+
     if result and getattr(result, "text", None):
         journal.append(correlation_id, "xion", result.text, principal_id=principal_id)
-        
+
     return result
 
 async def stream_run_turn(
@@ -121,13 +124,13 @@ async def stream_run_turn(
 ) -> AsyncIterator[Any]:
     """Async streaming variant of the agentic loop."""
     _DEPTH_ENFORCER.check_depth(budget.delegation_depth)
-    
+
     journal = _journal()
     journal.append(correlation_id, "user", prompt, principal_id=principal_id)
-    
+
     retrieved = retrieve_context(journal, prompt, principal_id=principal_id)
     recent = journal.get_recent(limit=5)
-    
+
     full_system_prompt = assemble_context(
         soul_prompt=soul_prompt,
         sensorium_snapshot=sensorium_snapshot,
@@ -136,7 +139,7 @@ async def stream_run_turn(
         user_prompt=prompt,
         correlation_id=correlation_id,
     )
-    
+
     gen = stream_generate_func(
         provider,
         prompt,
@@ -144,7 +147,7 @@ async def stream_run_turn(
         max_tokens=min(max_tokens, budget.reasoning_tokens),
         deadline_s=min(deadline_s, budget.wall_clock_s),
     )
-    
+
     full_text = []
     async for chunk in gen:
         if isinstance(chunk, str):
@@ -152,7 +155,7 @@ async def stream_run_turn(
         elif getattr(chunk, "text", None):
             full_text.append(chunk.text)
         yield chunk
-        
+
     if full_text:
         journal.append(correlation_id, "xion", "".join(full_text), principal_id=principal_id)
 
@@ -176,8 +179,8 @@ def _tool_resolver() -> PythonToolResolver:
 
 
 __all__ = [
-    "CognitionLoopBudget",
     "DEFAULT_BUDGET",
+    "CognitionLoopBudget",
     "chat_cognition_budget",
     "run_turn",
     "stream_run_turn",

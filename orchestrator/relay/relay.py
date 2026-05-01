@@ -267,7 +267,7 @@ class Relay:
         safety_ledger_path: Path | None = None,
         request_ledger_path: Path | None = None,
         sensorium_ledger_path: Path | None = None,
-        sensorium_source: "SensoriumSource | None" = None,
+        sensorium_source: SensoriumSource | None = None,
         hard_cap_ms: int = _DEFAULT_HARD_CAP_MS,
         max_workers: int = _DEFAULT_MAX_WORKERS,
         watchdog_fire_window_seconds: float = _DEFAULT_WATCHDOG_FIRE_WINDOW_SECONDS,
@@ -462,7 +462,7 @@ class Relay:
         self,
         candidate: str,
         *,
-        sensorium_state: "SensoriumState | None" = None,
+        sensorium_state: SensoriumState | None = None,
         user_proof_commit: str | None = None,
         user_proof_algorithm: str | None = None,
     ) -> RelayResult:
@@ -572,7 +572,7 @@ class Relay:
     def _write_sensorium_distress_row(
         self,
         *,
-        state: "SensoriumState",
+        state: SensoriumState,
         correlation_id: str,
     ) -> None:
         """Append a SENSORIUM distress row carrying ``correlation_id``.
@@ -587,8 +587,8 @@ class Relay:
         Identical to the resolution gate() uses on the direct-call path,
         so tests can set the env once and both paths land in tmp_path.
         """
-        from orchestrator.sensorium.ledger import append_distress_from_state
         from orchestrator.safety.api import _default_sensorium_ledger_path
+        from orchestrator.sensorium.ledger import append_distress_from_state
 
         path = (
             self._sensorium_ledger_path
@@ -610,7 +610,7 @@ class Relay:
         candidate: str,
         correlation_id: str,
         request_arrived_utc_ns: int,
-        sensorium_state: "SensoriumState | None" = None,
+        sensorium_state: SensoriumState | None = None,
     ) -> tuple[Verdict, int]:
         """Invoke gate() under the wall-clock watchdog.
 

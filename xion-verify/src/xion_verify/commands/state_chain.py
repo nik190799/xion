@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from pathlib import Path
 
 import click
 
@@ -40,10 +39,10 @@ async def _fetch_live_tip(process_id: str) -> tuple[int, str] | None:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate()
+        stdout, _stderr = await proc.communicate()
         if proc.returncode != 0:
             return None
-            
+
         # Very naive parsing for the skeleton
         output = stdout.decode().strip()
         # We expect something like: { height = 1, root = "..." }
@@ -51,10 +50,10 @@ async def _fetch_live_tip(process_id: str) -> tuple[int, str] | None:
         import re
         height_match = re.search(r"height\s*=\s*(\d+)", output)
         root_match = re.search(r'root\s*=\s*"([^"]+)"', output)
-        
+
         if height_match and root_match:
             return int(height_match.group(1)), root_match.group(1)
-            
+
         return None
     except Exception:
         return None
@@ -81,13 +80,13 @@ def state_chain(strict: bool) -> None:
         sys.exit(FAIL)
 
     ledger_path = repo_root / "ledgers" / "STATE_CHAIN_LEDGER.jsonl"
-    
+
     if not ledger_path.is_file():
         click.echo(f"state-chain: NOT_YET_SEALED: {ledger_path.relative_to(repo_root)} not found")
         sys.exit(NOT_YET_SEALED)
 
     try:
-        count, tip_hash = verify_chain(ledger_path)
+        count, _tip_hash = verify_chain(ledger_path)
     except ChainBroken as exc:
         click.echo(f"state-chain: FAIL: {exc}", err=True)
         sys.exit(FAIL)
@@ -105,11 +104,11 @@ def state_chain(strict: bool) -> None:
             line = raw_line.rstrip(b"\n").rstrip(b"\r")
             if line:
                 last_row = json.loads(line.decode("utf-8"))
-                
+
     if not last_row:
         click.echo("state-chain: FAIL: could not read last row", err=True)
         sys.exit(FAIL)
-        
+
     ledger_height = last_row["height"]
     ledger_root = last_row["state_root_sha256"]
 
@@ -118,12 +117,12 @@ def state_chain(strict: bool) -> None:
         if not process_id:
             click.echo("state-chain: FAIL: --strict requires XION_AO_PROCESS_ID env var", err=True)
             sys.exit(FAIL)
-            
+
         live_tip = asyncio.run(_fetch_live_tip(process_id))
         if not live_tip:
             click.echo(f"state-chain: FAIL: could not fetch live tip from process {process_id}", err=True)
             sys.exit(FAIL)
-            
+
         live_height, live_root = live_tip
         if live_height != ledger_height or live_root != ledger_root:
             click.echo(
@@ -133,9 +132,9 @@ def state_chain(strict: bool) -> None:
                 err=True
             )
             sys.exit(FAIL)
-            
+
         click.echo(f"state-chain: OK ({count} rows verified; strict cross-check passed against {process_id})")
     else:
         click.echo(f"state-chain: OK ({count} rows verified; chain intact)")
-        
+
     sys.exit(OK)

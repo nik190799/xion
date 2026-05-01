@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 from orchestrator.embeddings.provider import EmbeddingBatch, l2_normalize
 from orchestrator.inference_router.providers.chutes import ChutesProviderError
 
-
 _DEFAULT_BASE_URL = "https://llm.chutes.ai/v1"
 _DEFAULT_MODEL = "Qwen/Qwen3-Embedding-8B"
 
