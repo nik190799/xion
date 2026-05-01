@@ -82,7 +82,7 @@ The agent **runtime** layer pinned for reproducible builds and verifier drift ch
 hermes_agent_repo:    https://github.com/nousresearch/hermes-agent
 hermes_agent_tag:     v2026.4.16
 hermes_agent_commit:  4a0358d2e741eb049a6ffb9b8e610db946a4fec5
-hermes_tool_allowlist_sha256: b757242110abc2434b4ec6950d9740c33e0e751e10b8a040e508da93df3c84ec
+hermes_tool_allowlist_sha256: 08a944b41994e7cb2da7f6acc84c4138f5275f7aee505ee171b1cf3b9c4c1c9b
 ```
 
 Hermes is **not** part of the constitutional quartet hash slots above; it is **implementation**, upgraded through governance + Auto-Research per [`docs/08-AUTO-RESEARCH.md`](../docs/08-AUTO-RESEARCH.md). This pin is still recorded here so a reader in 2126 can reproduce "what ran at genesis-era maturity."
