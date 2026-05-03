@@ -47,16 +47,34 @@ def test_preflight_sepolia_ok_with_deployer_synonym(svc: BaseEvmService) -> None
             os.environ.pop(key, None)
 
 
-def test_preflight_mainnet_only_requires_key(svc: BaseEvmService) -> None:
-    os.environ.pop("PRIVATE_KEY", None)
-    os.environ.pop("XION_DEPLOYER_PRIVATE_KEY", None)
+def test_preflight_mainnet_requires_constructor_and_rejects_rehearsal_gov(svc: BaseEvmService) -> None:
+    for key in (
+        "PRIVATE_KEY",
+        "XION_DEPLOYER_PRIVATE_KEY",
+        "XION_TREASURY_GOVERNANCE",
+        "XION_AO_CORE_AUTHORITY",
+        "XION_BRIDGE_CAP_BPS",
+    ):
+        os.environ.pop(key, None)
     issues = svc.treasury_deploy_preflight_issues("base-mainnet")
-    assert len(issues) == 1
-    os.environ["PRIVATE_KEY"] = "0xab"
+    assert len(issues) == 4
+    os.environ["PRIVATE_KEY"] = "0x" + "11" * 32
+    os.environ["XION_TREASURY_GOVERNANCE"] = "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A"
+    os.environ["XION_AO_CORE_AUTHORITY"] = "0x" + "33" * 20
+    os.environ["XION_BRIDGE_CAP_BPS"] = "1000"
     try:
+        issues = svc.treasury_deploy_preflight_issues("base-mainnet")
+        assert any("rehearsal default" in i for i in issues)
+        os.environ["XION_TREASURY_GOVERNANCE"] = "0x" + "22" * 20
         assert svc.treasury_deploy_preflight_issues("base-mainnet") == []
     finally:
-        os.environ.pop("PRIVATE_KEY", None)
+        for key in (
+            "PRIVATE_KEY",
+            "XION_TREASURY_GOVERNANCE",
+            "XION_AO_CORE_AUTHORITY",
+            "XION_BRIDGE_CAP_BPS",
+        ):
+            os.environ.pop(key, None)
 
 
 def test_preflight_unknown_network(svc: BaseEvmService) -> None:

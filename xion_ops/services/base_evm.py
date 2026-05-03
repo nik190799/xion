@@ -18,6 +18,9 @@ from xion_ops.services.base import OpsService
 from xion_ops.types import BalanceReport, CommandResult, DeploymentResult, ServiceHealth, WalletInfo
 from xion_ops.wallets import wallets_for_service
 
+# Same address as ``prepare-sepolia-env`` in ``cli.py`` — safe for Sepolia rehearsal only.
+_MAINNET_FORBIDDEN_GOVERNANCE = "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A"
+
 
 class BaseEvmService(OpsService):
     name = "base-evm"
@@ -141,6 +144,26 @@ class BaseEvmService(OpsService):
                 issues.append(
                     "Missing XION_BRIDGE_CAP_BPS (run: python -m xion_ops.cli base-evm prepare-sepolia-env)"
                 )
+        if network in ("base", "base-mainnet"):
+            gov = os.environ.get("XION_TREASURY_GOVERNANCE", "").strip()
+            if not gov:
+                issues.append(
+                    "Missing XION_TREASURY_GOVERNANCE (set production governance / Safe; "
+                    "see docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md)"
+                )
+            elif gov.lower() == _MAINNET_FORBIDDEN_GOVERNANCE.lower():
+                issues.append(
+                    "XION_TREASURY_GOVERNANCE is the prepare-sepolia-env rehearsal default — "
+                    "not valid for Base mainnet; set Cold Root / Warm Safe governance"
+                )
+            if not os.environ.get("XION_AO_CORE_AUTHORITY", "").strip():
+                issues.append(
+                    "Missing XION_AO_CORE_AUTHORITY (set production AO authority; "
+                    "see docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md)"
+                )
+            cap = os.environ.get("XION_BRIDGE_CAP_BPS", "").strip()
+            if not cap:
+                issues.append("Missing XION_BRIDGE_CAP_BPS")
         return issues
 
     def deploy_treasury(self, network: str = "base-sepolia", script: str = "treasury/script/Deploy.s.sol:DeployTreasury") -> DeploymentResult:
