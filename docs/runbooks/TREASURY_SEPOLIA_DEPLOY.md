@@ -31,6 +31,12 @@ python -m xion_ops.cli base-evm prepare-sepolia-env
 
 Then add `PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY` manually.
 
+Fail fast before Foundry (signer + Sepolia constructor env):
+
+```bash
+python -m xion_ops.cli base-evm preflight-treasury --network base-sepolia
+```
+
 Install Solidity deps once ( **`contracts/lib/`** is gitignored — CI reinstalls each run):
 
 ```bash
@@ -72,7 +78,13 @@ python -m xion_ops.cli base-evm rotation-rehearsal \
 
 ## Soak window
 
-After pin: run Relay / operator traffic if applicable, monitor `cast call` probes for selectors that must exist on **`MasterTreasury`** for the pinned source revision (examples: `governance()`, `aoCoreAuthority()`, `registeredChainCount()`). Minimum **24–48 hours** soak before Sprint Mode-style mainnet is doctrine-honest.
+After pin: run Relay / operator traffic if applicable, monitor `cast call` probes for selectors that must exist on **`MasterTreasury`** for the pinned source revision (examples: `governance()`, `aoCoreAuthority()`, `registeredChainCount()`). Minimum **24–48 hours** soak before Sprint Mode-style mainnet is doctrine-honest. Scripted probes (requires `cast` on PATH):
+
+```bash
+bash scripts/treasury-soak-probes.sh
+# or, after verifier bundle:
+TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh
+```
 
 ## Verifiers
 

@@ -58,10 +58,13 @@ not a fresh GPU floor.
 
 ## Sepolia treasury next actions
 
-1. Add signer material to `.env` (`PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`; see [.env.example](../.env.example) treasury block).
-2. Run rehearsal end-to-end: [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md) (deploy → pin → soak → `xion-verify supply` / treasury family).
-3. Scripted verifier bundle for operators: [`scripts/verify-mainnet-deploy-gates.sh`](../scripts/verify-mainnet-deploy-gates.sh).
-4. Record whether the operator intends **full D4** vs **Sprint Mode** residuals in [`docs/OPERATOR_TRACK_D4.md`](OPERATOR_TRACK_D4.md).
+1. `python -m xion_ops.cli base-evm prepare-sepolia-env` then add signer material to `.env` (`PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`; see [.env.example](../.env.example) treasury block).
+2. `python -m xion_ops.cli base-evm preflight-treasury --network base-sepolia` (fail fast if env incomplete).
+3. Run rehearsal end-to-end: [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md) (`deploy-treasury` → `pin-deployment` only if addresses change) → soak → `xion-verify supply` / treasury family). `genesis/TREASURY_VAULTS.json` already pins a live Base Sepolia deployment; redeploy only when source/manifest policy requires it.
+4. During soak: `bash scripts/treasury-soak-probes.sh` or `TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh`.
+5. Scripted verifier bundle for operators: [`scripts/verify-mainnet-deploy-gates.sh`](../scripts/verify-mainnet-deploy-gates.sh).
+6. Record whether the operator intends **full D4** vs **Sprint Mode** residuals in [`docs/OPERATOR_TRACK_D4.md`](OPERATOR_TRACK_D4.md). Track Phase 7 externals in [`docs/PHASE_7_PREFLIGHT_STATUS.md`](PHASE_7_PREFLIGHT_STATUS.md).
+7. Base mainnet (post gates + posture): [`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`](runbooks/TREASURY_BASE_MAINNET_DEPLOY.md).
 
 Pull requests touching `contracts/**` execute Foundry **`forge build` / `forge test`** in [`.github/workflows/foundry.yml`](../.github/workflows/foundry.yml).
 

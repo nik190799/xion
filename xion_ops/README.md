@@ -37,6 +37,9 @@ concrete vendors directly.
 ```bash
 python -m xion_ops balances
 python -m xion_ops balances --service base-evm
+python -m xion_ops base-evm prepare-sepolia-env
+python -m xion_ops base-evm preflight-treasury --network base-sepolia
+python -m xion_ops base-evm deploy-treasury --network base-sepolia
 python -m xion_ops akash deploy --sdl-path infra/akash/relay-deployment.yaml
 python -m xion_ops deploy relay-akash
 python -m xion_ops arweave publish-relay-registry

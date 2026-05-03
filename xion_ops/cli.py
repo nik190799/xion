@@ -224,6 +224,19 @@ def base_evm_deploy_treasury(network: str, script: str) -> None:
         raise click.exceptions.Exit(code=1)
 
 
+@base_evm_group.command("preflight-treasury")
+@click.option("--network", default="base-sepolia", show_default=True)
+def base_evm_preflight_treasury(network: str) -> None:
+    """Fail fast when deploy signer or constructor env is missing (before forge broadcast)."""
+
+    issues = get_service("base-evm").treasury_deploy_preflight_issues(network)  # type: ignore[attr-defined]
+    for line in issues:
+        click.echo(f"ISSUE: {line}", err=True)
+    if issues:
+        raise click.exceptions.Exit(code=1)
+    click.echo(f"base-evm preflight-treasury ({network}): OK")
+
+
 @base_evm_group.command(name="prepare-sepolia-env")
 def base_evm_prepare_sepolia_env() -> None:
     deployer = "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A"

@@ -114,12 +114,49 @@ class BaseEvmService(OpsService):
     def cast_call(self, *args: str, network: str) -> CommandResult:
         return self._run_foundry(["cast", "call", "--rpc-url", self.rpc_url(network), *args])
 
+    def treasury_deploy_preflight_issues(self, network: str) -> list[str]:
+        """Return human-readable blockers before ``forge script`` broadcast."""
+
+        issues: list[str] = []
+        pk = (os.environ.get("PRIVATE_KEY") or os.environ.get("XION_DEPLOYER_PRIVATE_KEY") or "").strip()
+        if not pk:
+            issues.append(
+                "Missing PRIVATE_KEY or XION_DEPLOYER_PRIVATE_KEY "
+                "(set in repo-root .env; see docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md)"
+            )
+        if network not in ("base-sepolia", "base", "base-mainnet"):
+            issues.append(f"Unknown network {network!r} for treasury preflight")
+            return issues
+        if network == "base-sepolia":
+            if not os.environ.get("XION_TREASURY_GOVERNANCE", "").strip():
+                issues.append(
+                    "Missing XION_TREASURY_GOVERNANCE (run: python -m xion_ops.cli base-evm prepare-sepolia-env)"
+                )
+            if not os.environ.get("XION_AO_CORE_AUTHORITY", "").strip():
+                issues.append(
+                    "Missing XION_AO_CORE_AUTHORITY (run: python -m xion_ops.cli base-evm prepare-sepolia-env)"
+                )
+            cap = os.environ.get("XION_BRIDGE_CAP_BPS", "").strip()
+            if not cap:
+                issues.append(
+                    "Missing XION_BRIDGE_CAP_BPS (run: python -m xion_ops.cli base-evm prepare-sepolia-env)"
+                )
+        return issues
+
     def deploy_treasury(self, network: str = "base-sepolia", script: str = "treasury/script/Deploy.s.sol:DeployTreasury") -> DeploymentResult:
         """Broadcast ``DeployTreasury`` via Foundry.
 
         Defaults to ``base-sepolia`` so operators do not accidental-broadcast Mainnet ``base``.
         """
 
+        pre = self.treasury_deploy_preflight_issues(network)
+        if pre:
+            return DeploymentResult(
+                service=self.name,
+                ok=False,
+                id="treasury",
+                details={"error": "; ".join(pre), "preflight_issues": pre},
+            )
         try:
             result = self.forge_deploy(script, network, broadcast=True)
         except CommandFailed as exc:

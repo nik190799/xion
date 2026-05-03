@@ -30,3 +30,12 @@ Following the **2026-05-01** treasury correction:
 - **Default intent**: Pursue **full D4 honesty** unless the operator publishes a **`docs/STATE_OF_XION_PREFLIGHT.md`** residue entry accepting Sprint shortcuts with dates.
 
 Updating this subsection when the operator chooses Sprint Mode avoids ambiguous public claims.
+
+## Operator execution artifacts (2026-05-03)
+
+- **Sepolia path:** `python -m xion_ops.cli base-evm prepare-sepolia-env`, add `PRIVATE_KEY` / `XION_DEPLOYER_PRIVATE_KEY`, then `base-evm preflight-treasury --network base-sepolia` before `deploy-treasury`. Runbook: [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md).
+- **Soak probes:** [`scripts/treasury-soak-probes.sh`](../scripts/treasury-soak-probes.sh) or `TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh`.
+- **Mainnet (post-gates):** [`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`](runbooks/TREASURY_BASE_MAINNET_DEPLOY.md) — hardware / Cold Root flow; third-party `xion-verify` run required for Phase 7 narrative.
+- **Phase 7 checklist:** [`docs/PHASE_7_PREFLIGHT_STATUS.md`](PHASE_7_PREFLIGHT_STATUS.md) tracks external actions vs verifiers.
+
+**Audit and key-ceremony plan (default = Full D4):** Close `KW-AUDIT-001` with an externally signed audit on the exact deployable bytecode **or** record Sprint Mode acceptance with Sepolia soak + coverage in `docs/STATE_OF_XION_PREFLIGHT.md`. Close Cold Root / Warm Safe gaps per `KW-KEYS-001`, `KW-KEYS-002`, and `docs/13-OPERATIONS.md` before claiming D4 custody honesty.

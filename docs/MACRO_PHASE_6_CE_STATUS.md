@@ -13,7 +13,7 @@ This note **does not mint constitutional truth**; it links repo evidence for **`
 
 **Operational next steps**
 
-1. Keep Sepolia bytecode aligned with pinned source (**soak → pin → verifier**) using [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md).
+1. Keep Sepolia bytecode aligned with pinned source (**soak → pin → verifier**) using [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md) and **`python -m xion_ops base-evm preflight-treasury`** before any broadcast.
 2. Maintain honest audit posture: **`KW-AUDIT-001`** (external audit or explicit Sprint residue) and **`KW-AUDIT-002`** correction pairing on Arweave / manifest (`treasury_audit_correction_arweave_tx`).
 3. Base mainnet only after **Forge CI green** (`.github/workflows/foundry.yml`) and verifier bundle in `scripts/verify-mainnet-deploy-gates.sh`.
 
