@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Cast-call probes for MasterTreasury during Base Sepolia soak.
+"""Cast-call probes for MasterTreasury (Base Sepolia rehearsal or Base mainnet).
+
+RPC URL follows ``genesis/TREASURY_VAULTS.json`` ``status``: ``mainnet`` uses
+``BASE_MAINNET_RPC`` / ``XION_BASE_MAINNET_RPC`` (default ``https://mainnet.base.org``);
+otherwise Sepolia env vars (default ``https://sepolia.base.org``).
 
 Uses Foundry **`cast`** when on ``PATH``. Otherwise performs the same three
 view calls via JSON-RPC ``eth_call`` (stdlib only), so Windows operators get
@@ -98,9 +102,21 @@ def _run_via_rpc(master: str, rpc: str) -> None:
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     _load_dotenv(root)
-    rpc = os.environ.get("BASE_SEPOLIA_RPC") or os.environ.get("XION_BASE_SEPOLIA_RPC") or "https://sepolia.base.org"
     manifest_path = root / "genesis" / "TREASURY_VAULTS.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    status = manifest.get("status", "testnet")
+    if status == "mainnet":
+        rpc = (
+            os.environ.get("BASE_MAINNET_RPC")
+            or os.environ.get("XION_BASE_MAINNET_RPC")
+            or "https://mainnet.base.org"
+        )
+    else:
+        rpc = (
+            os.environ.get("BASE_SEPOLIA_RPC")
+            or os.environ.get("XION_BASE_SEPOLIA_RPC")
+            or "https://sepolia.base.org"
+        )
     master = manifest["master_treasury"]
     print(f"[treasury_soak_probes] rpc={rpc}")
     print(f"[treasury_soak_probes] master_treasury={master}")

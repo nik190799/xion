@@ -16,8 +16,9 @@ _MANIFEST = "genesis/TREASURY_VAULTS.json"
 def _load() -> tuple[int, dict[str, object] | str]:
     repo_root = find_repo_root()
     data = json.loads((repo_root / _MANIFEST).read_text(encoding="utf-8"))
-    if data.get("status") != "testnet":
-        return NOT_YET_SEALED, f"{_MANIFEST} status is {data.get('status')!r}, expected 'testnet'"
+    status = data.get("status")
+    if status not in ("testnet", "mainnet"):
+        return NOT_YET_SEALED, f"{_MANIFEST} status is {status!r}, expected 'testnet' or 'mainnet'"
     if not data.get("master_treasury") or not data.get("vaults"):
         return NOT_YET_SEALED, "treasury vault addresses not populated"
     return OK, data
@@ -60,7 +61,7 @@ def _run(label: str) -> None:
         except Exception as exc:
             click.echo(f"{label}: FAIL: {exc}", err=True)
             sys.exit(FAIL)
-    click.echo(f"{label}: OK (testnet treasury manifest populated)")
+    click.echo(f"{label}: OK (treasury manifest populated; status={result.get('status')!r})")
     sys.exit(OK)
 
 

@@ -1,36 +1,36 @@
 {
   "schema_version": 1,
-  "deploy_runbook": "docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md",
-  "status": "testnet",
+  "deploy_runbook": "docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md",
+  "status": "mainnet",
   "treasury_audit_arweave_tx": "wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg",
   "treasury_audit_correction_required": false,
   "treasury_audit_correction_arweave_tx": "3QzqOAKjQY86RLtl4UEwV8pNtxtVCg8L0ATD8El3AXs",
   "treasury_audit_correction_path": "docs/audits/treasury-2026-report.CORRECTION.md",
   "invariant_18_ratification_arweave_tx": "a4uIJkEoOh0FHX3ws5JNWBEvj0fR2TrSRE06VY-rUwg",
   "bridge_exposure_cap_bps": 1000,
-  "master_treasury": "0xd2b257200cc12b4e44d65063c0d63d25989455b6",
-  "master_treasury_deploy_block": 41040532,
-  "master_treasury_deploy_tx": "0xe8932fde35a88a70bff67d6d3af5495e48680c08c1bdd1220633725ab9f59deb",
+  "master_treasury": "0xbf5407745cf22b88c46b55037e26156a0e78fd7f",
+  "master_treasury_deploy_block": 45530934,
+  "master_treasury_deploy_tx": "0x494a9badb79db92b6607069859f7dad19122dd79f99d92e6a35d84225882a79c",
   "tier1_operating_tokens": [
     {
       "asset": "AR",
       "purpose": "Arweave permanent storage",
-      "status": "testnet_routed_to_base_sepolia_vault"
+      "status": "mainnet_routed_pending_per_chain_vault"
     },
     {
       "asset": "USDC",
       "purpose": "fiat-pegged operations",
-      "status": "testnet_routed_to_base_sepolia_vault"
+      "status": "mainnet_routed_pending_per_chain_vault"
     },
     {
       "asset": "ETH",
       "purpose": "gas",
-      "status": "testnet_routed_to_base_sepolia_vault"
+      "status": "mainnet_routed_pending_per_chain_vault"
     },
     {
       "asset": "TAO",
       "purpose": "Bittensor / Chutes inference credits",
-      "status": "testnet_routed_to_base_sepolia_vault"
+      "status": "mainnet_routed_pending_per_chain_vault"
     }
   ],
   "excluded_tier1_assets": [
@@ -49,5 +49,5 @@
       "deploy_tx": "0xf0fadec686d79a77efb2c17a35949bb9bfbabe8d4e12d2ea294984dfe59c0b51"
     }
   ],
-  "residual": "Mainnet treasury needs external audit closure (KW-AUDIT-001) or Sprint acceptance, Forge CI evidence, Cold Root doctrine, AO mainnet ceremony when claiming canonical substrate. Base Sepolia pin matches Current MasterTreasury source; rehearsal + soak via deploy_runbook."
+  "residual": "MasterTreasury live on Base (8453) per master_treasury / deploy_runbook; per-chain Vault registration on mainnet still outstanding (vaults[0] is Sepolia rehearsal evidence). Sprint: KW-AUDIT-001 or dated acceptance, Forge CI, Cold Root deferred per OPERATOR_TRACK_D4, AO mainnet ceremony before claiming canonical substrate."
 }
