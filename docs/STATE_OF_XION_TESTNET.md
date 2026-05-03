@@ -65,8 +65,35 @@ xion-verify substrate-portability
 xion-verify pre-genesis
 ```
 
-`xion-verify all --allow-not-yet-sealed` is still not clean in this working
-tree because the pre-existing modified `genesis/HERMES_TOOL_ALLOWLIST.yaml`
-causes Hermes / Agent Cast hash mismatch failures, and `api-tokens` requires a
-bearer-token configuration unless `XION_API_REQUIRE_BEARER=false` is exported
-for compatibility runs. Those are not closed by this D3 relight note.
+`xion-verify all --allow-not-yet-sealed` returns OK on this operator
+workstation when invoked with `XION_API_REQUIRE_BEARER=false` exported into
+the verifier's process environment (the verifier does not auto-load `.env`;
+the orchestrator's lifespan does, but the verifier is intentionally
+explicit about its config sources — see the `--env-file` option on
+`xion-verify api-tokens`).
+
+Two operator residuals were resolved before this run:
+
+1. `genesis/HERMES_TOOL_ALLOWLIST.yaml` (and twelve other LF-anchored
+   files) had drifted to CRLF in the local working tree on this Windows
+   checkout. The git index already held the sealed LF bytes; the working
+   tree was renormalized in place by rewriting `\r\n` to `\n`. Post-fix
+   sha256 matches the Genesis Artifact pin
+   `08a944b41994e7cb2da7f6acc84c4138f5275f7aee505ee171b1cf3b9c4c1c9b`
+   exactly. No commit was required (the bytes are already canonical in
+   `HEAD`). `.gitattributes` already pins `genesis/* text eol=lf`; this
+   was a one-time editor-side regression on a pre-existing checkout.
+2. `XION_API_REQUIRE_BEARER=false` is present in the operator's local
+   `.env` (matches `.env.example`), but `xion-verify` runs outside the
+   FastAPI lifespan and does not load `.env` implicitly. Operators
+   running `xion-verify all` must export the flag (or use
+   `xion-verify api-tokens --env-file .env` for the single subcommand).
+   This is a documentation gap, not a doctrine gap; the verifier's
+   default of `require_bearer=True` is fail-closed by design.
+
+`NOT_YET_SEALED` rows in the `all` summary are honest residuals (no
+BILLING_LEDGER yet, no SHADOW_LEDGER yet, no AO state-tip pinned, no
+sealed AO mainnet identity, etc.) and not bugs.
+
+The two D3 deploy blockers below remain open and are signer-material
+gated, not code-gated.
