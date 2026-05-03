@@ -191,6 +191,19 @@ contract EmissionControllerTest is Test {
         emission.emitGenesis(recipients);
     }
 
+    function _mintInDailyChunks(uint8 pool, uint256 amount) internal {
+        uint256 remaining = amount;
+        uint256 dailyCap = emission.DAILY_EGRESS_CAP();
+
+        while (remaining > 0) {
+            uint256 chunk = remaining > dailyCap ? dailyCap : remaining;
+            vm.prank(AUTHORITY);
+            emission.scheduledMint(pool, USER, chunk);
+            remaining -= chunk;
+            vm.warp(block.timestamp + 1 days);
+        }
+    }
+
     function test_scheduledMint_blockedBeforeGenesis() public {
         vm.expectRevert(abi.encodeWithSelector(EmissionController.EraNotActive.selector, 0));
         vm.prank(AUTHORITY);
@@ -273,8 +286,7 @@ contract EmissionControllerTest is Test {
     function test_scheduledMint_poolCapExhaustion() public {
         _genesis();
         uint256 cap = emission.poolCap(1); // 63B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(1, USER, cap); // exactly fills pool 1
+        _mintInDailyChunks(1, cap); // exactly fills pool 1
         assertEq(emission.poolMinted(1), cap);
 
         vm.expectRevert(abi.encodeWithSelector(EmissionController.PoolExhausted.selector, 1));
@@ -286,8 +298,7 @@ contract EmissionControllerTest is Test {
         _genesis();
         vm.warp(emission.GENESIS_TIMESTAMP() + emission.ERA1_END());
         uint256 era2Cap = emission.ERA2_CAP(); // 84B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(0, USER, era2Cap); // pool 0 has ample room (168B cap)
+        _mintInDailyChunks(0, era2Cap); // pool 0 has ample room (168B cap)
 
         vm.expectRevert(abi.encodeWithSelector(EmissionController.EraCapExceeded.selector, 2));
         vm.prank(AUTHORITY);
@@ -298,8 +309,7 @@ contract EmissionControllerTest is Test {
         _genesis();
         vm.warp(emission.GENESIS_TIMESTAMP() + emission.ERA2_END());
         uint256 era3Cap = emission.ERA3_CAP(); // 63B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(0, USER, era3Cap); // pool 0 has 168B cap
+        _mintInDailyChunks(0, era3Cap); // pool 0 has 168B cap
 
         vm.expectRevert(abi.encodeWithSelector(EmissionController.EraCapExceeded.selector, 3));
         vm.prank(AUTHORITY);
@@ -310,8 +320,7 @@ contract EmissionControllerTest is Test {
         _genesis();
         vm.warp(emission.GENESIS_TIMESTAMP() + emission.ERA3_END());
         uint256 era4Cap = emission.ERA4_CAP(); // 63B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(0, USER, era4Cap);
+        _mintInDailyChunks(0, era4Cap);
 
         vm.expectRevert(abi.encodeWithSelector(EmissionController.EraCapExceeded.selector, 4));
         vm.prank(AUTHORITY);
@@ -326,10 +335,8 @@ contract EmissionControllerTest is Test {
         uint256 pool2Cap = emission.poolCap(2);
         uint256 eraCap = emission.ERA1_CAP(); // 126B
         // Pools 1, 2 (63B each) sum to 126B = ERA1_CAP exactly.
-        vm.startPrank(AUTHORITY);
-        emission.scheduledMint(1, USER, pool1Cap);
-        emission.scheduledMint(2, USER, pool2Cap);
-        vm.stopPrank();
+        _mintInDailyChunks(1, pool1Cap);
+        _mintInDailyChunks(2, pool2Cap);
         assertEq(emission.mintedInEra1(), eraCap);
 
         vm.expectRevert(abi.encodeWithSelector(EmissionController.EraCapExceeded.selector, 1));
@@ -346,8 +353,7 @@ contract EmissionControllerTest is Test {
         // we actually fill pool 1 AND pool 2 halfway to exercise the slowdown.
         // Simpler: mint 63B+1 total to trigger slowdown revert.
         uint256 effCap = (emission.ERA1_CAP() * 5000) / 10000; // 63B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(1, USER, effCap); // fills era halfway = effective cap
+        _mintInDailyChunks(1, effCap); // fills era halfway = effective cap
 
         vm.expectRevert("slowdown cap reached");
         vm.prank(AUTHORITY);
@@ -361,8 +367,7 @@ contract EmissionControllerTest is Test {
 
         vm.warp(emission.GENESIS_TIMESTAMP() + emission.ERA1_END());
         uint256 effCap = (emission.ERA2_CAP() * 5000) / 10000; // 42B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(1, USER, effCap);
+        _mintInDailyChunks(1, effCap);
 
         vm.expectRevert("slowdown cap reached");
         vm.prank(AUTHORITY);
@@ -376,8 +381,7 @@ contract EmissionControllerTest is Test {
 
         vm.warp(emission.GENESIS_TIMESTAMP() + emission.ERA2_END());
         uint256 effCap = (emission.ERA3_CAP() * 5000) / 10000; // 31.5B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(1, USER, effCap);
+        _mintInDailyChunks(1, effCap);
 
         vm.expectRevert("slowdown cap reached");
         vm.prank(AUTHORITY);
@@ -391,8 +395,7 @@ contract EmissionControllerTest is Test {
 
         vm.warp(emission.GENESIS_TIMESTAMP() + emission.ERA3_END());
         uint256 effCap = (emission.ERA4_CAP() * 5000) / 10000; // 31.5B
-        vm.prank(AUTHORITY);
-        emission.scheduledMint(1, USER, effCap);
+        _mintInDailyChunks(1, effCap);
 
         vm.expectRevert("slowdown cap reached");
         vm.prank(AUTHORITY);

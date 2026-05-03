@@ -40,6 +40,7 @@ def pre_genesis(ctx: click.Context) -> None:
         "charter-signed",
         "embedder-health",
         "rerank-improvement",
+        "funding-balances",
     ]
 
     tier_bc = []

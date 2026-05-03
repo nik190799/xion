@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xion-ops"
+version = "0.1.0"
+description = "Xion operator automation: service gateways, deployment workflows, balance sweeps."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "The Xion Builders" }]
+dependencies = [
+  "click>=8.1.7,<9",
+]
+
+[project.optional-dependencies]
+server = [
+  "fastapi>=0.110,<1",
+  "uvicorn[standard]>=0.27,<1",
+]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+xion-ops = "xion_ops.cli:main"
+xion-ops-server = "xion_ops.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+

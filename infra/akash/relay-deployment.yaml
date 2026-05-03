@@ -71,7 +71,7 @@ services:
       - XION_API_WORKERS=1
       - XION_API_REQUIRE_BEARER=false
       - XION_BILLING_REQUIRED=false
-      - XION_CAST_POOL_ON_BOOT=true
+      - XION_CAST_POOL_ON_BOOT=false
       - XION_CHAT_DEADLINE_S=120
       - XION_COGNITION_WALL_S=120
       - XION_INFERENCE_POLICY=hosted_api_first

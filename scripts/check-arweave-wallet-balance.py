@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Print Arweave address and balance for XION_REGISTRY_WALLET_JWK_PATH or ~/.aos.json."""
-import os
+"""Compatibility wrapper for Arweave balance checks."""
 
-import arweave
+from __future__ import annotations
 
-path = os.environ.get("XION_REGISTRY_WALLET_JWK_PATH") or os.path.expanduser("~/.aos.json")
-w = arweave.Wallet(path)
-raw = float(w.balance)
-print("path:", path)
-print("address:", w.address)
-print("balance_AR:", raw)
+from xion_ops.cli import main
+
+if __name__ == "__main__":
+    main(args=["balances", "--service", "arweave"])

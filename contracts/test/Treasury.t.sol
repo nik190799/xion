@@ -23,6 +23,7 @@ contract MockToken {
 contract TreasuryTest is Test {
     address internal constant GOV = address(0xA11CE);
     address internal constant CORE = address(0xC0DE);
+    address internal constant NEXT_CORE = address(0x5AFE);
     address internal constant USER = address(0xB0B);
     address internal constant TOKEN = address(0x1000);
     address internal constant NATIVE_ASSET = address(0);
@@ -154,5 +155,56 @@ contract TreasuryTest is Test {
         treasury.requestReplenish(8453, TOKEN, 10);
 
         assertEq(treasury.bridgeEgressValueToday(), 10);
+    }
+
+    function test_authorityRotation_happyPath() public {
+        MasterTreasury treasury = new MasterTreasury(GOV, 1_000, CORE);
+
+        vm.prank(GOV);
+        treasury.proposeAuthorityRotation(NEXT_CORE);
+
+        assertEq(treasury.pendingAuthority(), NEXT_CORE);
+        assertEq(treasury.pendingAuthorityEta(), block.timestamp + treasury.AUTHORITY_ROTATION_DELAY());
+
+        vm.warp(treasury.pendingAuthorityEta());
+        treasury.executeAuthorityRotation();
+
+        assertEq(treasury.aoCoreAuthority(), NEXT_CORE);
+        assertEq(treasury.pendingAuthority(), address(0));
+        assertEq(treasury.pendingAuthorityEta(), 0);
+    }
+
+    function test_authorityRotation_onlyGovernanceCanPropose() public {
+        MasterTreasury treasury = new MasterTreasury(GOV, 1_000, CORE);
+
+        vm.expectRevert(MasterTreasury.NotGovernance.selector);
+        vm.prank(USER);
+        treasury.proposeAuthorityRotation(NEXT_CORE);
+    }
+
+    function test_authorityRotation_rejectsZeroAddress() public {
+        MasterTreasury treasury = new MasterTreasury(GOV, 1_000, CORE);
+
+        vm.expectRevert(MasterTreasury.ZeroAddress.selector);
+        vm.prank(GOV);
+        treasury.proposeAuthorityRotation(address(0));
+    }
+
+    function test_authorityRotation_revertsBeforeTimelock() public {
+        MasterTreasury treasury = new MasterTreasury(GOV, 1_000, CORE);
+
+        vm.prank(GOV);
+        treasury.proposeAuthorityRotation(NEXT_CORE);
+
+        vm.warp(treasury.pendingAuthorityEta() - 1);
+        vm.expectRevert(MasterTreasury.RotationNotMatured.selector);
+        treasury.executeAuthorityRotation();
+    }
+
+    function test_authorityRotation_executeWithoutPendingReverts() public {
+        MasterTreasury treasury = new MasterTreasury(GOV, 1_000, CORE);
+
+        vm.expectRevert(MasterTreasury.NoPendingRotation.selector);
+        treasury.executeAuthorityRotation();
     }
 }

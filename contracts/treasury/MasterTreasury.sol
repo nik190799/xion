@@ -10,11 +10,16 @@ contract MasterTreasury {
     error ZeroAddress();
     error BridgeCapExceeded();
     error ArrayLengthMismatch();
+    error NoPendingRotation();
+    error RotationNotMatured();
     error DailyBridgeEgressCapExceeded(uint256 day, uint256 requested, uint256 remaining);
 
     address public immutable governance;
-    address public immutable aoCoreAuthority;
+    address public aoCoreAuthority;
+    address public pendingAuthority;
+    uint256 public pendingAuthorityEta;
     uint16 public immutable bridgeExposureCapBps;
+    uint256 public constant AUTHORITY_ROTATION_DELAY = 7 days;
     uint256 public constant DAILY_BRIDGE_EGRESS_CAP = 1_000_000 * 10**18;
     uint256 public currentBridgeEgressDay;
     uint256 public bridgeEgressValueToday;
@@ -26,6 +31,8 @@ contract MasterTreasury {
     event BridgeExposureChecked(uint256 bridgedValue, uint256 totalValue);
     event DailyBridgeEgressChecked(uint256 indexed day, uint256 amount, uint256 used, uint256 cap);
     event ReplenishRequested(uint256 indexed chainId, address indexed token, uint256 amountNeeded);
+    event AuthorityRotationProposed(address indexed proposed, uint256 eta);
+    event AuthorityRotationExecuted(address indexed previous, address indexed current);
 
     constructor(address governance_, uint16 bridgeExposureCapBps_, address aoCoreAuthority_) {
         if (governance_ == address(0)) revert ZeroAddress();
@@ -101,6 +108,24 @@ contract MasterTreasury {
         if (vaultForChain[chainId] == address(0)) revert ZeroAddress();
         _enforceDailyBridgeEgress(amountNeeded);
         emit ReplenishRequested(chainId, token, amountNeeded);
+    }
+
+    function proposeAuthorityRotation(address newAuthority) external onlyGovernance {
+        if (newAuthority == address(0)) revert ZeroAddress();
+        pendingAuthority = newAuthority;
+        pendingAuthorityEta = block.timestamp + AUTHORITY_ROTATION_DELAY;
+        emit AuthorityRotationProposed(newAuthority, pendingAuthorityEta);
+    }
+
+    function executeAuthorityRotation() external {
+        address next = pendingAuthority;
+        if (next == address(0)) revert NoPendingRotation();
+        if (block.timestamp < pendingAuthorityEta) revert RotationNotMatured();
+        address previous = aoCoreAuthority;
+        aoCoreAuthority = next;
+        pendingAuthority = address(0);
+        pendingAuthorityEta = 0;
+        emit AuthorityRotationExecuted(previous, next);
     }
 
     function _registerVault(uint256 chainId, address vault) internal {

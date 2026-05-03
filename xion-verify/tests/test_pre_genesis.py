@@ -47,6 +47,7 @@ def test_pre_genesis_ok(monkeypatch: pytest.MonkeyPatch) -> None:
             "charter-signed",
             "embedder-health",
             "rerank-improvement",
+            "funding-balances",
         ]
     })
 

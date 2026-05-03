@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "wallets": [
+    {
+      "id": "sepolia_deployer",
+      "address": "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A",
+      "network": "base-sepolia",
+      "currency": "ETH",
+      "target": 0.05,
+      "purpose": "Sepolia rotation rehearsal and treasury redeploy",
+      "service": "base-evm"
+    },
+    {
+      "id": "base_safe",
+      "address": "0x5A91E08D909854b594f07648D23440f4908529b4",
+      "network": "base",
+      "currency": "ETH",
+      "target": 0.05,
+      "purpose": "Warm tier 2-of-3 operator Safe",
+      "service": "base-evm"
+    },
+    {
+      "id": "safe_owner_a",
+      "address": "0x3c459fac4749113960Ec0998c19782DB92E1E536",
+      "network": "base",
+      "currency": "ETH",
+      "target": 0.005,
+      "purpose": "Safe owner gas",
+      "service": "base-evm"
+    },
+    {
+      "id": "safe_owner_b",
+      "address": "0x3143Aae7d469F820969B9A431EdC031304397803",
+      "network": "base",
+      "currency": "ETH",
+      "target": 0.005,
+      "purpose": "Safe owner gas",
+      "service": "base-evm"
+    },
+    {
+      "id": "safe_owner_c",
+      "address": "0x90e099e16b9C7c9824B06d3AE0Af92fad676489b",
+      "network": "base",
+      "currency": "ETH",
+      "target": 0.005,
+      "purpose": "Safe owner gas",
+      "service": "base-evm"
+    },
+    {
+      "id": "akash_operator",
+      "address": "akash1sgt75mdxy7tuufam364n59089hre7gyew227ml",
+      "network": "akashnet-2",
+      "currency": "uact",
+      "target": 75000000,
+      "purpose": "GPU lease escrow",
+      "service": "akash",
+      "secondary": [
+        {
+          "currency": "uakt",
+          "target": 15000000
+        }
+      ]
+    },
+    {
+      "id": "arweave_registry",
+      "address": "55Plp-xUQ5B-955uJYjtCT4kR0eEf63lhzGd__pw1jY",
+      "network": "arweave",
+      "currency": "AR",
+      "target": 10.0,
+      "purpose": "Registry and audit publishes",
+      "service": "arweave"
+    }
+  ]
+}

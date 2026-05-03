@@ -21,6 +21,17 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-OPS-001 - Safe transaction proposal client is stubbed in xion-ops
+- **Domain:** OPS
+- **Discovered:** 2026-05-03 (Production Service Class Refactor)
+- **Severity:** medium
+- **Status:** open
+- **Description:** `xion_ops.services.base_evm.BaseEvmService.safe_propose_tx()` exists as the stable method boundary for future warm-tier Safe operations, but it intentionally raises `NotImplementedError`. The rest of the Base EVM service can check balances and run Foundry/Cast deploy primitives, but it cannot yet create Safe Transaction Service proposals programmatically.
+- **Why it exists:** Today's pre-Genesis work needs a clean provider boundary before wiring a load-bearing Safe client. Shipping a fake Safe client would be worse than an explicit stub because multisig proposal semantics are operational authority, not convenience code.
+- **Mitigations:** The method fails closed and names this weakness. Mainnet Safe actions remain manual through the Safe UI until a real client is added. EOA owner funding is tracked by `genesis/FUNDING_TARGETS.json` and `xion-verify funding-balances`.
+- **Pay-down commitment:** Close before any warm-tier rotation or treasury operation depends on automated Safe proposal creation. Closure requires a real Safe Transaction Service client behind `BaseEvmService.safe_propose_tx()`, offline tests for payload construction, and live dry-run evidence against Base Sepolia.
+- **Verifier:** `xion-verify funding-balances` covers funding posture today; closure should add a Safe proposal verifier or extend `xion-verify authorities` to prove the pending Safe transaction matches the intended call data before signing.
+
 ### KW-DISCOVERY-LEAK-001 - Relay discovery endpoints reveal substrate/provider identity
 - **Domain:** SUBSTRATE
 - **Discovered:** 2026-04-30 (post-registry leak review)

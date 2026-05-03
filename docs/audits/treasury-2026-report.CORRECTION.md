@@ -3,7 +3,7 @@
 **Date:** 2026-05-01  
 **Corrects:** `docs/audits/treasury-2026-report.md`  
 **Original Arweave tx:** `wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg`  
-**Correction Arweave tx:** pending
+**Correction Arweave tx:** `3QzqOAKjQY86RLtl4UEwV8pNtxtVCg8L0ATD8El3AXs`
 
 ## Summary
 
@@ -54,4 +54,4 @@ registeredChainCount=execution reverted
 
 ## Current Status
 
-Correction written locally. Arweave correction publish is still pending.
+Correction published to Arweave tx `3QzqOAKjQY86RLtl4UEwV8pNtxtVCg8L0ATD8El3AXs`.
