@@ -10,6 +10,13 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased](https://example.invalid/compare/pre-genesis-v0...HEAD)
 
+### Base mainnet treasury manifest + verifier + soak RPC — 2026-05-03
+
+- **`genesis/TREASURY_VAULTS.json`:** `status` **`mainnet`**, `deploy_runbook` **`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`**, `master_treasury` **`0xbf5407745cf22b88c46b55037e26156a0e78fd7f`**, deploy tx **`0x494a9badb79db92b6607069859f7dad19122dd79f99d92e6a35d84225882a79c`**, block **`45530934`**. `tier1_operating_tokens[].status` set to **`mainnet_routed_pending_per_chain_vault`**; `residual` names outstanding mainnet per-chain Vault registration (Sepolia row in `vaults[]` kept as rehearsal evidence). `vaults[0]` remains Base Sepolia (**84532**) until governance registers mainnet vault rows.
+- **`xion-verify treasury-flow` / bucket commands:** `[xion-verify/src/xion_verify/commands/treasury_buckets.py](xion-verify/src/xion_verify/commands/treasury_buckets.py)` accepts manifest `status` in **`testnet`** or **`mainnet`** (was testnet-only). **`PINNED_HASH.txt`** repinned under `src/xion_verify/`.
+- **Soak probes:** `[scripts/treasury_soak_probes.py](scripts/treasury_soak_probes.py)` and `[scripts/treasury-soak-probes.sh](scripts/treasury-soak-probes.sh)` choose RPC from manifest `status`: **`mainnet`** → `BASE_MAINNET_RPC` / `XION_BASE_MAINNET_RPC` / default **`https://mainnet.base.org`**; otherwise Sepolia defaults. Fixes `TREASURY_SOAK_PROBES=1` calling Sepolia against a mainnet-pinned `master_treasury`.
+- **Git:** branch **`cursor/phase7-sepolia-preflight-and-spend-artifacts`**, commit **`a8a6ce1`** (pushed **`2026-05-03`**).
+
 ### Operator automation — Sepolia treasury redeploy + RPC soak — 2026-05-03
 
 - **WSL Foundry:** `foundryup` installed Foundry **1.6.0** under `~/.foundry/bin` (WSL user); native Windows PATH may still omit `cast` / `forge` — `xion_ops` continues to invoke Foundry through WSL on Windows.
