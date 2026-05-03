@@ -40,6 +40,32 @@ closure for **`KW-AUDIT-001`** or **`LHT-SUBSTRATE-001`**.
   separate infrastructure (e.g. cloud VM rented for the purpose); schedule
   target **2026-07-01** or document slip in **`KNOWN_WEAKNESSES.md`**.
 
+## Operator custody decision — Cold Root ceremony deferred
+
+**Recorded:** operator choice to proceed **without** the Full D4 **Cold Root**
+geographic / hardware-token ceremony described in **`docs/OPERATOR_TRACK_D4.md`**
+and related operations doctrine.
+
+**Actual posture (Sprint Mode honesty):**
+
+- **Primary hot / day-to-day signer:** MetaMask (or equivalent browser wallet) on
+  the operator’s workstation — acceptable only as **Sprint / abbreviated**
+  custody, not as a substitute for documented Cold Root claims.
+- **Offline backup:** two **paper** backups of seed or key material (store,
+  access, and inheritance rules are the operator’s responsibility and must stay
+  out of git).
+
+**What this is not:** It is **not** the multi-shard Cold Root ceremony, **not**
+Full D4 custody honesty, and **must not** be described publicly as if the
+ceremony had occurred.
+
+**Residuals:** **`KW-KEYS-001`** (software- or expedited-style custody at Sprint
+genesis) and **`docs/OPERATOR_TRACK_D4.md`** remain authoritative for pay-down
+toward hardware / geographic ceremony if the operator later pursues Full D4.
+
+**Cross-reference:** mirrored in **`docs/OPERATOR_TRACK_D4.md`** under the
+same heading.
+
 ## Phase 6 Macro Status
 
 - Epic A: closed.

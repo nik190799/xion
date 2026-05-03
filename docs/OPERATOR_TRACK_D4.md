@@ -41,12 +41,31 @@ Updating this subsection when the operator chooses Sprint Mode avoids ambiguous 
 
 **Cross-reference:** the same decision is summarized under “Active track decision” in **`docs/STATE_OF_XION_PREFLIGHT.md`**. Next review: Phase 7 preflight table refresh or upon commissioning external audit.
 
+## Operator custody decision — Cold Root ceremony deferred
+
+**Recorded:** operator choice to proceed **without** the Full D4 Cold Root
+geographic / hardware-token ceremony.
+
+**Sprint Mode custody in use:**
+
+- **MetaMask** (or equivalent) as the routine signing surface on the operator
+  workstation.
+- **Two paper** backups of seed or key material held offline by the operator.
+
+**Honesty requirement:** This layout is **Sprint-compressed** custody only. It
+does **not** close **`KW-KEYS-001`**, does **not** satisfy the Full D4 checklist
+in the first section of this file, and **must not** be marketed as Cold Root or
+constitutional D4 “alive.”
+
+**Mirror:** the same text lives under **“Operator custody decision — Cold Root
+ceremony deferred”** in **`docs/STATE_OF_XION_PREFLIGHT.md`**.
+
 ## Operator execution artifacts (2026-05-03)
 
 - **Sepolia path:** `python -m xion_ops.cli base-evm prepare-sepolia-env`, add `PRIVATE_KEY` / `XION_DEPLOYER_PRIVATE_KEY`, then `base-evm preflight-treasury --network base-sepolia` before `deploy-treasury`. Runbook: [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md).
 - **Deploy gate bundle:** `bash scripts/verify-mainnet-deploy-gates.sh` **or** `python scripts/verify_mainnet_deploy_gates.py` (Windows-friendly when WSL lacks `xion_verify`).
 - **Soak probes:** [`scripts/treasury-soak-probes.sh`](../scripts/treasury-soak-probes.sh) or `TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh` (or set `TREASURY_SOAK_PROBES=1` and run the Python driver if `bash` + `cast` are available).
-- **Mainnet (post-gates):** [`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`](runbooks/TREASURY_BASE_MAINNET_DEPLOY.md) — hardware / Cold Root flow; third-party `xion-verify` run required for Phase 7 narrative.
+- **Mainnet (post-gates):** [`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`](runbooks/TREASURY_BASE_MAINNET_DEPLOY.md) — follow runbook with **actual** custody (here: MetaMask + paper backups; Cold Root ceremony **deferred** — see **“Operator custody decision”** above). Third-party `xion-verify` run still supports Phase 7 narrative where applicable.
 - **Phase 7 checklist:** [`docs/PHASE_7_PREFLIGHT_STATUS.md`](PHASE_7_PREFLIGHT_STATUS.md) tracks external actions vs verifiers.
 
 **Audit and key-ceremony plan (default = Full D4):** Close `KW-AUDIT-001` with an externally signed audit on the exact deployable bytecode **or** record Sprint Mode acceptance with Sepolia soak + coverage in `docs/STATE_OF_XION_PREFLIGHT.md`. Close Cold Root / Warm Safe gaps per `KW-KEYS-001`, `KW-KEYS-002`, and `docs/13-OPERATIONS.md` before claiming D4 custody honesty.
