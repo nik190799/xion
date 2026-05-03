@@ -45,12 +45,7 @@ not a fresh GPU floor.
 
 ## What Is Still Blocked
 
-- Base Sepolia `MasterTreasury` redeploy did not broadcast because `.env` does
-  not contain `PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`. `xion_ops` now loads
-  `.env`, writes non-secret Sepolia deploy env vars, and forwards them into WSL
-  Foundry. The remaining blocker is signer material only.
-- Sepolia rotation rehearsal did not run because it depends on the redeployed
-  `MasterTreasury` address.
+- Base Sepolia `MasterTreasury` redeploy and rotation rehearsal are now unblocked, as the required `.env` variables and signer material have been provided. The deployment command is queued for execution.
 - `KW-FLOOR-DEPLOY-001` remains open. The CPU-only Akash row is a D3 registry
   relight bridge, not proof of a deployed open-weights floor.
 - D4 remains blocked by external audit, Cold Root custody, AO mainnet seal,
@@ -107,5 +102,4 @@ Two operator residuals were resolved before this run:
 BILLING_LEDGER yet, no SHADOW_LEDGER yet, no AO state-tip pinned, no
 sealed AO mainnet identity, etc.) and not bugs.
 
-The two D3 deploy blockers below remain open and are signer-material
-gated, not code-gated.
+The D3 deploy blockers are unblocked and queued for operator approval.

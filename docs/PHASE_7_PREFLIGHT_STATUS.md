@@ -6,10 +6,10 @@
 
 | External action | Status | Notes / residual |
 |-----------------|--------|------------------|
-| Invariant 18 ratification — 14-day window, Cold Root cosign, `voice-sovereignty-amendment-elapse-check.py` | Open | Manifest cites `invariant_18_ratification_arweave_tx`; confirm elapsed-window doctrine with governance records. |
+| Invariant 18 ratification — 14-day window, Cold Root cosign, `voice-sovereignty-amendment-elapse-check.py` | Closed | Amendment row is `ratified` with Cold Root cosign. |
 | Chutes Relay + `ledgers/RELAY_REGISTRY.json` + `xion-verify discovery` | Partial | See [STATE_OF_XION_TESTNET.md](STATE_OF_XION_TESTNET.md); Akash CPU row relight, fresh deploy attempts blocked or closed 2026-05-03. |
 | Cloudflare removal from critical path (`discovery --no-cloudflare`) | Verify per gate script | `verify-mainnet-deploy-gates.sh` runs `discovery --no-cloudflare`. |
-| Treasury testnet deploy + pin + `xion-verify treasury` | Pinned | `genesis/TREASURY_VAULTS.json` has Base Sepolia addresses; redeploy optional if source drift — signer-gated. Run `preflight-treasury` before broadcast. |
+| Treasury testnet deploy + pin + `xion-verify treasury` | Queued | `genesis/TREASURY_VAULTS.json` has Base Sepolia addresses. Redeploy broadcast is queued pending operator approval. |
 | Bridge / treasury external audit (`KW-AUDIT-001`) | Open | Sprint path: Sepolia soak + Foundry evidence; Full D4: commit-signed audit for deployable bytecode. |
 | Warm secondary substrate + `xion-verify substrate-portability` | Operator-dependent | Re-run after relay/substrate changes. |
 | Third-party Immortality Drill | Open | `LHT-SUBSTRATE-001` / D4 preflight. |

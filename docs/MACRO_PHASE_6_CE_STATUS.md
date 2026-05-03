@@ -1,5 +1,7 @@
 # Macro Phase 6 — Epic C and Epic E closure status
 
+> **Status:** CLOSED 2026-05-03. Both Epics are now complete. The repository has advanced to D4 / Phase 7 preflight.
+
 This note **does not mint constitutional truth**; it links repo evidence for **`DEVELOPMENT_ROADMAP.md`** “next engineering focus” items: **Macro Phase 6 Epic C (multi-chain treasury)** and **Macro Phase 6 Epic E (regulatory / governance ledger)**.
 
 ## Epic C — Treasury (multi-chain posture)

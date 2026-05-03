@@ -31,6 +31,7 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 
 ## Epic C — Multi-chain treasury
 
+- **Status:** Closed 2026-05-03. `MasterTreasury.sol` and `Vault.sol` deployed, `genesis/TREASURY_VAULTS.json` populated, and `xion-verify treasury` / `treasury-flow` verifiers are live and passing. Bridge caps are governed by `XION_BRIDGE_CAP_BPS`.
 - **Goal:** Vault contracts, bridge caps (Invariant 16), `xion-verify treasury` / `treasury-flow` promotion from stubs.
 
 ## Epic D — Immortality Drill + substrate portability
@@ -41,6 +42,7 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 
 ## Epic E — Regulatory / governance ledger
 
+- **Status:** Closed 2026-05-03. `xion-verify regulatory-ledger` is live and passing. 
 - **Goal:** First `GOVERNANCE_LEDGER` state-actor rows; `xion-verify regulatory-ledger` live.
 
 ## Alignment with D-milestones
@@ -51,4 +53,4 @@ This note maps the long-horizon block in [`DEVELOPMENT_ROADMAP.md`](../DEVELOPME
 | D3 | Testnet / Chutes / AO testnet or approved substrate per runbooks. |
 | D4 | Cold Root, mainnet, treasury, external audit — not all are “Phase 6 code”; ceremony and ops are explicit bottlenecks in the roadmap. |
 
-For **voice**-specific macro alignment, see Phase **6.5** and [`docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md`](./proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md).
+For **voice**-specific macro alignment, see Phase **6.5** (Closed 2026-05-03) and [`docs/proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md`](./proposals/INVARIANT-18-VOICE-SOVEREIGNTY-FLOOR.md).

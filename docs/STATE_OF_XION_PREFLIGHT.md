@@ -115,11 +115,8 @@ Cold Root and Witness evidence exist.
   has `0.005943668858017224 ETH`, above the owner-A gas target
   `0.002 ETH` because owner A was already funded before the zero-balance owner
   top-ups.
-- Sepolia `MasterTreasury` redeploy and rotation rehearsal are blocked on
-  missing deployment environment (`PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`,
-  `XION_TREASURY_GOVERNANCE`, `XION_AO_CORE_AUTHORITY`, and
-  `XION_BRIDGE_CAP_BPS` were not present in Windows or WSL). No Sepolia
-  broadcast was attempted without the signing key.
+- Sepolia `MasterTreasury` redeploy and rotation rehearsal are now unblocked. The deployment environment (`XION_DEPLOYER_PRIVATE_KEY`, `XION_TREASURY_GOVERNANCE`, `XION_AO_CORE_AUTHORITY`, and `XION_BRIDGE_CAP_BPS`) has been successfully populated in `.env`.
+- Base Sepolia broadcast is queued.
 - `xion-verify pre-genesis` returned `OK` on 2026-05-03 after
   `funding-balances` passed. Accepted `NOT_YET_SEALED` subchecks were
   `rebuild` (Docker missing on host), `vitals` partial domains, and
@@ -127,9 +124,7 @@ Cold Root and Witness evidence exist.
 
 ## What Does Not Close Today
 
-- Base Sepolia `MasterTreasury` redeploy and the three rotation rehearsal
-  proposals do not close without the signer key and deployment env listed
-  above.
+- Base Sepolia `MasterTreasury` redeploy and rotation rehearsal are proceeding now that the deployer key is present.
 - Akash GPU open-weights floor does not close because all four available GPU
   providers refused public ingress after manifest/lease setup; each new attempt
   was closed to stop escrow drain.
