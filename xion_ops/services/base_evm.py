@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import time
 from decimal import Decimal
@@ -115,7 +116,15 @@ class BaseEvmService(OpsService):
 
     def deploy_treasury(self, network: str = "base", script: str = "treasury/script/Deploy.s.sol:DeployTreasury") -> DeploymentResult:
         result = self.forge_deploy(script, network, broadcast=True)
-        return DeploymentResult(service=self.name, ok=True, id="treasury", details={"stdout": result.stdout})
+        details = {"stdout": result.stdout, "stderr": result.stderr}
+        details.update(self._deployment_details_from_broadcast(network))
+        return DeploymentResult(
+            service=self.name,
+            ok=True,
+            id=details.get("master_treasury", "treasury"),
+            tx=details.get("master_treasury_deploy_tx"),
+            details=details,
+        )
 
     def deploy_vault(self, network: str, *cast_args: str) -> DeploymentResult:
         result = self.cast_send(*cast_args, network=network)
@@ -125,6 +134,45 @@ class BaseEvmService(OpsService):
         raise NotImplementedError(
             "BaseEvmService.safe_propose_tx is intentionally stubbed; see KW-OPS-001."
         )
+
+    def pin_treasury_deployment(self, manifest: Path | str, *, address: str, tx: str, block: int) -> None:
+        path = self.repo_root / manifest
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["master_treasury"] = address
+        payload["master_treasury_deploy_tx"] = tx
+        payload["master_treasury_deploy_block"] = block
+        residual = str(payload.get("residual", ""))
+        payload["residual"] = residual.replace(
+            "The pinned Base Sepolia deployment predates the current MasterTreasury source interface.",
+            "The pinned Base Sepolia deployment was refreshed from the current MasterTreasury source interface.",
+        )
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(path)
+
+    def rotation_rehearsal(
+        self,
+        *,
+        network: str,
+        master_treasury: str,
+        count: int = 3,
+    ) -> list[dict[str, Any]]:
+        proposed = [
+            "0x000000000000000000000000000000000000bEEF",
+            "0x000000000000000000000000000000000000CAFE",
+            "0x000000000000000000000000000000000000dEaD",
+        ][:count]
+        rows: list[dict[str, Any]] = []
+        for address in proposed:
+            result = self.cast_send(
+                master_treasury,
+                "proposeAuthorityRotation(address)",
+                address,
+                network=network,
+            )
+            rows.append({"proposed_authority": address, "tx": self._parse_tx_hash(result.stdout), "stdout": result.stdout})
+        self._append_rotation_rehearsal(network=network, master_treasury=master_treasury, rows=rows)
+        return rows
 
     def rpc_url(self, network: str) -> str:
         return self.rpc_urls(network)[0]
@@ -176,13 +224,81 @@ class BaseEvmService(OpsService):
                 raise
             rendered = " ".join(shlex.quote(part) for part in command)
             wsl_cwd = str(working_dir).replace("\\", "/").replace("C:", "/mnt/c")
+            exports = " ".join(
+                f"export {key}={shlex.quote(value)};"
+                for key in (
+                    "PRIVATE_KEY",
+                    "XION_DEPLOYER_PRIVATE_KEY",
+                    "XION_TREASURY_GOVERNANCE",
+                    "XION_AO_CORE_AUTHORITY",
+                    "XION_BRIDGE_CAP_BPS",
+                    "BASE_SEPOLIA_RPC",
+                    "XION_BASE_SEPOLIA_RPC",
+                    "BASE_SEPOLIA_RPC_URL",
+                )
+                if (value := os.environ.get(key))
+            )
             return run_command(
                 [
                     "wsl",
                     "bash",
                     "-lc",
-                    f'export PATH="$HOME/.foundry/bin:$PATH"; cd {shlex.quote(wsl_cwd)}; {rendered}',
+                    f'export PATH="$HOME/.foundry/bin:$PATH"; {exports} cd {shlex.quote(wsl_cwd)}; {rendered}',
                 ],
                 cwd=self.repo_root,
             )
+
+    def _deployment_details_from_broadcast(self, network: str) -> dict[str, Any]:
+        chain_id = {"base-sepolia": "84532", "base": "8453", "base-mainnet": "8453"}.get(network)
+        if not chain_id:
+            return {}
+        broadcast_root = self.repo_root / "contracts" / "broadcast"
+        candidates = sorted(
+            broadcast_root.glob(f"**/{chain_id}/run-latest.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        if not candidates:
+            return {}
+        try:
+            payload = json.loads(candidates[0].read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        details: dict[str, Any] = {"broadcast_file": str(candidates[0])}
+        for tx in payload.get("transactions", []):
+            if tx.get("contractName") == "MasterTreasury" and tx.get("contractAddress"):
+                details["master_treasury"] = tx["contractAddress"]
+                details["master_treasury_deploy_tx"] = tx.get("hash")
+                break
+        for receipt in payload.get("receipts", []):
+            block_number = receipt.get("blockNumber")
+            if isinstance(block_number, str) and block_number.startswith("0x"):
+                details["master_treasury_deploy_block"] = int(block_number, 16)
+                break
+            if isinstance(block_number, int):
+                details["master_treasury_deploy_block"] = block_number
+                break
+        return {key: value for key, value in details.items() if value is not None}
+
+    def _append_rotation_rehearsal(
+        self,
+        *,
+        network: str,
+        master_treasury: str,
+        rows: list[dict[str, Any]],
+    ) -> None:
+        path = self.repo_root / "ledgers" / "ROTATION_REHEARSAL_LEDGER.jsonl"
+        payload = {
+            "schema_version": 1,
+            "as_of_utc_ns": time.time_ns(),
+            "network": network,
+            "master_treasury": master_treasury,
+            "calls": rows,
+        }
+        path.open("a", encoding="utf-8").write(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n")
+
+    @staticmethod
+    def _parse_tx_hash(stdout: str) -> str | None:
+        match = re.search(r"0x[a-fA-F0-9]{64}", stdout)
+        return match.group(0) if match else None
 

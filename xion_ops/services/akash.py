@@ -13,6 +13,7 @@ import ssl
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -26,12 +27,20 @@ from xion_ops.wallets import wallets_for_service
 class AkashService(OpsService):
     name = "akash"
 
-    def __init__(self, *, repo_root: Path | str = ".", key: str | None = None, node: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        repo_root: Path | str = ".",
+        key: str | None = None,
+        node: str | None = None,
+        provider_allowlist: set[str] | None = None,
+    ) -> None:
         super().__init__(repo_root=repo_root)
         self.key = key or os.environ.get("XION_AKASH_KEY", "xion-b5")
         self.node = node or os.environ.get("AKASH_NODE", "https://rpc.akashnet.net:443")
         self.chain_id = os.environ.get("AKASH_CHAIN_ID", "akashnet-2")
         self.owner = os.environ.get("XION_AKASH_OWNER", self._default_owner())
+        self.provider_allowlist = provider_allowlist if provider_allowlist is not None else self._load_provider_allowlist()
 
     def addresses(self) -> list[WalletInfo]:
         return wallets_for_service(self.name, self.repo_root / "genesis" / "FUNDING_TARGETS.json")
@@ -124,7 +133,7 @@ class AkashService(OpsService):
             "tx",
             "deployment",
             "create",
-            str(sdl_path),
+            self._wsl_repo_relative_path(sdl_path),
             "--from",
             self.key,
             "--keyring-backend",
@@ -170,6 +179,29 @@ class AkashService(OpsService):
         )
         return list(json.loads(result.stdout).get("bids", []))
 
+    def provider_host_uri(self, provider: str) -> str | None:
+        result = self._provider_services(
+            "query",
+            "provider",
+            "get",
+            provider,
+            "--node",
+            self.node,
+            "--chain-id",
+            self.chain_id,
+            "-o",
+            "json",
+        )
+        payload = json.loads(result.stdout)
+        info = payload.get("provider", payload)
+        return (
+            info.get("host_uri")
+            or info.get("hostUri")
+            or info.get("hostURI")
+            or payload.get("host_uri")
+            or payload.get("hostUri")
+        )
+
     def accept_bid(self, dseq: str, provider: str) -> CommandResult:
         return self._provider_services(
             "tx",
@@ -206,7 +238,7 @@ class AkashService(OpsService):
     def send_manifest(self, sdl_path: Path | str, dseq: str, provider: str) -> CommandResult:
         return self._provider_services(
             "send-manifest",
-            str(sdl_path),
+            self._wsl_repo_relative_path(sdl_path),
             "--dseq",
             str(dseq),
             "--provider",
@@ -316,7 +348,12 @@ class AkashService(OpsService):
         try:
             dseq = self.create_deployment(sdl_path)
             bids = self._wait_for_bids(dseq)
-            provider = prefer_provider or self._lowest_open_provider(bids, rejected_providers=rejected_providers)
+            provider, survey = self._choose_reachable_provider(
+                bids,
+                prefer_provider=prefer_provider,
+                rejected_providers=rejected_providers,
+            )
+            self._append_deploy_survey(dseq, survey, chosen_provider=provider)
             self.accept_bid(dseq, provider)
             self.send_manifest(sdl_path, dseq, provider)
             status = self._wait_for_ready(dseq, provider)
@@ -333,6 +370,8 @@ class AkashService(OpsService):
                 details=status.raw,
             )
         except Exception as exc:
+            if dseq and provider is None:
+                self._append_deploy_survey(dseq, [], chosen_provider=None, error=str(exc))
             if dseq:
                 close = self.close_deployment(dseq)
                 close_details = {"close_stdout": close.stdout, "close_stderr": close.stderr}
@@ -385,6 +424,101 @@ class AkashService(OpsService):
         chosen = min(open_bids, key=lambda bid: float(bid["bid"]["price"]["amount"]))
         return str(chosen["bid"]["id"]["provider"])
 
+    def _choose_reachable_provider(
+        self,
+        bids: list[dict[str, Any]],
+        *,
+        prefer_provider: str | None = None,
+        rejected_providers: set[str] | None = None,
+    ) -> tuple[str, list[dict[str, Any]]]:
+        candidates = self._open_bids_by_price(bids, rejected_providers=rejected_providers)
+        if prefer_provider:
+            candidates = [bid for bid in candidates if bid["provider"] == prefer_provider]
+        survey: list[dict[str, Any]] = []
+        for bid in candidates:
+            provider = str(bid["provider"])
+            allowlisted = provider in self.provider_allowlist
+            reachable = allowlisted or self._provider_ingress_reachable(provider)
+            survey.append(
+                {
+                    "provider": provider,
+                    "price": bid["price"],
+                    "allowlisted": allowlisted,
+                    "pre_accept_reachable": reachable,
+                    "decision": "accept" if reachable else "skip_unreachable_provider_ingress",
+                }
+            )
+            if reachable:
+                return provider, survey
+        raise OpsError(f"no reachable Akash provider ingress among open bids; surveyed={survey}")
+
+    def _open_bids_by_price(
+        self,
+        bids: list[dict[str, Any]],
+        *,
+        rejected_providers: set[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        rejected = rejected_providers or set()
+        candidates: list[dict[str, Any]] = []
+        for bid in bids:
+            bid_body = bid.get("bid", {})
+            provider = bid_body.get("id", {}).get("provider")
+            if bid_body.get("state") != "open" or not provider or provider in rejected:
+                continue
+            candidates.append({"provider": str(provider), "price": str(bid_body.get("price", {}).get("amount", "0"))})
+        return sorted(candidates, key=lambda bid: float(bid["price"]))
+
+    def _provider_ingress_reachable(self, provider: str) -> bool:
+        try:
+            host_uri = self.provider_host_uri(provider)
+            if not host_uri:
+                return False
+            parsed = urlparse(host_uri if "://" in host_uri else f"https://{host_uri}")
+            base_url = f"{parsed.scheme}://{parsed.netloc}"
+            request = Request(base_url.rstrip("/") + "/status", method="GET")
+            context = ssl._create_unverified_context()
+            with urlopen(request, timeout=8, context=context) as response:
+                return 200 <= response.status < 500
+        except Exception:
+            return False
+
+    def _append_deploy_survey(
+        self,
+        dseq: str,
+        survey: list[dict[str, Any]],
+        *,
+        chosen_provider: str | None,
+        error: str | None = None,
+    ) -> None:
+        path = self.repo_root / "ledgers" / "AKASH_DEPLOY_SURVEY_LEDGER.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        row = {
+            "schema_version": 1,
+            "as_of_utc_ns": time.time_ns(),
+            "dseq": str(dseq),
+            "chosen_provider": chosen_provider,
+            "survey": survey,
+            "error": error,
+        }
+        path.open("a", encoding="utf-8").write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
+
+    def _load_provider_allowlist(self) -> set[str]:
+        path = self.repo_root / "genesis" / "PROVIDER_ALLOWLIST.json"
+        if not path.is_file():
+            return set()
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return set()
+        providers = payload.get("providers", [])
+        if not isinstance(providers, list):
+            return set()
+        return {
+            str(item.get("provider"))
+            for item in providers
+            if isinstance(item, dict) and isinstance(item.get("provider"), str) and item.get("provider")
+        }
+
     def _provider_services(self, *args: str, timeout: int | None = None) -> CommandResult:
         command = ["provider-services", *args]
         try:
@@ -405,4 +539,12 @@ class AkashService(OpsService):
         except Exception:
             return ""
         return wallets[0].address if wallets else ""
+
+    def _wsl_repo_relative_path(self, path: Path | str) -> str:
+        candidate = Path(path)
+        try:
+            candidate = candidate.resolve().relative_to(self.repo_root.resolve())
+        except ValueError:
+            pass
+        return candidate.as_posix()
 

@@ -131,4 +131,5 @@ REGISTERED_COMMANDS: tuple[str, ...] = (
     "bridge-egress-cap",
     "gateway-conformance",
     "funding-balances",
+    "akash-deploy-discipline",
 )

@@ -1,16 +1,18 @@
 {
-  "as_of_utc_ns": 1777527846190306886,
+  "as_of_utc_ns": 1777790643743288600,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "1a64add00e0d81eca1d356ebe246f8fdd27873bf04955365a1b4de7df063b816",
+  "payload_sha256": "ff92bfcd2d541f047efe9cc930b93120578c3eb8c117fe4ac1fb201fb46e2a3f",
   "relays": [
     {
       "endpoint": "https://provider.161.97.85.20.nip.io:30564",
-      "last_seen_utc_ns": 1777527846190306137,
+      "image_tag": "pre-genesis-akash-wall120",
+      "instance_class": "cpu-only",
+      "last_seen_utc_ns": 1777790643743288600,
       "public_key": "ed25519:1838c61178454b70036217da1ff545f5bb4219ffab3977b0c0e8f31d4371b688",
       "relay_id": "akash-primary-mainnet",
       "service": "xion-relay-akash",

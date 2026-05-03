@@ -24,6 +24,7 @@ from xion_verify.commands import REGISTERED_COMMANDS
 from xion_verify.commands.abdication import abdication_schedule, abdication_status
 from xion_verify.commands.agent_cast import agent_cast
 from xion_verify.commands.agent_souls import agent_souls
+from xion_verify.commands.akash_deploy_discipline import akash_deploy_discipline
 from xion_verify.commands.amendments import amendments
 from xion_verify.commands.ao_deploy import identity, sister_fork_readiness, state_tip
 from xion_verify.commands.ao_handlers import verify_ao_handlers
@@ -245,6 +246,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "bridge-egress-cap": bridge_egress_cap,
     "gateway-conformance": gateway_conformance,
     "funding-balances": funding_balances,
+    "akash-deploy-discipline": akash_deploy_discipline,
 }
 
 

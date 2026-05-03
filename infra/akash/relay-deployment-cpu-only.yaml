@@ -1,0 +1,55 @@
+# Xion Relay — Akash CPU-only SDL (D3 relight bridge)
+#
+# Property: publish a fresh, reachable Akash Relay row without burning GPU
+# escrow on providers whose public ingress refuses connections. This SDL does
+# NOT close KW-FLOOR-DEPLOY-001; the deployed open-weights floor still requires
+# a future GPU lease that passes the probe-first deployer.
+version: "2.0"
+services:
+  xion-relay:
+    image: nikhilkadalge/xion-relay:pre-genesis-akash-wall120
+    command:
+      - /bin/sh
+      - -lc
+      - exec /usr/local/bin/entrypoint-xion-orchestrator-api.sh
+    expose:
+      - port: 8443
+        as: 443
+        to:
+          - global: true
+    env:
+      - XION_API_HOST=0.0.0.0
+      - XION_API_PORT=8443
+      - XION_API_WORKERS=1
+      - XION_API_REQUIRE_BEARER=false
+      - XION_BILLING_REQUIRED=false
+      - XION_CAST_POOL_ON_BOOT=false
+      - XION_CHAT_DEADLINE_S=120
+      - XION_COGNITION_WALL_S=120
+      - XION_INFERENCE_POLICY=hosted_api_first
+      - XION_PAYMENT_LEDGER=/app/data/PAYMENT_LEDGER.jsonl
+      - XION_SENSORIUM_LEDGER=/app/data/SENSORIUM_LEDGER.jsonl
+      - XION_SAFETY_LEDGER=/app/data/SAFETY_LEDGER.jsonl
+      - XION_REQUEST_LEDGER=/app/data/REQUEST_LEDGER.jsonl
+      - XION_ANCHOR_DB_PATH=/app/data/ANCHOR_LEDGER.jsonl
+profiles:
+  compute:
+    xion-relay:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 4Gi
+        storage:
+          - size: 10Gi
+  placement:
+    akash:
+      pricing:
+        xion-relay:
+          denom: uact
+          amount: 250
+deployment:
+  xion-relay:
+    akash:
+      profile: xion-relay
+      count: 1

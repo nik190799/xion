@@ -1,0 +1,72 @@
+# State of Xion Testnet - 2026-05-03
+
+## Status
+
+This is a D3 testnet-deployed status note. It is not a Genesis memo, not a
+mainnet announcement, and not a claim that Xion is alive in the constitutional
+D4 sense.
+
+## What Is Reachable Today
+
+- Akash registry primary endpoint: `https://provider.161.97.85.20.nip.io:30564`
+  returned `ok` through `xion_ops akash health-smoke`.
+- Registry row: `ledgers/RELAY_REGISTRY.json` carries
+  `instance_class="cpu-only"` and `image_tag="pre-genesis-akash-wall120"` for
+  the Akash row.
+- Registry Arweave tx: `5yCnBKyrlGQrf4KJCmCTJexGVxNBB6F2N4GDqcSPIbw`.
+- `xion-verify discovery` returns `OK`.
+- `xion-verify substrate-portability` returns `OK`.
+- `xion-verify pre-genesis` returns `OK` with accepted residuals for missing
+  Docker, partial vital-sign domains, and no shadow relay on port `8001`.
+- Chutes remains the warm secondary registry row at
+  `https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai`.
+
+## What Was Attempted
+
+`xion_ops` added a provider allowlist plus pre-accept provider ingress checks to
+stop blindly accepting the cheapest broken Akash bid. The D3 relight path also
+adds a CPU-only SDL at `infra/akash/relay-deployment-cpu-only.yaml`.
+
+Fresh Akash deploy attempts on 2026-05-03:
+
+- `dseq=26654856`: strict preferred provider
+  `akash1x2g8wfa429fukudgkclaag00d00z4rn846j7wq` did not bid; deployment was
+  closed before lease acceptance.
+- `dseq=26654863`: strict preferred provider
+  `akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d` did not bid; deployment was
+  closed before lease acceptance.
+- `dseq=26654870`: adaptive provider
+  `akash16yr3wxt97ae045a06kr3ycde9srcgpg8syjxxm` passed the pre-accept provider
+  probe, but the actual forwarded Relay endpoint timed out after manifest; the
+  deployment was closed by `AkashService.deploy_relay()`.
+
+The registry therefore republishes the still-reachable older Akash CPU endpoint,
+not a fresh GPU floor.
+
+## What Is Still Blocked
+
+- Base Sepolia `MasterTreasury` redeploy did not broadcast because `.env` does
+  not contain `PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`. `xion_ops` now loads
+  `.env`, writes non-secret Sepolia deploy env vars, and forwards them into WSL
+  Foundry. The remaining blocker is signer material only.
+- Sepolia rotation rehearsal did not run because it depends on the redeployed
+  `MasterTreasury` address.
+- `KW-FLOOR-DEPLOY-001` remains open. The CPU-only Akash row is a D3 registry
+  relight bridge, not proof of a deployed open-weights floor.
+- D4 remains blocked by external audit, Cold Root custody, AO mainnet seal,
+  Genesis Artifact finalization, and the third-party Immortality Drill.
+
+## Verification Commands
+
+```bash
+xion-verify akash-deploy-discipline
+xion-verify discovery
+xion-verify substrate-portability
+xion-verify pre-genesis
+```
+
+`xion-verify all --allow-not-yet-sealed` is still not clean in this working
+tree because the pre-existing modified `genesis/HERMES_TOOL_ALLOWLIST.yaml`
+causes Hermes / Agent Cast hash mismatch failures, and `api-tokens` requires a
+bearer-token configuration unless `XION_API_REQUIRE_BEARER=false` is exported
+for compatibility runs. Those are not closed by this D3 relight note.

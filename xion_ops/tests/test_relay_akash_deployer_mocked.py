@@ -26,7 +26,7 @@ def test_relay_akash_deployer_publishes_registry(monkeypatch, tmp_path):
         lambda *args, **kwargs: ArTx(id="tx123", status="dry-run"),
     )
 
-    record = deployer.run(DeployContext(repo_root=tmp_path))
+    record = deployer.run(DeployContext(repo_root=tmp_path, params={"publish_registry": True}))
 
     assert record.result.ok is True
     assert record.result.tx == "tx123"

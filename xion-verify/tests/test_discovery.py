@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from xion_verify.commands.discovery import evaluate_discovery
+from xion_verify.commands.akash_deploy_discipline import evaluate as evaluate_akash_deploy_discipline
 from xion_verify.exit_codes import NOT_YET_SEALED, OK
 
 
@@ -118,3 +119,20 @@ def test_discovery_no_cloudflare_rejects_cloudflare_endpoint(tmp_path: Path) -> 
 
     assert code != OK
     assert any("Cloudflare" in message for message in messages)
+
+
+def test_akash_deploy_discipline_requires_allowlist_and_guard(tmp_path: Path) -> None:
+    service_dir = tmp_path / "xion_ops" / "services"
+    service_dir.mkdir(parents=True)
+    (tmp_path / "genesis").mkdir()
+    (service_dir / "akash.py").write_text(
+        "provider_allowlist _choose_reachable_provider _provider_ingress_reachable "
+        "pre_accept_reachable skip_unreachable_provider_ingress",
+        encoding="utf-8",
+    )
+    (tmp_path / "genesis" / "PROVIDER_ALLOWLIST.json").write_text(
+        json.dumps({"providers": [{"provider": "akash1provider"}]}),
+        encoding="utf-8",
+    )
+
+    assert evaluate_akash_deploy_discipline(tmp_path) == []

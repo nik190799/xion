@@ -5,12 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 import time
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from xion_ops.commands import run_command
 from xion_ops.services.base import OpsService
 from xion_ops.types import ArTx, BalanceReport, DeploymentResult, ServiceHealth, WalletInfo
 from xion_ops.wallets import wallets_for_service
@@ -76,7 +78,15 @@ class ArweaveService(OpsService):
         return ArTx(id=tx_id, status="dry-run", url=None, path=str(file_path))
 
     def publish_relay_registry(self, registry_path: Path | str = "ledgers/RELAY_REGISTRY.json") -> ArTx:
-        return self.publish_file(self.repo_root / registry_path, {"Xion-Artifact": "relay-registry"})
+        if os.name == "nt" and not (os.environ.get("XION_REGISTRY_WALLET_JWK_PATH") or os.environ.get("ARWEAVE_WALLET_PATH")):
+            tx = self._publish_relay_registry_wsl(registry_path)
+            if tx is not None:
+                return tx
+        tx = self.publish_file(self.repo_root / registry_path, {"Xion-Artifact": "relay-registry"})
+        tx_path = self.repo_root / "ledgers" / "RELAY_REGISTRY_ARWEAVE_TX.txt"
+        tx_path.parent.mkdir(parents=True, exist_ok=True)
+        tx_path.write_text(tx.id + "\n", encoding="utf-8")
+        return tx
 
     def publish_treasury_audit(self, report_path: Path | str = "docs/audits/treasury-2026-report.md") -> ArTx:
         return self.publish_file(self.repo_root / report_path, {"Xion-Artifact": "treasury-audit"})
@@ -113,6 +123,33 @@ class ArweaveService(OpsService):
 
     def gateway(self) -> str:
         return os.environ.get("XION_ARWEAVE_GATEWAY", "https://arweave.net")
+
+    def _publish_relay_registry_wsl(self, registry_path: Path | str) -> ArTx | None:
+        wsl_repo = str(self.repo_root.resolve()).replace("\\", "/").replace("C:", "/mnt/c")
+        registry_arg = str(registry_path).replace("\\", "/")
+        inline = (
+            "import json;"
+            "from xion_ops.services.arweave import ArweaveService;"
+            f"tx=ArweaveService(repo_root='.').publish_relay_registry({registry_arg!r});"
+            "print(json.dumps(tx.__dict__, sort_keys=True))"
+        )
+        command = (
+            f'cd {shlex.quote(wsl_repo)}; '
+            'if [ ! -f "$HOME/.aos.json" ]; then exit 44; fi; '
+            'PY=python; '
+            'if [ -x .venv-arweave/bin/python ]; then PY=.venv-arweave/bin/python; fi; '
+            f'XION_REGISTRY_WALLET_JWK_PATH="$HOME/.aos.json" "$PY" -c {shlex.quote(inline)}'
+        )
+        try:
+            result = run_command(["wsl", "bash", "-lc", command], cwd=self.repo_root, timeout=240)
+            payload = json.loads(result.stdout)
+        except Exception:
+            return None
+        tx_id = str(payload["id"])
+        tx_path = self.repo_root / "ledgers" / "RELAY_REGISTRY_ARWEAVE_TX.txt"
+        tx_path.parent.mkdir(parents=True, exist_ok=True)
+        tx_path.write_text(tx_id + "\n", encoding="utf-8")
+        return ArTx(id=tx_id, status=str(payload.get("status", "submitted")), url=payload.get("url"), path=str(registry_path))
 
 
 def _content_id(path: Path) -> str:

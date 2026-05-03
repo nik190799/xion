@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import click
 
+from xion_ops.env import load_repo_env, upsert_repo_env
 from xion_ops.registry import deployer_names, get_deployer, get_service, service_names
 from xion_ops.types import DeployContext
 
@@ -14,6 +17,8 @@ from xion_ops.types import DeployContext
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def main() -> None:
     """Operator automation for Xion services."""
+
+    load_repo_env(Path("."))
 
 
 @main.command(name="balances")
@@ -31,11 +36,11 @@ def balances_cmd(service_name: str | None, json_output: bool) -> None:
         raise click.exceptions.Exit(1)
 
 
-def balances(service_name: str | None = None):
+def balances(service_name: str | None = None, *, repo_root: Path | str = "."):
     names = [service_name] if service_name else service_names()
     reports = []
     for name in names:
-        reports.extend(get_service(name).balances())
+        reports.extend(get_service(name, repo_root=repo_root).balances())
     return reports
 
 
@@ -80,6 +85,15 @@ def akash_deploy(sdl_path: str, prefer_provider: str | None, exclude_provider: t
     )
     click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True))
     if not result.ok:
+        raise click.exceptions.Exit(1)
+
+
+@akash_group.command(name="health-smoke")
+@click.argument("url")
+def akash_health_smoke(url: str) -> None:
+    ok = get_service("akash").health_smoke(url)  # type: ignore[attr-defined]
+    click.echo("ok" if ok else "failed")
+    if not ok:
         raise click.exceptions.Exit(1)
 
 
@@ -207,6 +221,49 @@ def base_evm_deploy_treasury(network: str, script: str) -> None:
     click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True))
 
 
+@base_evm_group.command(name="prepare-sepolia-env")
+def base_evm_prepare_sepolia_env() -> None:
+    deployer = "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A"
+    upsert_repo_env(
+        Path("."),
+        {
+            "XION_TREASURY_GOVERNANCE": deployer,
+            "XION_AO_CORE_AUTHORITY": deployer,
+            "XION_BRIDGE_CAP_BPS": "1000",
+        },
+        preserve_existing=False,
+    )
+    click.echo("base-evm prepare-sepolia-env: OK (non-secret deploy env written)")
+
+
+@base_evm_group.command(name="pin-deployment")
+@click.option("--manifest", default="genesis/TREASURY_VAULTS.json")
+@click.option("--address", required=True)
+@click.option("--tx", "tx_hash", required=True)
+@click.option("--block", "block_number", required=True, type=int)
+def base_evm_pin_deployment(manifest: str, address: str, tx_hash: str, block_number: int) -> None:
+    get_service("base-evm").pin_treasury_deployment(  # type: ignore[attr-defined]
+        manifest,
+        address=address,
+        tx=tx_hash,
+        block=block_number,
+    )
+    click.echo("base-evm pin-deployment: OK")
+
+
+@base_evm_group.command(name="rotation-rehearsal")
+@click.option("--network", default="base-sepolia")
+@click.option("--master-treasury", required=True)
+@click.option("--count", default=3, type=int)
+def base_evm_rotation_rehearsal(network: str, master_treasury: str, count: int) -> None:
+    rows = get_service("base-evm").rotation_rehearsal(  # type: ignore[attr-defined]
+        network=network,
+        master_treasury=master_treasury,
+        count=count,
+    )
+    click.echo(json.dumps(rows, indent=2, sort_keys=True))
+
+
 @base_evm_group.command(name="deploy-vault")
 @click.option("--network", default="base")
 @click.argument("cast_args", nargs=-1)
@@ -236,8 +293,12 @@ def deploy_group() -> None:
 
 @deploy_group.command(name="relay-akash")
 @click.option("--sdl-path", default="infra/akash/relay-deployment.yaml")
-def deploy_relay_akash(sdl_path: str) -> None:
-    _run_deployer("relay-akash", {"sdl_path": sdl_path})
+@click.option("--prefer-provider", default=None)
+def deploy_relay_akash(sdl_path: str, prefer_provider: str | None) -> None:
+    params: dict[str, object] = {"sdl_path": sdl_path}
+    if prefer_provider:
+        params["prefer_provider"] = prefer_provider
+    _run_deployer("relay-akash", params)
 
 
 @deploy_group.command(name="relay-chutes")
@@ -253,12 +314,54 @@ def deploy_base_contracts(network: str, mode: str) -> None:
     _run_deployer("base-contracts", {"network": network, "mode": mode})
 
 
+@main.group(name="registry")
+def registry_group() -> None:
+    """Relay registry operations."""
+
+
+@registry_group.command(name="update-akash-row")
+@click.option("--endpoint", required=True)
+@click.option("--image-tag", required=True)
+@click.option("--instance-class", default="cpu-only")
+@click.option("--path", "registry_path", default="ledgers/RELAY_REGISTRY.json")
+def registry_update_akash_row(endpoint: str, image_tag: str, instance_class: str, registry_path: str) -> None:
+    path = Path(registry_path)
+    _update_akash_registry_row(path, endpoint=endpoint, image_tag=image_tag, instance_class=instance_class)
+    click.echo("registry update-akash-row: OK")
+
+
 def _run_deployer(name: str, params: dict[str, object]) -> None:
     deployer = get_deployer(name)
     record = deployer.run(DeployContext(repo_root=Path("."), params=params))
     click.echo(json.dumps(record.to_dict(), indent=2, sort_keys=True))
     if not record.result.ok or not record.verify.ok:
         raise click.exceptions.Exit(1)
+
+
+def _update_akash_registry_row(path: Path, *, endpoint: str, image_tag: str, instance_class: str) -> None:
+    parsed = urlparse(endpoint)
+    if parsed.scheme != "https" or not parsed.hostname or not parsed.port or "placeholder" in endpoint.lower():
+        raise click.ClickException(f"invalid Akash endpoint for registry: {endpoint}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    relays = payload.get("relays")
+    if not isinstance(relays, list) or not relays or not isinstance(relays[0], dict):
+        raise click.ClickException("registry must contain relays[0]")
+    relays[0]["endpoint"] = endpoint.rstrip("/")
+    relays[0]["image_tag"] = image_tag
+    relays[0]["instance_class"] = instance_class
+    relays[0]["last_seen_utc_ns"] = time.time_ns()
+    payload["as_of_utc_ns"] = time.time_ns()
+    body = {key: value for key, value in payload.items() if key != "payload_sha256"}
+    payload["payload_sha256"] = _sha256_json(body)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def _sha256_json(payload: dict[str, object]) -> str:
+    import hashlib
+
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
 
 
 def _report_to_dict(report) -> dict[str, object]:

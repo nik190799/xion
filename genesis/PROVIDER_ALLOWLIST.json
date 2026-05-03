@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "property": "Akash providers whose public ingress has been observed reachable before accepting future Relay leases.",
+  "providers": [
+    {
+      "provider": "akash1x2g8wfa429fukudgkclaag00d00z4rn846j7wq",
+      "evidence": "Older live CPU lease dseq=26563373 served https://provider.161.97.85.20.nip.io:30564 /health with HTTP 200."
+    },
+    {
+      "provider": "akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d",
+      "evidence": "2026-04-29 operator-track closeout recorded dseq=26595076 as reachable at provider.pronto-ai.pp.ua:31503 before later closure."
+    }
+  ]
+}

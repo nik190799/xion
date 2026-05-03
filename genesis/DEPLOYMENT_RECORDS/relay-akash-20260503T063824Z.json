@@ -1,0 +1,30 @@
+{
+  "created_at": "2026-05-03T06:38:24Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "prefer_provider": "akash1x2g8wfa429fukudgkclaag00d00z4rn846j7wq",
+      "sdl_path": "infra/akash/relay-deployment-cpu-only.yaml"
+    }
+  },
+  "id": "relay-akash-20260503T063824Z",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "error": "wsl bash -lc export PATH=\"$HOME/bin:$PATH\"; cd /mnt/c/Users/16823/CursorProjects/xion-os; provider-services tx deployment create 'infra\\akash\\relay-deployment-cpu-only.yaml' --from xion-b5 --keyring-backend test --chain-id akashnet-2 --node https://rpc.akashnet.net:443 --gas auto --gas-adjustment 2 --gas-prices 0.5uakt -y -o json failed with exit 1: Error: open infra\\akash\\relay-deployment-cpu-only.yaml: no such file or directory"
+    },
+    "dseq": null,
+    "id": null,
+    "ok": false,
+    "provider": null,
+    "service": "akash",
+    "tx": null,
+    "url": null
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": false,
+    "output": ""
+  }
+}

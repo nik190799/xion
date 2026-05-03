@@ -10,6 +10,14 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### D3 honest closeout attempt — 2026-05-03
+
+- **Akash deploy discipline:** `xion_ops.services.AkashService` now loads a provider allowlist, probes provider ingress before accepting non-allowlisted bids, records deploy surveys, and ships `xion-verify akash-deploy-discipline`.
+- **Akash CPU relight bridge:** `infra/akash/relay-deployment-cpu-only.yaml` provides a no-GPU Akash Relay footprint for registry relight while `KW-FLOOR-DEPLOY-001` remains open for the deployed open-weights floor.
+- **Registry republished:** `ledgers/RELAY_REGISTRY.json` marks the Akash row as `instance_class="cpu-only"` / `image_tag="pre-genesis-akash-wall120"` and `ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt` records Arweave tx `5yCnBKyrlGQrf4KJCmCTJexGVxNBB6F2N4GDqcSPIbw`.
+- **Operator automation hardened:** `xion_ops` now loads `.env`, writes non-secret Sepolia deploy env, forwards Foundry env into WSL, exposes registry update and rotation-rehearsal commands, and writes Relay registry tx ids from the Arweave service.
+- **Honesty boundary preserved:** Fresh Akash attempts still did not produce a new reachable lease, and Sepolia treasury redeploy remains signer-blocked because no `PRIVATE_KEY` / `XION_DEPLOYER_PRIVATE_KEY` is present. `docs/STATE_OF_XION_TESTNET.md` and `docs/D4_PREFLIGHT.md` name the remaining D3/D4 gaps without calling Genesis live.
+
 ### Treasury audit correction — 2026-05-01
 
 - **Audit honesty correction:** `KW-AUDIT-001` is reopened and `KW-AUDIT-002` is opened after Base mainnet deploy preflight proved the prior treasury audit record was an internal review, not an external audit, and did not bind to deployable source bytes.

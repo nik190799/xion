@@ -28,7 +28,7 @@ class RelayAkashDeployer(Deployer):
         sdl_path = Path(ctx.params.get("sdl_path", "infra/akash/relay-deployment.yaml"))
         prefer_provider = ctx.params.get("prefer_provider")
         result = self.akash.deploy_relay(self.repo_root / sdl_path, prefer_provider=prefer_provider)
-        if result.ok:
+        if result.ok and ctx.params.get("publish_registry"):
             registry_tx = self.arweave.publish_relay_registry(ctx.params.get("registry_path", "ledgers/RELAY_REGISTRY.json"))
             details = dict(result.details)
             details["relay_registry_tx"] = registry_tx.id
@@ -49,5 +49,11 @@ class RelayAkashDeployer(Deployer):
 
     def rollback(self, result: DeploymentResult) -> None:
         if result.dseq:
-            self.akash.close_deployment(result.dseq)
+            try:
+                self.akash.close_deployment(result.dseq)
+            except Exception:
+                # `AkashService.deploy_relay` already attempts rollback on
+                # failure. A second close can legitimately return "Deployment
+                # closed"; keep the original deployment evidence visible.
+                pass
 
