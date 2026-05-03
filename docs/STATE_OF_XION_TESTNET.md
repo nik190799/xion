@@ -56,6 +56,15 @@ not a fresh GPU floor.
 - D4 remains blocked by external audit, Cold Root custody, AO mainnet seal,
   Genesis Artifact finalization, and the third-party Immortality Drill.
 
+## Sepolia treasury next actions
+
+1. Add signer material to `.env` (`PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`; see [.env.example](../.env.example) treasury block).
+2. Run rehearsal end-to-end: [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md) (deploy → pin → soak → `xion-verify supply` / treasury family).
+3. Scripted verifier bundle for operators: [`scripts/verify-mainnet-deploy-gates.sh`](../scripts/verify-mainnet-deploy-gates.sh).
+4. Record whether the operator intends **full D4** vs **Sprint Mode** residuals in [`docs/OPERATOR_TRACK_D4.md`](OPERATOR_TRACK_D4.md).
+
+Pull requests touching `contracts/**` execute Foundry **`forge build` / `forge test`** in [`.github/workflows/foundry.yml`](../.github/workflows/foundry.yml).
+
 ## Verification Commands
 
 ```bash

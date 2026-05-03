@@ -1,0 +1,42 @@
+# Foundry Solidity gate — treasury + token stacks (Macro Epic C collateral).
+#
+# contracts/lib/* is gitignored; install OpenZeppelin + forge-std on each CI run.
+
+name: foundry-contracts
+
+on:
+  pull_request:
+    paths:
+      - "contracts/**"
+      - ".github/workflows/foundry.yml"
+  push:
+    branches: [main]
+    paths:
+      - "contracts/**"
+      - ".github/workflows/foundry.yml"
+  workflow_dispatch:
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: contracts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Forge dependencies
+        run: |
+          forge install OpenZeppelin/openzeppelin-contracts@v5.5.0 --no-commit
+          forge install foundry-rs/forge-std@v1.9.7 --no-commit
+
+      - name: forge build
+        run: forge build
+
+      - name: forge test
+        run: forge test -vvv

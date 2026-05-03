@@ -13,7 +13,7 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from xion_ops.commands import run_command
-from xion_ops.exceptions import OpsError
+from xion_ops.exceptions import CommandFailed, OpsError
 from xion_ops.services.base import OpsService
 from xion_ops.types import BalanceReport, CommandResult, DeploymentResult, ServiceHealth, WalletInfo
 from xion_ops.wallets import wallets_for_service
@@ -114,14 +114,37 @@ class BaseEvmService(OpsService):
     def cast_call(self, *args: str, network: str) -> CommandResult:
         return self._run_foundry(["cast", "call", "--rpc-url", self.rpc_url(network), *args])
 
-    def deploy_treasury(self, network: str = "base", script: str = "treasury/script/Deploy.s.sol:DeployTreasury") -> DeploymentResult:
-        result = self.forge_deploy(script, network, broadcast=True)
-        details = {"stdout": result.stdout, "stderr": result.stderr}
+    def deploy_treasury(self, network: str = "base-sepolia", script: str = "treasury/script/Deploy.s.sol:DeployTreasury") -> DeploymentResult:
+        """Broadcast ``DeployTreasury`` via Foundry.
+
+        Defaults to ``base-sepolia`` so operators do not accidental-broadcast Mainnet ``base``.
+        """
+
+        try:
+            result = self.forge_deploy(script, network, broadcast=True)
+        except CommandFailed as exc:
+            return DeploymentResult(
+                service=self.name,
+                ok=False,
+                id="treasury",
+                details={"error": str(exc)},
+            )
+
+        details: dict[str, Any] = {"stdout": result.stdout, "stderr": result.stderr}
         details.update(self._deployment_details_from_broadcast(network))
+        master = details.get("master_treasury")
+        ok_addr = isinstance(master, str) and master.startswith("0x") and len(master) >= 42
+        if not ok_addr:
+            return DeploymentResult(
+                service=self.name,
+                ok=False,
+                id="treasury",
+                details={**details, "error": "MasterTreasury address missing from forge broadcast receipts"},
+            )
         return DeploymentResult(
             service=self.name,
             ok=True,
-            id=details.get("master_treasury", "treasury"),
+            id=master,
             tx=details.get("master_treasury_deploy_tx"),
             details=details,
         )

@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "deploy_runbook": "docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md",
   "status": "testnet",
   "treasury_audit_arweave_tx": "wfZMZaLLLVwsb0PodZ0aeQqs2x158j1vI00b67_6Csg",
   "treasury_audit_correction_required": false,
@@ -48,5 +49,5 @@
       "deploy_tx": "0xf0fadec686d79a77efb2c17a35949bb9bfbabe8d4e12d2ea294984dfe59c0b51"
     }
   ],
-  "residual": "Mainnet treasury and vault addresses require a corrected audit record, fresh deployable-source test evidence, Cold Root authority wiring, and Base mainnet deploy. The pinned Base Sepolia deployment was refreshed from the current MasterTreasury source interface."
+  "residual": "Mainnet treasury needs external audit closure (KW-AUDIT-001) or Sprint acceptance, Forge CI evidence, Cold Root doctrine, AO mainnet ceremony when claiming canonical substrate. Base Sepolia pin matches Current MasterTreasury source; rehearsal + soak via deploy_runbook."
 }

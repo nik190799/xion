@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import asdict
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -214,11 +215,13 @@ def base_evm_wait(address: str, target_eth: float, network: str) -> None:
 
 
 @base_evm_group.command(name="deploy-treasury")
-@click.option("--network", default="base")
+@click.option("--network", default="base-sepolia", show_default=True)
 @click.option("--script", default="treasury/script/Deploy.s.sol:DeployTreasury")
 def base_evm_deploy_treasury(network: str, script: str) -> None:
     result = get_service("base-evm").deploy_treasury(network, script)  # type: ignore[attr-defined]
-    click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True))
+    click.echo(json.dumps(asdict(result), indent=2, sort_keys=True, default=str))
+    if not result.ok:
+        raise click.exceptions.Exit(code=1)
 
 
 @base_evm_group.command(name="prepare-sepolia-env")

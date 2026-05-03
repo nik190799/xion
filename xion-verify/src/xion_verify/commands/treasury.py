@@ -38,6 +38,14 @@ def check_treasury(repo_root: Path, manifest_rel: str = _MANIFEST) -> list[str]:
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     if data.get("schema_version") != 1:
         errors.append("treasury manifest schema_version must be 1")
+    audit_tx = data.get("treasury_audit_arweave_tx")
+    if audit_tx:
+        corr = data.get("treasury_audit_correction_arweave_tx")
+        if not isinstance(corr, str) or len(corr.strip()) == 0:
+            errors.append(
+                "treasury_audit_arweave_tx is set but treasury_audit_correction_arweave_tx is missing "
+                "(required per docs/audits/treasury-2026-report.CORRECTION.md / KW-AUDIT-002)"
+            )
     cap = data.get("bridge_exposure_cap_bps")
     if not isinstance(cap, int) or not 0 <= cap <= 10_000:
         errors.append("bridge_exposure_cap_bps must be integer in [0, 10000]")

@@ -1245,7 +1245,7 @@ Every entry has the same shape:
   - The original Arweave tx cannot be deleted; future manifests must cite the correction tx beside it.
   - `docs/audits/treasury-2026-report.md` is demoted to an internal review record, not an external audit.
 - **Pay-down commitment:** Closed when the correction document is published to Arweave, `genesis/TREASURY_VAULTS.json` points at both the original tx and the correction tx, and either an actual external audit or an explicit Sprint Mode unaudited-deploy acceptance replaces the false closure claim.
-- **Verifier:** `xion-verify treasury` must fail or warn if a manifest cites the original audit tx without the correction tx; until that verifier exists, the check is manual in `genesis/TREASURY_VAULTS.json` and `docs/STATE_OF_XION_PREFLIGHT.md`.
+- **Verifier:** `xion-verify treasury` must fail when a manifest cites the original audit tx (`treasury_audit_arweave_tx`) without a non-empty paired `treasury_audit_correction_arweave_tx`; `KW-AUDIT-002`/`docs/audits/treasury-2026-report.CORRECTION.md` define the pairing obligation. Remaining bytecode/source checks remain manual casts against Base Sepolia / mainnet pointers.
 
 ### KW-KEYS-001 â€” Software-Shamir Cold Root at Sprint Mode genesis (applies if Sprint Mode is chosen)
 

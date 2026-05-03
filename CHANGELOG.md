@@ -10,6 +10,18 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### Deploy / test-net gates — treasury rehearsal + Foundry CI
+
+- **Sepolia treasurer runbook:** [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md) wires env vars → `xion_ops base-evm deploy-treasury` (default **`base-sepolia`**) → `pin-deployment` → soak → verifier calls.
+- **Verifier bundle:** [`scripts/verify-mainnet-deploy-gates.sh`](scripts/verify-mainnet-deploy-gates.sh) runs `treasury`, `discovery --no-cloudflare`, `substrate-portability`, and soft-warn helpers for unfinished flows.
+- **Ops safety:** `BaseEvmService.deploy_treasury` returns `ok=False` on Forge failure or missing broadcast `MasterTreasury`; CLI exits non-zero accordingly.
+- **Manifest:** [`genesis/TREASURY_VAULTS.json`](genesis/TREASURY_VAULTS.json) records `deploy_runbook` plus an updated `residual` string.
+- **Verifier:** [`xion-verify treasury`](xion-verify/src/xion_verify/commands/treasury.py) fails when `treasury_audit_arweave_tx` is set without a non-empty paired `treasury_audit_correction_arweave_tx` (KW-AUDIT-002 pairing).
+- **CI:** new [`.github/workflows/foundry.yml`](.github/workflows/foundry.yml) installs Forge deps into `contracts/lib/` each run (`forge install … --no-commit`) and runs **`forge build` + `forge test`**.
+- **Operator docs:** [`docs/MACRO_PHASE_6_CE_STATUS.md`](docs/MACRO_PHASE_6_CE_STATUS.md) summarizes Macro Phase 6 Epic C/E closures; [`docs/OPERATOR_TRACK_D4.md`](docs/OPERATOR_TRACK_D4.md) names the repository default posture after the 2026-05-01 audit correction (`KW-AUDIT-001` open).
+- **[`.env.example`](.env.example)** gains a treasury/Base deploy section.
+- **`xion-verify/PINNED_HASH.txt`:** Repinned after the `treasury.py` verifier extension.
+
 ### D3 honest closeout attempt — 2026-05-03
 
 - **Akash deploy discipline:** `xion_ops.services.AkashService` now loads a provider allowlist, probes provider ingress before accepting non-allowlisted bids, records deploy surveys, and ships `xion-verify akash-deploy-discipline`.
