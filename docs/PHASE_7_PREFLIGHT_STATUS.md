@@ -2,7 +2,7 @@
 
 **Purpose:** Track each **external** obligation in [PHASE_7_PREFLIGHT.md](PHASE_7_PREFLIGHT.md). Verifiers prove mechanisms; this table records ceremony and infrastructure reality.
 
-**Last reviewed:** 2026-05-03 (repo automation pass). Next operator update: after Sepolia soak completion or mainnet rehearsal.
+**Last reviewed:** 2026-05-03 (plan execution: Sprint Mode recorded in `docs/OPERATOR_TRACK_D4.md` / `docs/STATE_OF_XION_PREFLIGHT.md`; gate bundle + Chutes cords re-verified as operator reruns). Next operator update: after Sepolia soak completion or mainnet rehearsal.
 
 | External action | Status | Notes / residual |
 |-----------------|--------|------------------|

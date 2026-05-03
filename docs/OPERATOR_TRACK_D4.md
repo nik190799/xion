@@ -31,10 +31,21 @@ Following the **2026-05-01** treasury correction:
 
 Updating this subsection when the operator chooses Sprint Mode avoids ambiguous public claims.
 
+## Operator track decision — 2026-05-03 (explicit)
+
+**Decision:** adopt **Sprint Mode** for ongoing **pre-Genesis engineering** — Sepolia rehearsal, relay liveness, verifier bundles, and operator runbooks — while **`KW-AUDIT-001` remains open**.
+
+**What this permits:** honest D3-style rehearsal (`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`, `scripts/verify-mainnet-deploy-gates.sh`, Chutes/Akash cords) and repo maintenance without claiming an external audit or constitutional D4 “alive” status.
+
+**What this does not permit:** representing bytecode as auditor-signed, closing **`KW-AUDIT-001`** by assertion, or public “mainnet Genesis live” messaging until **Full D4** items in the first section above close or gain dated, written residues.
+
+**Cross-reference:** the same decision is summarized under “Active track decision” in **`docs/STATE_OF_XION_PREFLIGHT.md`**. Next review: Phase 7 preflight table refresh or upon commissioning external audit.
+
 ## Operator execution artifacts (2026-05-03)
 
 - **Sepolia path:** `python -m xion_ops.cli base-evm prepare-sepolia-env`, add `PRIVATE_KEY` / `XION_DEPLOYER_PRIVATE_KEY`, then `base-evm preflight-treasury --network base-sepolia` before `deploy-treasury`. Runbook: [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](runbooks/TREASURY_SEPOLIA_DEPLOY.md).
-- **Soak probes:** [`scripts/treasury-soak-probes.sh`](../scripts/treasury-soak-probes.sh) or `TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh`.
+- **Deploy gate bundle:** `bash scripts/verify-mainnet-deploy-gates.sh` **or** `python scripts/verify_mainnet_deploy_gates.py` (Windows-friendly when WSL lacks `xion_verify`).
+- **Soak probes:** [`scripts/treasury-soak-probes.sh`](../scripts/treasury-soak-probes.sh) or `TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh` (or set `TREASURY_SOAK_PROBES=1` and run the Python driver if `bash` + `cast` are available).
 - **Mainnet (post-gates):** [`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`](runbooks/TREASURY_BASE_MAINNET_DEPLOY.md) — hardware / Cold Root flow; third-party `xion-verify` run required for Phase 7 narrative.
 - **Phase 7 checklist:** [`docs/PHASE_7_PREFLIGHT_STATUS.md`](PHASE_7_PREFLIGHT_STATUS.md) tracks external actions vs verifiers.
 

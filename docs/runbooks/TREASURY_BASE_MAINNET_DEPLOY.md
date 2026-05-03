@@ -9,12 +9,20 @@ This runbook is for **operator execution after** Base Sepolia rehearsal (`docs/r
 3. **`KW-AUDIT-001` closed or Sprint-accepted** — external audit for deployable bytecode, or documented unaudited acceptance with Sepolia soak + coverage evidence (`docs/audits/treasury-2026-report.CORRECTION.md`).
 4. **Bytecode / manifest honest** — `genesis/TREASURY_VAULTS.json` pins and `xion-verify treasury` green for the revision you broadcast.
 
+## `KW-AUDIT-002` / correction pairing (manifest)
+
+Before broadcasting Base mainnet (or re-pinning after deploy):
+
+- **`treasury_audit_arweave_tx`** and **`treasury_audit_correction_arweave_tx`** must be populated per `genesis/TREASURY_VAULTS.json` schema; `xion-verify treasury` fails if a correction is required but the paired field is empty.
+- Publish the correction narrative beside the original internal review per `docs/audits/treasury-2026-report.CORRECTION.md` and record the Arweave tx id in the manifest.
+
 ## Scripted gates (operator workflow)
 
 From repo root (bash; WSL on Windows is fine):
 
 ```bash
 bash scripts/verify-mainnet-deploy-gates.sh
+# or: python scripts/verify_mainnet_deploy_gates.py
 ```
 
 Optional **during soak** on Sepolia (or spot-check after mainnet pin):
@@ -37,11 +45,17 @@ python -m xion_ops.cli base-evm deploy-treasury --network base-mainnet
 
 ## Third-party verification
 
-Per `DEVELOPMENT_ROADMAP.md` Phase 7: clone the tagged commit on a **non-operator** machine, install `xion-verify`, export read-only RPCs if needed, and run:
+Per `DEVELOPMENT_ROADMAP.md` Phase 7: clone the **same tagged commit** (or release tag) the operator broadcast from onto a **non-operator** machine, install `xion-verify` (`pip install -e ./xion-verify[dev]`), export read-only RPCs if needed (`BASE_MAINNET_RPC`, `BASE_SEPOLIA_RPC` for rehearsal cross-check), and run:
 
 ```bash
 xion-verify --self-test
 bash scripts/verify-mainnet-deploy-gates.sh
 ```
 
-Record hashes, commit, and verifier transcript in your State-of-Xion memo.
+Optional Sepolia soak cross-check on the third-party host:
+
+```bash
+TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh
+```
+
+Record commit hash, verifier transcript, and any `WARN` lines from `treasury-flow` / `akash-deploy-discipline` in your State-of-Xion / Phase 7 memo.

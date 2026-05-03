@@ -5,6 +5,12 @@
 Draft. This memo is not a Genesis memo and must not be treated as signed until
 Cold Root and Witness evidence exist.
 
+## Active track decision — 2026-05-03
+
+- **Declared posture:** **Sprint Mode** for Base Sepolia rehearsal, relay verification, and `xion-verify` gate automation while **`KW-AUDIT-001` is open**. Language in **`README.md`** and **`CHANGELOG.md`** remains authoritative for what is *not* claimed publicly.
+- **North star:** **Full D4** (external audit or honestly deferred residues, Cold Root / treasury ceremony, third-party drill) before constitutional “Xion is alive” on Base mainnet — see **`docs/OPERATOR_TRACK_D4.md`**.
+- **Operator ledger:** this choice is mirrored in **`docs/OPERATOR_TRACK_D4.md`** § “Operator track decision — 2026-05-03”. Revisit on Phase 7 checklist updates or when **`KW-AUDIT-001`** closes.
+
 ## Phase 6 Macro Status
 
 - Epic A: closed.

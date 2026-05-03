@@ -11,10 +11,13 @@ cd "${ROOT}"
 
 if command -v xion-verify >/dev/null 2>&1; then
   xion_verify() { xion-verify "$@"; }
-elif command -v python3 >/dev/null 2>&1; then
+elif command -v python3 >/dev/null 2>&1 && python3 -c "import xion_verify" 2>/dev/null; then
   xion_verify() { python3 -m xion_verify "$@"; }
-else
+elif command -v python >/dev/null 2>&1 && python -c "import xion_verify" 2>/dev/null; then
   xion_verify() { python -m xion_verify "$@"; }
+else
+  echo "[verify-mainnet-deploy-gates] error: install xion-verify (pip install -e ./xion-verify[dev]) or ensure python can import xion_verify" >&2
+  exit 1
 fi
 
 if [[ -f "${ROOT}/.env" ]]; then

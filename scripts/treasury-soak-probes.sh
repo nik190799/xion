@@ -16,8 +16,21 @@ MASTER="$("${PY}" -c 'import json; print(json.load(open("genesis/TREASURY_VAULTS
 echo "[treasury-soak-probes] rpc=${RPC}"
 echo "[treasury-soak-probes] master_treasury=${MASTER}"
 
-cast call "${MASTER}" "governance()(address)" --rpc-url "${RPC}"
-cast call "${MASTER}" "aoCoreAuthority()(address)" --rpc-url "${RPC}"
-cast call "${MASTER}" "registeredChainCount()(uint256)" --rpc-url "${RPC}"
+if ! command -v cast >/dev/null 2>&1; then
+  echo "[treasury-soak-probes] SKIP: foundry cast not on PATH"
+  exit 0
+fi
+
+_cast() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 120 cast "$@"
+  else
+    cast "$@"
+  fi
+}
+
+_cast call "${MASTER}" "governance()(address)" --rpc-url "${RPC}"
+_cast call "${MASTER}" "aoCoreAuthority()(address)" --rpc-url "${RPC}"
+_cast call "${MASTER}" "registeredChainCount()(uint256)" --rpc-url "${RPC}"
 
 echo "[treasury-soak-probes] OK"
