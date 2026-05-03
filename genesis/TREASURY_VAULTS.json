@@ -8,9 +8,9 @@
   "treasury_audit_correction_path": "docs/audits/treasury-2026-report.CORRECTION.md",
   "invariant_18_ratification_arweave_tx": "a4uIJkEoOh0FHX3ws5JNWBEvj0fR2TrSRE06VY-rUwg",
   "bridge_exposure_cap_bps": 1000,
-  "master_treasury": "0xe25156Ff3906B1353E315f0307A0BD7F4399871d",
-  "master_treasury_deploy_block": 41011960,
-  "master_treasury_deploy_tx": "0x472c8ef1941dcd5a643ea04d68ac641cc82b3490a00be2b909e231fa23d794ea",
+  "master_treasury": "0xcce9fe45c6772a72b4992a104732febc178e5819",
+  "master_treasury_deploy_block": 41013426,
+  "master_treasury_deploy_tx": "0xf07f77a4b1a235e4d415c7f865af1fecfb17cace3a7d03f196ec6db1da2c8414",
   "tier1_operating_tokens": [
     {
       "asset": "AR",
