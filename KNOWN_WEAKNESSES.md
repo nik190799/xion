@@ -21,6 +21,17 @@ Every entry has the same shape:
 
 ## Open
 
+### KW-KEYS-002 - Warm Safe owner custody is not yet hardened
+- **Domain:** KEYS
+- **Discovered:** 2026-05-03 (Honest Deploy Path funding and Safe review)
+- **Severity:** high
+- **Status:** open
+- **Description:** The Base mainnet Warm-tier Safe at `0x5A91E08D909854b594f07648D23440f4908529b4` is a real 2-of-3 multisig, but owner custody is not yet the final durable posture: two owner seeds are paper-written and one owner remains a MetaMask software wallet.
+- **Why it exists:** The Safe was created before a full Cold Root / Warm tier ceremony. It is better than a single EOA, but it is not equivalent to geographic hardware custody or the 3-of-5 Cold Root posture.
+- **Mitigations:** Threshold is 2-of-3, the Safe itself is funded, and owners B/C now have Base ETH for cosign gas. The operator committed to move at least one of the two paper-written owner seeds off-site within 72 hours.
+- **Pay-down commitment:** Partial pay-down by 2026-05-04: one paper-written owner seed stored off-site. Full pay-down by 2026-05-31: replace the MetaMask owner with a hardware-wallet owner and document owner geography without publishing secret material.
+- **Verifier:** Manual custody attestation in `docs/STATE_OF_XION_PREFLIGHT.md` for the 72-hour step; future closure should add a Safe owner-set verifier that checks the on-chain owner set and a redacted ceremony record.
+
 ### KW-OPS-001 - Safe transaction proposal client is stubbed in xion-ops
 - **Domain:** OPS
 - **Discovered:** 2026-05-03 (Production Service Class Refactor)
@@ -43,16 +54,17 @@ Every entry has the same shape:
 - **Pay-down commitment:** Replace provider-native published endpoints with Xion-controlled endpoint names or another relay endpoint resolver layer that can rotate upstream leases without exposing operator/provider-specific hostnames. Keep at least three substrate-diverse Relay rows so coercion or suspension of any one named provider is survivable.
 - **Verifier:** `xion-verify discovery` covers current reachability and key binding; closure should add a registry/naming-layer check that rejects provider-native or operator-account-derived public endpoints unless explicitly waived for a deployment drill.
 
-### KW-FLOOR-DEPLOY-001 - Open-weights floor is operator-laptop-hosted, not deployed with the Relay
+### KW-FLOOR-DEPLOY-001 - Open-weights floor Akash lease is not currently reachable
 - **Domain:** OPS
 - **Discovered:** 2026-04-28 (post-funding pre-Genesis closure review)
 - **Severity:** high
-- **Status:** closed (2026-04-29)
-- **Description:** Closed for the operator-track pre-Genesis posture: Akash `dseq=26595076` runs a private GPU-backed `xion-ollama` sidecar, the Relay points at `XION_OLLAMA_URL=http://xion-ollama:11434`, and a laptop-independent `open_weights_only` `/chat` smoke turn returned `200`.
+- **Status:** reopened 2026-05-03
+- **Description:** The previously closed Akash `dseq=26595076` is now closed / insufficient-funds, and fresh 2026-05-03 service-class deployment attempts against dseqs `26654272`, `26654289`, `26654305`, and `26654315` all reached providers whose public endpoints refused connections. Each attempt was closed by `AkashService.deploy_relay()` rollback. The registry still has Chutes as a warm secondary and an older Akash CPU endpoint, but the GPU-backed deployed open-weights floor cannot be claimed closed today.
 - **Why it exists:** Phase 5g-viii correctly proved that the floor model is open, pinned, and health-checkable, but it optimized for local D2 bootstrap. The first Akash SDL then deployed only the Relay container, not the model-serving sidecar.
 - **Mitigations:** Hosted inference is served through Chutes/Bittensor SN64 with TEE-by-default; `hosted_api_first` still falls through to the floor when reachable; `open_weights_only` refuses hosted fallback during cutover drills. This weakness does not weaken the floor property itself, but it weakens the resurrection claim while the operator laptop remains part of the runtime path.
-- **Closure evidence:** Akash provider `akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d`, forwarded base `https://provider.pronto-ai.pp.ua:31503`, accepted bid `429.375054 uact/block` (`rtx3090`), Ollama logs show CUDA loading with `GPULayers:43`, and `/chat` returned `200` in `8.38s` under `XION_INFERENCE_POLICY=open_weights_only`. Registry snapshot `1777440937298896100` was published to Arweave tx `KXBVha3Qq4YEHlTXRVHdx7qz9UaJysmOgz_LeTfJLHs`, then the first real drill passed with run id `073d54e2-6763-4242-a960-02154149ac57`.
-- **Verifier:** `xion-verify inference-sovereignty` covers the model-floor property; deploy closure is recorded in `docs/runbooks/POST_FUNDING_DEPLOY.md` and `docs/runbooks/AKASH_RELAY_DEPLOY.md`, with `xion-verify discovery` and `xion-verify substrate-portability` green after registry publish.
+- **Latest evidence:** `xion_ops balances --service akash` reports `76037269 uact` after the failed-and-closed attempts, so funding remains above the `75000000 uact` target. Provider-ingress failure, not funding, is the blocker.
+- **Pay-down commitment:** Re-close only after a fresh Akash GPU lease exposes a reachable `/health` and an `open_weights_only` `/chat` smoke turn succeeds from outside the provider network. Do not drain escrow with unbounded retries; use a known-good provider allowlist or reduce the SDL to a provider shape with proven public ingress first.
+- **Verifier:** `xion-verify inference-sovereignty` covers the model-floor property; `xion-verify discovery` and `xion-verify substrate-portability` must pass after a fresh registry publish for deploy closure.
 
 ### KW-GATEWAY-001 - Gateway conformance verifier is reserved but not live
 - **Domain:** RUNTIME

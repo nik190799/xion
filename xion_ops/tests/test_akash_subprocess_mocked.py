@@ -38,3 +38,15 @@ def test_lowest_open_provider(tmp_path):
     )
     assert provider == "p1"
 
+
+def test_lowest_open_provider_skips_rejected(tmp_path):
+    service = AkashService(repo_root=tmp_path)
+    provider = service._lowest_open_provider(
+        [
+            {"bid": {"state": "open", "price": {"amount": "1.0"}, "id": {"provider": "p1"}}},
+            {"bid": {"state": "open", "price": {"amount": "2.0"}, "id": {"provider": "p2"}}},
+        ],
+        rejected_providers={"p1"},
+    )
+    assert provider == "p2"
+

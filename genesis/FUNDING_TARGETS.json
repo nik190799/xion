@@ -24,8 +24,8 @@
       "address": "0x3c459fac4749113960Ec0998c19782DB92E1E536",
       "network": "base",
       "currency": "ETH",
-      "target": 0.005,
-      "purpose": "Safe owner gas",
+      "target": 0.002,
+      "purpose": "Safe owner gas; owner A was already funded before the two zero-balance owner top-ups",
       "service": "base-evm"
     },
     {

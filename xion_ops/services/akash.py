@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import ssl
 import time
 from pathlib import Path
 from typing import Any
@@ -297,18 +299,24 @@ class AkashService(OpsService):
     def health_smoke(self, base_url: str, *, timeout_seconds: int = 30) -> bool:
         try:
             request = Request(base_url.rstrip("/") + "/health", method="GET")
-            with urlopen(request, timeout=timeout_seconds) as response:
+            context = ssl._create_unverified_context()
+            with urlopen(request, timeout=timeout_seconds, context=context) as response:
                 return 200 <= response.status < 300
         except URLError as exc:
             raise ProviderUnreachable(str(exc)) from exc
 
-    def deploy_relay(self, sdl_path: Path | str, prefer_provider: str | None = None) -> DeploymentResult:
+    def deploy_relay(
+        self,
+        sdl_path: Path | str,
+        prefer_provider: str | None = None,
+        rejected_providers: set[str] | None = None,
+    ) -> DeploymentResult:
         dseq: str | None = None
         provider: str | None = None
         try:
             dseq = self.create_deployment(sdl_path)
-            bids = self.list_bids(dseq)
-            provider = prefer_provider or self._lowest_open_provider(bids)
+            bids = self._wait_for_bids(dseq)
+            provider = prefer_provider or self._lowest_open_provider(bids, rejected_providers=rejected_providers)
             self.accept_bid(dseq, provider)
             self.send_manifest(sdl_path, dseq, provider)
             status = self._wait_for_ready(dseq, provider)
@@ -326,14 +334,17 @@ class AkashService(OpsService):
             )
         except Exception as exc:
             if dseq:
-                self.close_deployment(dseq)
+                close = self.close_deployment(dseq)
+                close_details = {"close_stdout": close.stdout, "close_stderr": close.stderr}
+            else:
+                close_details = {}
             return DeploymentResult(
                 service=self.name,
                 ok=False,
                 id=dseq,
                 dseq=dseq,
                 provider=provider,
-                details={"error": str(exc)},
+                details={"error": str(exc), **close_details},
             )
 
     def _wait_for_ready(self, dseq: str, provider: str, *, timeout_seconds: int = 900) -> LeaseStatus:
@@ -346,15 +357,47 @@ class AkashService(OpsService):
             time.sleep(15)
         raise OpsError(f"lease {dseq} did not become ready; latest={latest}")
 
-    def _lowest_open_provider(self, bids: list[dict[str, Any]]) -> str:
-        open_bids = [bid for bid in bids if bid.get("bid", {}).get("state") == "open"]
+    def _wait_for_bids(self, dseq: str, *, timeout_seconds: int = 300) -> list[dict[str, Any]]:
+        deadline = time.monotonic() + timeout_seconds
+        latest: list[dict[str, Any]] = []
+        while time.monotonic() < deadline:
+            latest = self.list_bids(dseq)
+            if any(bid.get("bid", {}).get("state") == "open" for bid in latest):
+                return latest
+            time.sleep(10)
+        raise OpsError(f"no open Akash bids for deployment {dseq}; latest={latest}")
+
+    def _lowest_open_provider(
+        self,
+        bids: list[dict[str, Any]],
+        *,
+        rejected_providers: set[str] | None = None,
+    ) -> str:
+        rejected = rejected_providers or set()
+        open_bids = [
+            bid
+            for bid in bids
+            if bid.get("bid", {}).get("state") == "open"
+            and bid.get("bid", {}).get("id", {}).get("provider") not in rejected
+        ]
         if not open_bids:
             raise OpsError("no open Akash bids")
         chosen = min(open_bids, key=lambda bid: float(bid["bid"]["price"]["amount"]))
         return str(chosen["bid"]["id"]["provider"])
 
     def _provider_services(self, *args: str, timeout: int | None = None) -> CommandResult:
-        return run_command(["provider-services", *args], cwd=self.repo_root, timeout=timeout)
+        command = ["provider-services", *args]
+        try:
+            return run_command(command, cwd=self.repo_root, timeout=timeout)
+        except FileNotFoundError:
+            if os.name != "nt":
+                raise
+            rendered = " ".join(shlex.quote(part) for part in command)
+            return run_command(
+                ["wsl", "bash", "-lc", f'export PATH="$HOME/bin:$PATH"; cd /mnt/c/Users/16823/CursorProjects/xion-os; {rendered}'],
+                cwd=self.repo_root,
+                timeout=timeout,
+            )
 
     def _default_owner(self) -> str:
         try:

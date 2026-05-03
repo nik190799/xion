@@ -70,9 +70,14 @@ def akash_mint_act(uakt_amount: int) -> None:
 @akash_group.command(name="deploy")
 @click.option("--sdl-path", default="infra/akash/relay-deployment.yaml")
 @click.option("--prefer-provider", default=None)
-def akash_deploy(sdl_path: str, prefer_provider: str | None) -> None:
+@click.option("--exclude-provider", multiple=True)
+def akash_deploy(sdl_path: str, prefer_provider: str | None, exclude_provider: tuple[str, ...]) -> None:
     service = get_service("akash")
-    result = service.deploy_relay(sdl_path, prefer_provider=prefer_provider)  # type: ignore[attr-defined]
+    result = service.deploy_relay(  # type: ignore[attr-defined]
+        sdl_path,
+        prefer_provider=prefer_provider,
+        rejected_providers=set(exclude_provider),
+    )
     click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True))
     if not result.ok:
         raise click.exceptions.Exit(1)

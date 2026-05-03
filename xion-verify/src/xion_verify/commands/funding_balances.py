@@ -24,7 +24,7 @@ def funding_balances(service_name: str | None) -> None:
     bad = [report for report in reports if report.status != "ok"]
     if bad:
         click.echo(f"funding-balances: FAIL: {len(bad)} wallet(s) below target or unreachable", err=True)
-        raise click.exceptions.Exit(FAIL)
+        raise SystemExit(FAIL)
     click.echo("funding-balances: OK")
-    raise click.exceptions.Exit(OK)
+    raise SystemExit(OK)
 

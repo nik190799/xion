@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import time
 from decimal import Decimal
 from pathlib import Path
@@ -21,9 +22,20 @@ class BaseEvmService(OpsService):
     name = "base-evm"
 
     DEFAULT_RPCS = {
-        "base": "https://mainnet.base.org",
-        "base-mainnet": "https://mainnet.base.org",
-        "base-sepolia": "https://sepolia.base.org",
+        "base": (
+            "https://mainnet.base.org",
+            "https://base-rpc.publicnode.com",
+            "https://base.llamarpc.com",
+        ),
+        "base-mainnet": (
+            "https://mainnet.base.org",
+            "https://base-rpc.publicnode.com",
+            "https://base.llamarpc.com",
+        ),
+        "base-sepolia": (
+            "https://sepolia.base.org",
+            "https://base-sepolia-rpc.publicnode.com",
+        ),
     }
 
     def addresses(self) -> list[WalletInfo]:
@@ -49,17 +61,15 @@ class BaseEvmService(OpsService):
 
     def health(self) -> ServiceHealth:
         try:
-            rpc = self.rpc_url("base-sepolia")
             payload = {"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1}
-            response = self._rpc(rpc, payload)
+            rpc, response = self._rpc_any(self.rpc_urls("base-sepolia"), payload)
             return ServiceHealth(service=self.name, ok="result" in response, details={"rpc": rpc})
         except Exception as exc:
             return ServiceHealth(service=self.name, ok=False, message=str(exc))
 
     def eth_balance(self, address: str, network: str) -> float:
-        rpc = self.rpc_url(network)
         payload = {"jsonrpc": "2.0", "method": "eth_getBalance", "params": [address, "latest"], "id": 1}
-        response = self._rpc(rpc, payload)
+        _rpc, response = self._rpc_any(self.rpc_urls(network), payload)
         result = response.get("result")
         if not isinstance(result, str) or not result.startswith("0x"):
             raise OpsError(f"invalid eth_getBalance response for {address}: {response}")
@@ -83,16 +93,25 @@ class BaseEvmService(OpsService):
         return False
 
     def forge_deploy(self, script: str, network: str, *, broadcast: bool = True) -> CommandResult:
-        command = ["forge", "script", script, "--rpc-url", self.rpc_url(network)]
+        cwd = self.repo_root / "contracts" if (self.repo_root / "contracts" / "foundry.toml").exists() else self.repo_root
+        script_arg = script.removeprefix("contracts/")
+        command = ["forge", "script", script_arg, "--rpc-url", self.rpc_url(network)]
         if broadcast:
             command.append("--broadcast")
-        return run_command(command, cwd=self.repo_root)
+        private_key = os.environ.get("PRIVATE_KEY") or os.environ.get("XION_DEPLOYER_PRIVATE_KEY")
+        if private_key:
+            command.extend(["--private-key", private_key])
+        return self._run_foundry(command, cwd=cwd)
 
     def cast_send(self, *args: str, network: str) -> CommandResult:
-        return run_command(["cast", "send", "--rpc-url", self.rpc_url(network), *args], cwd=self.repo_root)
+        command = ["cast", "send", "--rpc-url", self.rpc_url(network), *args]
+        private_key = os.environ.get("PRIVATE_KEY") or os.environ.get("XION_DEPLOYER_PRIVATE_KEY")
+        if private_key and "--private-key" not in command:
+            command.extend(["--private-key", private_key])
+        return self._run_foundry(command)
 
     def cast_call(self, *args: str, network: str) -> CommandResult:
-        return run_command(["cast", "call", "--rpc-url", self.rpc_url(network), *args], cwd=self.repo_root)
+        return self._run_foundry(["cast", "call", "--rpc-url", self.rpc_url(network), *args])
 
     def deploy_treasury(self, network: str = "base", script: str = "treasury/script/Deploy.s.sol:DeployTreasury") -> DeploymentResult:
         result = self.forge_deploy(script, network, broadcast=True)
@@ -108,23 +127,62 @@ class BaseEvmService(OpsService):
         )
 
     def rpc_url(self, network: str) -> str:
+        return self.rpc_urls(network)[0]
+
+    def rpc_urls(self, network: str) -> list[str]:
         env_key = {
             "base": "BASE_MAINNET_RPC",
             "base-mainnet": "BASE_MAINNET_RPC",
             "base-sepolia": "BASE_SEPOLIA_RPC",
         }.get(network)
-        if env_key and os.environ.get(env_key):
-            return os.environ[env_key]
-        return self.DEFAULT_RPCS.get(network, network)
+        env_keys = [
+            env_key,
+            f"XION_{network.upper().replace('-', '_')}_RPC",
+            f"{network.upper().replace('-', '_')}_RPC_URL",
+        ]
+        configured = [os.environ[key] for key in env_keys if key and os.environ.get(key)]
+        defaults = self.DEFAULT_RPCS.get(network, (network,))
+        if isinstance(defaults, str):
+            defaults = (defaults,)
+        return [*configured, *defaults]
+
+    @classmethod
+    def _rpc_any(cls, rpc_urls: list[str], payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        errors: list[str] = []
+        for rpc_url in rpc_urls:
+            try:
+                return rpc_url, cls._rpc(rpc_url, payload)
+            except Exception as exc:
+                errors.append(f"{rpc_url}: {exc}")
+        raise OpsError("; ".join(errors))
 
     @staticmethod
     def _rpc(rpc_url: str, payload: dict[str, Any]) -> dict[str, Any]:
         request = Request(
             rpc_url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "User-Agent": "xion-ops/0.1"},
             method="POST",
         )
         with urlopen(request, timeout=20) as response:
             return json.loads(response.read().decode("utf-8"))
+
+    def _run_foundry(self, command: list[str], *, cwd: Path | None = None) -> CommandResult:
+        working_dir = cwd or self.repo_root
+        try:
+            return run_command(command, cwd=working_dir)
+        except FileNotFoundError:
+            if os.name != "nt":
+                raise
+            rendered = " ".join(shlex.quote(part) for part in command)
+            wsl_cwd = str(working_dir).replace("\\", "/").replace("C:", "/mnt/c")
+            return run_command(
+                [
+                    "wsl",
+                    "bash",
+                    "-lc",
+                    f'export PATH="$HOME/.foundry/bin:$PATH"; cd {shlex.quote(wsl_cwd)}; {rendered}',
+                ],
+                cwd=self.repo_root,
+            )
 

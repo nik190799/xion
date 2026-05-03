@@ -33,9 +33,17 @@ Cold Root and Witness evidence exist.
   `insufficient_funds`. Replacement attempts `26610282`, `26610352`, and
   `26610402` reached manifest `PASS` on Akash providers but their public
   forwarded ports were not reachable; each failed lease was closed to stop
-  spend. The current registry points at the older live Akash CPU lease
-  `26563373`, so deployed open-weights-floor evidence remains a relight
-  residual rather than a closed Genesis claim.
+  spend. On 2026-05-03, `xion_ops.services.AkashService.deploy_relay()` retried
+  the current SDL against dseqs `26654272`, `26654289`, `26654305`, and
+  `26654315`; providers
+  `akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e`,
+  `akash1am3sv9ac6yq6a4s2hkkcn6sd6723fpkp3en08s`,
+  `akash12v6dhc8awlwhv438jjyw80eguhgtm735mfv3fx`, and
+  `akash1ta6d9l4ujhj6ztvveyjuyr3zha3te3txz5nr5d` all returned refused public
+  endpoints and were closed by the service rollback path. The current registry
+  points at the older live Akash CPU lease `26563373`, so deployed
+  open-weights-floor evidence remains a relight residual rather than a closed
+  Genesis claim.
 - Fresh substrate dry-run row `seq=7` and Immortality Drill rehearsal
   `d6b3d366-be16-4e87-a2a5-7412e103d307` passed with Chutes as warm standby.
 
@@ -76,13 +84,56 @@ Cold Root and Witness evidence exist.
   current `contracts/treasury/MasterTreasury.sol` did not compile and that the
   pinned Base Sepolia deployment predates the current source interface.
 - `KW-AUDIT-002`: opened to track the permanent audit-record correction. The
-  correction file is `docs/audits/treasury-2026-report.CORRECTION.md`;
-  Arweave correction publication remains pending.
+  correction file is `docs/audits/treasury-2026-report.CORRECTION.md`; Arweave
+  correction publication is pinned in `genesis/TREASURY_VAULTS.json` as tx
+  `3QzqOAKjQY86RLtl4UEwV8pNtxtVCg8L0ATD8El3AXs`. The Base Sepolia bytecode /
+  current-source mismatch remains open until `MasterTreasury` is redeployed
+  from current source.
 - Contract preflight after the correction: `forge test --match-contract
   TreasuryTest -vvv` passes 10/10 after the `MasterTreasury` compile fix.
-  Full `forge test -vvv` remains blocked by 9 `EmissionController` failures in
-  scheduled-mint cap-exhaustion / slowdown tests (`DailyEgressCapExceeded`).
-  Those tokenomics failures are not waived for Genesis.
+  Full `forge test -vvv` was repaired by chunking cap-exhaustion test mints
+  across daily egress windows; the deploy machine still needs Foundry env vars
+  before Sepolia redeploy can broadcast.
+
+## 2026-05-03 Service-Class Execution
+
+- `xion_ops` is now the operator path for balance checks and deployment
+  attempts. `BaseEvmService` was fixed to try multiple Base RPC endpoints and
+  `AkashService` was fixed to call WSL `provider-services`, wait for bids, skip
+  rejected providers, and rollback refused endpoints.
+- Funding status from `xion_ops balances`: Base Sepolia deployer
+  `0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A` has `0.05107126677008217 ETH`;
+  Base Safe `0x5A91E08D909854b594f07648D23440f4908529b4` has `0.0605 ETH`;
+  Safe owner B has `0.01 ETH`; Safe owner C has `0.005 ETH`; Arweave registry
+  has `17.189142524782 AR`; Akash operator has `76037269 uact`. Safe owner A
+  has `0.005943668858017224 ETH`, above the owner-A gas target
+  `0.002 ETH` because owner A was already funded before the zero-balance owner
+  top-ups.
+- Sepolia `MasterTreasury` redeploy and rotation rehearsal are blocked on
+  missing deployment environment (`PRIVATE_KEY` or `XION_DEPLOYER_PRIVATE_KEY`,
+  `XION_TREASURY_GOVERNANCE`, `XION_AO_CORE_AUTHORITY`, and
+  `XION_BRIDGE_CAP_BPS` were not present in Windows or WSL). No Sepolia
+  broadcast was attempted without the signing key.
+- `xion-verify pre-genesis` returned `OK` on 2026-05-03 after
+  `funding-balances` passed. Accepted `NOT_YET_SEALED` subchecks were
+  `rebuild` (Docker missing on host), `vitals` partial domains, and
+  `shadow-relay` not running on port `8001`.
+
+## What Does Not Close Today
+
+- Base Sepolia `MasterTreasury` redeploy and the three rotation rehearsal
+  proposals do not close without the signer key and deployment env listed
+  above.
+- Akash GPU open-weights floor does not close because all four available GPU
+  providers refused public ingress after manifest/lease setup; each new attempt
+  was closed to stop escrow drain.
+- Relay registry republish does not close because there is no fresh reachable
+  Akash GPU endpoint to publish. Existing `xion-verify discovery` and
+  `xion-verify substrate-portability` remain OK against the current registry.
+- Cold Root posture, mainnet contract deploys, AO mainnet seal, Genesis
+  Arweave bundle, hardware-wallet owner replacement, external audit, and the
+  third-party Immortality Drill remain named residuals per the Honest Deploy
+  Path plan.
 
 ## Sprint Mode Falsification Statements
 
@@ -122,9 +173,14 @@ xion-verify all --allow-not-yet-sealed
 - [x] Invariant 18 amendment row is `ratified`.
 - [ ] Treasury audit report is corrected and either externally signed or
   explicitly accepted as unaudited Sprint Mode evidence.
-- [ ] Treasury audit correction Arweave tx id is pinned beside the original tx.
+- [x] Treasury audit correction Arweave tx id is pinned beside the original tx.
 - [x] Base Sepolia redeploy addresses are pinned in `genesis/TREASURY_VAULTS.json`,
   but the pinned deployment predates the current `MasterTreasury` source interface.
+- [ ] Base Sepolia `MasterTreasury` is redeployed from current source and the
+  Safe rotation rehearsal proposal tx hashes are recorded.
+- [ ] Akash deployed open-weights floor is reachable from a fresh GPU lease.
+  Four 2026-05-03 attempts were closed after provider ingress refused
+  connections.
 - [ ] Mainnet treasury addresses are pinned after Cold Root deploy.
 - [x] `scripts/immortality-drill-third-party.sh` evidence row is appended.
 - [x] Local `scripts/substrate-portability-dry-run.sh` evidence row `seq=7` names
