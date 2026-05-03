@@ -8,8 +8,37 @@ Cold Root and Witness evidence exist.
 ## Active track decision — 2026-05-03
 
 - **Declared posture:** **Sprint Mode** for Base Sepolia rehearsal, relay verification, and `xion-verify` gate automation while **`KW-AUDIT-001` is open**. Language in **`README.md`** and **`CHANGELOG.md`** remains authoritative for what is *not* claimed publicly.
-- **North star:** **Full D4** (external audit or honestly deferred residues, Cold Root / treasury ceremony, third-party drill) before constitutional “Xion is alive” on Base mainnet — see **`docs/OPERATOR_TRACK_D4.md`**.
+- **North star:** **Full D4** (external audit or honestly deferred residues, Cold Root / treasury ceremony, third-party drill) before constitutional “Xion is alive” Base mainnet — see **`docs/OPERATOR_TRACK_D4.md`**.
 - **Operator ledger:** this choice is mirrored in **`docs/OPERATOR_TRACK_D4.md`** § “Operator track decision — 2026-05-03”. Revisit on Phase 7 checklist updates or when **`KW-AUDIT-001`** closes.
+- **Accountability targets (engineering, 2026-05-03):** restate review-by dates also recorded in **`docs/PHASE_7_PREFLIGHT_STATUS.md`**: **`KW-AUDIT-001`** status review by **2026-06-01**; third-party **Immortality Drill** (`LHT-SUBSTRATE-001`) by **2026-07-01** (slip from 2026-06-15 — see execution record below) or explicit slip with new dates in **`KNOWN_WEAKNESSES.md`**.
+
+## Automated execution record — 2026-05-03 (development agent)
+
+This section records what an IDE agent **can** do without claiming ceremony-grade
+closure for **`KW-AUDIT-001`** or **`LHT-SUBSTRATE-001`**.
+
+- **Foundry on operator shell:** `foundryup` was run inside **WSL**; `forge` /
+  `cast` are available at `~/.foundry/bin` there. **`xion_ops` `base-evm`**
+  already falls back to WSL for Foundry on Windows when native binaries are
+  missing.
+- **Base Sepolia `MasterTreasury` redeploy + pin:** broadcast succeeded;
+  `genesis/TREASURY_VAULTS.json` now points at
+  **`0xd2b257200cc12b4e44d65063c0d63d25989455b6`**, deploy tx
+  **`0xe8932fde35a88a70bff67d6d3af5495e48680c08c1bdd1220633725ab9f59deb`**, block
+  **`41040532`**. `xion-verify treasury` + `treasury-flow` returned **OK** after
+  pin.
+- **Soak probes without Windows `cast`:** `scripts/treasury_soak_probes.py` now
+  performs the same three **`eth_call`** probes via JSON-RPC when **`cast`** is
+  absent; confirmed **OK** against the newly pinned contract.
+- **`KW-AUDIT-001`:** An automated agent **cannot** retain an external audit
+  firm, sign engagement letters, or pay audit invoices. This weakness stays
+  **open** until pay-down (a) or explicit Sprint residue (b) in the KW entry.
+- **`LHT-SUBSTRATE-001`:** Running `scripts/immortality-drill-third-party.sh`
+  from the operator’s daily machine / Cursor session **does not** satisfy the
+  doctrine’s **third-party-machine** bar in
+  `docs/runbooks/IMMORTALITY_DRILL.md`. The next honest attempt should use
+  separate infrastructure (e.g. cloud VM rented for the purpose); schedule
+  target **2026-07-01** or document slip in **`KNOWN_WEAKNESSES.md`**.
 
 ## Phase 6 Macro Status
 

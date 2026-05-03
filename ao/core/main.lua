@@ -89,6 +89,15 @@ local function require_tags(msg, names)
     return true
 end
 
+-- Optional correlation with ``ledgers/SPEND_AUTHORITY_LEDGER.jsonl`` ``decision_id`` (Phase 6.8 F3).
+local function optional_nonempty_tag(msg, name)
+    local v = tag(msg, name)
+    if type(v) == "string" and v ~= "" then
+        return v
+    end
+    return nil
+end
+
 local function reject(msg, action, reason)
     ao.send({ Target = msg.From, Action = action, Reason = reason })
 end
@@ -444,15 +453,21 @@ Handlers.add("improvement-spend",
             return
         end
 
+        local aid = optional_nonempty_tag(msg, "Authority-Decision-Id")
         ImprovementSpends[proposal_id] = {
             amount = amount,
             recipient = recipient,
             purpose_sha256 = purpose_sha256,
-            approved_by = msg.From
+            approved_by = msg.From,
+            authority_decision_id = aid
         }
 
         print("improvement-spend success for " .. proposal_id)
-        ao.send({ Target = msg.From, Action = "Improvement-Spend-Approved", ["Proposal-Id"] = proposal_id })
+        local imp_reply = { Target = msg.From, Action = "Improvement-Spend-Approved", ["Proposal-Id"] = proposal_id }
+        if aid then
+            imp_reply["Authority-Decision-Id"] = aid
+        end
+        ao.send(imp_reply)
     end
 )
 
@@ -734,6 +749,7 @@ Handlers.add("treasury-spend",
             return
         end
 
+        local t_aid = optional_nonempty_tag(msg, "Authority-Decision-Id")
         TreasurySpends[spend_id] = {
             amount = amount,
             asset = tag(msg, "Asset"),
@@ -742,7 +758,8 @@ Handlers.add("treasury-spend",
             chain_id = chain_id,
             bridge_event_id = bridge_event_id,
             bridge_payload_sha256 = bridge_payload_sha256,
-            approved_by = msg.From
+            approved_by = msg.From,
+            authority_decision_id = t_aid
         }
         TreasuryBridgeEvents[bridge_event_id] = {
             kind = "treasury-spend",
@@ -758,7 +775,7 @@ Handlers.add("treasury-spend",
         }
 
         print("treasury-spend success for " .. spend_id)
-        ao.send({
+        local tbridge = {
             Target = msg.From,
             Action = "Treasury-Bridge-Event",
             ["Spend-Id"] = spend_id,
@@ -766,7 +783,11 @@ Handlers.add("treasury-spend",
             ["Bridge-Payload-Sha256"] = bridge_payload_sha256,
             ["State-Height"] = tostring(StateTip.height),
             ["State-Root"] = StateTip.root
-        })
+        }
+        if t_aid then
+            tbridge["Authority-Decision-Id"] = t_aid
+        end
+        ao.send(tbridge)
     end
 )
 
@@ -844,16 +865,22 @@ Handlers.add("spend",
             return
         end
 
+        local o_aid = optional_nonempty_tag(msg, "Authority-Decision-Id")
         OutboundSpends[spend_id] = {
             amount = amount,
             asset = tag(msg, "Asset"),
             recipient = tag(msg, "Recipient"),
             daily_cap = daily_cap,
-            approved_by = msg.From
+            approved_by = msg.From,
+            authority_decision_id = o_aid
         }
 
         print("spend success for " .. spend_id)
-        ao.send({ Target = msg.From, Action = "Spend-Approved", ["Spend-Id"] = spend_id })
+        local spend_reply = { Target = msg.From, Action = "Spend-Approved", ["Spend-Id"] = spend_id }
+        if o_aid then
+            spend_reply["Authority-Decision-Id"] = o_aid
+        end
+        ao.send(spend_reply)
     end
 )
 

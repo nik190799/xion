@@ -10,6 +10,22 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased](https://example.invalid/compare/pre-genesis-v0...HEAD)
 
+### Operator automation — Sepolia treasury redeploy + RPC soak — 2026-05-03
+
+- **WSL Foundry:** `foundryup` installed Foundry **1.6.0** under `~/.foundry/bin` (WSL user); native Windows PATH may still omit `cast` / `forge` — `xion_ops` continues to invoke Foundry through WSL on Windows.
+- **Base Sepolia:** `xion_ops base-evm deploy-treasury --network base-sepolia` broadcast + `pin-deployment`; `genesis/TREASURY_VAULTS.json` updated (`master_treasury` **`0xd2b257200cc12b4e44d65063c0d63d25989455b6`**, block **`41040532`**).
+- **`scripts/treasury_soak_probes.py`:** uses **`eth_call`** against `governance()`, `aoCoreAuthority()`, `registeredChainCount()` when **`cast`** is absent.
+- **Docs honesty:** `docs/STATE_OF_XION_PREFLIGHT.md`, `docs/PHASE_7_PREFLIGHT_STATUS.md`, **`KNOWN_WEAKNESSES.md` (`KW-AUDIT-001`)**, and **`LONG_HORIZON_THREATS.md` (`LHT-SUBSTRATE-001`)** — agent cannot commission external audit or satisfy non-operator Immortality Drill; schedule slip **2026-07-01** for drill attempt.
+
+### Phase 7 preflight / spend authority engineering — 2026-05-03
+
+- **`scripts/verify_mainnet_deploy_gates.py`:** with **`TREASURY_SOAK_PROBES=1`**, Unix hosts run **`treasury-soak-probes.sh`** via Git Bash path translation; **Windows** runs **`scripts/treasury_soak_probes.py`** (`cast` when on PATH, else JSON-RPC **`eth_call`**).
+- **`orchestrator/spend_authority/writer.py`:** default-path **`append_to_repo_ledger`** / **`default_ledger_path`** for **`ledgers/SPEND_AUTHORITY_LEDGER.jsonl`**; package re-exports in **`orchestrator/spend_authority/__init__.py`**; tests **`orchestrator/tests/test_spend_writer.py`**.
+- **AO Core (`ao/core/main.lua`):** optional tag **`Authority-Decision-Id`** on **`Spend`**, **`Treasury-Spend`**, and **`Improvement-Spend`** for correlation with spend-authority **`decision_id`** (echoed on success messages when set).
+- **`docs/runbooks/SPEND_POSTURE_TRANSITION.md`:** operator runbook for ledger append, AO correlation, and verifiers.
+- **`docs/SPEND-AUTONOMY.md`:** verifier text aligned with live **`spend-posture`** / **`spend-discipline`** and arbitration reference.
+- **`docs/PHASE_7_PREFLIGHT_STATUS.md`** and **`docs/STATE_OF_XION_PREFLIGHT.md`:** gate-bundle evidence, Sepolia redeploy line, audit review **2026-06-01**, drill schedule slip **2026-07-01**.
+
 ### D3 Akash/Chutes operator parity — 2026-05-03
 
 - `**python -m xion_ops chutes verify-cords`:** `**GET /health*`*, `**/quote**`, `**/self**` sequentially; Bearer from env or `**--bearer-file**` (raw line or `**CHUTES_API_KEY=**`) — `[docs/runbooks/CHUTES_RELAY_DEPLOY.md](docs/runbooks/CHUTES_RELAY_DEPLOY.md)`. **CLI exits non-zero on red cords** (`**--allow-failure`** for JSON-only scraping). Tests `[test_chutes_verify_cords_mocked.py](xion_ops/tests/test_chutes_verify_cords_mocked.py)`, `[test_cli_chutes_helpers.py](xion_ops/tests/test_cli_chutes_helpers.py)`.

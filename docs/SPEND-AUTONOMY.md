@@ -8,7 +8,7 @@
 
 **Invariants touched.** Implements Invariant 19. Strengthens Invariants 5, 11, 15, and 16 by preventing funds-on-hand from becoming spend authority, drive input, or a Covenant-Economy bypass.
 
-**Verification.** `xion-verify spend-posture` checks authority routing. `xion-verify spend-discipline` checks mode, runway-ratio, priority, and recurring-burn discipline. Both report `NOT_YET_SEALED` until Phase 7.0.
+**Verification.** `xion-verify spend-posture` checks authority routing. `xion-verify spend-discipline` checks mode, runway-ratio, priority, and recurring-burn discipline. Both are live against repository ledger bytes when `ledgers/SPEND_AUTHORITY_LEDGER.jsonl` is present; a missing ledger yields OK with zero rows until the operator records decisions.
 
 **Deprecation.** Specific posture names, evidence thresholds, and routing tables are operational doctrine. The property that spend authority is earned by evidence, not money, is constitutional under Invariant 19.
 
@@ -158,10 +158,10 @@ Every posture transition and discretionary spend approval writes to `SPEND_AUTHO
 1. mode allowed the spend class;
 2. runway ratios remained inside limits;
 3. recurring-burn discipline passed;
-4. contested-headroom arbitration followed the published order;
+4. contested-headroom arbitration is enforced operationally via [`orchestrator/spend_arbitration.py`](../orchestrator/spend_arbitration.py) before contested rows are approved;
 5. no inflow tag advanced posture.
 
-Until Phase 7.0, both verifiers return `NOT_YET_SEALED`.
+Operator posture transitions: see [`docs/runbooks/SPEND_POSTURE_TRANSITION.md`](runbooks/SPEND_POSTURE_TRANSITION.md).
 
 ---
 

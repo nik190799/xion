@@ -82,8 +82,11 @@ After pin: run Relay / operator traffic if applicable, monitor `cast call` probe
 
 ```bash
 bash scripts/treasury-soak-probes.sh
+# Windows — no cast on PATH: same probes via stdlib JSON-RPC
+python scripts/treasury_soak_probes.py
 # or, after verifier bundle:
-TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh
+TREASURY_SOAK_PROBES=1 bash scripts/verify-mainnet-deploy-gates.sh   # Unix
+TREASURY_SOAK_PROBES=1 python scripts/verify_mainnet_deploy_gates.py # Windows runs treasury_soak_probes.py automatically
 ```
 
 ## Verifiers

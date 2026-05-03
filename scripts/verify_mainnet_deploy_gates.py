@@ -13,6 +13,18 @@ import sys
 from pathlib import Path
 
 
+def _bash_script_path(path: Path) -> str:
+    """Path for Git Bash / MSYS when spawning ``bash`` from Windows Python."""
+    resolved = path.resolve()
+    if sys.platform == "win32":
+        s = str(resolved)
+        if len(s) > 2 and s[1] == ":":
+            drive = s[0].lower()
+            rest = s[2:].replace("\\", "/")
+            return f"/{drive}{rest}"
+    return str(resolved).replace("\\", "/")
+
+
 def _load_dotenv(root: Path) -> None:
     env_path = root / ".env"
     if not env_path.is_file():
@@ -62,14 +74,19 @@ def main() -> int:
                 "(expected until Sepolia rehearsal + manifests match)"
             )
         if os.environ.get("TREASURY_SOAK_PROBES") == "1":
-            soak = root / "scripts" / "treasury-soak-probes.sh"
-            rc = subprocess.call(["bash", str(soak)], cwd=root)
+            soak_sh = root / "scripts" / "treasury-soak-probes.sh"
+            soak_py = root / "scripts" / "treasury_soak_probes.py"
+            if sys.platform == "win32":
+                rc = subprocess.call([sys.executable, str(soak_py)], cwd=str(root))
+            else:
+                rc = subprocess.call(["bash", _bash_script_path(soak_sh)], cwd=str(root))
             if rc != 0:
-                print(f"[verify_mainnet_deploy_gates] WARN: treasury-soak-probes exited {rc}")
+                print(f"[verify_mainnet_deploy_gates] WARN: treasury soak probes exited {rc}")
         else:
             print(
-                "[verify_mainnet_deploy_gates] hint: set TREASURY_SOAK_PROBES=1 to run cast probes "
-                "(requires bash + forge cast on PATH)"
+                "[verify_mainnet_deploy_gates] hint: set TREASURY_SOAK_PROBES=1 to run treasury soak probes. "
+                "Windows uses scripts/treasury_soak_probes.py (cast if on PATH, else JSON-RPC). "
+                "Unix uses scripts/treasury-soak-probes.sh under bash."
             )
     except subprocess.CalledProcessError as exc:
         return exc.returncode
