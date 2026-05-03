@@ -500,7 +500,9 @@ class ChutesService(OpsService):
             cmd.append("--wait")
         # Official `build --wait` runs until completion; omit timeout unless CI caps wall-clock.
         build_to = _optional_positive_int_timeout("XION_CHUTES_BUILD_CMD_TIMEOUT_SEC")
+        started = time.monotonic()
         result = self._invoke_chutes_cli(cmd, timeout=build_to)
+        duration_s = round(time.monotonic() - started, 3)
         quota_hit = False
         low = (result.stderr or "") + "\n" + (result.stdout or "")
         ll = low.lower()
@@ -508,6 +510,9 @@ class ChutesService(OpsService):
             quota_hit = True
 
         details: dict[str, Any] = {
+            "command": ["chutes"] + cmd,
+            "returncode": result.returncode,
+            "duration_s": duration_s,
             "stdout": result.stdout,
             "stderr": result.stderr,
             "chute_ref": ref,
@@ -543,7 +548,9 @@ class ChutesService(OpsService):
         if accept_fee:
             cmd.append("--accept-fee")
         deploy_to = _optional_positive_int_timeout("XION_CHUTES_DEPLOY_CMD_TIMEOUT_SEC")
+        started = time.monotonic()
         result = self._invoke_chutes_cli(cmd, timeout=deploy_to)
+        duration_s = round(time.monotonic() - started, 3)
         combined = combined_command_output(result)
         parsed = parse_chutes_deploy_output(combined)
         chute_id = parsed.get("chute_id")
@@ -556,6 +563,9 @@ class ChutesService(OpsService):
             url = _extract_url(result.stdout) or _extract_url(result.stderr)
 
         details: dict[str, Any] = {
+            "command": ["chutes"] + cmd,
+            "returncode": result.returncode,
+            "duration_s": duration_s,
             "stdout": result.stdout,
             "stderr": result.stderr,
             "chute_ref": ref,

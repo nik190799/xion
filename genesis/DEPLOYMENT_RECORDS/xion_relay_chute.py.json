@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-05-03T09:02:16Z",
+  "created_at": "2026-05-03T18:16:28Z",
   "deployer": "relay-chutes",
   "evidence": {
     "params": {
@@ -13,7 +13,7 @@
   "result": {
     "details": {
       "deploy_command_ok": false,
-      "stderr": "Usage: chutes chutes [OPTIONS] COMMAND [ARGS]...\nTry 'chutes chutes --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 No such command 'deploy'.                                                    \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+      "stderr": "2026-05-03 04:03:07.304 | ERROR    | chutes.entrypoint._shared:load_chute:138 - Invalid module name 'xion_relay_chute.py', usage: [module_name:chute_name] [args]\n",
       "stdout": ""
     },
     "dseq": null,
@@ -28,6 +28,6 @@
     "code": 0,
     "command": "chutes verify-cords",
     "ok": false,
-    "output": "{'cords': {'/health': {'ok': False, 'status': 404, 'body_prefix': 'Not Found'}, '/quote': {'ok': False, 'status': 502, 'body_prefix': 'Bad Gateway'}, '/self': {'ok': False, 'status': 502, 'body_prefix': 'Bad Gateway'}}, 'bearer_attached': True, 'result': 'one or more cords failed'}"
+    "output": "{'cords': {'/health': {'ok': False, 'status': 503, 'body_prefix': 'Service Unavailable'}, '/quote': {'ok': False, 'status': 503, 'body_prefix': 'Service Unavailable'}, '/self': {'ok': False, 'status': 503, 'body_prefix': 'Service Unavailable'}}, 'bearer_attached': True, 'result': 'one or more cords failed'}"
   }
 }

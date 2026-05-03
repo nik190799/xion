@@ -582,6 +582,7 @@ class AkashService(OpsService):
         dseq: str | None = None
         provider: str | None = None
         svc_name = lease_service_name or os.environ.get("XION_AKASH_LEASE_SERVICE_NAME", "xion-relay")
+        started = time.monotonic()
         try:
             self.ensure_deploy_preflight()
             if _truthy_env("XION_AKASH_REQUIRE_UACT"):
@@ -613,7 +614,11 @@ class AkashService(OpsService):
                 dseq=dseq,
                 provider=provider,
                 url=status.forwarded_url,
-                details=status.raw,
+                details={
+                    **status.raw,
+                    "duration_s": round(time.monotonic() - started, 3),
+                    "survey_count": len(survey)
+                },
             )
         except Exception as exc:
             if dseq and provider is None:
@@ -629,7 +634,7 @@ class AkashService(OpsService):
                 id=dseq,
                 dseq=dseq,
                 provider=provider,
-                details={"error": str(exc), **close_details},
+                details={"error": str(exc), "duration_s": round(time.monotonic() - started, 3), **close_details},
             )
 
     def _wait_for_ready(
