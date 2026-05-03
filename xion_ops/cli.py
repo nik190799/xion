@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -11,8 +12,26 @@ from urllib.parse import urlparse
 import click
 
 from xion_ops.env import load_repo_env, upsert_repo_env
-from xion_ops.registry import deployer_names, get_deployer, get_service, service_names
+from xion_ops.registry import get_deployer, get_service, service_names
+from xion_ops.services.chutes import DEFAULT_CHUTE_REF
 from xion_ops.types import DeployContext
+
+
+def _read_chutes_bearer_file(path: Path) -> str:
+    """First non-empty line as raw token, or parse ``CHUTES_API_KEY=value`` / ``XION_CHUTES_API_KEY=value``."""
+
+    raw = path.read_text(encoding="utf-8").strip().splitlines()
+    for line in raw:
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        upper = s.upper()
+        if upper.startswith("CHUTES_API_KEY="):
+            return s.split("=", 1)[1].strip().strip('"').strip("'")
+        if upper.startswith("XION_CHUTES_API_KEY="):
+            return s.split("=", 1)[1].strip().strip('"').strip("'")
+        return s.strip().strip('"').strip("'")
+    raise click.BadParameter(f"empty or missing token lines: {path}")
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -65,12 +84,88 @@ def akash_preflight() -> None:
     render_balance_table(get_service("akash").balances())
 
 
+@akash_group.command(name="cert-ensure")
+def akash_cert_ensure() -> None:
+    """Run client cert generate + publish when none is on-chain (idempotent)."""
+
+    get_service("akash").ensure_client_cert_published()  # type: ignore[attr-defined]
+    click.echo("akash cert-ensure: OK")
+
+
+@akash_group.command(name="deployment-list")
+@click.option("--state", default=None, help="Filter: active | closed")
+@click.option("--json-output", is_flag=True)
+def akash_deployment_list(state: str | None, json_output: bool) -> None:
+    svc = get_service("akash")
+    payload = svc.query_deployment_list(state=state)  # type: ignore[attr-defined]
+    click.echo(json.dumps(payload, indent=2 if json_output else None, sort_keys=True))
+
+
+@akash_group.command(name="deployment-get")
+@click.argument("dseq")
+@click.option("--json-output", is_flag=True)
+def akash_deployment_get(dseq: str, json_output: bool) -> None:
+    svc = get_service("akash")
+    payload = svc.query_deployment_get(dseq)  # type: ignore[attr-defined]
+    click.echo(json.dumps(payload, indent=2 if json_output else None, sort_keys=True))
+
+
+@akash_group.command(name="lease-list")
+@click.option("--dseq", default=None)
+@click.option("--state", default=None)
+@click.option("--json-output", is_flag=True)
+def akash_lease_list(dseq: str | None, state: str | None, json_output: bool) -> None:
+    svc = get_service("akash")
+    payload = svc.query_market_lease_list(dseq=dseq, state=state)  # type: ignore[attr-defined]
+    click.echo(json.dumps(payload, indent=2 if json_output else None, sort_keys=True))
+
+
+@akash_group.command(name="tx")
+@click.argument("tx_hash")
+@click.option("--json-output", is_flag=True)
+def akash_tx_lookup(tx_hash: str, json_output: bool) -> None:
+    svc = get_service("akash")
+    payload = svc.query_tx(tx_hash)  # type: ignore[attr-defined]
+    click.echo(json.dumps(payload, indent=2 if json_output else None, sort_keys=True))
+
+
+@akash_group.command(name="deployment-update")
+@click.argument("dseq")
+@click.argument("sdl_path", type=click.Path(exists=True, dir_okay=False))
+def akash_deployment_update(dseq: str, sdl_path: str) -> None:
+    svc = get_service("akash")
+    result = svc.update_deployment(sdl_path, dseq)  # type: ignore[attr-defined]
+    click.echo(result.stdout)
+
+
+@akash_group.command(name="send-manifest")
+@click.argument("sdl_path", type=click.Path(exists=True, dir_okay=False))
+@click.argument("dseq")
+@click.argument("provider")
+def akash_send_manifest(sdl_path: str, dseq: str, provider: str) -> None:
+    svc = get_service("akash")
+    result = svc.send_manifest(sdl_path, dseq, provider)  # type: ignore[attr-defined]
+    click.echo(result.stdout)
+    if result.returncode != 0:
+        raise click.exceptions.Exit(result.returncode)
+
+
 @akash_group.command(name="mint-act")
 @click.argument("uakt_amount", type=int)
-def akash_mint_act(uakt_amount: int) -> None:
+@click.option(
+    "--wait-ledger",
+    is_flag=True,
+    help="After mint tx, poll until BME ledger rows are ledger_record_status_executed.",
+)
+def akash_mint_act(uakt_amount: int, wait_ledger: bool) -> None:
     service = get_service("akash")
     result = service.mint_act(uakt_amount)  # type: ignore[attr-defined]
     click.echo(result.stdout)
+    if wait_ledger:
+        ok = service.wait_for_ledger_executed()  # type: ignore[attr-defined]
+        click.echo(json.dumps({"bme_ledger_all_executed": ok}, indent=2, sort_keys=True))
+        if not ok:
+            raise click.exceptions.Exit(1)
 
 
 @akash_group.command(name="deploy")
@@ -101,9 +196,10 @@ def akash_health_smoke(url: str) -> None:
 @akash_group.command(name="lease-status")
 @click.argument("dseq")
 @click.argument("provider")
-def akash_lease_status(dseq: str, provider: str) -> None:
+@click.option("--service-name", default="xion-relay", show_default=True)
+def akash_lease_status(dseq: str, provider: str, service_name: str) -> None:
     service = get_service("akash")
-    status = service.lease_status(dseq, provider)  # type: ignore[attr-defined]
+    status = service.lease_status(dseq, provider, service_name=service_name)  # type: ignore[attr-defined]
     click.echo(json.dumps(status.raw, indent=2, sort_keys=True))
 
 
@@ -179,11 +275,68 @@ def chutes_health(url: str | None) -> None:
     click.echo(json.dumps(health.__dict__, indent=2, sort_keys=True))
 
 
+@chutes_group.command(name="warmup")
+@click.argument("url", required=False)
+@click.option(
+    "--bearer-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Bearer token file (same as verify-cords).",
+)
+@click.option("--max-wait", type=float, default=None, help="Cap in seconds (default env or 600).")
+@click.option("--interval", type=float, default=None, help="Seconds between probes (default env or 15).")
+@click.option(
+    "--platform-slug",
+    default=None,
+    help="Runs `chutes warmup <slug>` once before polling (cold miners); overrides env slug.",
+)
+@click.option("--allow-failure", is_flag=True, help="Always exit 0 (for scripted JSON scraping).")
+def chutes_warmup(
+    url: str | None,
+    bearer_file: Path | None,
+    max_wait: float | None,
+    interval: float | None,
+    platform_slug: str | None,
+    allow_failure: bool,
+) -> None:
+    token = _read_chutes_bearer_file(bearer_file) if bearer_file else None
+    if token:
+        os.environ.setdefault("CHUTES_API_KEY", token)
+    svc = get_service("chutes")
+    raw_slug = platform_slug.strip() if isinstance(platform_slug, str) else None
+    result = svc.warmup_until_cords_green(  # type: ignore[attr-defined]
+        url,
+        max_wait_seconds=max_wait,
+        interval_seconds=interval,
+        platform_warmup_slug=raw_slug or None,
+    )
+    click.echo(json.dumps(asdict(result), indent=2, sort_keys=True, default=str))
+    if not result.ok and not allow_failure:
+        raise click.exceptions.Exit(1)
+
+
 @chutes_group.command(name="verify-cords")
 @click.argument("url", required=False)
-def chutes_verify_cords(url: str | None) -> None:
+@click.option(
+    "--bearer-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Optional path to first-line Bearer token OR .env-format CHUTES_API_KEY=... "
+    "(for hosts where repo `.env` is absent from the operator shell).",
+)
+@click.option(
+    "--allow-failure",
+    is_flag=True,
+    help="Do not exit non-zero when cords fail (default: exit 1 unless each path returns 2xx).",
+)
+def chutes_verify_cords(url: str | None, bearer_file: Path | None, allow_failure: bool) -> None:
+    token = _read_chutes_bearer_file(bearer_file) if bearer_file else None
+    if token:
+        os.environ.setdefault("CHUTES_API_KEY", token)
     result = get_service("chutes").verify_cords(url)  # type: ignore[attr-defined]
-    click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True))
+    click.echo(json.dumps(asdict(result), indent=2, sort_keys=True, default=str))
+    if not result.ok and not allow_failure:
+        raise click.exceptions.Exit(1)
 
 
 @chutes_group.command(name="verify-import")
@@ -191,6 +344,44 @@ def chutes_verify_cords(url: str | None) -> None:
 def chutes_verify_import(module_path: str) -> None:
     result = get_service("chutes").verify_import(module_path)  # type: ignore[attr-defined]
     click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True))
+
+
+@chutes_group.command(name="chutes-get")
+@click.argument("name_or_id")
+@click.option("--json-output", is_flag=True, help="Print stdout/stderr as JSON (captures upstream Rich/JSON mix).")
+def chutes_managed_get_cmd(name_or_id: str, json_output: bool) -> None:
+    """Run ``chutes chutes get <name_or_id>`` (miner/instance visibility)."""
+
+    svc = get_service("chutes")
+    result = svc.chutes_chutes_get(name_or_id)  # type: ignore[attr-defined]
+    payload = {"ok": result.ok, "id": result.id, **(result.details or {})}
+    if json_output:
+        click.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    else:
+        click.echo(payload.get("stdout") or "")
+        if payload.get("stderr"):
+            click.echo(payload["stderr"], err=True)
+    if not result.ok:
+        raise click.exceptions.Exit(1)
+
+
+@chutes_group.command(name="images-list")
+@click.option("--limit", default=25, show_default=True, type=int)
+@click.option("--page", default=0, show_default=True, type=int)
+@click.option("--json-output", is_flag=True)
+def chutes_images_list_cmd(limit: int, page: int, json_output: bool) -> None:
+    """Run ``chutes images list`` (includes recent builds; check image-history quota)."""
+
+    svc = get_service("chutes")
+    result = svc.chutes_images_list(limit=limit, page=page)  # type: ignore[attr-defined]
+    if json_output:
+        click.echo(json.dumps({"ok": result.ok, **(result.details or {})}, indent=2, sort_keys=True))
+    else:
+        click.echo((result.details or {}).get("stdout") or "")
+        if (result.details or {}).get("stderr"):
+            click.echo((result.details or {})["stderr"], err=True)
+    if not result.ok:
+        raise click.exceptions.Exit(1)
 
 
 @main.group(name="base-evm")
@@ -310,17 +501,105 @@ def deploy_group() -> None:
 @deploy_group.command(name="relay-akash")
 @click.option("--sdl-path", default="infra/akash/relay-deployment.yaml")
 @click.option("--prefer-provider", default=None)
-def deploy_relay_akash(sdl_path: str, prefer_provider: str | None) -> None:
-    params: dict[str, object] = {"sdl_path": sdl_path}
+@click.option("--exclude-provider", multiple=True, help="Skip these provider addresses during bid selection.")
+@click.option(
+    "--no-publish-registry",
+    is_flag=True,
+    help="Skip Arweave relay-registry publish after a successful lease.",
+)
+def deploy_relay_akash(
+    sdl_path: str,
+    prefer_provider: str | None,
+    exclude_provider: tuple[str, ...],
+    no_publish_registry: bool,
+) -> None:
+    params: dict[str, object] = {
+        "sdl_path": sdl_path,
+        "publish_registry": not no_publish_registry,
+    }
     if prefer_provider:
         params["prefer_provider"] = prefer_provider
+    if exclude_provider:
+        params["rejected_providers"] = set(exclude_provider)
     _run_deployer("relay-akash", params)
 
 
 @deploy_group.command(name="relay-chutes")
-@click.option("--module-path", default="xion_relay_chute.py")
-def deploy_relay_chutes(module_path: str) -> None:
-    _run_deployer("relay-chutes", {"module_path": module_path})
+@click.option(
+    "--module-path",
+    default=DEFAULT_CHUTE_REF,
+    show_default=True,
+    help="Chutes ref `module:chute` (e.g. xion_relay_chute:chute); *.py normalized to `:chute`.",
+)
+@click.option(
+    "--build-wait",
+    is_flag=True,
+    help="Run `chutes build <ref> --wait` before deploy (official Chutes happy path).",
+)
+@click.option(
+    "--accept-fee",
+    is_flag=True,
+    help="Pass --accept-fee to `chutes deploy` (required for stale metadata on updates).",
+)
+@click.option(
+    "--public",
+    is_flag=True,
+    help="Pass --public to upstream `chutes build`/`deploy` (requires deploy permissions).",
+)
+@click.option("--debug", is_flag=True, help="Pass --debug to upstream chutes CLI for build/deploy.")
+@click.option("--logo", default=None, help="Optional --logo path for build/deploy.")
+@click.option("--config-path", default=None, help="Optional --config-path for upstream chutes CLI.")
+@click.option(
+    "--include-cwd",
+    is_flag=True,
+    help="Pass --include-cwd to `chutes build` (only meaningful with --build-wait).",
+)
+@click.option("--warmup-max-wait", type=float, default=None)
+@click.option("--warmup-interval", type=float, default=None)
+@click.option(
+    "--platform-warmup-slug",
+    default=None,
+    help="Optional `chutes warmup <slug>` before HTTP polls; overrides XION_CHUTES_WARMUP_SLUG.",
+)
+@click.option(
+    "--no-publish-registry",
+    is_flag=True,
+    help="Warm and verify cords but skip relay-registry publication.",
+)
+def deploy_relay_chutes(
+    module_path: str,
+    build_wait: bool,
+    accept_fee: bool,
+    public: bool,
+    debug: bool,
+    logo: str | None,
+    config_path: str | None,
+    include_cwd: bool,
+    warmup_max_wait: float | None,
+    warmup_interval: float | None,
+    platform_warmup_slug: str | None,
+    no_publish_registry: bool,
+) -> None:
+    params: dict[str, object] = {
+        "module_path": module_path,
+        "accept_fee": accept_fee,
+        "publish_registry": not no_publish_registry,
+        "build_wait": build_wait,
+        "public": public,
+        "debug": debug,
+        "include_cwd": include_cwd,
+    }
+    if logo:
+        params["logo"] = logo
+    if config_path:
+        params["config_path"] = config_path
+    if warmup_max_wait is not None:
+        params["warmup_max_wait_seconds"] = warmup_max_wait
+    if warmup_interval is not None:
+        params["warmup_interval_seconds"] = warmup_interval
+    if platform_warmup_slug:
+        params["platform_warmup_slug"] = platform_warmup_slug
+    _run_deployer("relay-chutes", params)
 
 
 @deploy_group.command(name="base-contracts")
@@ -346,12 +625,88 @@ def registry_update_akash_row(endpoint: str, image_tag: str, instance_class: str
     click.echo("registry update-akash-row: OK")
 
 
+@registry_group.command(name="update-chutes-row")
+@click.option("--endpoint", required=True, help="Public HTTPS relay base (*.chutes.ai).")
+@click.option("--chute-id", "chute_id", required=True)
+@click.option("--image-id", "image_id", required=True)
+@click.option("--image-tag", "image_tag", required=True)
+@click.option("--instance-id", "instance_id", default="", help="Warm worker/instance id when known.")
+@click.option("--relay-id", "relay_id", default="", help="Override relays[1].relay_id.")
+@click.option("--service", default="", help='Override relays[1].service (default "xion-relay-chutes").')
+@click.option("--path", "registry_path", default="ledgers/RELAY_REGISTRY.json")
+def registry_update_chutes_row(
+    endpoint: str,
+    chute_id: str,
+    image_id: str,
+    image_tag: str,
+    instance_id: str,
+    relay_id: str,
+    service: str,
+    registry_path: str,
+) -> None:
+    """Patch ``relays[1]`` for substrate ``chutes`` (genesis ordering)."""
+
+    path = Path(registry_path)
+    _update_chutes_registry_row(
+        path,
+        endpoint=endpoint,
+        chute_id=chute_id,
+        image_id=image_id,
+        image_tag=image_tag,
+        instance_id=instance_id.strip(),
+        relay_id=relay_id.strip(),
+        service=service.strip(),
+    )
+    click.echo("registry update-chutes-row: OK")
+
+
 def _run_deployer(name: str, params: dict[str, object]) -> None:
     deployer = get_deployer(name)
     record = deployer.run(DeployContext(repo_root=Path("."), params=params))
     click.echo(json.dumps(record.to_dict(), indent=2, sort_keys=True))
     if not record.result.ok or not record.verify.ok:
         raise click.exceptions.Exit(1)
+
+
+def _update_chutes_registry_row(
+    path: Path,
+    *,
+    endpoint: str,
+    chute_id: str,
+    image_id: str,
+    image_tag: str,
+    instance_id: str,
+    relay_id: str,
+    service: str,
+) -> None:
+    parsed = urlparse(endpoint)
+    if parsed.scheme != "https" or not parsed.hostname or "placeholder" in endpoint.lower():
+        raise click.ClickException(f"invalid Chutes endpoint for registry: {endpoint}")
+    payload_obj = json.loads(path.read_text(encoding="utf-8"))
+    relays = payload_obj.get("relays")
+    if not isinstance(relays, list) or len(relays) < 2 or not isinstance(relays[1], dict):
+        raise click.ClickException("registry must contain relays[1] dict for secondary Chutes row")
+    row = relays[1]
+    if row.get("substrate") and row.get("substrate") != "chutes":
+        raise click.ClickException(f"relays[1].substrate must be chutes, got {row.get('substrate')!r}")
+    row["endpoint"] = endpoint.rstrip("/")
+    row["substrate"] = "chutes"
+    row["chute_id"] = chute_id
+    row["image_id"] = image_id
+    row["image_tag"] = image_tag
+    if instance_id:
+        row["instance_id"] = instance_id
+    if relay_id:
+        row["relay_id"] = relay_id
+    if service:
+        row["service"] = service
+    row["last_seen_utc_ns"] = time.time_ns()
+    payload_obj["as_of_utc_ns"] = time.time_ns()
+    body = {key: value for key, value in payload_obj.items() if key != "payload_sha256"}
+    payload_obj["payload_sha256"] = _sha256_json(body)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload_obj, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 def _update_akash_registry_row(path: Path, *, endpoint: str, image_tag: str, instance_class: str) -> None:

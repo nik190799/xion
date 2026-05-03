@@ -37,7 +37,8 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 | **`gas-prices`** too low | `insufficient fees` on `cert publish` / other txs | e.g. `--gas auto --gas-adjustment 2 --gas-prices 0.5uakt` (values drift with network). |
 | Client **cert** missing | `could not open certificate PEM file` on `deployment create` | `tx cert generate client` then `tx cert publish client` (same key / keyring). |
 | Provider status API **auth** | `JWT has invalid claims` on `lease-status` | Use **`--auth-type mtls`** (default JWT path failed in practice against provider gateway). |
-| Forwarded URL + TLS | Connection errors or cert warnings | Ingress uses **HTTPS** on forwarded port; Relay uses **ephemeral TLS** in image unless you mount real `XION_TLS_*` — use **`curl -k`** for smoke checks. |
+| Forwarded URL + TLS | Connection errors or cert warnings | Ingress uses **HTTPS** on forwarded port; Relay uses **ephemeral TLS** in image unless you mount real `XION_TLS_*` — use **`curl -k`** for smoke checks. **`xion_ops akash deploy`** probes **`GET /health`** via **WSL `curl -k`** on Windows (falls back to urllib on non-Windows) because native Windows stacks sometimes time out toward provider forwards that WSL reaches. |
+| **Registry publish automation** | Operator forgets manual Arweave publication after lease | **`python -m xion_ops deploy relay-akash`** publishes `ledgers/RELAY_REGISTRY.json` after lease health unless **`--no-publish-registry`** — use `--no-publish-registry` for rehearsals / dry leases. |
 | Hostname / port | Stale bookmarks | `forwarded_ports` (**`host` + `externalPort`**) change per lease/provider; always re-read **`lease-status`**. |
 | Open-weights floor location | `open_weights_only` works only while the operator laptop is on | The SDL carries a private `xion-ollama` sidecar and sets `XION_OLLAMA_URL=http://xion-ollama:11434`; do not count a laptop-local Ollama daemon as deployed-floor evidence. |
 | GPU sidecar pricing | CPU-sized bids never clear GPU leases, or the provider schedules a CPU-only floor that times out | The `xion-ollama` sidecar starts at **`10000 uact`/block** and requests one NVIDIA GPU. Tune this from observed `bid list`, then record the accepted bid in `docs/runbooks/POST_FUNDING_DEPLOY.md`. |
@@ -204,6 +205,36 @@ The script uses the same JSON bytes as the on-disk registry (minified, sorted ke
 - Re-run **`bash scripts/akash-lease-status.sh`** after any deploy or provider change; **`forwarded_ports`** (`host`, `externalPort`) move with the lease — refresh `relays[0].endpoint` and republish when they do (avoid blindly re-running `closeout` if you only need a registry hash bump without a new substrate dry-run row).
 - **`curl -k https://<lease-base>/health`** on cadence you trust for your SLA.
 - **`docs/runbooks/IMMORTALITY_DRILL.md`** — rehearse failover when you change registry posture or cord auth.
+
+## Appendix — forwarded ingress TLS (`*.nip.io`) and PowerShell clients
+
+Forwarded Akash ingress often presents a certificate whose **SAN does not include** the exact `provider.*.nip.io` hostname printed by `lease-status`. **`curl -k`** / **`curl --insecure`** remains the practical smoke posture (see changelog closeout examples). PowerShell 7+:
+
+```powershell
+Invoke-WebRequest -Uri "https://<host>:<port>/health" -SkipCertificateCheck
+```
+
+This addresses **operator ergonomics**, not Covenant transport semantics for eventual Genesis-hard ceremony URLs; pin real operator-controlled DNS names and matching certs when you need strict PKIX validation everywhere.
+
+## Appendix — `arbiter_healthy` vs open-weights floor
+
+`GET /health` exposes **`relay_healthy`**, **`arbiter_healthy`**, and related fields. **`arbiter_healthy: false`** means the Relay-side supervisor has not satisfied its Arbiter heartbeat contract within the doctrine grace window (`orchestrator/relay/relay.py`, `orchestrator/tests/test_relay_supervisor.py`). That posture is **orthogonal** to Inference Router **`open_weights_floor_unsatisfied`** on `POST /chat`. Treating Arbiter watchdog recovery as identical to **`KW-FLOOR-DEPLOY-001`** closure is incorrect — floor closure still requires the GPU SDL **with** **`xion-ollama`** and the external `/chat` proof in **Steps §8**.
+
+## KW-FLOOR-DEPLOY-001 — operator closure checklist (GPU SDL only)
+
+Closing **[`KW-FLOOR-DEPLOY-001`](../../KNOWN_WEAKNESSES.md)** requires **`infra/akash/relay-deployment.yaml`** (the GPU-backed **`xion-ollama`** topology), never the CPU-only relight YAML alone:
+
+| Step | Action |
+|------|--------|
+| 1 | Build/push Relay image digest; GPU SDL **`placement`** / **`denom`** / cert / gas discipline per **Important findings**. |
+| 2 | **`deployment create` → bid → lease → send-manifest`;** poll **`lease-status --auth-type mtls`**. |
+| 3 | **`curl -k https://<host>:<externalPort>/health`** until **`ready_replicas`** and Gemma cold-start gate complete. |
+| 4 | From a network **outside** laptop-local-only Ollama: **`POST /chat`** with **`max_tokens>=1024`**. For **`open_weights_only`** proof you must **`send-manifest`** the env onto the Relay (temporary flip), smoke, flip back (**§Important findings**, “read at process start”). |
+| 5 | **`scripts/substrate-portability-dry-run.sh`** / evidence rows as posture requires; **`xion-verify substrate-portability`**. |
+| 6 | Update **[`ledgers/RELAY_REGISTRY.json`](../../ledgers/RELAY_REGISTRY.json)** `relays[0]` (HTTPS base not placeholder, **`instance_class`** honesty for GPU+floor, **`payload_sha256`**, **`last_seen_utc_ns`**). **`bash scripts/publish-relay-registry-wsl.sh`**, refresh **`ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt`**. |
+| 7 | **`xion-verify discovery`** **`OK`;** amend **`KW-FLOOR-DEPLOY-001`** in **`KNOWN_WEAKNESSES.md`** only **after** the external smoke evidence exists. |
+
+**Registry-only bumps** — If the forwarded URL **does not** change, you still re-hash and may republish, but **do not** declare **`KW-FLOOR-DEPLOY-001`** closed without the GPU-floor `/chat` evidence row.
 
 ## Preflight
 

@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-05-03T09:02:16Z",
+  "deployer": "relay-chutes",
+  "evidence": {
+    "params": {
+      "accept_fee": false,
+      "module_path": "xion_relay_chute.py",
+      "publish_registry": false
+    }
+  },
+  "id": "xion_relay_chute.py",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "deploy_command_ok": false,
+      "stderr": "Usage: chutes chutes [OPTIONS] COMMAND [ARGS]...\nTry 'chutes chutes --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 No such command 'deploy'.                                                    \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+      "stdout": ""
+    },
+    "dseq": null,
+    "id": "xion_relay_chute.py",
+    "ok": false,
+    "provider": null,
+    "service": "chutes",
+    "tx": null,
+    "url": null
+  },
+  "verify": {
+    "code": 0,
+    "command": "chutes verify-cords",
+    "ok": false,
+    "output": "{'cords': {'/health': {'ok': False, 'status': 404, 'body_prefix': 'Not Found'}, '/quote': {'ok': False, 'status': 502, 'body_prefix': 'Bad Gateway'}, '/self': {'ok': False, 'status': 502, 'body_prefix': 'Bad Gateway'}}, 'bearer_attached': True, 'result': 'one or more cords failed'}"
+  }
+}

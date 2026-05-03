@@ -10,6 +10,19 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased]
 
+### D3 Akash/Chutes operator parity — 2026-05-03
+
+- **`python -m xion_ops chutes verify-cords`:** **`GET /health`**, **`/quote`**, **`/self`** sequentially; Bearer from env or **`--bearer-file`** (raw line or **`CHUTES_API_KEY=`**) — [`docs/runbooks/CHUTES_RELAY_DEPLOY.md`](docs/runbooks/CHUTES_RELAY_DEPLOY.md). **CLI exits non-zero on red cords** (**`--allow-failure`** for JSON-only scraping). Tests [`test_chutes_verify_cords_mocked.py`](xion_ops/tests/test_chutes_verify_cords_mocked.py), [`test_cli_chutes_helpers.py`](xion_ops/tests/test_cli_chutes_helpers.py).
+- **`chutes warmup` + `warmup_until_cords_green`:** long-poll verifier + optional **`chutes warmup <slug>`**; **`deploy relay-chutes`** wires timeouts / **`--accept-fee`** / registry skip (**`--no-publish-registry`**) — same runbook § Live Gate; tests [`test_chutes_verify_cords_mocked.py`](xion_ops/tests/test_chutes_verify_cords_mocked.py), [`test_relay_chutes_deployer_mocked.py`](xion_ops/tests/test_relay_chutes_deployer_mocked.py).
+- **`RelayChutesDeployer.run`:** rolls back (**`chutes delete`**) only when **`deploy_command_ok`** is false — HTTP warmup/registry failure leaves the deployed chute in place for operator recovery.
+- **`deploy relay-akash`:** publishes relay registry by default (**`--no-publish-registry`** to skip rehearsal publishes); tests [`test_relay_akash_deployer_mocked.py`](xion_ops/tests/test_relay_akash_deployer_mocked.py).
+- **`xion_ops akash deploy`**: post-ready **`health_smoke`** uses **120s** budget; on **Windows**, **`AkashService.health_smoke`** prefers **WSL `curl -k`** (urllib fallback if WSL missing) — see [`docs/runbooks/AKASH_RELAY_DEPLOY.md`](docs/runbooks/AKASH_RELAY_DEPLOY.md) Important findings row.
+- **Operator rehearsal (automated)** `relay-deployment.yaml`: GPU deploys reached **`akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e`** and **`akash1am3sv9ac6yq6a4s2hkkcn6sd6723fpkp3en08s`** leases but **forwarded TCP refused** curl `GET /health` from WSL (dseq **`26656098`**, **`26656107`**) → deployments **closed_owner** rollback; **`KW-FLOOR-DEPLOY-001`** unchanged.
+- **`docs/runbooks/CHUTES_RELAY_DEPLOY.md`:** documents Bearer + three-path verifier as authoritative; ties **`details.result`** to legacy “all cords green” wording.
+- **`docs/runbooks/AKASH_RELAY_DEPLOY.md`:** appendix for **nip.io TLS** (**PowerShell `SkipCertificateCheck`**, **`curl -k`**), **`arbiter_healthy`** vs **`open_weights_floor_unsatisfied`**, and a **KW-FLOOR-DEPLOY-001** condensed GPU checklist (registry republish honesty included).
+- **`KNOWN_WEAKNESSES.md`:** **`KW-FLOOR-DEPLOY-001`** / **`KW-RELAY-CHUTES-D3-001`** verifier lines reference the **`xion_ops`** three-cord path.
+- **`xion_relay_chute.py`:** **`IMAGE_TAG`** reset to **`pre-genesis-d3-10`** to match the committed live **`ledgers/RELAY_REGISTRY.json`** Chutes row until a deliberate **`d3-11`** image is built and pinned.
+
 ### Deploy / test-net gates — treasury rehearsal + Foundry CI
 
 - **Sepolia treasurer runbook:** [`docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md`](docs/runbooks/TREASURY_SEPOLIA_DEPLOY.md) wires env vars → `xion_ops base-evm deploy-treasury` (default **`base-sepolia`**) → `pin-deployment` → soak → verifier calls.
