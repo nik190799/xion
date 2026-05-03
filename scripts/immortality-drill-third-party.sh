@@ -101,8 +101,16 @@ probe_health() {
   local url="$2"
   local body_file="$WORKDIR/${name}.body"
   set +e
-  local status_code
-  status_code="$(curl --location --silent --show-error --insecure --max-time 20 --output "$body_file" --write-out "%{http_code}" "$url")"
+  local auth_header=""
+  if [[ "$name" == *"chutes"* && -n "${XION_SECONDARY_HEALTH_BEARER:-}" ]]; then
+    auth_header="Authorization: Bearer $XION_SECONDARY_HEALTH_BEARER"
+  fi
+
+  if [[ -n "$auth_header" ]]; then
+    status_code="$(curl --location --silent --show-error --insecure --max-time 20 --header "$auth_header" --output "$body_file" --write-out "%{http_code}" "$url")"
+  else
+    status_code="$(curl --location --silent --show-error --insecure --max-time 20 --output "$body_file" --write-out "%{http_code}" "$url")"
+  fi
   local curl_exit=$?
   set -e
   python - "$name" "$url" "$status_code" "$curl_exit" "$body_file" >>"$HEALTH_JSONL" <<'PY'
