@@ -48,7 +48,7 @@ from chutes.image import Image
 
 
 SERVICE_NAME = "xion-relay-chutes"
-IMAGE_TAG = "pre-genesis-d3-10"
+IMAGE_TAG = "pre-genesis-d3-12"
 RELAY_PORT = 8010
 RELAY_BASE_URL = f"http://127.0.0.1:{RELAY_PORT}"
 # Cold GPU workers often exceed 180s before uvicorn serves /health (image layer + deps + lifespan).

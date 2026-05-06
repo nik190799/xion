@@ -18,11 +18,13 @@ upload — override with ``XION_CHUTES_NONINTERACTIVE_BUILD_STDIN`` if your imag
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
 import shlex
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -82,7 +84,8 @@ def _stdin_for_chutes_subcommand(subcommand: str) -> str | None:
     if not chutes_cli_noninteractive():
         return None
     if subcommand == "deploy":
-        return "y\n"
+        # Remote ``chutes deploy`` may prompt for context upload then deploy confirm (same as build).
+        return os.environ.get("XION_CHUTES_NONINTERACTIVE_DEPLOY_STDIN", "y\ny\ny\n")
     if subcommand == "build":
         return os.environ.get("XION_CHUTES_NONINTERACTIVE_BUILD_STDIN", "n\ny\n")
     if subcommand == "delete":
@@ -106,6 +109,8 @@ def parse_chutes_deploy_output(text: str) -> dict[str, str | None]:
     mj = re.search(rf"\bchute_id=(?P<id>{_UUID_RE})\b", text)
     if not mj:
         mj = re.search(rf"'chute_id':\s*'(?P<id>{_UUID_RE})'", text)
+    if not mj:
+        mj = re.search(rf"\bchute_id='(?P<id>{_UUID_RE})'", text)
     if mj:
         chute_id = mj.group("id")
 
@@ -160,6 +165,50 @@ def _float_env(name: str, default: float) -> float:
         return default
 
 
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not str(raw).strip():
+        return default
+    try:
+        return int(float(str(raw).strip()))
+    except ValueError:
+        return default
+
+
+def _chutes_cli_transient_failure(result: CommandResult) -> bool:
+    """True when upstream ``api.chutes.ai`` (or nginx) likely failed transiently — worth retrying."""
+
+    if result.returncode == 0:
+        return False
+    blob = ((result.stderr or "") + "\n" + (result.stdout or "")).lower()
+    if "already exists" in blob and "image" in blob:
+        return False
+    if "imagehistory" in blob:
+        return False
+    if "not available to be used" in blob and "yet" in blob:
+        return True
+    markers = (
+        "502 bad gateway",
+        "503 service unavailable",
+        "504 gateway",
+        "500, message=",
+        "contenttypeerror: 500",
+        "connection reset",
+        "read timed out",
+        "timed out",
+        "temporary failure",
+    )
+    return any(m in blob for m in markers)
+
+
+def _chutes_cli_transient_retry_budget() -> tuple[int, float]:
+    """Extra attempts after the first failure, and sleep between tries (``0`` disables)."""
+
+    extra = max(0, _int_env("XION_CHUTES_CLI_TRANSIENT_RETRIES", 6))
+    gap = _float_env("XION_CHUTES_CLI_TRANSIENT_RETRY_INTERVAL_SEC", 15.0)
+    return extra, max(1.0, gap)
+
+
 def _repo_root_wsl_path(repo_root: Path) -> str:
     """Map a Windows repo path to a WSL `/mnt/<drive>/...` path for bash -lc."""
 
@@ -170,6 +219,16 @@ def _repo_root_wsl_path(repo_root: Path) -> str:
         tail = s[2:].replace("\\", "/")
         return f"/mnt/{drive}{tail}"
     return s.replace("\\", "/")
+
+
+def _wsl_stdin_pipe_prefix(stdin_text: str) -> str:
+    """When ``wsl bash -lc`` runs ``chutes``, ``subprocess.run(input=…)`` does not reach the nested CLI.
+
+    Prefix the inner command with ``echo <b64> | base64 -d |`` so confirmations reach ``chutes`` stdin.
+    """
+
+    enc = base64.b64encode(stdin_text.encode("utf-8")).decode("ascii")
+    return f"echo {shlex.quote(enc)} | base64 -d | "
 
 
 class ChutesService(OpsService):
@@ -195,23 +254,38 @@ class ChutesService(OpsService):
                 f"cd {shlex.quote(wsl_repo)}",
                 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
             ]
-            for key in ("CHUTES_API_KEY", "XION_CHUTES_API_KEY"):
+            for key in ("CHUTES_API_KEY", "XION_CHUTES_API_KEY", "CI", "XION_CHUTES_NONINTERACTIVE"):
                 val = os.environ.get(key)
                 if val:
                     shell_parts.append(f"export {key}={shlex.quote(val)}")
-            shell_parts.append(rendered)
+            inner = f"{_wsl_stdin_pipe_prefix(stdin_effective)}{rendered}" if stdin_effective else rendered
+            shell_parts.append(inner)
             shell_line = " && ".join(shell_parts)
             return run_command(
                 ["wsl", "bash", "-lc", shell_line],
                 cwd=self.repo_root,
                 check=False,
                 timeout=timeout,
-                stdin=stdin_effective,
+                stdin=None,
             )
 
         return run_command(
             ["chutes", *argv], cwd=self.repo_root, check=False, timeout=timeout, stdin=stdin_effective
         )
+
+    def _invoke_chutes_cli_transient_aware(
+        self, argv: list[str], *, timeout: int | None = None, stdin: str | None = None
+    ) -> CommandResult:
+        """Like :meth:`_invoke_chutes_cli` but retries on transient ``api.chutes.ai`` / nginx failures."""
+
+        extra, gap = _chutes_cli_transient_retry_budget()
+        last = self._invoke_chutes_cli(argv, timeout=timeout, stdin=stdin)
+        for _ in range(extra):
+            if not _chutes_cli_transient_failure(last):
+                break
+            time.sleep(gap)
+            last = self._invoke_chutes_cli(argv, timeout=timeout, stdin=stdin)
+        return last
 
     def _invoke_chutes_managed_cli(
         self, argv: list[str], *, timeout: int | None = None, stdin: str | None = None
@@ -237,18 +311,19 @@ class ChutesService(OpsService):
                 f"cd {shlex.quote(wsl_repo)}",
                 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"',
             ]
-            for key in ("CHUTES_API_KEY", "XION_CHUTES_API_KEY"):
+            for key in ("CHUTES_API_KEY", "XION_CHUTES_API_KEY", "CI", "XION_CHUTES_NONINTERACTIVE"):
                 val = os.environ.get(key)
                 if val:
                     shell_parts.append(f"export {key}={shlex.quote(val)}")
-            shell_parts.append(rendered)
+            inner = f"{_wsl_stdin_pipe_prefix(stdin_effective)}{rendered}" if stdin_effective else rendered
+            shell_parts.append(inner)
             shell_line = " && ".join(shell_parts)
             return run_command(
                 ["wsl", "bash", "-lc", shell_line],
                 cwd=self.repo_root,
                 check=False,
                 timeout=timeout,
-                stdin=stdin_effective,
+                stdin=None,
             )
 
         return run_command(
@@ -501,7 +576,7 @@ class ChutesService(OpsService):
         # Official `build --wait` runs until completion; omit timeout unless CI caps wall-clock.
         build_to = _optional_positive_int_timeout("XION_CHUTES_BUILD_CMD_TIMEOUT_SEC")
         started = time.monotonic()
-        result = self._invoke_chutes_cli(cmd, timeout=build_to)
+        result = self._invoke_chutes_cli_transient_aware(cmd, timeout=build_to)
         duration_s = round(time.monotonic() - started, 3)
         quota_hit = False
         low = (result.stderr or "") + "\n" + (result.stdout or "")
@@ -549,7 +624,7 @@ class ChutesService(OpsService):
             cmd.append("--accept-fee")
         deploy_to = _optional_positive_int_timeout("XION_CHUTES_DEPLOY_CMD_TIMEOUT_SEC")
         started = time.monotonic()
-        result = self._invoke_chutes_cli(cmd, timeout=deploy_to)
+        result = self._invoke_chutes_cli_transient_aware(cmd, timeout=deploy_to)
         duration_s = round(time.monotonic() - started, 3)
         combined = combined_command_output(result)
         parsed = parse_chutes_deploy_output(combined)
@@ -608,7 +683,27 @@ class ChutesService(OpsService):
         )
         t_int = max(60, int(t))
         stripped = slug.strip()
-        completed = self._invoke_chutes_cli(["warmup", stripped], timeout=t_int)
+        try:
+            completed = self._invoke_chutes_cli_transient_aware(["warmup", stripped], timeout=t_int)
+        except subprocess.TimeoutExpired as exc:
+            out = getattr(exc, "stdout", None) or ""
+            err = getattr(exc, "stderr", None) or ""
+            if isinstance(out, bytes):
+                out = out.decode("utf-8", errors="replace")
+            if isinstance(err, bytes):
+                err = err.decode("utf-8", errors="replace")
+            return DeploymentResult(
+                service=self.name,
+                ok=False,
+                id=stripped,
+                details={
+                    "returncode": -1,
+                    "subprocess_timeout_seconds": t_int,
+                    "error": f"chutes warmup subprocess timed out after {t_int}s",
+                    "stdout": (str(out))[-8192:],
+                    "stderr": (str(err))[-8192:],
+                },
+            )
         return DeploymentResult(
             service=self.name,
             ok=completed.returncode == 0,

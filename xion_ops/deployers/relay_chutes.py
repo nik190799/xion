@@ -2,12 +2,35 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from xion_ops.deployers.base import Deployer
 from xion_ops.services.arweave import ArweaveService
 from xion_ops.services.chutes import DEFAULT_CHUTE_REF, ChutesService, verify_module_relative_path
 from xion_ops.types import DeployContext, DeploymentRecord, DeploymentResult, VerifyReport
+
+
+def _registry_chutes_https_base(repo_root: Path, *, registry_path: str) -> str | None:
+    """Return ``relays[1].endpoint`` when the committed registry row is a Chutes HTTPS base."""
+
+    path = repo_root / registry_path
+    if not path.is_file():
+        return None
+    try:
+        data: object = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    relays = data.get("relays")
+    if not isinstance(relays, list) or len(relays) < 2:
+        return None
+    row = relays[1]
+    if not isinstance(row, dict) or row.get("substrate") != "chutes":
+        return None
+    ep = str(row.get("endpoint") or "").strip().rstrip("/")
+    return ep if ep.startswith("https://") else None
 
 
 class RelayChutesDeployer(Deployer):
@@ -89,7 +112,10 @@ class RelayChutesDeployer(Deployer):
         mx = float(warm_max) if isinstance(warm_max, (int, float)) else None
         iv = float(warm_interval) if isinstance(warm_interval, (int, float)) else None
 
+        reg_path = str(ctx.params.get("registry_path", "ledgers/RELAY_REGISTRY.json"))
         warm_url = ((result.url or "").strip() or self.chutes.base_url().strip()) or None
+        if not warm_url:
+            warm_url = _registry_chutes_https_base(self.repo_root, registry_path=reg_path)
         warm = self.chutes.warmup_until_cords_green(
             warm_url,
             max_wait_seconds=mx if mx is not None else None,
