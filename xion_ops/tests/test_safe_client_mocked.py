@@ -273,10 +273,13 @@ class TestCastKeccakAdapter:
 
 class TestSafeTxServiceClient:
     def test_resolves_known_network_to_pinned_url(self) -> None:
+        # See SAFE_TX_SERVICE_URLS comment in safe.py — Safe migrated to
+        # api.safe.global/tx-service/{shortcode} on 2026 with 308 redirect from
+        # the legacy safe-transaction-*.safe.global subdomains.
         c = SafeTxServiceClient(network="base-sepolia")
-        assert c.api_base == "https://safe-transaction-base-sepolia.safe.global"
+        assert c.api_base == "https://api.safe.global/tx-service/basesep"
         c2 = SafeTxServiceClient(network="base-mainnet")
-        assert c2.api_base == "https://safe-transaction-base.safe.global"
+        assert c2.api_base == "https://api.safe.global/tx-service/base"
 
     def test_unknown_network_rejected(self) -> None:
         with pytest.raises(SafeError, match="no Safe Transaction Service URL"):
@@ -352,7 +355,7 @@ class TestSafeTxServiceClient:
         assert result.nonce == 42
         assert (
             captured["url"]
-            == f"https://safe-transaction-base-sepolia.safe.global/api/v1/safes/{SAFE_ADDRESS}/multisig-transactions/"
+            == f"https://api.safe.global/tx-service/basesep/api/v1/safes/{SAFE_ADDRESS}/multisig-transactions/"
         )
         body = captured["body"]
         # Service expects integer-as-string for the uint256 fields.

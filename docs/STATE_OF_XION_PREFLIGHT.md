@@ -177,6 +177,60 @@ same heading.
   `rebuild` (Docker missing on host), `vitals` partial domains, and
   `shadow-relay` not running on port `8001`.
 
+## 2026-05-10 Service-Class Execution — `KW-OPS-001` closure evidence
+
+- **Sepolia rehearsal Safe deployed.** `cast send` to canonical
+  `SafeProxyFactory 1.4.1` (`0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67`)
+  via `createProxyWithNonce(SafeL2 1.4.1, setup([EOA], 1, …), 1778428161)` from
+  the rehearsal EOA `0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A`.
+  - Deploy tx: `0xef4dc9f046e66ef4c3152270628863633a028b30bc39b56b45298c61cc944450`
+  - Block: `41329942`
+  - New Safe address: **`0x3587ECc092386c357eFCA51bf94A34Dd7084fa5A`**
+  - On-chain shape verified: `VERSION()` returns `"1.4.1"`, `getOwners()`
+    returns `[0xEBDDDf…88A]`, `getThreshold()` returns `1`, `nonce()` returns
+    `0`. Singleton matches Base mainnet Warm Safe singleton
+    (`0x29fcB43b…1900C762`).
+  - Address pinned to operator's `.env` as `XION_SEPOLIA_REHEARSAL_SAFE`.
+
+- **Safe propose dry-run executed end-to-end against Base Sepolia.**
+  - Payload: target = the Safe itself, `data = 0x`, `value = 0`,
+    `nonce = 0`, `operation = 0` (CALL). A no-op self-call: even if
+    accidentally executed, the Safe forwards `0x` data to itself with no
+    value transfer — no observable state change, no value at risk.
+  - SafeTxHash (computed by `xion_ops/services/safe.py` via Foundry
+    `cast keccak`): **`0xe6ffe2723e14ecaf2f7167f69e6e257b81c31f3352659b8437af17f2bb1bb388`**.
+  - **Offline verifier (`xion-verify safe-proposal --prep`):** `OK` —
+    independently recomputed the EIP-712 hash from the prep field-bag and
+    matched the proposer's claim byte-for-byte.
+  - **Proposer signature:** produced via `cast wallet sign --no-hash` against
+    the Sepolia EOA private key. 65-byte ECDSA signature, `v = 0x1b` (=27,
+    standard ECDSA recovery byte).
+  - **Live submission (`xion_ops base-evm safe-propose`):** Safe Transaction
+    Service (Base Sepolia, `https://api.safe.global/tx-service/basesep`)
+    returned `200` and queued the proposal at `safe_tx_hash =
+    0xe6ffe272…388`, `nonce = 0`. `BaseEvmService.safe_propose_tx` returned
+    `DeploymentResult(ok=True, id=safeTxHash)`.
+  - **Online verifier (`xion-verify safe-proposal --safe-tx-hash`):** `OK` —
+    fetched the queued proposal from the Safe service, recomputed the EIP-712
+    hash from the *service's* field-bag, matched the service-claimed
+    `contractTransactionHash` byte-for-byte. The full third-party check that
+    cosigners would run before approving is now load-bearing on a real Safe.
+  - The proposal stays queued for now; it can be rejected via the Safe app
+    or simply ignored. The Safe is rehearsal-only (no real value), and the
+    payload is a no-op self-call — execution would be inconsequential.
+
+- **Service URL migration discovered live.** Safe migrated their public
+  endpoints from `safe-transaction-{network}.safe.global` to
+  `api.safe.global/tx-service/{shortcode}` with a 308 permanent redirect.
+  GET requests follow transparently; POST does not (per RFC). `safe.py`
+  `SAFE_TX_SERVICE_URLS` repinned to the canonical
+  `api.safe.global/tx-service/{base|basesep}` form; tests updated.
+
+- **`KW-OPS-001` is therefore closed.** The pay-down line specified
+  "real Safe Transaction Service client behind `BaseEvmService.safe_propose_tx()`,
+  offline tests for payload construction, and live dry-run evidence against
+  Base Sepolia"; all three exist now.
+
 ## What Does Not Close Today
 
 - Base Sepolia `MasterTreasury` redeploy and rotation rehearsal are proceeding now that the deployer key is present.

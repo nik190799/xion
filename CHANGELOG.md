@@ -10,6 +10,14 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased](https://example.invalid/compare/pre-genesis-v0...HEAD)
 
+### KW-OPS-001 closed — live Sepolia Safe-propose dry-run — 2026-05-10
+
+- **Sepolia rehearsal Safe deployed.** `cast send` against the canonical Safe v1.4.1 ProxyFactory `0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67` produced a 1-of-1 Safe at **`0x3587ECc092386c357eFCA51bf94A34Dd7084fa5A`** (owner = rehearsal EOA `0xEBDDDf…88A`, threshold = 1, singleton = `0x29fcB43b…1900C762`, deploy tx `0xef4dc9f0…4450`, block `41329942`). Address pinned to operator `.env` as `XION_SEPOLIA_REHEARSAL_SAFE`.
+- **End-to-end Safe-propose flow exercised on Base Sepolia.** `xion_ops base-evm safe-prepare` produced safeTxHash **`0xe6ffe272…388`** for a no-op self-call (`to = Safe`, `data = 0x`, `value = 0`, `nonce = 0`); offline `xion-verify safe-proposal --prep` returned `OK`; `cast wallet sign --no-hash` produced the proposer ECDSA signature; `xion_ops base-evm safe-propose` POSTed to the live Safe Transaction Service and got `200`; online `xion-verify safe-proposal --safe-tx-hash` recomputed the EIP-712 hash from the service's field-bag and matched byte-for-byte. Both verifier paths green; KW-OPS-001 moved from `paying-down` to **closed** in `KNOWN_WEAKNESSES.md` (now under § Closed).
+- **Safe Transaction Service URL migration discovered live.** Safe redirects (308) the legacy `safe-transaction-{network}.safe.global` to `api.safe.global/tx-service/{shortcode}`. `urllib`'s default redirect handler skips POST per RFC, so the propose path was failing with a redirect HTML body. Repinned `xion_ops/services/safe.py::SAFE_TX_SERVICE_URLS` to the canonical `api.safe.global/tx-service/{base|basesep}` form; updated tests; legacy URLs preserved as commented references for auditability.
+- **Closure evidence pinned.** `docs/STATE_OF_XION_PREFLIGHT.md` § "2026-05-10 Service-Class Execution" records the deploy tx, the Safe address shape, the safeTxHash, both verifier outputs, and the discovered Safe URL migration. `docs/PHASE_7_PREFLIGHT_STATUS.md` row updated; `Last reviewed` advanced.
+- **Tests:** 73/73 xion_ops, 21/22 xion-verify (1 sanctioned skip). `xion-verify --self-test` OK against repinned hash.
+
 ### Sprint Mode mainnet preflight — Vault prep + audit RFP + custody runbook — 2026-05-10
 
 - **`genesis/MAINNET_VAULT_REGISTRATION_PREP.json` (new, committed):** unsigned SafeTx prep for `MasterTreasury.deployVault(8453, Warm Safe)` — chain id `8453`, vault authority `0x5A91E08D909854b594f07648D23440f4908529b4`, target `0xbf5407745cf22b88c46b55037e26156a0e78fd7f`, call data `0xdcb7c260…29b4`, nonce **`0`** (live mainnet Safe nonce as of generation), safeTxHash **`0x535d43558150625405c62bf96fe81229758c3ad81b67904fd48ac3ab049c6072`**. Independently verified: `xion-verify safe-proposal --prep` recomputes the same hash byte-for-byte.

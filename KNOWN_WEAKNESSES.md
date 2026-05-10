@@ -32,17 +32,6 @@ Every entry has the same shape:
 - **Pay-down commitment:** Partial pay-down by 2026-05-04: one paper-written owner seed stored off-site. Full pay-down by 2026-05-31: replace the MetaMask owner with a hardware-wallet owner and document owner geography without publishing secret material.
 - **Verifier:** Manual custody attestation in `docs/STATE_OF_XION_PREFLIGHT.md` for the 72-hour step; future closure should add a Safe owner-set verifier that checks the on-chain owner set and a redacted ceremony record.
 
-### KW-OPS-001 - Safe transaction proposal client is stubbed in xion-ops
-- **Domain:** OPS
-- **Discovered:** 2026-05-03 (Production Service Class Refactor)
-- **Severity:** medium
-- **Status:** paying-down (code-complete 2026-05-10, awaiting Sepolia dry-run evidence)
-- **Description:** `xion_ops.services.base_evm.BaseEvmService.safe_propose_tx()` is now wired to a real Safe Transaction Service client at `xion_ops/services/safe.py` (EIP-712 SafeTx encoder + Safe Transaction Service HTTP propose / nonce-fetch endpoints; keccak primitives delegated to Foundry's `cast keccak` so xion_ops keeps zero new dependencies). Companion CLI commands `base-evm safe-prepare`, `safe-propose`, and `register-vault` route prep + propose flows; the third-party verifier `xion-verify safe-proposal` recomputes the EIP-712 hash from a prep file or queued service entry and rejects mismatches against operator-declared expected call data, target, and value.
-- **Why it exists:** Today's pre-Genesis work needs a clean provider boundary before wiring a load-bearing Safe client. Shipping a fake Safe client would be worse than an explicit stub because multisig proposal semantics are operational authority, not convenience code.
-- **Mitigations:** Offline test coverage at `xion_ops/tests/test_safe_client_mocked.py` (encoder byte-equality, service POST/nonce shape, error paths) and `xion-verify/tests/test_safe_proposal.py` (offline + online, hash and call-data mismatch detection). Pinned typehash constants under `TestPinnedConstants` canary against silent rotation of Safe v1.4.1 SafeTx / EIP-712 domain hashes. Sepolia D3 rotation rehearsals continue to run through `BaseEvmService.cast_send()` because the testnet governance authority is an EOA.
-- **Pay-down commitment:** Close after the Sepolia dry-run evidence row in `docs/STATE_OF_XION_PREFLIGHT.md` is recorded per `docs/runbooks/SAFE_PROPOSE_DRY_RUN.md` — the runbook produces a queued Safe Transaction Service proposal whose hash and call data are independently verified by `xion-verify safe-proposal`, then the proposal is rejected without execution. Target: 2026-05-17.
-- **Verifier:** `xion-verify safe-proposal` (live) — offline `--prep` form for proposer self-check, online `--safe-tx-hash` / `--nonce` form for cosigner pre-sign verification.
-
 ### KW-DISCOVERY-LEAK-001 - Relay discovery endpoints reveal substrate/provider identity
 - **Domain:** SUBSTRATE
 - **Discovered:** 2026-04-30 (post-registry leak review)
@@ -1284,6 +1273,16 @@ Every entry has the same shape:
 ---
 
 ## Closed
+
+### KW-OPS-001 — Safe transaction proposal client is stubbed in xion-ops
+- **Domain:** OPS
+- **Discovered:** 2026-05-03 (Production Service Class Refactor).
+- **Severity:** medium
+- **Status:** closed on 2026-05-10 by live Base Sepolia Safe-propose dry-run.
+- **Description:** `xion_ops.services.base_evm.BaseEvmService.safe_propose_tx()` previously raised `NotImplementedError`, leaving warm-tier Safe operations as out-of-band Safe-app clicks opaque to xion-verify and to cosigners.
+- **Why it existed:** A clean provider boundary was needed before wiring a load-bearing Safe client; shipping a fake Safe client would be worse than an explicit stub because multisig proposal semantics are operational authority, not convenience code.
+- **How it closed:** Landed `xion_ops/services/safe.py` (Safe v1.4.1 EIP-712 SafeTx encoder + Safe Transaction Service HTTP client; keccak primitive delegated to Foundry's `cast keccak`, zero new Python deps), wired `BaseEvmService.safe_compute_tx_hash` and `safe_propose_tx`, added `xion_ops base-evm safe-prepare` / `safe-propose` / `register-vault` CLI subcommands, and shipped `xion-verify safe-proposal` (offline `--prep` and online `--safe-tx-hash` modes) so any third party can recompute the EIP-712 hash from the queued service entry and detect divergence from the operator's expected call data. A 1-of-1 Sepolia rehearsal Safe was deployed at `0x3587ECc092386c357eFCA51bf94A34Dd7084fa5A` (Safe v1.4.1+L2, owner `0xEBDDDf…88A`, deploy tx `0xef4dc9f0…4450`, block `41329942`). The Safe-propose dry-run produced safeTxHash `0xe6ffe272…388` for a no-op self-call payload; both the offline (`--prep`) and online (`--safe-tx-hash`) verifier paths returned `OK` with byte-identical recomputed hashes. Discovered live: Safe migrated their service URLs to `api.safe.global/tx-service/{shortcode}`; pinned URLs and tests updated. Full evidence in `docs/STATE_OF_XION_PREFLIGHT.md` § "2026-05-10 Service-Class Execution".
+- **Verifier:** `xion-verify safe-proposal` — `--prep <file>` for proposer pre-sign self-check, `--safe-tx-hash 0x...` (or `--nonce <n>`) for cosigner pre-approve verification against the live Safe Transaction Service.
 
 ### KW-COST-001 — cost_tracker is doctrine-referenced but not implemented
 - **Domain:** ECON

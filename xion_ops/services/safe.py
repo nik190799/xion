@@ -58,10 +58,20 @@ OPERATION_CALL = 0
 OPERATION_DELEGATECALL = 1
 
 # Safe Transaction Service base URLs by network slug.
+#
+# Safe migrated their service from per-network ``safe-transaction-*.safe.global``
+# subdomains to a single ``api.safe.global/tx-service/{shortcode}`` host with a
+# 308 permanent redirect from the legacy URLs. GET requests follow the redirect
+# transparently in urllib, but POST does not (per RFC), so the propose path must
+# target the new canonical URL directly. Repin here when Safe migrates again;
+# the legacy URLs are kept as commented references for auditability.
+#
+#   legacy base mainnet    : https://safe-transaction-base.safe.global
+#   legacy base sepolia    : https://safe-transaction-base-sepolia.safe.global
 SAFE_TX_SERVICE_URLS: Mapping[str, str] = {
-    "base": "https://safe-transaction-base.safe.global",
-    "base-mainnet": "https://safe-transaction-base.safe.global",
-    "base-sepolia": "https://safe-transaction-base-sepolia.safe.global",
+    "base": "https://api.safe.global/tx-service/base",
+    "base-mainnet": "https://api.safe.global/tx-service/base",
+    "base-sepolia": "https://api.safe.global/tx-service/basesep",
 }
 
 CHAIN_IDS: Mapping[str, int] = {

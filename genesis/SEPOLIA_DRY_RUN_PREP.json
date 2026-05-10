@@ -1,0 +1,18 @@
+{
+  "chain_id": 84532,
+  "nonce": 0,
+  "safe_address": "0x3587ECc092386c357eFCA51bf94A34Dd7084fa5A",
+  "safe_tx_hash": "0xe6ffe2723e14ecaf2f7167f69e6e257b81c31f3352659b8437af17f2bb1bb388",
+  "tx": {
+    "baseGas": "0",
+    "data": "0x",
+    "gasPrice": "0",
+    "gasToken": "0x0000000000000000000000000000000000000000",
+    "nonce": 0,
+    "operation": 0,
+    "refundReceiver": "0x0000000000000000000000000000000000000000",
+    "safeTxGas": "0",
+    "to": "0x3587ECc092386c357eFCA51bf94A34Dd7084fa5A",
+    "value": "0"
+  }
+}
