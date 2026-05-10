@@ -102,6 +102,7 @@ from xion_verify.commands.replay_corpus import replay_corpus
 from xion_verify.commands.request_fingerprint import request_fingerprint
 from xion_verify.commands.rerank_improvement import rerank_improvement
 from xion_verify.commands.research_sources import research_sources
+from xion_verify.commands.safe_proposal import safe_proposal
 from xion_verify.commands.schemas import schemas
 from xion_verify.commands.self_test import run_self_test
 from xion_verify.commands.sensorium_ledger import sensorium_ledger
@@ -247,6 +248,7 @@ _REAL_COMMANDS: dict[str, click.Command] = {
     "gateway-conformance": gateway_conformance,
     "funding-balances": funding_balances,
     "akash-deploy-discipline": akash_deploy_discipline,
+    "safe-proposal": safe_proposal,
 }
 
 

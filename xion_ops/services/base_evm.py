@@ -213,9 +213,158 @@ class BaseEvmService(OpsService):
         result = self.cast_send(*cast_args, network=network)
         return DeploymentResult(service=self.name, ok=True, id="vault", details={"stdout": result.stdout})
 
-    def safe_propose_tx(self, *_args: Any, **_kwargs: Any) -> DeploymentResult:
-        raise NotImplementedError(
-            "BaseEvmService.safe_propose_tx is intentionally stubbed; see KW-OPS-001."
+    def safe_compute_tx_hash(
+        self,
+        *,
+        network: str,
+        safe_address: str,
+        to: str,
+        data: bytes,
+        value: int = 0,
+        operation: int = 0,
+        nonce: int | None = None,
+        safe_tx_gas: int = 0,
+        base_gas: int = 0,
+        gas_price: int = 0,
+        gas_token: str = "0x" + "00" * 20,
+        refund_receiver: str = "0x" + "00" * 20,
+    ) -> dict[str, Any]:
+        """Build a SafeTx and compute its EIP-712 hash, without signing.
+
+        The operator signs the returned ``safe_tx_hash`` through the Safe app
+        or ``cast wallet sign --data <typed_data_json>`` and then passes the
+        signature back into :py:meth:`safe_propose_tx`.
+        """
+
+        from xion_ops.services import safe as _safe
+
+        if network not in _safe.CHAIN_IDS:
+            raise OpsError(f"unsupported network for Safe: {network!r}")
+        chain_id = _safe.CHAIN_IDS[network]
+
+        if nonce is None:
+            client = _safe.SafeTxServiceClient(network=network)
+            nonce = client.fetch_next_nonce(safe_address)
+
+        tx = _safe.SafeTx(
+            to=to,
+            value=value,
+            data=data,
+            operation=operation,
+            safe_tx_gas=safe_tx_gas,
+            base_gas=base_gas,
+            gas_price=gas_price,
+            gas_token=gas_token,
+            refund_receiver=refund_receiver,
+            nonce=nonce,
+        )
+        keccak = _safe.make_cast_keccak(self._run_foundry)
+        tx_hash = _safe.safe_tx_hash(
+            tx,
+            chain_id=chain_id,
+            safe_address=safe_address,
+            keccak=keccak,
+        )
+        return {
+            "safe_tx_hash": "0x" + tx_hash.hex(),
+            "chain_id": chain_id,
+            "safe_address": safe_address,
+            "nonce": nonce,
+            "tx": {
+                "to": tx.to,
+                "value": str(tx.value),
+                "data": "0x" + tx.data.hex(),
+                "operation": tx.operation,
+                "safeTxGas": str(tx.safe_tx_gas),
+                "baseGas": str(tx.base_gas),
+                "gasPrice": str(tx.gas_price),
+                "gasToken": tx.gas_token,
+                "refundReceiver": tx.refund_receiver,
+                "nonce": tx.nonce,
+            },
+        }
+
+    def safe_propose_tx(
+        self,
+        *,
+        network: str,
+        safe_address: str,
+        to: str,
+        data: bytes,
+        sender: str,
+        signature: str,
+        value: int = 0,
+        operation: int = 0,
+        nonce: int | None = None,
+        safe_tx_gas: int = 0,
+        base_gas: int = 0,
+        gas_price: int = 0,
+        gas_token: str = "0x" + "00" * 20,
+        refund_receiver: str = "0x" + "00" * 20,
+    ) -> DeploymentResult:
+        """Submit an unsigned SafeTx + proposer signature to the Safe service.
+
+        Closes KW-OPS-001 (boundary surface). The proposer signature is what
+        the Safe Transaction Service uses to authenticate the proposal; the
+        SafeTx itself still needs ``threshold`` cosignatures collected through
+        the Safe app before it can be executed.
+        """
+
+        from xion_ops.services import safe as _safe
+
+        prep = self.safe_compute_tx_hash(
+            network=network,
+            safe_address=safe_address,
+            to=to,
+            data=data,
+            value=value,
+            operation=operation,
+            nonce=nonce,
+            safe_tx_gas=safe_tx_gas,
+            base_gas=base_gas,
+            gas_price=gas_price,
+            gas_token=gas_token,
+            refund_receiver=refund_receiver,
+        )
+        tx = _safe.SafeTx(
+            to=to,
+            value=value,
+            data=data,
+            operation=operation,
+            safe_tx_gas=safe_tx_gas,
+            base_gas=base_gas,
+            gas_price=gas_price,
+            gas_token=gas_token,
+            refund_receiver=refund_receiver,
+            nonce=prep["nonce"],
+        )
+        client = _safe.SafeTxServiceClient(network=network)
+        try:
+            proposed = client.propose(
+                safe_address=safe_address,
+                safe_tx=tx,
+                safe_tx_hash_hex=prep["safe_tx_hash"],
+                sender=sender,
+                signature=signature,
+            )
+        except _safe.SafeError as exc:
+            return DeploymentResult(
+                service=self.name,
+                ok=False,
+                id="safe-propose",
+                details={"error": str(exc), **prep},
+            )
+        return DeploymentResult(
+            service=self.name,
+            ok=True,
+            id=proposed.safe_tx_hash,
+            details={
+                "safe_tx_hash": proposed.safe_tx_hash,
+                "nonce": proposed.nonce,
+                "api_url": proposed.api_url,
+                "service_response": dict(proposed.response),
+                "chain_id": prep["chain_id"],
+            },
         )
 
     def pin_treasury_deployment(self, manifest: Path | str, *, address: str, tx: str, block: int) -> None:

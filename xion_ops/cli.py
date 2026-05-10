@@ -493,6 +493,184 @@ def base_evm_cast_call(network: str, cast_args: tuple[str, ...]) -> None:
     click.echo(get_service("base-evm").cast_call(*cast_args, network=network).stdout)  # type: ignore[attr-defined]
 
 
+@base_evm_group.command(name="safe-prepare")
+@click.option("--network", required=True, type=click.Choice(["base", "base-mainnet", "base-sepolia"]))
+@click.option("--safe-address", required=True, help="Safe contract address.")
+@click.option("--to", required=True, help="Inner call target address.")
+@click.option("--data", default="0x", help="Inner call data (0x-prefixed hex). Defaults to 0x.")
+@click.option("--value", default=0, type=int, help="Inner ETH value (wei).")
+@click.option("--operation", default=0, type=click.IntRange(0, 1), help="0=CALL, 1=DELEGATECALL.")
+@click.option("--nonce", default=None, type=int, help="Override Safe nonce; default fetches from service.")
+@click.option("--out", "out_path", default=None, type=click.Path(),
+              help="Optional path to write the prep JSON for cosigners and verifiers.")
+def base_evm_safe_prepare(
+    network: str,
+    safe_address: str,
+    to: str,
+    data: str,
+    value: int,
+    operation: int,
+    nonce: int | None,
+    out_path: str | None,
+) -> None:
+    """Build a SafeTx and compute its EIP-712 hash without signing.
+
+    Pipe the output to ``cast wallet sign --data -`` (or the Safe app) to
+    produce a proposer signature, then pass it to ``safe-propose``.
+    """
+
+    if not data.startswith("0x"):
+        raise click.ClickException("--data must be 0x-prefixed hex")
+    data_bytes = bytes.fromhex(data[2:]) if data != "0x" else b""
+
+    prep = get_service("base-evm").safe_compute_tx_hash(  # type: ignore[attr-defined]
+        network=network,
+        safe_address=safe_address,
+        to=to,
+        data=data_bytes,
+        value=value,
+        operation=operation,
+        nonce=nonce,
+    )
+    rendered = json.dumps(prep, indent=2, sort_keys=True)
+    click.echo(rendered)
+    if out_path:
+        Path(out_path).write_text(rendered + "\n", encoding="utf-8")
+
+
+@base_evm_group.command(name="safe-propose")
+@click.option("--network", required=True, type=click.Choice(["base", "base-mainnet", "base-sepolia"]))
+@click.option("--safe-address", required=True)
+@click.option("--to", required=True)
+@click.option("--data", default="0x")
+@click.option("--value", default=0, type=int)
+@click.option("--operation", default=0, type=click.IntRange(0, 1))
+@click.option("--nonce", default=None, type=int)
+@click.option("--sender", required=True, help="Safe owner address proposing the tx (must match the signature).")
+@click.option("--signature", required=True, help="0x-prefixed EIP-712 signature over the safeTxHash.")
+def base_evm_safe_propose(
+    network: str,
+    safe_address: str,
+    to: str,
+    data: str,
+    value: int,
+    operation: int,
+    nonce: int | None,
+    sender: str,
+    signature: str,
+) -> None:
+    """Submit a signed SafeTx to the Safe Transaction Service.
+
+    Cosigners review and approve through the Safe app at safe.global.
+    """
+
+    if not data.startswith("0x"):
+        raise click.ClickException("--data must be 0x-prefixed hex")
+    data_bytes = bytes.fromhex(data[2:]) if data != "0x" else b""
+
+    result = get_service("base-evm").safe_propose_tx(  # type: ignore[attr-defined]
+        network=network,
+        safe_address=safe_address,
+        to=to,
+        data=data_bytes,
+        value=value,
+        operation=operation,
+        nonce=nonce,
+        sender=sender,
+        signature=signature,
+    )
+    click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True, default=str))
+    if not result.ok:
+        raise click.exceptions.Exit(1)
+
+
+@base_evm_group.command(name="register-vault")
+@click.option("--network", required=True, type=click.Choice(["base", "base-mainnet", "base-sepolia"]))
+@click.option("--master-treasury", required=True, help="MasterTreasury contract address.")
+@click.option("--chain-id", required=True, type=int, help="Chain ID being registered (e.g. 8453 for Base mainnet).")
+@click.option("--vault-address", required=True, help="Per-chain Vault contract address to register.")
+@click.option("--safe-address", default=None, help="Required for mainnet (governance Safe). Sepolia uses cast_send via EOA.")
+@click.option("--out", "out_path", default=None, type=click.Path(),
+              help="On mainnet: write the prep JSON for cosigners and the safe-proposal verifier.")
+def base_evm_register_vault(
+    network: str,
+    master_treasury: str,
+    chain_id: int,
+    vault_address: str,
+    safe_address: str | None,
+    out_path: str | None,
+) -> None:
+    """Register a per-chain Vault on a MasterTreasury via the right authority path.
+
+    Sepolia uses a direct ``cast send`` because the testnet governance is an
+    EOA. Mainnet builds a Safe proposal because the Warm Safe is the only
+    authorized governance — the operator collects threshold cosigs through
+    the Safe app and executes from there.
+    """
+
+    svc = get_service("base-evm")
+
+    # Build registerVault(uint256,address) call data deterministically.
+    # Selector: keccak("registerVault(uint256,address)")[0:4]. The selector
+    # is independent of arguments and is computable offline once; we shell
+    # out via cast keccak through the existing safe.make_cast_keccak path
+    # so the operator's PATH determines which cast is invoked.
+    from xion_ops.services import safe as _safe
+
+    keccak = _safe.make_cast_keccak(svc._run_foundry)  # type: ignore[attr-defined]
+    selector = keccak(b"registerVault(uint256,address)")[:4]
+    chain_word = chain_id.to_bytes(32, "big")
+    if not vault_address.startswith("0x") or len(vault_address) != 42:
+        raise click.ClickException("--vault-address must be 0x-prefixed 20-byte hex")
+    vault_word = bytes(12) + bytes.fromhex(vault_address[2:])
+    call_data = selector + chain_word + vault_word
+
+    if network == "base-sepolia":
+        # Direct broadcast through the Sepolia EOA governance.
+        result = svc.cast_send(  # type: ignore[attr-defined]
+            master_treasury,
+            "registerVault(uint256,address)",
+            str(chain_id),
+            vault_address,
+            network=network,
+        )
+        click.echo(result.stdout)
+        return
+
+    # Mainnet: build a Safe proposal payload for cosigner review.
+    if not safe_address:
+        raise click.ClickException(
+            "--safe-address is required on mainnet (governance Safe). "
+            "Sepolia uses cast_send via the rehearsal EOA."
+        )
+    prep = svc.safe_compute_tx_hash(  # type: ignore[attr-defined]
+        network=network,
+        safe_address=safe_address,
+        to=master_treasury,
+        data=call_data,
+    )
+    prep["call_summary"] = {
+        "function": "registerVault(uint256,address)",
+        "args": [chain_id, vault_address],
+        "expected_call_data": "0x" + call_data.hex(),
+    }
+    rendered = json.dumps(prep, indent=2, sort_keys=True)
+    click.echo(rendered)
+    if out_path:
+        Path(out_path).write_text(rendered + "\n", encoding="utf-8")
+    click.echo(
+        "\nNext steps:\n"
+        f"  1. xion-verify safe-proposal --prep {out_path or '<stdin>'} "
+        f"--expected-to {master_treasury} --expected-call-data 0x{call_data.hex()}\n"
+        "  2. cast wallet sign --data <prep file or stdin>  # via Cold Root or Warm Safe owner\n"
+        "  3. xion_ops base-evm safe-propose --network "
+        f"{network} --safe-address {safe_address} --to {master_treasury} "
+        f"--data 0x{call_data.hex()} --sender <owner> --signature <0x...>\n"
+        "  4. Cosigners review through Safe app and execute when threshold reached.",
+        err=True,
+    )
+
+
 @main.group(name="deploy")
 def deploy_group() -> None:
     """End-to-end deployment workflows."""
