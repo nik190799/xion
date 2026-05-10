@@ -234,7 +234,9 @@ same heading.
 - **Sepolia Vault registration rehearsal staged (operator-side broadcast).**
   `genesis/SEPOLIA_VAULT_REGISTRATION_PREP.json` pins the `registerVault(84532, 0x474Df…F7Bc)` call data (selector `0x6a51fd63`) plus the one-line operator command. Sepolia governance is the rehearsal EOA, so execution is a single `cast send` rather than the Warm Safe propose+cosign flow that mainnet (Track B) uses. Pre-state on Sepolia MasterTreasury (`0xd2b257…55b6`) confirmed: `governance() == 0xEBDDDf…88A`, `aoCoreAuthority() == 0xEBDDDf…88A`, `registeredChainCount() == 0`, `vaultForChain(84532) == 0x0`. The autonomous broadcast was attempted by the agent but blocked by the local safety gate; the same call will run cleanly from the operator's shell. After exec, append the tx hash + post-state to this file and re-run `xion-verify treasury` / `treasury-flow`.
 
-- **`KW-AUDIT-001` audit RFP staged for send.** `docs/audits/RFP_TREASURY_2026.md` is now populated with the public repository URL (`https://github.com/nik190799/xion`), the budget anchor (USD 30–60k, two-to-four-week engagement), a ready-to-send cover email template, and a recipient short-list (Spearbit, Trail of Bits, OpenZeppelin, Code4rena, Sherlock) with their public audit-request endpoints. Operator clicks Send; firm engagement closes the weakness.
+- **`KW-AUDIT-001` audit RFP staged but send deferred.** `docs/audits/RFP_TREASURY_2026.md` is fully populated (repo URL, budget anchor USD 30–60k, ready-to-send cover email, recipient short-list, contact `xionlabs2026@gmail.com`). On **2026-05-10** the operator explicitly deferred sending the RFP because external-audit budget was not available. The weakness moves from `open` to `mitigated-residual` with a **2026-08-08** re-review checkpoint and the falsifier below. The RFP is preserved in repo as a ready-to-send artifact for the next budget cycle; sending it later turns this hold into engagement without re-authoring.
+
+  **Sprint Mode unaudited mainnet posture is now an explicit operator decision, dated 2026-05-10.** This is exactly the shortcut named in `docs/D4_PREFLIGHT.md` § "Skipping External Audit" and exactly the residue path (b) in `KW-AUDIT-001`'s pay-down line. The mitigations on which it relies are **not** an audit substitute: 119/119 Foundry tests at commit `f04f8d0`, 24–48 hour Base Sepolia soak, blast-radius caps (rotation lattice, daily egress cap `1000` bps, `onlyGovernance` / `onlyAOCoreAuthority` discipline), and Sprint Mode custody (Warm Safe 2-of-3, Cold Root deferred). Treasury is operational on Base mainnet under those constraints; it is not an audited mainnet treasury.
 
 ## What Does Not Close Today
 
@@ -282,6 +284,20 @@ same heading.
   constitutional D4 Genesis (which still requires audit closure, Cold Root
   ceremony, AO HyperBEAM mainnet seal, third-party Immortality Drill, and
   `genesis/GENESIS_ARTIFACT.md` § 0 finalization).
+- **`KW-AUDIT-001` Sprint residue (2026-05-10 → re-review 2026-08-08):**
+  falsified if any public messaging — README, CHANGELOG, social posts,
+  ecosystem grants applications, exchange listings, third-party reviews —
+  describes the treasury contracts as "audited", "audit-passing",
+  "audit-closed", "Spearbit-/ToB-/OZ-reviewed", or any equivalent claim
+  before an actual external auditor has signed a commit-specific report
+  for the exact deployable bytecode and pinned its Arweave tx alongside
+  `treasury_audit_arweave_tx` in `genesis/TREASURY_VAULTS.json`. The RFP
+  draft at `docs/audits/RFP_TREASURY_2026.md` is **not** an audit, **not**
+  an engagement, and **not** evidence that an audit is "in progress" — it
+  is a draft on hold pending budget. Honest descriptors during the residue
+  window are "unaudited Sprint Mode posture", "external audit deferred to
+  next budget cycle", and "treasury contracts have 119/119 internal tests
+  but no third-party security review".
 
 ## Preflight Commands
 

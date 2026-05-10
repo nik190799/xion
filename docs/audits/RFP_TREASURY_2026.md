@@ -1,7 +1,17 @@
 # Request for Proposal — Xion Treasury Audit (2026)
 
+> **Status (2026-05-10): drafted but on hold pending audit budget.** External
+> audit (`KW-AUDIT-001`) was not commissioned in this slice because the
+> operator does not have the USD 30–60k budget anchor at this time. The RFP
+> is preserved here as a ready-to-send artifact: when budget becomes
+> available the operator pastes the cover email and clicks send. Re-review
+> checkpoint **2026-08-08**. See `KNOWN_WEAKNESSES.md::KW-AUDIT-001`
+> 2026-05-10 dated Sprint residue and the falsifier in
+> `docs/STATE_OF_XION_PREFLIGHT.md` § "Sprint Mode Falsification Statements"
+> (the row that begins "**`KW-AUDIT-001` Sprint residue**").
+
 **Issuer:** The Xion Builders (genesis operator).
-**Date issued:** 2026-05-10.
+**Date issued:** 2026-05-10 (drafted; not yet sent).
 **Response deadline:** 2026-06-01 (aligned with `KNOWN_WEAKNESSES.md::KW-AUDIT-001` review target).
 **Proposal contact:** xionlabs2026@gmail.com
 **Repository:** <https://github.com/nik190799/xion> (public, all artifacts and prior pre-genesis history committed).
@@ -173,7 +183,7 @@ pricing for ~600 LOC of treasury Solidity at this risk level.
 - [x] Repository public URL pinned (§ header).
 - [x] Budget bracket pinned (§ 9).
 - [x] Proposal contact pinned: `xionlabs2026@gmail.com`.
-- [ ] Operator sends [the cover email below](#cover-email-template) to at least two short-listed firms.
+- [ ] **DEFERRED 2026-05-10:** sending the cover email is on hold until audit budget is available. Re-review at 2026-08-08 per `KNOWN_WEAKNESSES.md::KW-AUDIT-001`.
 - [ ] Record outbound contact in [`ledgers/GOVERNANCE_LEDGER.jsonl`](../../ledgers/)
       under a `state_actor_or_external_contact` row.
 - [ ] When a firm engages, append the engagement letter Arweave tx id to
