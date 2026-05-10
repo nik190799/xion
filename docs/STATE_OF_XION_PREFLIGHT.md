@@ -207,6 +207,22 @@ same heading.
   threshold-unlock provider while still using the stub path.
 - `KW-OBS-001`: falsified if hosted observability is claimed operational before
   a real exporter is wired and verified.
+- `KW-FLOOR-DEPLOY-001` **(2026-05-10 dated residue)**: falsified if any public
+  messaging claims a deployed Akash GPU open-weights floor is closed before a
+  fresh GPU lease passes probe-first ingress and serves `open_weights_only
+  /chat` from outside the provider network. Under the dated residue,
+  Chutes/Bittensor SN64 is the warm primary path; the floor property itself
+  remains unweakened (model is open, pinned, locally runnable), but the
+  *deployed* floor evidence is paused to **2026-07-09**.
+- `KW-OPS-001` (Safe transaction proposal client) — code-complete on
+  `claude/loving-shannon-fe3b83`; falsified if any public messaging claims
+  closure before the `docs/runbooks/SAFE_PROPOSE_DRY_RUN.md` Sepolia evidence
+  row appears in this file.
+- **Sprint Mode mainnet operational ≠ "Xion is alive"**: falsified if any
+  public messaging conflates per-chain Vault registration on Base mainnet with
+  constitutional D4 Genesis (which still requires audit closure, Cold Root
+  ceremony, AO HyperBEAM mainnet seal, third-party Immortality Drill, and
+  `genesis/GENESIS_ARTIFACT.md` § 0 finalization).
 
 ## Preflight Commands
 
