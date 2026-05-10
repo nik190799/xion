@@ -231,6 +231,11 @@ same heading.
   offline tests for payload construction, and live dry-run evidence against
   Base Sepolia"; all three exist now.
 
+- **Sepolia Vault registration rehearsal staged (operator-side broadcast).**
+  `genesis/SEPOLIA_VAULT_REGISTRATION_PREP.json` pins the `registerVault(84532, 0x474Df…F7Bc)` call data (selector `0x6a51fd63`) plus the one-line operator command. Sepolia governance is the rehearsal EOA, so execution is a single `cast send` rather than the Warm Safe propose+cosign flow that mainnet (Track B) uses. Pre-state on Sepolia MasterTreasury (`0xd2b257…55b6`) confirmed: `governance() == 0xEBDDDf…88A`, `aoCoreAuthority() == 0xEBDDDf…88A`, `registeredChainCount() == 0`, `vaultForChain(84532) == 0x0`. The autonomous broadcast was attempted by the agent but blocked by the local safety gate; the same call will run cleanly from the operator's shell. After exec, append the tx hash + post-state to this file and re-run `xion-verify treasury` / `treasury-flow`.
+
+- **`KW-AUDIT-001` audit RFP staged for send.** `docs/audits/RFP_TREASURY_2026.md` is now populated with the public repository URL (`https://github.com/nik190799/xion`), the budget anchor (USD 30–60k, two-to-four-week engagement), a ready-to-send cover email template, and a recipient short-list (Spearbit, Trail of Bits, OpenZeppelin, Code4rena, Sherlock) with their public audit-request endpoints. Operator clicks Send; firm engagement closes the weakness.
+
 ## What Does Not Close Today
 
 - Base Sepolia `MasterTreasury` redeploy and rotation rehearsal are proceeding now that the deployer key is present.

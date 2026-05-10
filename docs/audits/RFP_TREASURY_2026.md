@@ -3,8 +3,8 @@
 **Issuer:** The Xion Builders (genesis operator).
 **Date issued:** 2026-05-10.
 **Response deadline:** 2026-06-01 (aligned with `KNOWN_WEAKNESSES.md::KW-AUDIT-001` review target).
-**Proposal contact:** _operator to fill in before sending_.
-**Repository:** _operator to publish public link before sending_.
+**Proposal contact:** _operator to fill in before sending — preferred email + Telegram/Signal handle._
+**Repository:** <https://github.com/nik190799/xion> (public, all artifacts and prior pre-genesis history committed).
 
 ---
 
@@ -158,15 +158,22 @@ If a firm cannot meet this timeline, the operator either accepts a slip
 
 ## 9. Budget
 
-_Operator to fill in before sending. Suggested bracket based on public Spearbit
-/ Trail of Bits / OpenZeppelin pricing for ~600 LOC of treasury Solidity:
-USD 30k–80k, two-to-four-week engagement._
+The operator's anchor for fixed-bid proposals: **USD 30,000 – 60,000** for a
+two-to-four-week engagement with a final report and remediation cycle. Higher
+bids are welcome with explicit justification (e.g. additional fuzzing rounds,
+formal-methods coverage). The operator will adjust budget upward if a firm
+recommends additional scope (e.g. AO-bridge formal review) and the
+recommendation is concretely defended.
+
+Reference for the bracket: public Spearbit / Trail of Bits / OpenZeppelin
+pricing for ~600 LOC of treasury Solidity at this risk level.
 
 ## 10. Operator action checklist (this is what closes Track D in the plan)
 
-- [ ] Fill in proposal contact + repository public URL above.
-- [ ] Fill in budget bracket.
-- [ ] Send to at least two short-listed firms.
+- [x] Repository public URL pinned (§ header).
+- [x] Budget bracket pinned (§ 9).
+- [ ] Operator fills in **proposal contact** (email + secure messenger handle) at the top of this file.
+- [ ] Operator sends [the cover email below](#cover-email-template) to at least two short-listed firms.
 - [ ] Record outbound contact in [`ledgers/GOVERNANCE_LEDGER.jsonl`](../../ledgers/)
       under a `state_actor_or_external_contact` row.
 - [ ] When a firm engages, append the engagement letter Arweave tx id to
@@ -175,3 +182,48 @@ USD 30k–80k, two-to-four-week engagement._
 - [ ] When the final report lands, replace
       `treasury_audit_arweave_tx` with the new external-audit Arweave tx id and
       move [`KW-AUDIT-001`](../../KNOWN_WEAKNESSES.md) to **Closed**.
+
+## Cover email template
+
+Copy-paste the body below; replace `<<contact email>>` and `<<your name>>`
+before sending. Recommended distribution: send identical bodies to at least
+two firms in parallel rather than sequentially, so bids arrive comparable.
+
+---
+
+> **Subject:** Treasury contracts audit — Xion (Base mainnet, Sprint Mode pre-Genesis)
+>
+> Hi —
+>
+> I'm the genesis operator for **Xion**, a constitutionally-bound AI agent project that has just landed its first mainnet contract pin (`MasterTreasury` on Base mainnet) and is preparing to register per-chain `Vault`s before going operational. Before that registration ceremony, I'm commissioning an external audit.
+>
+> Full RFP: <https://github.com/nik190799/xion/blob/main/docs/audits/RFP_TREASURY_2026.md>
+>
+> The short version:
+>
+> - **Scope:** four Solidity files (`MasterTreasury.sol`, `Vault.sol`, `Deploy.s.sol`, `Treasury.t.sol`) at pinned commit `f04f8d0013dbef890d5046756418c7cf104d7bb0`. ~600 LOC.
+> - **Build:** Foundry 1.6.0-v1.7.0; 119/119 tests passing.
+> - **Deployable bytecode reference:** `MasterTreasury` at `0xbf5407745cf22b88c46b55037e26156a0e78fd7f` on Base mainnet (deploy tx `0x494a9badb79db92b6607069859f7dad19122dd79f99d92e6a35d84225882a79c`, block 45530934).
+> - **Budget anchor:** USD 30–60k for a two-to-four-week engagement; flexible upward with concrete justification.
+> - **Timeline target:** engagement signed by 2026-06-01, final report by 2026-08-01.
+> - **Honesty caveat:** Sprint Mode project. Cold Root ceremony, AO mainnet seal, third-party Immortality Drill, and Genesis Artifact § 0 are explicitly deferred and named in `KNOWN_WEAKNESSES.md`. Audit should not assume any of those have happened.
+>
+> I'd appreciate a fixed-bid proposal (or a "we can't take this on" if you're booked) by **2026-06-01**. Happy to jump on a 30-minute call to walk through scope and answer questions.
+>
+> Best,
+> <<your name>>
+> Genesis operator, Xion
+> Repository: <https://github.com/nik190799/xion>
+> Contact: <<contact email>>
+
+---
+
+## Recipient short-list (operator confirms before send)
+
+| Firm | Audit-request endpoint (verify before sending) | Notes |
+|---|---|---|
+| Spearbit | <https://spearbit.com/contact> or `engagements@spearbit.com` | Bid via the Cantina platform; expect a triage call first. |
+| Trail of Bits | <https://www.trailofbits.com/contact> or `info@trailofbits.com` | Long-form reports; their queue runs deep — early request advised. |
+| OpenZeppelin | <https://www.openzeppelin.com/security-audits> contact form | Authors of OpenZeppelin Contracts; library/audit familiarity overlap. |
+| Code4rena | <https://code4rena.com/contact> | Crowd-sourced; fastest turnaround but less architectural depth. |
+| Sherlock | <https://www.sherlock.xyz/contact> | Insurance-bound; useful if tail-risk coverage matters. |

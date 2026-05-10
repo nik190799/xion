@@ -1,0 +1,31 @@
+{
+  "purpose": "Sepolia rehearsal of MasterTreasury.registerVault — proves the call-stack the mainnet ceremony will use later. Sepolia governance is an EOA (no Safe), so execution is one cast send by the operator, not a Safe propose flow.",
+  "network": "base-sepolia",
+  "chain_id": 84532,
+  "master_treasury": "0xd2b257200cc12b4e44d65063c0d63d25989455b6",
+  "vault_to_register": "0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc",
+  "function": "registerVault(uint256,address)",
+  "selector": "0x6a51fd63",
+  "args": {
+    "chainId": 84532,
+    "vault": "0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc"
+  },
+  "calldata": "0x6a51fd630000000000000000000000000000000000000000000000000000000000014a34000000000000000000000000474df6994918b5c01aab413cf3718dfd1bb0f7bc",
+  "authority_path": "EOA cast send (Sepolia governance is the rehearsal EOA 0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A; mainnet governance is the Warm Safe and uses the propose+cosign flow at MAINNET_VAULT_REGISTRATION_PREP.json instead).",
+  "operator_command": "cast send 0xd2b257200cc12b4e44d65063c0d63d25989455b6 'registerVault(uint256,address)' 84532 0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc --rpc-url https://sepolia.base.org --private-key $XION_DEPLOYER_PRIVATE_KEY",
+  "expected_post_state": {
+    "registeredChainCount": 1,
+    "vaultForChain[84532]": "0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc"
+  },
+  "post_exec_verification": [
+    "cast call 0xd2b257200cc12b4e44d65063c0d63d25989455b6 'registeredChainCount()(uint256)' --rpc-url https://sepolia.base.org",
+    "cast call 0xd2b257200cc12b4e44d65063c0d63d25989455b6 'vaultForChain(uint256)(address)' 84532 --rpc-url https://sepolia.base.org",
+    "xion-verify treasury",
+    "xion-verify treasury-flow"
+  ],
+  "notes": [
+    "This is auditable evidence of intent. Anyone with Foundry can verify the calldata matches by running: cast calldata 'registerVault(uint256,address)' 84532 0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc",
+    "After the operator runs operator_command, append the exec tx hash + block to docs/STATE_OF_XION_PREFLIGHT.md and update genesis/TREASURY_VAULTS.json to record the on-chain registration alongside the existing vaults[] entry.",
+    "Mainnet equivalent: genesis/MAINNET_VAULT_REGISTRATION_PREP.json (Warm Safe propose+cosign flow rather than EOA cast send)."
+  ]
+}

@@ -10,6 +10,13 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased](https://example.invalid/compare/pre-genesis-v0...HEAD)
 
+### Sepolia Vault registration rehearsal staged + audit RFP send-ready — 2026-05-10
+
+- **`genesis/SEPOLIA_VAULT_REGISTRATION_PREP.json` (new):** auditable prep artifact for the Sepolia rehearsal of `MasterTreasury.registerVault(84532, 0x474Df…F7Bc)`. Pins the function signature, selector (`0x6a51fd63`), full call data, target MasterTreasury (`0xd2b257…55b6`), authority path (Sepolia governance is the rehearsal EOA, so execution is one `cast send` rather than the Warm Safe propose+cosign flow), expected post-state, and post-exec verifier commands. The autonomous broadcast was attempted but blocked by the local safety gate; the artifact reduces the operator-side step to a single command. Pre-state was independently confirmed on-chain.
+- **`docs/audits/RFP_TREASURY_2026.md` filled in for send.** Repository public URL pinned (`https://github.com/nik190799/xion`), budget anchor pinned (USD 30–60k, two-to-four-week engagement, flexible upward with concrete justification), ready-to-send **cover email template** added with subject line, body, and signature placeholder, and a **recipient short-list** with their public audit-request endpoints (Spearbit, Trail of Bits, OpenZeppelin, Code4rena, Sherlock). Operator now clicks Send; firm engagement closes `KW-AUDIT-001`.
+- **`docs/STATE_OF_XION_PREFLIGHT.md` § "2026-05-10 Service-Class Execution"** extended with both the Sepolia register-vault rehearsal staging row and the audit RFP staging row.
+- **What this does NOT close.** `KW-AUDIT-001` itself (firm engagement + final report are operator-side); `KW-KEYS-002` Warm Safe owner custody (operator declined to do E2 in this slice); the actual mainnet Vault registration (still 2-of-3 Warm Safe cosig + exec, fully operator-side because the operator chose not to delegate mainnet keys). All three remain in the next-step backlog.
+
 ### KW-OPS-001 closed — live Sepolia Safe-propose dry-run — 2026-05-10
 
 - **Sepolia rehearsal Safe deployed.** `cast send` against the canonical Safe v1.4.1 ProxyFactory `0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67` produced a 1-of-1 Safe at **`0x3587ECc092386c357eFCA51bf94A34Dd7084fa5A`** (owner = rehearsal EOA `0xEBDDDf…88A`, threshold = 1, singleton = `0x29fcB43b…1900C762`, deploy tx `0xef4dc9f0…4450`, block `41329942`). Address pinned to operator `.env` as `XION_SEPOLIA_REHEARSAL_SAFE`.
