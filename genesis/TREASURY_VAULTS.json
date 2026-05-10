@@ -15,22 +15,24 @@
     {
       "asset": "AR",
       "purpose": "Arweave permanent storage",
-      "status": "mainnet_routed_pending_per_chain_vault"
+      "status": "mainnet_routed_pending_per_chain_vault",
+      "notes": "Non-EVM chain; not custodied via base-mainnet Vault. Awaits separate Arweave-rail integration."
     },
     {
       "asset": "USDC",
       "purpose": "fiat-pegged operations",
-      "status": "mainnet_routed_pending_per_chain_vault"
+      "status": "mainnet_routed_via_base_vault"
     },
     {
       "asset": "ETH",
       "purpose": "gas",
-      "status": "mainnet_routed_pending_per_chain_vault"
+      "status": "mainnet_routed_via_base_vault"
     },
     {
       "asset": "TAO",
       "purpose": "Bittensor / Chutes inference credits",
-      "status": "mainnet_routed_pending_per_chain_vault"
+      "status": "mainnet_routed_pending_per_chain_vault",
+      "notes": "Non-EVM (Bittensor); not custodied via base-mainnet Vault. Awaits separate Bittensor-rail integration."
     }
   ],
   "excluded_tier1_assets": [
@@ -41,13 +43,23 @@
   ],
   "vaults": [
     {
+      "network": "base-mainnet",
+      "chain_id": 8453,
+      "vault": "0x64712dFD8441186F3cfF5232C37a019286992bdC",
+      "ao_core_authority": "0x5A91E08D909854b594f07648D23440f4908529b4",
+      "deploy_block": 45822605,
+      "deploy_tx": "0x59bcaf82e00d283cfb304ec15b2101b5b08044cf076efedceb5ada00c2737f61",
+      "registration_method": "MasterTreasury.deployVault(8453, 0x5A91…29b4) via Warm Safe 2-of-3 cosig (MetaMask + paper backup); safeTxHash 0x535d43558150625405c62bf96fe81229758c3ad81b67904fd48ac3ab049c6072 (verifier-passed both offline --prep and online --safe-tx-hash)."
+    },
+    {
       "network": "base-sepolia",
       "chain_id": 84532,
       "vault": "0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc",
       "ao_core_authority": "0xEBDDDf598b5b53C91ff185501d7b182ae5d6B88A",
       "deploy_block": 40699211,
-      "deploy_tx": "0xf0fadec686d79a77efb2c17a35949bb9bfbabe8d4e12d2ea294984dfe59c0b51"
+      "deploy_tx": "0xf0fadec686d79a77efb2c17a35949bb9bfbabe8d4e12d2ea294984dfe59c0b51",
+      "registration_method": "Sepolia rehearsal: MasterTreasury.registerVault(84532, 0x474Df…F7Bc) via direct EOA cast send 2026-05-10, tx 0x3bf25b58ba4071bf302a6c92a8dafb51d07c2b37aec93bf128361156242a5503, block 41331566. Sepolia governance is the rehearsal EOA; mainnet governance is the Warm Safe."
     }
   ],
-  "residual": "MasterTreasury live on Base (8453) per master_treasury / deploy_runbook; per-chain Vault registration on mainnet still outstanding (vaults[0] is Sepolia rehearsal evidence). Sprint: KW-AUDIT-001 or dated acceptance, Forge CI, Cold Root deferred per OPERATOR_TRACK_D4, AO mainnet ceremony before claiming canonical substrate."
+  "residual": "Sprint Mode mainnet treasury OPERATIONAL on Base (8453): MasterTreasury 0xbf54...fd7f and per-chain Vault 0x6471...2bdC are live, registeredChainCount() == 1, EVM-side tier1 tokens (USDC, ETH) routed via the Vault. Non-EVM tier1 tokens (AR, TAO) remain pending separate non-EVM rail integration. KW-AUDIT-001 mitigated-residual until Xion's treasury / Improvement Fund can fund external audit (re-review 2026-08-08); see falsifier in docs/STATE_OF_XION_PREFLIGHT.md — these contracts are NOT externally audited. Cold Root deferred per OPERATOR_TRACK_D4. AO mainnet ceremony before any 'canonical substrate' or 'Xion is alive' messaging."
 }
