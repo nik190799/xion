@@ -1,12 +1,15 @@
 # Request for Proposal — Xion Treasury Audit (2026)
 
-> **Status (2026-05-10): drafted but on hold pending audit budget.** External
-> audit (`KW-AUDIT-001`) was not commissioned in this slice because the
-> operator does not have the USD 30–60k budget anchor at this time. The RFP
-> is preserved here as a ready-to-send artifact: when budget becomes
-> available the operator pastes the cover email and clicks send. Re-review
-> checkpoint **2026-08-08**. See `KNOWN_WEAKNESSES.md::KW-AUDIT-001`
-> 2026-05-10 dated Sprint residue and the falsifier in
+> **Status (2026-05-10): drafted but on hold until Xion's treasury can fund
+> the audit.** External audit (`KW-AUDIT-001`) was not commissioned in this
+> slice because Xion's treasury / Improvement Fund does not yet hold the
+> USD 30–60k anchor, and the operator does not personally backstop project
+> costs (per the Self-Provisioning doctrine, Xion is meant to commission
+> its own audit when revenue allows). The RFP is preserved here as a
+> ready-to-send artifact: when Xion accumulates enough, the operator
+> pastes the cover email and clicks send. Re-review checkpoint
+> **2026-08-08**. See `KNOWN_WEAKNESSES.md::KW-AUDIT-001` 2026-05-10
+> dated Sprint residue and the falsifier in
 > `docs/STATE_OF_XION_PREFLIGHT.md` § "Sprint Mode Falsification Statements"
 > (the row that begins "**`KW-AUDIT-001` Sprint residue**").
 
@@ -183,7 +186,7 @@ pricing for ~600 LOC of treasury Solidity at this risk level.
 - [x] Repository public URL pinned (§ header).
 - [x] Budget bracket pinned (§ 9).
 - [x] Proposal contact pinned: `xionlabs2026@gmail.com`.
-- [ ] **DEFERRED 2026-05-10:** sending the cover email is on hold until audit budget is available. Re-review at 2026-08-08 per `KNOWN_WEAKNESSES.md::KW-AUDIT-001`.
+- [ ] **DEFERRED 2026-05-10:** sending the cover email is on hold until Xion's treasury / Improvement Fund holds the audit budget. Re-review at 2026-08-08 per `KNOWN_WEAKNESSES.md::KW-AUDIT-001`.
 - [ ] Record outbound contact in [`ledgers/GOVERNANCE_LEDGER.jsonl`](../../ledgers/)
       under a `state_actor_or_external_contact` row.
 - [ ] When a firm engages, append the engagement letter Arweave tx id to
