@@ -1,5 +1,17 @@
 {
   "purpose": "Sepolia rehearsal of MasterTreasury.registerVault — proves the call-stack the mainnet ceremony will use later. Sepolia governance is an EOA (no Safe), so execution is one cast send by the operator, not a Safe propose flow.",
+  "execution_status": "EXECUTED 2026-05-10",
+  "execution": {
+    "tx_hash": "0x3bf25b58ba4071bf302a6c92a8dafb51d07c2b37aec93bf128361156242a5503",
+    "block": 41331566,
+    "gas_used": 112496,
+    "rpc_used": "https://base-sepolia-rpc.publicnode.com",
+    "post_state_observed": {
+      "registeredChainCount": 1,
+      "vaultForChain[84532]": "0x474Df6994918B5c01Aab413Cf3718DFd1bb0F7Bc",
+      "registeredChainIdAt[0]": 84532
+    }
+  },
   "network": "base-sepolia",
   "chain_id": 84532,
   "master_treasury": "0xd2b257200cc12b4e44d65063c0d63d25989455b6",
