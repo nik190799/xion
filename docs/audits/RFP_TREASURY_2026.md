@@ -3,7 +3,7 @@
 **Issuer:** The Xion Builders (genesis operator).
 **Date issued:** 2026-05-10.
 **Response deadline:** 2026-06-01 (aligned with `KNOWN_WEAKNESSES.md::KW-AUDIT-001` review target).
-**Proposal contact:** _operator to fill in before sending — preferred email + Telegram/Signal handle._
+**Proposal contact:** xionlabs2026@gmail.com
 **Repository:** <https://github.com/nik190799/xion> (public, all artifacts and prior pre-genesis history committed).
 
 ---
@@ -172,7 +172,7 @@ pricing for ~600 LOC of treasury Solidity at this risk level.
 
 - [x] Repository public URL pinned (§ header).
 - [x] Budget bracket pinned (§ 9).
-- [ ] Operator fills in **proposal contact** (email + secure messenger handle) at the top of this file.
+- [x] Proposal contact pinned: `xionlabs2026@gmail.com`.
 - [ ] Operator sends [the cover email below](#cover-email-template) to at least two short-listed firms.
 - [ ] Record outbound contact in [`ledgers/GOVERNANCE_LEDGER.jsonl`](../../ledgers/)
       under a `state_actor_or_external_contact` row.
@@ -211,10 +211,10 @@ two firms in parallel rather than sequentially, so bids arrive comparable.
 > I'd appreciate a fixed-bid proposal (or a "we can't take this on" if you're booked) by **2026-06-01**. Happy to jump on a 30-minute call to walk through scope and answer questions.
 >
 > Best,
-> <<your name>>
-> Genesis operator, Xion
+> The Xion Builders
+> Genesis operator
 > Repository: <https://github.com/nik190799/xion>
-> Contact: <<contact email>>
+> Contact: xionlabs2026@gmail.com
 
 ---
 
