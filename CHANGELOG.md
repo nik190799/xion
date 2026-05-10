@@ -70,6 +70,13 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 - **Runbook:** `docs/runbooks/SAFE_PROPOSE_DRY_RUN.md` describes the Sepolia dry-run that produces the closure evidence for `KW-OPS-001`.
 - **Why this matters for D4 / mainnet:** `MasterTreasury.registerVault(...)` and any future warm-tier rotation are governance-only on mainnet, and governance is the Warm Safe `0x5A91…29b4`. Without a real Safe client, every mainnet operation would be an out-of-band Safe-app click — opaque to xion-verify and to cosigners. With this slice, every proposal carries a verifiable prep payload that any third party can recompute before signing.
 
+### Akash GPU closure pass (operator evidence + docs) — 2026-05-06
+
+- **`genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json`:** rolled-back `dseq` / provider notes from automated `deploy relay-akash` attempts (manifest and ingress failures).
+- **`KNOWN_WEAKNESSES.md` (`KW-FLOOR-DEPLOY-001`):** latest evidence and retry flags; weakness remains **open** until a fresh GPU lease passes `open_weights_only` `/chat` proof.
+- **`LONG_HORIZON_THREATS.md` (`LHT-SUBSTRATE-001`):** 2026-05-06 automation boundary (drill blocked on floor gate).
+- **Docs:** `docs/PHASE_7_PREFLIGHT.md` (Akash/Chutes registry row order vs deployment), `docs/STATE_OF_XION_PRE_GENESIS.md` (substrate posture), `docs/STATE_OF_XION_TESTNET.md` (stale endpoint note), `docs/runbooks/AKASH_RELAY_DEPLOY.md`, `docs/runbooks/POST_FUNDING_DEPLOY.md` (`max_tokens` **1024** for `/chat` smoke + operator log), `docs/runbooks/IMMORTALITY_DRILL.md` (honesty gate + third-party blocked state); `infra/akash/relay-deployment.yaml` header (retry hints).
+
 ### Base mainnet treasury manifest + verifier + soak RPC — 2026-05-03
 
 - **`genesis/TREASURY_VAULTS.json`:** `status` **`mainnet`**, `deploy_runbook` **`docs/runbooks/TREASURY_BASE_MAINNET_DEPLOY.md`**, `master_treasury` **`0xbf5407745cf22b88c46b55037e26156a0e78fd7f`**, deploy tx **`0x494a9badb79db92b6607069859f7dad19122dd79f99d92e6a35d84225882a79c`**, block **`45530934`**. `tier1_operating_tokens[].status` set to **`mainnet_routed_pending_per_chain_vault`**; `residual` names outstanding mainnet per-chain Vault registration (Sepolia row in `vaults[]` kept as rehearsal evidence). `vaults[0]` remains Base Sepolia (**84532**) until governance registers mainnet vault rows.

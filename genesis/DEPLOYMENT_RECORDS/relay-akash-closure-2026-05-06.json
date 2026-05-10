@@ -1,0 +1,33 @@
+{
+  "artifact": "relay-akash-closure-attempts",
+  "as_of": "2026-05-06T05:55Z",
+  "note": "Automated closure pass from repo root; deployments rolled back by xion_ops on failure.",
+  "sdl_path": "infra/akash/relay-deployment.yaml",
+  "attempts": [
+    {
+      "dseq": "26698285",
+      "provider": "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e",
+      "outcome": "send_manifest_failed",
+      "detail": "provider-services send-manifest exit 1: submit manifest to some providers has been failed"
+    },
+    {
+      "dseq": "26698298",
+      "provider": "akash12v6dhc8awlwhv438jjyw80eguhgtm735mfv3fx",
+      "outcome": "health_smoke_failed",
+      "detail": "curl -k /health connection refused provider.a100.dsm.val.akash.pub:31183"
+    },
+    {
+      "dseq": "26698311",
+      "provider": "akash1ta6d9l4ujhj6ztvveyjuyr3zha3te3txz5nr5d",
+      "outcome": "send_manifest_failed",
+      "detail": "provider-services send-manifest exit 1: submit manifest to some providers has been failed"
+    }
+  ],
+  "recommended_retry": {
+    "command": "python -m xion_ops deploy relay-akash --no-publish-registry --exclude-provider akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e --prefer-provider akash1st7fqtuqk6hj06fkkavq0fxtw0w9sm4zzt3r5g",
+    "env": {
+      "XION_AKASH_HEALTH_SMOKE_SEC": "300",
+      "XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC": "300"
+    }
+  }
+}

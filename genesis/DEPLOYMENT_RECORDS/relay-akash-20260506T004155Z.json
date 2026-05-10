@@ -1,0 +1,31 @@
+{
+  "created_at": "2026-05-06T00:41:55Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "publish_registry": false,
+      "sdl_path": "infra/akash/relay-smoke-minimal.yaml"
+    }
+  },
+  "id": "relay-akash-20260506T004155Z",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "duration_s": 2.003,
+      "error": "provider-services tx deployment create infra/akash/relay-smoke-minimal.yaml --from xion-b5 --keyring-backend test --chain-id akashnet-2 --node https://rpc.akashnet.net:443 --gas auto --gas-adjustment 2 --gas-prices 0.5uakt -y -o json failed with exit 1: Error: spendable balance 2620uakt is smaller than 123146uakt: insufficient funds: insufficient funds: insufficient funds"
+    },
+    "dseq": null,
+    "id": null,
+    "ok": false,
+    "provider": null,
+    "service": "akash",
+    "tx": null,
+    "url": null
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": false,
+    "output": ""
+  }
+}

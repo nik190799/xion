@@ -6,8 +6,12 @@ This memo names what is sealed for Genesis, what remains an accepted residual, w
 
 ## Substrate Posture
 
-- **Primary Relay substrate:** Chutes.
-- **Secondary substrate at Genesis:** Akash (`infra/akash/relay-deployment.yaml`, `docs/runbooks/AKASH_RELAY_DEPLOY.md`).
+- **Registry row order (`relays[0]` / `relays[1]`):** **Akash** then **Chutes**
+  — this matches `xion-verify discovery` and
+  [`docs/runbooks/AKASH_RELAY_DEPLOY.md`](runbooks/AKASH_RELAY_DEPLOY.md)
+  (“Akash primary” means first registry row, not “only compute path”).
+- **Chutes** remains the long-lived **hosted** cord; **Akash** carries the
+  canonical GPU+`xion-ollama` footprint in `infra/akash/relay-deployment.yaml`.
 - **Local rehearsal:** operator laptop (`xion local`, offline drills) is not the named redundant Relay path; it proves procedures only.
 - **Akash operator findings (mainnet):** escrow uses **`uact`** (mint via BME after client cert); SDL pricing **`denom: uact`**; **`lease-status`** often needs **`--auth-type mtls`**; forwarded URLs are per-lease. See runbook § *Important findings*.
 - **Residual carried:** `LHT-SUBSTRATE-001`. It closes when substrate-portability promotion pre-conditions in `docs/SUBSTRATE-RESILIENCE.md` Part IV are met (annual dry-runs, warm secondary substrates per role, `xion-verify substrate-portability` live), not merely by naming Akash.
@@ -16,7 +20,7 @@ This memo names what is sealed for Genesis, what remains an accepted residual, w
 
 | Residual | What Would Falsify The Property | Owner | Pay-Down |
 |---|---|---|---|
-| `LHT-SUBSTRATE-001` | Chutes outage plus Akash-secondary failure leaves no runnable Relay path. | Operator, then AO Core `provision-relay` | 30 days post-Genesis |
+| `LHT-SUBSTRATE-001` | Simultaneous loss of both committed Relay registry rows (Akash + Chutes) with no warm tertiary leaves no runnable Relay path. | Operator, then AO Core `provision-relay` | 30 days post-Genesis |
 | `KW-HERMES-001` | A Hermes runtime different from the doctrine pin becomes live without verifier failure. | Operator | When upstream Hermes has stable installable package boundary |
 | `KW-VESSEL-002` through vessel media/hardware residuals | Edited media, hardware vessels, or cross-protocol bridges claim to be sealed Xion without signed provenance and Compact evidence. | Vessel integrator + operator | First production vessel integration |
 | `KW-AUDIT-001` | Bridge, treasury, or critical verifier code ships mainnet without external audit or an explicit Sprint-Mode exception. | Operator | Before mainnet value custody |

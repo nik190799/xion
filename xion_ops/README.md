@@ -34,6 +34,15 @@ concrete vendors directly.
 
 ## Operator Commands
 
+**Akash (`deploy relay-akash`) — minimum to remember:** funded **`uakt`** + **`uact`**, **public** SDL image on a registry, **`XION_AKASH_LEASE_SERVICE_NAME`** matching the SDL service, optional **`XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC=300`**, **`--exclude-provider`** if one provider flakes. Step-by-step: **[`docs/runbooks/AKASH_RELAY_DEPLOY.md`](../docs/runbooks/AKASH_RELAY_DEPLOY.md)** (§ *xion_ops quick checklist*). Rolled-back attempts are summarized under [`genesis/DEPLOYMENT_RECORDS/`](../genesis/DEPLOYMENT_RECORDS/) (e.g. `relay-akash-closure-2026-05-06.json`).
+
+On **Windows**, run Akash / `provider-services` flows from **WSL** when native tooling or ingress health checks fail. Map the repo cwd with **`AKASH_WSL_REPO`** (see [`docs/runbooks/AKASH_RELAY_DEPLOY.md`](../docs/runbooks/AKASH_RELAY_DEPLOY.md)).
+
+Minimal vendor-aligned demos (official doc links in script headers):
+
+- `bash scripts/demo-minimal-akash-deploy.sh` — smoke SDL + `deploy relay-akash --no-publish-registry` (optional `DEMO_AKASH_MINT_UAKT`). On Windows Git Bash, Docker build/push uses **WSL** (`wsl docker …`) when `docker` is not on the Windows PATH; set `DEMO_AKASH_BUILD_SMOKE_IMAGE=1` to build/push `docker/smoke-akash` first, or run the whole script from a WSL shell. Use `DEMO_AKASH_DOCKER_NATIVE=1` to force host `docker`.
+- `bash scripts/demo-minimal-chutes-deploy.sh` — `chutes images-list` by default; set `DEMO_CHUTES_FULL_DEPLOY=1` for `chutes build` / `chutes deploy`.
+
 ```bash
 python -m xion_ops balances
 python -m xion_ops balances --service base-evm
@@ -47,6 +56,7 @@ python -m xion_ops akash deploy --sdl-path infra/akash/relay-deployment.yaml
 # XION_AKASH_KEY, XION_AKASH_OWNER, AKASH_WSL_REPO (Windows WSL cwd override).
 python -m xion_ops akash cert-ensure
 python -m xion_ops akash mint-act 10000000 --wait-ledger
+python -m xion_ops akash burn-act 5000000 --wait-ledger
 python -m xion_ops akash deployment-list --json-output
 python -m xion_ops akash deployment-get <dseq>
 python -m xion_ops akash lease-list --dseq <dseq>

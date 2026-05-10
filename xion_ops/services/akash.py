@@ -121,6 +121,32 @@ class AkashService(OpsService):
         self._broadcast_json_confirm(result.stdout)
         return result
 
+    def burn_act(self, uact_amount: int) -> CommandResult:
+        """Burn ``uact`` to mint/remint ``uakt`` via BME (inverse of :meth:`mint_act`)."""
+
+        result = self._provider_services_tx(
+            [
+                "tx",
+                "bme",
+                "burn-act",
+                f"{uact_amount}uact",
+                "--from",
+                self.key,
+                "--keyring-backend",
+                "test",
+                "--chain-id",
+                self.chain_id,
+                "--node",
+                self.node,
+                *self._gas_tx_flags(),
+                "-y",
+                "-o",
+                "json",
+            ]
+        )
+        self._broadcast_json_confirm(result.stdout)
+        return result
+
     def wait_for_ledger_executed(self, *, timeout_seconds: int | None = None, poll_seconds: int | None = None) -> bool:
         timeout_seconds = timeout_seconds if timeout_seconds is not None else int(os.environ.get("XION_AKASH_BME_TIMEOUT_SEC", "600"))
         poll_seconds = poll_seconds if poll_seconds is not None else int(os.environ.get("XION_AKASH_BME_POLL_SEC", "15"))
@@ -474,13 +500,25 @@ class AkashService(OpsService):
             timeout=lease_timeout,
         )
         payload = json.loads(result.stdout)
-        relay = payload.get("services", {}).get(service_name, {})
-        forwarded = payload.get("forwarded_ports", {}).get(service_name, [])
+        services = payload.get("services") or {}
+        ports = payload.get("forwarded_ports") or {}
+        relay = services.get(service_name, {}) or {}
+        if not isinstance(relay, dict):
+            relay = {}
+        forwarded = ports.get(service_name, []) or []
         url = None
         if forwarded:
             port = forwarded[0].get("externalPort")
             host = forwarded[0].get("host")
             url = f"https://{host}:{port}" if host and port else None
+        if not url:
+            uris = relay.get("uris") or []
+            if uris:
+                h = str(uris[0]).strip().rstrip("/")
+                if h.startswith("http://") or h.startswith("https://"):
+                    url = h
+                else:
+                    url = f"https://{h}"
         ready = relay.get("ready_replicas", 0) >= 1 and relay.get("available_replicas", 0) >= 1
         return LeaseStatus(dseq=str(dseq), provider=provider, ready=ready, forwarded_url=url, raw=payload)
 
@@ -650,10 +688,10 @@ class AkashService(OpsService):
         latest: LeaseStatus | None = None
         while time.monotonic() < deadline:
             latest = self.lease_status(dseq, provider, service_name=service_name)
-            if latest.ready:
+            if latest.ready and latest.forwarded_url:
                 return latest
             time.sleep(poll)
-        raise OpsError(f"lease {dseq} did not become ready; latest={latest}")
+        raise OpsError(f"lease {dseq} did not become ready with a URL; latest={latest}")
 
     def _wait_for_bids(self, dseq: str, *, timeout_seconds: int | None = None) -> list[dict[str, Any]]:
         timeout_seconds = timeout_seconds if timeout_seconds is not None else int(os.environ.get("XION_AKASH_BID_WAIT_SEC", "300"))

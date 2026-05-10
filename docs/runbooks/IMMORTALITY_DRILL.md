@@ -18,6 +18,12 @@ point at `http://xion-ollama:11434`. The gate closes only after the laptop's
 Ollama daemon is stopped and an `open_weights_only` `/chat` turn succeeds
 against the Akash lease.
 
+**Operator evidence queue:** rolled-back GPU deploy attempts (manifest / ingress
+flakes) are summarized in
+[`genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json`](../../genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json)
+— update this gate after the next successful lease + `POST_FUNDING_DEPLOY.md`
+Block B table.
+
 ## Drill
 
 1. Pin the current verifier output: `xion-verify all --allow-not-yet-sealed`.
@@ -57,9 +63,9 @@ against the Akash lease.
 
 ## First Real Drill Evidence
 
-Fill this table only after `KW-FLOOR-DEPLOY-001` is closed, Chutes d3 live surface is live
-in `ledgers/RELAY_REGISTRY.json`, and `scripts/immortality-drill-rehearsal.sh`
-has appended a new row.
+Historical row (2026-04-29, GPU lease since closed — **does not** satisfy the
+current `KW-FLOOR-DEPLOY-001` gate). Replace only after a **fresh** GPU lease,
+`open_weights_only` proof, and operator-approved registry publish.
 
 | Field | Value |
 |-------|-------|
@@ -74,9 +80,14 @@ has appended a new row.
 
 ## Third-Party Machine Evidence
 
+**Status:** `BLOCKED_ON_KW_FLOOR_DEPLOY_001` — run
+`scripts/immortality-drill-third-party.sh` only after the Akash GPU floor gate in
+§ *Current Honesty Gate* is green (otherwise the script may pass structural
+verifiers while the drill remains a laptop-on rehearsal).
+
 | Field | Value |
 |-------|-------|
-| Status | `PENDING_OPERATOR_EXECUTION` |
+| Status | `BLOCKED_ON_KW_FLOOR_DEPLOY_001` (unblock after § *Current Honesty Gate*) |
 | Helper | `scripts/immortality-drill-third-party.sh` |
 | Expected row event | `immortality_drill_third_party_v1` |
 | Commit SHA | `PENDING_OPERATOR_EXECUTION` |

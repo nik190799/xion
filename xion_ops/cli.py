@@ -168,6 +168,26 @@ def akash_mint_act(uakt_amount: int, wait_ledger: bool) -> None:
             raise click.exceptions.Exit(1)
 
 
+@akash_group.command(name="burn-act")
+@click.argument("uact_amount", type=int)
+@click.option(
+    "--wait-ledger",
+    is_flag=True,
+    help="After burn tx, poll until BME ledger rows are ledger_record_status_executed.",
+)
+def akash_burn_act(uact_amount: int, wait_ledger: bool) -> None:
+    """Burn ACT (``uact``) to mint/remint AKT per BME — needs ``uakt`` for gas (see Akash act-mint-burn doc)."""
+
+    service = get_service("akash")
+    result = service.burn_act(uact_amount)  # type: ignore[attr-defined]
+    click.echo(result.stdout)
+    if wait_ledger:
+        ok = service.wait_for_ledger_executed()  # type: ignore[attr-defined]
+        click.echo(json.dumps({"bme_ledger_all_executed": ok}, indent=2, sort_keys=True))
+        if not ok:
+            raise click.exceptions.Exit(1)
+
+
 @akash_group.command(name="deploy")
 @click.option("--sdl-path", default="infra/akash/relay-deployment.yaml")
 @click.option("--prefer-provider", default=None)
@@ -731,7 +751,7 @@ def deploy_relay_akash(
     if prefer_provider:
         params["prefer_provider"] = prefer_provider
     if exclude_provider:
-        params["rejected_providers"] = set(exclude_provider)
+        params["rejected_providers"] = sorted(set(exclude_provider))
     _run_deployer("relay-akash", params)
 
 

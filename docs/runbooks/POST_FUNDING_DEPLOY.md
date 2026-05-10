@@ -33,6 +33,18 @@ Before chain operations, confirm:
 - Chutes credentials are available through the gitignored Chutes env file.
 - The operator laptop's Ollama daemon can be stopped during the deployed-floor proof.
 
+## Operator log — GPU lease retries (2026-05-06)
+
+Automated `python -m xion_ops deploy relay-akash --no-publish-registry` attempts
+against `infra/akash/relay-deployment.yaml`. Detail JSON:
+[`genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json`](../../genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json).
+
+| dseq | Provider (prefix) | Outcome |
+|------|-------------------|---------|
+| 26698285 | `akash1sevd…` | `send-manifest` failed after lease accept |
+| 26698298 | `akash12v6…` | `/health` forward refused connection |
+| 26698311 | `akash1ta6…` | `send-manifest` failed after lease accept |
+
 ## Block A - Akash GPU Sidecar
 
 Use a new Akash deployment sequence when the SDL topology changes:
@@ -83,7 +95,7 @@ curl -k -sS https://<lease-host>:<externalPort>/health
 
 curl -k -sS -X POST https://<lease-host>:<externalPort>/chat \
   -H "Content-Type: application/json" \
-  -d '{"message":"deployed floor smoke: answer in one short sentence","max_tokens":256}'
+  -d '{"message":"deployed floor smoke: answer in one short sentence","max_tokens":1024}'
 ```
 
 Record after execution:

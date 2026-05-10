@@ -10,13 +10,13 @@ Deploy a Relay on Akash as the **genesis primary** hosted substrate in the regis
 
 **What Akash is doing.** You define a deployment in SDL (YAML): image, CPU/RAM/storage, env, exposed port, and **pricing in the right denom**. On-chain: create the deployment, providers bid, you accept a lease, then `send-manifest` so the provider runs the workload. The provider returns a **forwarded host + port** (often `*.nip.io`); that HTTPS URL is the public entry to the container.
 
-**Money & denom (easy to get wrong).** Escrow and deployment deposits use **`uact` (ACT)**, not `uakt`, in the pricing block. Mint ACT with BME: burn/send `uakt` via `tx bme mint-act`, then wait until the BME ledger row is **`ledger_record_status_executed`** and **`uact` appears in bank balances**; pending mints are not spendable as `uact` yet. SDL `placement.*.pricing` must say **`denom: uact`**; using `uakt` there leads to denomination / deposit errors.
+**Money & denom (easy to get wrong).** Escrow and deployment deposits use **`uact` (ACT)**, not `uakt`, in the pricing block. Mint ACT with BME: burn/send `uakt` via `tx bme mint-act`, then wait until the BME ledger row is **`ledger_record_status_executed`** and **`uact` appears in bank balances**; pending mints are not spendable as `uact` yet. SDL `placement.*.pricing` must say **`denom: uact`**; using `uakt` there leads to denomination / deposit errors. **Convert ACT back to AKT:** `tx bme burn-act <uact>uact` mints/remints `uakt` (see [Mint and Burn ACT](https://akash.network/docs/developers/deployment/cli/act-mint-burn)); **transaction fees are still paid in `uakt`**, so you cannot run `burn-act` if spendable `uakt` is too low to cover gas — top up a little AKT first per upstream troubleshooting.
 
 **Chain & CLI.** Mainnet: `akashnet-2`, RPC e.g. `https://rpc.akashnet.net:443` (same as **Steps** below). Tooling: `provider-services` (deployment create, lease, manifest, `lease-status`). If txs fail with insufficient fees, raise `--gas-prices` (e.g. `0.5uakt`) with `--gas auto` / adjustment.
 
 **Certificates.** A **client cert** must exist on disk before `deployment create`: `tx cert generate client` then `tx cert publish client` for the same key / keyring.
 
-**Provider API / URL.** `lease-status` against the provider gateway: default JWT auth failed in practice; use **`--auth-type mtls`**. **Forwarded ports** (`host`, `externalPort`) are per lease/provider — always re-read `lease-status`; do not assume a fixed URL.
+**Provider API / URL.** `lease-status` against the provider gateway: default JWT auth failed in practice; use **`--auth-type mtls`**. Public URLs come from **`forwarded_ports` (... `host` + `externalPort`)** and/or from **`services.<name>.uris`** (ingress hostnames) depending on provider — **`xion_ops`** builds an `https://` base from either shape. Always re-read `lease-status`; do not assume a fixed URL. Replicas may report **ready** before ingress is wired; the deployer waits until **ready and a URL** exist before **`/health`** smoke.
 
 **Container / TLS / health.** Image must be pullable (e.g. public Docker Hub; SDL may pin `nikhilkadalge/xion-relay:pre-genesis-akash`). Ingress is HTTPS on the forwarded port; the Relay image may use **ephemeral TLS** unless you mount real `XION_TLS_*` — quick checks: **`curl -k https://…/health`**. After manifest `PASS`, allow time for image pull, the GPU-backed `xion-ollama` sidecar to pull `gemma4:e4b-it-q4_K_M`, and `ready_replicas` before `/health` and `open_weights_only` are stable.
 
@@ -32,6 +32,7 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 
 | Finding | Symptom if wrong | Mitigation |
 |--------|-------------------|------------|
+| **`burn-act` vs gas** | Plenty of **`uact`** but **`deployment create`** / other txs fail for insufficient **`uakt`** | Fees and deposits tied to AKT use **`uakt`**. Use **`tx bme burn-act <amount>uact`** (or `python -m xion_ops akash burn-act <amount> --wait-ledger`) to remint **`uakt`** per [act-mint-burn](https://akash.network/docs/developers/deployment/cli/act-mint-burn). The **`burn-act` tx itself** still spends **`uakt` for gas** — if spendable **`uakt`** is near zero, top up AKT from an exchange first, then run **`burn-act`**, then deploy. |
 | Escrow is **`uact` (ACT)**, not `uakt` | `deposit invalid: insufficient balance` while wallet shows plenty of AKT | `tx bme mint-act …uakt`; wait until `query bme ledger --owner <addr>` is **`ledger_record_status_executed`** before `deployment create`. Pending mints do not credit `uact` yet. |
 | SDL pricing **`denom: uact`** | `Mismatched denominations (uact != uakt)` or deposit errors | Keep pricing block on **`uact`**; do not put `uakt` in `placement.*.pricing`. |
 | **`gas-prices`** too low | `insufficient fees` on `cert publish` / other txs | e.g. `--gas auto --gas-adjustment 2 --gas-prices 0.5uakt` (values drift with network). |
@@ -39,7 +40,12 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 | Provider status API **auth** | `JWT has invalid claims` on `lease-status` | Use **`--auth-type mtls`** (default JWT path failed in practice against provider gateway). |
 | Forwarded URL + TLS | Connection errors or cert warnings | Ingress uses **HTTPS** on forwarded port; Relay uses **ephemeral TLS** in image unless you mount real `XION_TLS_*` — use **`curl -k`** for smoke checks. **`xion_ops akash deploy`** probes **`GET /health`** via **WSL `curl -k`** on Windows (falls back to urllib on non-Windows) because native Windows stacks sometimes time out toward provider forwards that WSL reaches. |
 | **Registry publish automation** | Operator forgets manual Arweave publication after lease | **`python -m xion_ops deploy relay-akash`** publishes `ledgers/RELAY_REGISTRY.json` after lease health unless **`--no-publish-registry`** — use `--no-publish-registry` for rehearsals / dry leases. |
-| Hostname / port | Stale bookmarks | `forwarded_ports` (**`host` + `externalPort`**) change per lease/provider; always re-read **`lease-status`**. |
+| Hostname / port | Stale bookmarks | **`forwarded_ports`** and **`services.*.uris`** change per lease/provider; always re-read **`lease-status`**. |
+| **Image must exist in registry** | `send-manifest` fails / provider cannot schedule | SDL **`image:`** must be **pullable** (e.g. `docker pull` as an unauthenticated user). For [`infra/akash/relay-smoke-minimal.yaml`](../../infra/akash/relay-smoke-minimal.yaml), build and push [`docker/smoke-akash`](../../docker/smoke-akash) to the pinned repo/tag (or change the SDL). |
+| **`XION_AKASH_LEASE_SERVICE_NAME`** | `lease-status` / readiness look at wrong service | Must match the **SDL service name** (e.g. **`smoke-web`** for the smoke SDL, default **`xion-relay`** for production SDLs). |
+| **`send-manifest` timeout** | Intermittent **submit manifest … failed** on slow providers | Raise **`XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC`** (e.g. **300**) if manifests are large or the network is slow. |
+| **Flaky provider** | Manifest or ingress never stabilizes | Retry with **`python -m xion_ops deploy relay-akash --exclude-provider <provider-address>`** (repeat flag for multiple). Verified example where manifest repeatedly failed: **`akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e`** (exclude if it keeps failing; yours may differ). |
+| **`lease-status` JSON nulls** | Crashes or wrong readiness | Provider payloads may set **`services`** or **`forwarded_ports`** to JSON **null**; **`xion_ops`** treats those as empty maps (fixed 2026-05). |
 | Open-weights floor location | `open_weights_only` works only while the operator laptop is on | The SDL carries a private `xion-ollama` sidecar and sets `XION_OLLAMA_URL=http://xion-ollama:11434`; do not count a laptop-local Ollama daemon as deployed-floor evidence. |
 | GPU sidecar pricing | CPU-sized bids never clear GPU leases, or the provider schedules a CPU-only floor that times out | The `xion-ollama` sidecar starts at **`10000 uact`/block** and requests one NVIDIA GPU. Tune this from observed `bid list`, then record the accepted bid in `docs/runbooks/POST_FUNDING_DEPLOY.md`. |
 | RPC node reliability | `deployment create` fails with `502 Bad Gateway` / invalid JSON from the RPC server | Retry against a stable RPC such as `https://rpc.akashnet.net:443`; do not treat one RPC 502 as a deployment design failure. |
@@ -47,6 +53,39 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 | Ollama `/api/tags` is not enough readiness | Relay boots, caches `open_weights_floor_unsatisfied`, and `/chat` returns 503 even though the model appears in tags | Gate Relay startup on a successful small `/api/generate` call after `/api/tags` lists the model. The current SDL does this before `exec /usr/local/bin/entrypoint-xion-orchestrator-api.sh`. |
 | `open_weights_only` is read at process start | Client-side `XION_INFERENCE_POLICY=open_weights_only curl ...` does not change the deployed Relay policy | Temporarily edit the SDL/env and `send-manifest`, wait for the Relay restart, run the proof, then restore `hosted_api_first` with a second manifest update. |
 | Chat smoke payload validation | `/chat` returns 422 for too-small `max_tokens` | Use `max_tokens >= 1024` for the deployed proof payload. |
+
+## xion_ops quick checklist (so deploy “just works”)
+
+Use this when running **`python -m xion_ops deploy relay-akash`** (production SDL or smoke). Full detail stays in **Steps** below.
+
+1. **Wallets:** Enough **`uakt`** for fees/deposits and enough **`uact`** for SDL bids (see **Money & denom** and **`burn-act` vs gas** above). `python -m xion_ops balances` should show **`akash_operator`** OK for **`uact`** targets; do not confuse **ACT balance** with **AKT for gas**.
+2. **Cert:** `python -m xion_ops akash cert-ensure` once per key.
+3. **Image:** Every SDL **`image:`** must **`docker pull`** without private registry auth. Push relay/smoke images *before* deploy.
+4. **Service name:** If the SDL service is not **`xion-relay`**, set **`XION_AKASH_LEASE_SERVICE_NAME`** (e.g. **`smoke-web`** for [`relay-smoke-minimal.yaml`](../../infra/akash/relay-smoke-minimal.yaml)).
+5. **Timeouts (optional):** **`XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC=300`** if manifest submit flakes; keep **`XION_AKASH_WAIT_READY_SEC`** at default or higher for heavy images.
+6. **Flaky provider:** Use **`--exclude-provider <akash1…>`** and retry; manifest failures are often provider-specific.
+7. **Windows:** Prefer **WSL**; set **`AKASH_WSL_REPO`** to the repo path inside Linux (see [`xion_ops/README.md`](../../xion_ops/README.md)).
+8. **Rehearsals:** **`--no-publish-registry`** avoids touching **`ledgers/RELAY_REGISTRY.json`**.
+9. **Teardown:** `python -m xion_ops akash close <dseq>` when finished (records escrow release per chain rules).
+
+**Smoke one-liner (after smoke image is pushed to the SDL tag):**
+
+```bash
+export XION_AKASH_LEASE_SERVICE_NAME=smoke-web
+export XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC=300
+python3 -m xion_ops deploy relay-akash \
+  --sdl-path infra/akash/relay-smoke-minimal.yaml \
+  --no-publish-registry \
+  --exclude-provider akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e
+```
+
+**GPU floor closure attempts (2026-05-06):** see
+[`genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json`](../../genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json)
+for rolled-back `dseq`s (manifest submit failures and one unreachable `/health`
+forward). Operator retry: exclude the flaky manifest bidder above, consider
+`--prefer-provider akash1st7fqtuqk6hj06fkkavq0fxtw0w9sm4zzt3r5g` when it places
+an open bid, and set `XION_AKASH_HEALTH_SMOKE_SEC=300` while the Ollama sidecar
+pulls the floor model.
 
 **Historical proof (CPU-only Relay deployment):** `dseq=26563373`, health reachable at forwarded `*.nip.io` after manifest `PASS` and image pull. This predates the GPU-backed `xion-ollama` sidecar and does **not** close `KW-FLOOR-DEPLOY-001`.
 
@@ -85,6 +124,7 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 
    - **Client cert** (once per key): `tx cert generate client` then `tx cert publish client` (if fees fail, add e.g. `--gas-prices 0.5uakt` with `--gas auto`).
    - **ACT (uact) for escrow:** deployment deposits are in **`uact`**, not raw `uakt`. Mint with `tx bme mint-act <uakt-to-burn>uakt --from <key> ...`, then wait until `query bme ledger --owner <addr>` shows `ledger_record_status_executed` and `query bank balances` lists a `uact` balance.
+   - **Remint AKT from ACT:** if **`uact`** is large but **`uakt`** is too small for `deployment create` gas/deposit, **`tx bme burn-act <uact-to-burn>uact`** (wrapper: `python -m xion_ops akash burn-act <amount> --wait-ledger`) converts ACT toward AKT per [act-mint-burn](https://akash.network/docs/developers/deployment/cli/act-mint-burn). You still need **enough `uakt` to pay gas for `burn-act`** itself; otherwise deposit a small amount of AKT first.
    - **SDL:** pricing block must use **`denom: uact`** (not `uakt`). Placement name is conventionally `akash` and must match the `deployment:` mapping.
 4. **Create deployment → bid → lease → manifest:**
 

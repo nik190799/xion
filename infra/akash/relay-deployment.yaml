@@ -11,6 +11,10 @@
 # - `xion-ollama` is intentionally GPU-backed for the Gemma 4 floor; start at
 #   10000 uact/block and tune from observed `bid list` rather than from CPU bids.
 # - Image must be pullable by providers (public Docker Hub / GHCR); see docs/runbooks/AKASH_RELAY_DEPLOY.md.
+# - Closure pass (2026-05-06): manifest/ingress flakes observed on some bidders; record in
+#   genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json; retry with
+#   --exclude-provider akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e and optional
+#   --prefer-provider akash1st7fqtuqk6hj06fkkavq0fxtw0w9sm4zzt3r5g (see runbook).
 version: "2.0"
 services:
   xion-relay:

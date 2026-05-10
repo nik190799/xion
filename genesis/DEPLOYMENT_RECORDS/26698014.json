@@ -1,0 +1,51 @@
+{
+  "created_at": "2026-05-06T05:26:34Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "publish_registry": false,
+      "rejected_providers": [
+        "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e"
+      ],
+      "sdl_path": "infra/akash/relay-smoke-minimal.yaml"
+    }
+  },
+  "id": "26698014",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "duration_s": 61.484,
+      "forwarded_ports": null,
+      "ips": null,
+      "services": {
+        "smoke-web": {
+          "available": 1,
+          "available_replicas": 1,
+          "name": "smoke-web",
+          "observed_generation": 1,
+          "ready_replicas": 1,
+          "replicas": 1,
+          "total": 1,
+          "updated_replicas": 1,
+          "uris": [
+            "8efedkn2kd8utblv3h3cabn63s.ingress.rtgroup.com"
+          ]
+        }
+      },
+      "survey_count": 1
+    },
+    "dseq": "26698014",
+    "id": "26698014",
+    "ok": true,
+    "provider": "akash1st7fqtuqk6hj06fkkavq0fxtw0w9sm4zzt3r5g",
+    "service": "akash",
+    "tx": null,
+    "url": "https://8efedkn2kd8utblv3h3cabn63s.ingress.rtgroup.com"
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": true,
+    "output": ""
+  }
+}

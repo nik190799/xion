@@ -1,0 +1,45 @@
+# Akash minimal smoke — verifies registry pull, lease, manifest, GET /health.
+#
+# Official SDL: https://akash.network/docs/developers/deployment/akash-sdl
+# Operator notes: docs/runbooks/AKASH_RELAY_DEPLOY.md (uact, certs, mTLS).
+#
+# Image must expose HTTP 200 on /health (xion_ops deploy relay-akash health_smoke).
+# Build: from repo root, on Windows Git Bash use WSL if docker is only in Linux:
+#   DEMO_AKASH_BUILD_SMOKE_IMAGE=1 bash scripts/demo-minimal-akash-deploy.sh
+# Or: wsl bash -lc 'cd ~/xion-os && docker build -t YOUR_USER/xion-akash-smoke:minimal docker/smoke-akash'
+# Plain: docker build -t YOUR_USER/xion-akash-smoke:minimal docker/smoke-akash
+# Push : docker push YOUR_USER/xion-akash-smoke:minimal
+# Edit the image line below to match YOUR_USER.
+#
+# Lease / health_smoke service name is smoke-web (not xion-relay):
+#   export XION_AKASH_LEASE_SERVICE_NAME=smoke-web
+version: "2.0"
+services:
+  smoke-web:
+    image: nikhilkadalge/xion-akash-smoke:minimal
+    expose:
+      - port: 80
+        as: 80
+        to:
+          - global: true
+profiles:
+  compute:
+    smoke-web:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 256Mi
+        storage:
+          - size: 1Gi
+  placement:
+    akash:
+      pricing:
+        smoke-web:
+          denom: uact
+          amount: 50
+deployment:
+  smoke-web:
+    akash:
+      profile: smoke-web
+      count: 1

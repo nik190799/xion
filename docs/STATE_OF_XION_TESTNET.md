@@ -1,5 +1,17 @@
 # State of Xion Testnet - 2026-05-03
 
+## 2026-05-06 update (Akash GPU closure pass)
+
+- Automated GPU deploy retries (`relay-deployment.yaml`) were rolled back; see
+  [`genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json`](../genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-06.json)
+  and **`docs/runbooks/POST_FUNDING_DEPLOY.md`** § *Operator log — GPU lease retries*.
+- **`KW-FLOOR-DEPLOY-001`** remains **open**; **`KW` / `LHT-SUBSTRATE-001` /
+  Immortality Drill** docs updated for the honesty gate (no third-party drill
+  claim until the floor closes).
+- The committed Akash URL in `ledgers/RELAY_REGISTRY.json` may be **stale or
+  unreachable** after lease closure — `xion-verify discovery` still checks
+  **structure + payload hash**, not live HTTP.
+
 ## Status
 
 This is a D3 testnet-deployed status note. It is not a Genesis memo, not a
