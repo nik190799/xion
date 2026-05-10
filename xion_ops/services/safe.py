@@ -329,6 +329,50 @@ class SafeTxServiceClient:
             response=payload,
         )
 
+    def confirm(
+        self,
+        *,
+        safe_tx_hash_hex: str,
+        signature: str,
+        timeout_seconds: int = 30,
+    ) -> Mapping[str, Any]:
+        """POST /api/v1/multisig-transactions/{safe_tx_hash}/confirmations/.
+
+        Adds a cosigner signature to an already-proposed Safe transaction.
+        The Safe Transaction Service verifies the signature recovers to one of
+        the Safe's owners; bad sigs are rejected with HTTP 422. Threshold is
+        reached when enough valid confirmations accumulate.
+
+        This is the *cosigner*-side endpoint — strictly distinct from
+        :py:meth:`propose` (which both creates the proposal and contributes
+        the proposer's first signature).
+        """
+
+        if not safe_tx_hash_hex.startswith("0x") or len(safe_tx_hash_hex) != 66:
+            raise SafeError(f"safe_tx_hash_hex must be 0x-prefixed 32-byte hex; got {safe_tx_hash_hex!r}")
+        if not signature.startswith("0x"):
+            raise SafeError("signature must be 0x-prefixed hex")
+
+        url = f"{self.api_base}/api/v1/multisig-transactions/{safe_tx_hash_hex}/confirmations/"
+        request = Request(
+            url,
+            data=json.dumps({"signature": signature}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "xion-ops-safe/0.1",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                raw = response.read().decode("utf-8") or "{}"
+                return json.loads(raw) if raw.strip() else {}
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+            raise SafeError(f"Safe Transaction Service rejected confirmation ({exc.code}): {detail}") from exc
+        except URLError as exc:
+            raise SafeError(f"Safe Transaction Service unreachable: {exc}") from exc
+
     def fetch_next_nonce(self, safe_address: str, *, timeout_seconds: int = 15) -> int:
         """Return the next pending nonce for ``safe_address`` from the service.
 

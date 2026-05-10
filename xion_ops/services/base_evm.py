@@ -367,6 +367,45 @@ class BaseEvmService(OpsService):
             },
         )
 
+    def safe_confirm_tx(
+        self,
+        *,
+        network: str,
+        safe_tx_hash_hex: str,
+        signature: str,
+    ) -> DeploymentResult:
+        """Add a cosigner signature to an already-proposed SafeTx.
+
+        This is the cosigner-side counterpart to :py:meth:`safe_propose_tx`.
+        Use it when the proposal already exists in the Safe Transaction
+        Service and one more (or several more) owners need to confirm before
+        the threshold is met. The signature is produced offline by the
+        cosigner via ``cast wallet sign --no-hash <safe_tx_hash>`` against
+        their owner private key; this method only transmits.
+        """
+
+        from xion_ops.services import safe as _safe
+
+        client = _safe.SafeTxServiceClient(network=network)
+        try:
+            response = client.confirm(safe_tx_hash_hex=safe_tx_hash_hex, signature=signature)
+        except _safe.SafeError as exc:
+            return DeploymentResult(
+                service=self.name,
+                ok=False,
+                id="safe-confirm",
+                details={"error": str(exc), "safe_tx_hash": safe_tx_hash_hex},
+            )
+        return DeploymentResult(
+            service=self.name,
+            ok=True,
+            id=safe_tx_hash_hex,
+            details={
+                "safe_tx_hash": safe_tx_hash_hex,
+                "service_response": dict(response),
+            },
+        )
+
     def pin_treasury_deployment(self, manifest: Path | str, *, address: str, tx: str, block: int) -> None:
         path = self.repo_root / manifest
         payload = json.loads(path.read_text(encoding="utf-8"))

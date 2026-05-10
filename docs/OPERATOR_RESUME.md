@@ -15,6 +15,7 @@
 | Sepolia register-vault rehearsal | **Closed.** Tx `0x3bf25b58…5503`, block `41331566`. `registeredChainCount() == 1`, `vaultForChain(84532) == 0x474Df…F7Bc`. | this file § "Already done" |
 | Mainnet `MasterTreasury` deployed | **Live on Base, chain 8453.** `0xbf5407745cf22b88c46b55037e26156a0e78fd7f`, deploy block `45530934`. | `genesis/TREASURY_VAULTS.json` |
 | Mainnet `Vault` registration | **EXECUTED 2026-05-10.** New Vault `0x64712dFD…2bdC`, exec tx `0x59bcaf82…7f61` block 45822605. `registeredChainCount() == 1`, `vaultForChain(8453) == 0x64712dFD…2bdC`. ETH + USDC `tier1_operating_tokens[].status` flipped to `mainnet_routed_via_base_vault`. | this file § "Already done" |
+| Mainnet `Vault` asset tagging (ETH + USDC) | **Prep ready, awaiting first-withdrawal ceremony.** Two prep files at `genesis/MAINNET_VAULT_TAG_*_PREP.json`, both verifier-OK. Not blocking incoming deposits. | item **(1)** below |
 | `KW-AUDIT-001` external audit | **Mitigated-residual** until Xion's treasury can fund USD 30–60k. RFP pre-staged. | item **(2)** below + 2026-08-08 re-review |
 | `KW-FLOOR-DEPLOY-001` Akash GPU | **Mitigated-residual** until 2026-07-09. Chutes/SN64 stays warm primary. | item **(3)** below |
 | `KW-KEYS-002` Warm Safe owner custody | **Open.** Replace MetaMask owner with hardware wallet by 2026-05-31. | item **(4)** below |
@@ -41,7 +42,18 @@ If branch [`claude/kw-ops-001-closure`](https://github.com/nik190799/xion/pull/n
 
 ---
 
-### (1) Audit RFP — when Xion's treasury holds USD 30–60k
+### (1) Mainnet Vault asset tagging — before the first withdrawal
+
+**Why this is here, not blocking deposits.** The Vault accepts ETH and ERC-20 transfers freely without any tagging — incoming flows just work. But `Vault.withdraw(asset, ...)` will revert with `UnknownAsset()` until each asset is tagged via `Vault.tagAsset(...)`. Two preps committed:
+
+- `genesis/MAINNET_VAULT_TAG_ETH_PREP.json` — safeTxHash `0x55ab5314…17fc` (nonce 1)
+- `genesis/MAINNET_VAULT_TAG_USDC_PREP.json` — safeTxHash `0x4288e908…d3ec` (nonce 2)
+
+Full step-by-step with the new `safe-confirm` CLI is at `docs/runbooks/MAINNET_VAULT_ASSET_TAG.md`. The flow is identical to the deployVault ceremony you just did, just with the Vault as the target instead of the MasterTreasury.
+
+If the Safe nonce has moved past 1 by then, regenerate via `xion_ops base-evm safe-prepare --nonce <n>`.
+
+### (2) Audit RFP — when Xion's treasury holds USD 30–60k
 
 **Re-review checkpoint: 2026-08-08.**
 
@@ -59,7 +71,7 @@ If 2026-08-08 arrives and Xion still cannot fund: post a new dated slip in `KNOW
 
 ---
 
-### (2) Akash GPU floor retry — when ready
+### (3) Akash GPU floor retry — when ready
 
 **Re-review checkpoint: 2026-07-09.**
 
@@ -75,7 +87,7 @@ Cost: ~$5–10 worth of AKT. If `/health` returns and `/chat` under `open_weight
 
 ---
 
-### (3) Hardware wallet Warm Safe owner swap — when ready
+### (4) Hardware wallet Warm Safe owner swap — when ready
 
 **Target: 2026-05-31.**
 

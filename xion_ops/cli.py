@@ -584,6 +584,39 @@ def base_evm_safe_propose(
         raise click.exceptions.Exit(1)
 
 
+@base_evm_group.command(name="safe-confirm")
+@click.option("--network", required=True, type=click.Choice(["base", "base-mainnet", "base-sepolia"]))
+@click.option("--safe-tx-hash", "safe_tx_hash_hex", required=True, help="0x-prefixed safeTxHash of the queued proposal.")
+@click.option("--signature", required=True, help="0x-prefixed cosigner ECDSA signature over the safeTxHash (produced via 'cast wallet sign --no-hash').")
+def base_evm_safe_confirm(
+    network: str,
+    safe_tx_hash_hex: str,
+    signature: str,
+) -> None:
+    """Add a cosigner signature to an already-proposed SafeTx.
+
+    Strictly distinct from ``safe-propose``: that one creates the proposal
+    plus contributes the proposer's first signature; this one adds an
+    additional cosigner signature against an existing proposal so the Safe
+    can reach its threshold without going through the Safe app UI.
+
+    Cosigner workflow (paper backup or hot key alike):
+
+        1. cosigner runs `cast wallet sign --no-hash --private-key <pk> <safeTxHash>`
+        2. they paste the resulting 0x-signature into `--signature` here
+        3. xion_ops base-evm safe-confirm posts it; service rejects bad sigs
+    """
+
+    result = get_service("base-evm").safe_confirm_tx(  # type: ignore[attr-defined]
+        network=network,
+        safe_tx_hash_hex=safe_tx_hash_hex,
+        signature=signature,
+    )
+    click.echo(json.dumps(result.__dict__, indent=2, sort_keys=True, default=str))
+    if not result.ok:
+        raise click.exceptions.Exit(1)
+
+
 @base_evm_group.command(name="register-vault")
 @click.option("--network", required=True, type=click.Choice(["base", "base-mainnet", "base-sepolia"]))
 @click.option("--master-treasury", required=True, help="MasterTreasury contract address.")

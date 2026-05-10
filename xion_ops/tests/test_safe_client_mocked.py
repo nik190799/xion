@@ -404,6 +404,70 @@ class TestSafeTxServiceClient:
                     signature="0x" + "00" * 65,
                 )
 
+    def test_confirm_posts_signature_to_confirmations_endpoint(self) -> None:
+        c = SafeTxServiceClient(network="base-mainnet")
+        safe_tx_hash_hex = "0x" + "12" * 32
+        signature = "0x" + "ab" * 65
+
+        captured: dict[str, Any] = {}
+
+        class _Resp:
+            def __enter__(self) -> "_Resp":
+                return self
+
+            def __exit__(self, *_a: Any) -> None:
+                pass
+
+            def read(self) -> bytes:
+                return b'{"signature":"' + signature.encode() + b'","owner":"0xabc"}'
+
+        def fake_urlopen(req: Any, timeout: int = 0) -> _Resp:
+            captured["url"] = req.full_url
+            captured["body"] = json.loads(req.data.decode("utf-8"))
+            captured["method"] = req.method
+            return _Resp()
+
+        with patch("xion_ops.services.safe.urlopen", fake_urlopen):
+            response = c.confirm(safe_tx_hash_hex=safe_tx_hash_hex, signature=signature)
+
+        assert (
+            captured["url"]
+            == f"https://api.safe.global/tx-service/base/api/v1/multisig-transactions/{safe_tx_hash_hex}/confirmations/"
+        )
+        assert captured["method"] == "POST"
+        assert captured["body"] == {"signature": signature}
+        assert response.get("signature") == signature
+        assert response.get("owner") == "0xabc"
+
+    def test_confirm_validates_inputs(self) -> None:
+        c = SafeTxServiceClient(network="base-mainnet")
+        with pytest.raises(SafeError, match="safe_tx_hash_hex must be"):
+            c.confirm(safe_tx_hash_hex="0xabc", signature="0x" + "00" * 65)
+        with pytest.raises(SafeError, match="signature must be 0x-prefixed"):
+            c.confirm(safe_tx_hash_hex="0x" + "12" * 32, signature="abc")
+
+    def test_confirm_surfaces_http_error(self) -> None:
+        from urllib.error import HTTPError
+        from io import BytesIO
+
+        c = SafeTxServiceClient(network="base-sepolia")
+
+        def fake_urlopen(req: Any, timeout: int = 0) -> None:
+            raise HTTPError(
+                req.full_url,
+                422,
+                "Unprocessable",
+                hdrs=None,  # type: ignore[arg-type]
+                fp=BytesIO(b'{"signature":"signer is not an owner"}'),
+            )
+
+        with patch("xion_ops.services.safe.urlopen", fake_urlopen):
+            with pytest.raises(SafeError, match="rejected confirmation .422."):
+                c.confirm(
+                    safe_tx_hash_hex="0x" + "12" * 32,
+                    signature="0x" + "00" * 65,
+                )
+
     def test_fetch_next_nonce_parses_service_payload(self) -> None:
         c = SafeTxServiceClient(network="base-sepolia")
 
