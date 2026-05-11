@@ -1,0 +1,175 @@
+# Xion Relay — Akash CPU hybrid SDL (relay + CPU Ollama floor + Chutes-via-Worker)
+#
+# Property promised: a public-internet Xion Relay on a decentralized Akash
+# substrate, with hosted inference served from Bittensor Subnet 64 (Chutes)
+# via a Cloudflare Worker proxy (Chutes API key never on-chain) AND an open-
+# weights floor served by a CPU-only xion-ollama sidecar in the same lease.
+# The floor is what Invariant 17 requires for the relay to accept /chat at
+# bootstrap; hosted is the operational primary under hosted_api_first.
+#
+# Architecture (third party → Xion):
+#   stranger → Akash forwarded HTTPS → xion-relay (this lease) →
+#     primary:  XION_CHUTES_BASE_URL → Cloudflare Worker (chutes-proxy) →
+#               Chutes /v1/* → Bittensor SN64 (Kimi-K2.6-TEE) → response
+#     fallback: XION_OLLAMA_URL=http://xion-ollama:11434 →
+#               sidecar Ollama serving gemma4:e4b-it-q4_K_M on CPU →
+#               slow but doctrinally sufficient response
+#
+# Doctrinal note: this SDL is *operationally* CPU-only — no GPU bid. That
+# means /chat is fast (~1-3s) when Chutes is reachable (the 99% path) and
+# slow (~20-60s) when Chutes 503s and the floor takes over. The slow CPU
+# floor is acceptable as a fallback, NOT as the hot path. KW-FLOOR-DEPLOY-001
+# remains under dated residue (2026-07-09) because the doctrine's strict
+# reading wants a GPU-served floor; this hybrid satisfies the bootstrap
+# requirement (a healthy open_weights_self_hostable provider exists) but
+# does not close the weakness's full intent (production-quality floor
+# performance). Recording that honestly is the doctrine.
+#
+# Memory budget: gemma4:e4b-it-q4_K_M is ~3GB on disk, ~4GB resident.
+# 12Gi RAM for xion-ollama covers model + KV cache + Ollama runtime.
+# Storage 60Gi covers model pull + cache.
+#
+# Pricing: xion-relay 250 uact/block matches the working CPU relay lease
+# 26770010. xion-ollama 2000 uact/block is mid-range (above CPU relay,
+# below GPU 10000) — CPU bidders should be plentiful.
+
+version: "2.0"
+services:
+  xion-relay:
+    image: nikhilkadalge/xion-relay:pre-genesis-akash-wall120
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        python - <<'PY'
+        import json
+        import os
+        import time
+        import urllib.request
+
+        base_url = os.environ.get("XION_OLLAMA_URL", "http://xion-ollama:11434").rstrip("/")
+        tags_url = base_url + "/api/tags"
+        generate_url = base_url + "/api/generate"
+        wanted = os.environ.get("XION_OLLAMA_FLOOR_MODEL", "gemma4:e4b-it-q4_K_M")
+        # CPU Ollama is slower to come up than GPU — extend the boot wait
+        # generously. 1800s (30 min) covers the 9.6GB model pull on a slow
+        # provider network plus initial generate warmup.
+        deadline = time.monotonic() + int(os.environ.get("XION_OLLAMA_BOOT_WAIT_S", "1800"))
+
+        while time.monotonic() < deadline:
+            try:
+                with urllib.request.urlopen(tags_url, timeout=5) as response:
+                    body = json.loads(response.read().decode("utf-8"))
+                names = {model.get("name") for model in body.get("models", []) if isinstance(model, dict)}
+                if wanted in names:
+                    payload = json.dumps(
+                        {"model": wanted, "prompt": "ping", "stream": False, "options": {"num_predict": 1}}
+                    ).encode("utf-8")
+                    request = urllib.request.Request(
+                        generate_url,
+                        data=payload,
+                        method="POST",
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(request, timeout=120) as response:
+                        if not (200 <= response.status < 300):
+                            raise RuntimeError(f"generate returned HTTP {response.status}")
+                        response.read()
+                    print(f"State-of-Xion: Ollama floor model ready: {wanted}", flush=True)
+                    break
+                print(f"State-of-Xion: waiting for Ollama floor model {wanted}; seen={sorted(names)}", flush=True)
+            except Exception as exc:
+                print(f"State-of-Xion: waiting for Ollama readiness at {base_url}: {exc}", flush=True)
+            time.sleep(5)
+        else:
+            raise SystemExit(f"State-of-Xion: Ollama floor model {wanted} was not ready before timeout")
+        PY
+        exec /usr/local/bin/entrypoint-xion-orchestrator-api.sh
+    expose:
+      - port: 8443
+        as: 443
+        to:
+          - global: true
+    env:
+      - XION_API_HOST=0.0.0.0
+      - XION_API_PORT=8443
+      - XION_API_WORKERS=1
+      - XION_API_REQUIRE_BEARER=false
+      - XION_BILLING_REQUIRED=false
+      - XION_CAST_POOL_ON_BOOT=false
+      - XION_CHAT_DEADLINE_S=120
+      - XION_COGNITION_WALL_S=120
+      - XION_INFERENCE_POLICY=hosted_api_first
+      # Open-weights floor (Invariant 17). CPU-served in this lease.
+      - XION_OLLAMA_URL=http://xion-ollama:11434
+      - XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-q4_K_M
+      - XION_OLLAMA_BOOT_WAIT_S=1800
+      # Chutes hosted inference (Genesis Default primary path) via
+      # Cloudflare Worker proxy. The real Chutes API key never leaves the
+      # Worker's encrypted secrets store; the env value here is a
+      # non-secret placeholder that satisfies provider registration.
+      - XION_CHUTES_API_KEY=via-cloudflare-worker-proxy
+      - XION_CHUTES_BASE_URL=https://still-mud-3e62.nikhil-kadalge.workers.dev/v1
+      - XION_CHUTES_HOSTED_MODEL=moonshotai/Kimi-K2.6-TEE
+      - XION_CHUTES_TEE_REQUIRED=true
+      # Ledgers
+      - XION_PAYMENT_LEDGER=/app/data/PAYMENT_LEDGER.jsonl
+      - XION_SENSORIUM_LEDGER=/app/data/SENSORIUM_LEDGER.jsonl
+      - XION_SAFETY_LEDGER=/app/data/SAFETY_LEDGER.jsonl
+      - XION_REQUEST_LEDGER=/app/data/REQUEST_LEDGER.jsonl
+      - XION_ANCHOR_DB_PATH=/app/data/ANCHOR_LEDGER.jsonl
+  xion-ollama:
+    image: ollama/ollama:0.21.0
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        ollama serve &
+        pid="$!"
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        ollama pull "${XION_OLLAMA_FLOOR_MODEL:-gemma4:e4b-it-q4_K_M}"
+        wait "$pid"
+    expose:
+      - port: 11434
+        as: 11434
+        to:
+          - service: xion-relay
+    env:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-q4_K_M
+profiles:
+  compute:
+    xion-relay:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 4Gi
+        storage:
+          - size: 10Gi
+    xion-ollama:
+      resources:
+        cpu:
+          units: 6
+        memory:
+          size: 12Gi
+        storage:
+          - size: 60Gi
+  placement:
+    akash:
+      pricing:
+        xion-relay:
+          denom: uact
+          amount: 250
+        xion-ollama:
+          denom: uact
+          amount: 2000
+deployment:
+  xion-relay:
+    akash:
+      profile: xion-relay
+      count: 1
+  xion-ollama:
+    akash:
+      profile: xion-ollama
+      count: 1

@@ -584,18 +584,34 @@ class AkashService(OpsService):
             raise ProviderUnreachable(str(exc)) from exc
 
     def _health_smoke_wsl_curl(self, absolute_url: str, *, timeout_seconds: int) -> bool:
-        """Ubuntu/WSL routing often reaches Akash nip.io ingress when native Windows stalls."""
+        """Ubuntu/WSL routing often reaches Akash nip.io ingress when native Windows stalls.
+
+        Retries on connection-refused throughout the timeout window because some
+        deployments (notably the GPU/Ollama sidecar pattern) gate the relay
+        container's port-bind on a sidecar readiness loop (model pull). The
+        k8s-level ``ready_replicas>=1`` fires when the container's process
+        starts, not when its socket is bound, so the first curl after
+        ``_wait_for_ready`` can hit a closed port even though the deployment is
+        progressing normally. ``--retry-connrefused`` + ``--retry`` lets curl
+        keep trying within the operator-provided budget instead of treating an
+        early refusal as terminal and triggering rollback.
+        """
 
         quoted = shlex.quote(absolute_url)
+        # Per-attempt connect+transfer cap of 30s keeps curl from camping on a
+        # single slow socket while the retry loop honors the overall budget.
+        per_attempt = min(int(timeout_seconds), 30)
+        max_retries = max(1, int(timeout_seconds) // 10)
         shell = (
-            f'curl -k -fsS --max-time {int(timeout_seconds)} '
+            f"curl -k -fsS --max-time {per_attempt} "
+            f"--retry {max_retries} --retry-delay 10 --retry-connrefused --retry-all-errors "
             f"-o /dev/null -w \"%{{http_code}}\" {quoted}"
         )
         try:
             result = run_command(
                 ["wsl", "bash", "-lc", shell],
                 cwd=self.repo_root,
-                timeout=timeout_seconds + 15,
+                timeout=timeout_seconds + 30,
             )
         except FileNotFoundError:
             request = Request(absolute_url, method="GET")
