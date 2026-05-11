@@ -1,0 +1,55 @@
+{
+  "artifact": "relay-akash-closure-attempts",
+  "as_of": "2026-05-11T02:55Z",
+  "operator_local_date": "2026-05-10",
+  "note": "Three GPU-SDL closure attempts on 2026-05-10 evening (US tz) / early 2026-05-11 UTC. All three providers accepted the bid, lease was created, but each provider's forwarded ingress refused connections during the health smoke. Each attempt was rolled back by AkashService.deploy_relay() (lease_closed_owner). Budget cap of 3 attempts was hit per the C2 plan from earlier in the session.",
+  "sdl_path": "infra/akash/relay-deployment.yaml",
+  "exclusions_at_final_attempt": [
+    "akash12v6dhc8awlwhv438jjyw80eguhgtm735mfv3fx",
+    "akash17whuchjwdlm3l8z3pdzaw8sqyeelmxua54qejw",
+    "akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d",
+    "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e",
+    "akash1ta6d9l4ujhj6ztvveyjuyr3zha3te3txz5nr5d"
+  ],
+  "attempts": [
+    {
+      "dseq": "26769714",
+      "provider": "akash17whuchjwdlm3l8z3pdzaw8sqyeelmxua54qejw",
+      "provider_hint": "solserver.eu",
+      "forwarded_url": "https://provider.solserver.eu:32599",
+      "outcome": "health_smoke_failed",
+      "detail": "curl exit 7: Failed to connect to provider.solserver.eu port 32599 — Couldn't connect to server",
+      "duration_s": 119.4,
+      "prefer_provider_used": "akash1st7fqtuqk6hj06fkkavq0fxtw0w9sm4zzt3r5g (did not bid in time)"
+    },
+    {
+      "dseq": "26769739",
+      "provider": "akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d",
+      "provider_hint": "pronto-ai.pp.ua",
+      "forwarded_url": "https://provider.pronto-ai.pp.ua:31253",
+      "outcome": "health_smoke_failed",
+      "detail": "curl exit 7: Failed to connect to provider.pronto-ai.pp.ua port 31253 — Couldn't connect to server",
+      "duration_s": 163.9,
+      "note": "Same provider successfully closed dseq=26595076 on 2026-04-29 at port 31503; the port changes per lease and recent leases route to closed ports."
+    },
+    {
+      "dseq": "26769773",
+      "provider": "akash18ga02jzaq8cw52anyhzkwta5wygufgu6zsz6xc",
+      "provider_hint": "europlots.com",
+      "forwarded_url": "https://provider.europlots.com:31108",
+      "outcome": "health_smoke_failed",
+      "detail": "curl exit 7: Failed to connect to provider.europlots.com port 31108 — Couldn't connect to server",
+      "duration_s": 70.6
+    }
+  ],
+  "akt_spent_uakt_gas_only": 898071,
+  "uact_escrow_refunded": true,
+  "result": "BUDGET_EXHAUSTED_3_OF_3_FAILED_ON_INGRESS",
+  "kw_floor_deploy_001_status": "still open — dated residue 2026-05-10 → 2026-07-09 remains in effect; 2026-05-10 attempts confirm the pattern (cheap GPU bidders, broken forwarded ingress) is reproducible against the live market",
+  "next_step_options_for_operator": [
+    "Path B (Akash CPU + Chutes hosted with scoped/capped key on-chain) — accepts bounded credential exposure",
+    "Wait for Akash market shift (overnight reset) and retry tomorrow",
+    "Try a manual provider chosen out-of-band (operator picks via Akash console)",
+    "Hold the dated residue until 2026-07-09 and ship without an Akash GPU floor today"
+  ]
+}

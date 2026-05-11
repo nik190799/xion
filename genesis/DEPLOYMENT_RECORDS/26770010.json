@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-05-11T03:15:31Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "publish_registry": false,
+      "rejected_providers": [
+        "akash12v6dhc8awlwhv438jjyw80eguhgtm735mfv3fx",
+        "akash17whuchjwdlm3l8z3pdzaw8sqyeelmxua54qejw",
+        "akash18ga02jzaq8cw52anyhzkwta5wygufgu6zsz6xc",
+        "akash1rja3y2ctj3tzmesvh0zfhzzx95rfjw405hwt8d",
+        "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e",
+        "akash1ta6d9l4ujhj6ztvveyjuyr3zha3te3txz5nr5d"
+      ],
+      "sdl_path": "infra/akash/relay-deployment-cpu-chutes.yaml"
+    }
+  },
+  "id": "26770010",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "duration_s": 68.344,
+      "forwarded_ports": {
+        "xion-relay": [
+          {
+            "externalPort": 31061,
+            "host": "provider.h6i-dedicated.eu-se-1.digitalfrontier.so",
+            "name": "xion-relay",
+            "port": 8443,
+            "proto": "TCP"
+          }
+        ]
+      },
+      "ips": null,
+      "services": {
+        "xion-relay": {
+          "available": 1,
+          "available_replicas": 1,
+          "name": "xion-relay",
+          "observed_generation": 1,
+          "ready_replicas": 1,
+          "replicas": 1,
+          "total": 1,
+          "updated_replicas": 1,
+          "uris": null
+        }
+      },
+      "survey_count": 1
+    },
+    "dseq": "26770010",
+    "id": "26770010",
+    "ok": true,
+    "provider": "akash1aaul837r7en7hpk9wv2svg8u78fdq0t2j2e82z",
+    "service": "akash",
+    "tx": null,
+    "url": "https://provider.h6i-dedicated.eu-se-1.digitalfrontier.so:31061"
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": true,
+    "output": ""
+  }
+}

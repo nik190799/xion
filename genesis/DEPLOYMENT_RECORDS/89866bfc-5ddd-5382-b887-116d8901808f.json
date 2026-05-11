@@ -1,0 +1,78 @@
+{
+  "created_at": "2026-05-11T01:45:43Z",
+  "deployer": "relay-chutes",
+  "evidence": {
+    "params": {
+      "accept_fee": true,
+      "build_wait": false,
+      "debug": false,
+      "include_cwd": false,
+      "module_path": "xion_relay_chute:chute",
+      "public": false,
+      "publish_registry": false
+    }
+  },
+  "id": "89866bfc-5ddd-5382-b887-116d8901808f",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "chute_ref": "xion_relay_chute:chute",
+      "command": [
+        "chutes",
+        "deploy",
+        "xion_relay_chute:chute",
+        "--accept-fee"
+      ],
+      "deploy_command_ok": true,
+      "deploy_metadata_warnings": [
+        "no gateway URL parsed and XION_CHUTES_BASE_URL is unset; cord warmup may need an explicit URL"
+      ],
+      "duration_s": 17.594,
+      "parsed_chute_id": "89866bfc-5ddd-5382-b887-116d8901808f",
+      "parsed_url": null,
+      "parsed_version": "5b8129a3-6253-58ec-9e2e-6de71e178625",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "2026-05-10 20:34:59.207 | INFO     | chutes.config:get_config:62 - Loading chutes config from /home/wsl-xion/.chutes/config.ini...\n\u001b[1m\u001b[4mYou are about to upload /mnt/c/Users/16823/CursorProjects/xion-os/xion_relay_chute.py and deploy xion-relay-pre-genesis-d3, confirm? (y/n) \u001b[0m2026-05-10 20:35:15.441 | SUCCESS  | chutes.entrypoint.deploy:_deploy:110 - Successfully deployed chute xion-relay-pre-genesis-d3 chute_id='89866bfc-5ddd-5382-b887-116d8901808f' version=5b8129a3-6253-58ec-9e2e-6de71e178625 invocations will be available soon!\n",
+      "warmup": {
+        "attempts": 14,
+        "bearer_attached": true,
+        "elapsed_s": 609.937,
+        "interval_seconds": 15.0,
+        "last_cords": {
+          "/health": {
+            "body_prefix": "Service Unavailable",
+            "ok": false,
+            "status": 503
+          },
+          "/quote": {
+            "body_prefix": "Service Unavailable",
+            "ok": false,
+            "status": 503
+          },
+          "/self": {
+            "body_prefix": "Service Unavailable",
+            "ok": false,
+            "status": 503
+          }
+        },
+        "max_wait_seconds": 600.0,
+        "result": "timeout waiting for all cords green"
+      },
+      "warmup_ok": false
+    },
+    "dseq": null,
+    "id": "89866bfc-5ddd-5382-b887-116d8901808f",
+    "ok": false,
+    "provider": null,
+    "service": "chutes",
+    "tx": null,
+    "url": "https://nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai"
+  },
+  "verify": {
+    "code": 0,
+    "command": "chutes verify-cords",
+    "ok": false,
+    "output": "{'cords': {'/health': {'ok': False, 'status': 404, 'body_prefix': 'Not Found'}, '/quote': {'ok': False, 'status': 503, 'body_prefix': 'Service Unavailable'}, '/self': {'ok': False, 'status': 503, 'body_prefix': 'Service Unavailable'}}, 'bearer_attached': True, 'result': 'one or more cords failed'}"
+  }
+}

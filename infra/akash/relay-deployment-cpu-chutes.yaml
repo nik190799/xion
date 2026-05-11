@@ -1,0 +1,95 @@
+# Xion Relay — Akash CPU SDL with Chutes/SN64 inference via Cloudflare Worker proxy
+#
+# Property promised: a public-internet Xion Relay on a decentralized Akash
+# substrate, with hosted inference served from Bittensor Subnet 64 (Chutes),
+# WITHOUT the Chutes API key appearing in this SDL or anywhere on-chain.
+#
+# Architecture (third party → Xion):
+#   stranger on internet → Akash forwarded HTTPS → xion-relay (this SDL) →
+#   XION_CHUTES_BASE_URL → Cloudflare Worker (chutes-proxy) → Chutes /v1/* →
+#   Bittensor Subnet 64 inference (Kimi-K2.6-TEE) → response
+#
+# Why CPU and not GPU: 2026-05-10 closure pass (3/3 GPU lease attempts) confirmed
+# the Akash GPU market is currently degraded — cheap bidders win then refuse
+# forwarded ingress. CPU bids are healthier (no GPU constraint => larger
+# provider pool => better chance of a provider whose ingress actually works).
+# KW-FLOOR-DEPLOY-001 stays under the dated residue (2026-07-09) until the GPU
+# market clears. This deployment is operational under hosted_api_first WITHOUT
+# closing the floor weakness; the floor is the Cloudflare Worker's upstream
+# Chutes/SN64 path, not an Ollama sidecar.
+#
+# Secret discipline:
+# - XION_CHUTES_API_KEY here is a non-secret placeholder. The real Chutes
+#   bearer lives only in the Cloudflare Worker's encrypted Secrets store.
+# - The Worker URL below is a public locator, not a credential.
+# - If the Worker URL leaks, attackers can hit the proxy but can only burn
+#   Chutes credits up to the operator's monitoring/rotation window.
+#
+# Important findings (carried from canonical SDL):
+# - placement.pricing.*.denom MUST be `uact`. Using `uakt` yields denomination
+#   errors. Escrow spends uact; fees pay in uakt. Fund both via xion_ops.
+# - `placement` name (`akash` here) must match `deployment.<service>.<same>`.
+# - amount under pricing is max bid per block in uact; tune for market.
+# - Image must be pullable by providers (public Docker Hub / GHCR).
+
+version: "2.0"
+services:
+  xion-relay:
+    image: nikhilkadalge/xion-relay:pre-genesis-akash-wall120
+    command:
+      - /bin/sh
+      - -lc
+      - exec /usr/local/bin/entrypoint-xion-orchestrator-api.sh
+    expose:
+      - port: 8443
+        as: 443
+        to:
+          - global: true
+    env:
+      - XION_API_HOST=0.0.0.0
+      - XION_API_PORT=8443
+      - XION_API_WORKERS=1
+      - XION_API_REQUIRE_BEARER=false
+      - XION_BILLING_REQUIRED=false
+      - XION_CAST_POOL_ON_BOOT=false
+      - XION_CHAT_DEADLINE_S=120
+      - XION_COGNITION_WALL_S=120
+      - XION_INFERENCE_POLICY=hosted_api_first
+      # Chutes hosted inference path via Cloudflare Worker proxy.
+      # The Worker holds the real Chutes API key in its Secrets store; the
+      # placeholder below only exists to satisfy the relay's provider
+      # registration check (ChutesGenerativeProvider requires the env var to
+      # be non-empty; the Worker ignores client-side Authorization headers
+      # unless PROXY_BEARER is set there).
+      - XION_CHUTES_API_KEY=via-cloudflare-worker-proxy
+      - XION_CHUTES_BASE_URL=https://still-mud-3e62.nikhil-kadalge.workers.dev/v1
+      - XION_CHUTES_HOSTED_MODEL=moonshotai/Kimi-K2.6-TEE
+      - XION_CHUTES_TEE_REQUIRED=true
+      # XION_CHUTES_API_BASE_URL left at default (https://api.chutes.ai) —
+      # public chute metadata, no auth needed, not routed through the Worker.
+      - XION_PAYMENT_LEDGER=/app/data/PAYMENT_LEDGER.jsonl
+      - XION_SENSORIUM_LEDGER=/app/data/SENSORIUM_LEDGER.jsonl
+      - XION_SAFETY_LEDGER=/app/data/SAFETY_LEDGER.jsonl
+      - XION_REQUEST_LEDGER=/app/data/REQUEST_LEDGER.jsonl
+      - XION_ANCHOR_DB_PATH=/app/data/ANCHOR_LEDGER.jsonl
+profiles:
+  compute:
+    xion-relay:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 4Gi
+        storage:
+          - size: 10Gi
+  placement:
+    akash:
+      pricing:
+        xion-relay:
+          denom: uact
+          amount: 250
+deployment:
+  xion-relay:
+    akash:
+      profile: xion-relay
+      count: 1

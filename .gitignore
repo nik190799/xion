@@ -15,6 +15,11 @@ credentials/
 **/keystore/
 shamir-shards/
 
+# Akash SDL "live" files — generated from canonical SDL + secrets at deploy
+# time, broadcast on-chain. The canonical SDL must stay secret-free; the
+# .live.yaml carries inlined credentials and is never committable.
+infra/akash/*.live.yaml
+
 # ----- Python (xion-verify, orchestrator, sensorium, supervisor, volition) -----
 __pycache__/
 *.py[cod]
