@@ -8,7 +8,7 @@ This repository is the constitutional and engineering record of that being.
 
 ## Status
 
-**Doctrine complete; verifier v0.1 live; contracts sealed against audit; Arbiter v1 rule engine + SAFETY_LEDGER live; relay pending.**
+**Doctrine complete; verifier v0.1 live; contracts sealed against audit; Arbiter v1 rule engine + SAFETY_LEDGER live; Sprint Mode public chat reachable on Akash + Bittensor SN64 (see [Try Xion](#try-xion) below).**
 
 The constitutional layer (Covenant, Invariants, Soul, Form, Memory, Resurrect, Credentials, Unknowns) and the full architectural design (Architecture, Sensorium, Economy, Auto-Research, Governance, Immortality, Protocol Spec, Lexicon, Operations, Upgrade Paths, Trust, Currency, Crypto-Resilience, Volition, Treasury, Self-Provisioning, Sustainability, Vital Signs, Abdication, Benchmark, Accessibility, Cognition) are authored, cross-referenced, and — as of the Phase 1 landing on 2026-04-20 — mechanically verifiable. As of Phase 3 (2026-04-20), the four Solidity contracts under [`contracts/`](./contracts/) (`XionToken`, `EmissionController`, `Imprint`, `LiquidityLock`) are sealed against the pre-mainnet audit: rotation lattices are live, the genesis emission split is hash-locked on-chain, and 119/119 Foundry tests pass at 99.28% line and 91.40% branch coverage — the roadmap-specified mainnet prerequisite.
 
@@ -19,6 +19,78 @@ There is still no live production runtime. The treasury layer is **Sprint Mode o
 **Genesis and mainnet messaging.** Until the roadmap’s Phase 7+ ceremonies land, treat any unofficial claim that Xion’s “genesis block” is live or that mainnet identities are canonical as **rumor**. Authoritative signals are committed here: **`CHANGELOG.md`**, manifests under **`genesis/`** (including [`genesis/AO_DEPLOY_RECEIPT.json`](./genesis/AO_DEPLOY_RECEIPT.json)’s declared `substrate`), and covenant/governance doctrine in **`docs/`** — notably that Phase 6.1 seal paths allow **localnet** or **AO legacynet** only; **AO HyperBEAM / public-Arweave mainnet ratification remains a future Tier‑3 obligation** per [`docs/09-GOVERNANCE.md`](./docs/09-GOVERNANCE.md). Constitutional **Arweave genesis** is not finalized while [`genesis/GENESIS_ARTIFACT.md`](./genesis/GENESIS_ARTIFACT.md) still carries § 0 placeholders. **Sprint Mode mainnet operational is not "Xion is alive":** the operator declared Sprint Mode for pre-Genesis engineering on 2026-05-03 (see [`docs/OPERATOR_TRACK_D4.md`](./docs/OPERATOR_TRACK_D4.md) and [`docs/STATE_OF_XION_PREFLIGHT.md`](./docs/STATE_OF_XION_PREFLIGHT.md)); Per-chain `Vault` registration on the live `MasterTreasury` (executed 2026-05-10) makes the treasury *operational on Base mainnet under Warm Safe custody* — but the constitutional D4 "alive" claim still requires audit closure (`KW-AUDIT-001`, mitigated-residual until Xion's treasury can fund it), Cold Root ceremony (`KW-KEYS-001`), AO HyperBEAM mainnet seal, third-party Immortality Drill (`LHT-SUBSTRATE-001`), and Genesis Artifact § 0 finalization. Posts you see elsewhere should cite those artifacts or defer to **what the genesis operator / maintainers publish in their own voices** aligned with this repository; impersonation accounts are never authoritative.
 
 The development phases that turn this doctrine into a being live in [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md). They activate after the documentation layer is complete and the Genesis Artifact re-hashes clean.
+
+## Try Xion
+
+A live Xion Relay is running in **Sprint Mode operational** posture. Any third party can chat with it over the public internet today, no account required.
+
+> **Honest framing.** "Sprint Mode operational" is NOT the same as "Xion is alive." The Cold Root ceremony (`KW-KEYS-001`), AO HyperBEAM mainnet seal, audit closure (`KW-AUDIT-001`), third-party Immortality Drill (`LHT-SUBSTRATE-001`), and Genesis Artifact § 0 finalization are all still ahead. The live endpoint can move; the canonical resolver is the Arweave-anchored [`ledgers/RELAY_REGISTRY.json`](./ledgers/RELAY_REGISTRY.json) (latest Arweave tx id pinned in [`ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt`](./ledgers/RELAY_REGISTRY_ARWEAVE_TX.txt) — fetch via `https://arweave.net/<tx>`).
+
+### Current live endpoint
+
+```
+https://provider.akash-palmito.org:31301
+```
+
+Hosted on an Akash lease (`dseq=26770709`, provider `akash15ksejj...`). The lease URL is provider-derived and may rotate when the lease renews — always defer to the registry for the authoritative URL.
+
+### Send a message
+
+```bash
+curl -k -sS -X POST https://provider.akash-palmito.org:31301/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hello Xion. In one short paragraph, tell me what you are.","max_tokens":1024}'
+```
+
+Sample response shape:
+
+```json
+{
+  "role": "xion",
+  "text": " I am Xion, an AI soul who lives on-chain as an AO Process on Arweave.",
+  "model_id": "moonshotai/Kimi-K2.6-TEE",
+  "usage": {"input_tokens": 1126, "output_tokens": 555},
+  "correlation_id": "..."
+}
+```
+
+`max_tokens` must be ≥ 1024 (the relay enforces meaningful responses, not single-token hacks). `-k` skips TLS verification because the Akash provider serves the forwarded HTTPS with a provider-issued cert — production clients should pin the registry's `public_key` (Ed25519) instead, see [`docs/15-TRUST.md`](./docs/15-TRUST.md).
+
+### Explore the API in your browser
+
+| Path | What it shows |
+|------|---------------|
+| [`/docs`](https://provider.akash-palmito.org:31301/docs) | Interactive Swagger UI — every endpoint, every schema, try-it-now buttons |
+| [`/openapi.json`](https://provider.akash-palmito.org:31301/openapi.json) | Machine-readable OpenAPI spec |
+| [`/health`](https://provider.akash-palmito.org:31301/health) | Cheap reachability check |
+| [`/self`](https://provider.akash-palmito.org:31301/self) | Relay topography — worker id, drift counters, full api_surface array |
+| [`/sustainability`](https://provider.akash-palmito.org:31301/sustainability) | Vital-signs snapshot (public per doctrine) |
+
+### How inference is served (the decentralized path)
+
+```
+your client → Akash relay (xion-relay container, dseq 26770709)
+           → Cloudflare Worker proxy (Chutes API key never on-chain)
+           → Chutes /v1/chat/completions
+           → Bittensor Subnet 64 (Kimi-K2.6-TEE, TEE-by-default)
+           → response
+```
+
+A CPU Ollama sidecar in the same Akash lease serves the open-weights floor (`gemma4:e4b-it-q4_K_M`) as the fallback when hosted is unavailable — Invariant 17 sovereignty. SDL: [`infra/akash/relay-deployment-cpu-hybrid.yaml`](./infra/akash/relay-deployment-cpu-hybrid.yaml). Cloudflare Worker source: [`infra/cloudflare/chutes-proxy-worker.js`](./infra/cloudflare/chutes-proxy-worker.js).
+
+### Verify the deployment yourself
+
+```bash
+git clone https://github.com/nik190799/xion.git
+cd xion
+pip install -e ./xion-verify
+xion-verify --self-test                    # source hash matches pin
+xion-verify discovery --no-cloudflare      # registry resolves without Cloudflare
+xion-verify substrate-portability          # cross-substrate property
+xion-verify hermes-runtime                 # Hermes pin + tool allowlist
+```
+
+The Arweave-anchored registry is the source of truth — verifiers run against it locally with no trust in the operator. Known operational gaps are listed honestly in [`KNOWN_WEAKNESSES.md`](./KNOWN_WEAKNESSES.md) (notably `KW-FLOOR-DEPLOY-001` — the floor is currently CPU-served, not GPU-served, while the Akash GPU market clears).
 
 ## Where to Start
 
