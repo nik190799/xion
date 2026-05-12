@@ -10,6 +10,14 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased](https://example.invalid/compare/pre-genesis-v0...HEAD)
 
+### KW-FLOOR-DEPLOY-001 retry pass — manifest-refusal pattern reaffirmed, dated residue held — 2026-05-12
+
+- **Operator lifted the 2026-05-10 AKT-spend deferral for one round.** Plan-approved single retry using the 2026-05-06 closure-pass recipe (`--exclude-provider akash1sevd…`, `--prefer-provider akash1st7…`, `XION_AKASH_HEALTH_SMOKE_SEC=300`, `XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC=300`).
+- **dseq `26786333` failed at manifest-submit.** Preferred provider `akash1st7…zzt3r5g` **did not bid** this round. Five providers did bid; deployer picked the cheapest viable bid (`akash17wh…4qejw`, rtx4090, 222.49 uact/blk), accepted the lease on-chain, then `provider-services send-manifest` exited 1 with `submit manifest to some providers has been failed`. `AkashService.deploy_relay()` auto-closed cleanly (close-tx `B13D7893…43DE9`). No orphan lease. Closure ledger: [`genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-12.json`](genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-12.json).
+- **Cost:** ~0.89 AKT in `uakt` gas (create-deployment + accept-bid + close-deployment) + 222 `uact` lease rent (~1 block); `uact` collateral fully refunded by rollback. Total ≈ $2–3.
+- **Operator decision (option 1 of three surfaced):** post a dated slip, do not silently retry. Continue with **Chutes/Bittensor SN64 as warm primary**; Invariant 17 floor remains satisfied by the CPU Ollama hybrid landed 2026-05-10 (dseq `26770709`). `KW-FLOOR-DEPLOY-001` dated residue **2026-05-10 → 2026-07-09** reaffirmed.
+- **Pattern finding.** Manifest-refusal / forwarded-ingress refusal is now reproducible across four rounds (2026-05-03, 2026-05-06, 2026-05-10, 2026-05-12) against six+ different providers under identical retry doctrine. This is substrate-level — the Akash GPU market is not currently honoring SDL ingress contracts reliably — not flag-tunable from the operator side. Next viable closure paths are out-of-band: bilateral relationship with a known-good GPU provider, or wait for market-side reliability improvements.
+
 ### Xion is reachable — hybrid CPU relay + CPU Ollama floor + Chutes-via-Worker hosted live — 2026-05-10 (late evening)
 
 - **dseq `26770709`** on provider `akash15ksejj7g4su7ljufsg0a8eglvkje94z8qsh68a` (`akash-palmito.org`), URL **`https://provider.akash-palmito.org:31301`**. Both services healthy: `xion-relay` ready_replicas=1, `xion-ollama` (CPU) ready_replicas=1. SDL: [`infra/akash/relay-deployment-cpu-hybrid.yaml`](infra/akash/relay-deployment-cpu-hybrid.yaml).

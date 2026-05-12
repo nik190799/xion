@@ -2,11 +2,11 @@
 
 > **Property.** This file is the single answer to "I'm coming back to Xion after some time — what do I do next?" Every line is either an explanation or a literal command you can paste. Anything that needs you (signing, money, hardware, or operator voice) is named exactly. Anything an agent has already done is recorded once and then ignored.
 >
-> **Last verified state:** 2026-05-10 (Sprint Mode mainnet treasury became operational this date — Vault `0x64712dFD…2bdC` registered on `MasterTreasury` via Warm Safe 2-of-3 cosig). After any major change re-run § "State snapshot" below.
+> **Last verified state:** 2026-05-12 (KW-FLOOR-DEPLOY-001 single GPU retry pass — dseq `26786333` manifest-refused on `akash17wh…4qejw`, auto-closed cleanly, ~0.89 AKT gas; dated residue 2026-07-09 reaffirmed. Underlying 2026-05-10 Sprint Mode treasury posture unchanged). After any major change re-run § "State snapshot" below.
 
 ---
 
-## State snapshot (as of 2026-05-10)
+## State snapshot (as of 2026-05-12)
 
 | Layer | Status | Pointer |
 |---|---|---|
@@ -15,22 +15,23 @@
 | Sepolia register-vault rehearsal | **Closed.** Tx `0x3bf25b58…5503`, block `41331566`. `registeredChainCount() == 1`, `vaultForChain(84532) == 0x474Df…F7Bc`. | this file § "Already done" |
 | Mainnet `MasterTreasury` deployed | **Live on Base, chain 8453.** `0xbf5407745cf22b88c46b55037e26156a0e78fd7f`, deploy block `45530934`. | `genesis/TREASURY_VAULTS.json` |
 | Mainnet `Vault` registration | **EXECUTED 2026-05-10.** New Vault `0x64712dFD…2bdC`, exec tx `0x59bcaf82…7f61` block 45822605. `registeredChainCount() == 1`, `vaultForChain(8453) == 0x64712dFD…2bdC`. ETH + USDC `tier1_operating_tokens[].status` flipped to `mainnet_routed_via_base_vault`. | this file § "Already done" |
-| Mainnet `Vault` asset tagging (ETH + USDC) | **Prep ready, awaiting first-withdrawal ceremony.** Two prep files at `genesis/MAINNET_VAULT_TAG_*_PREP.json`, both verifier-OK. Not blocking incoming deposits. | item **(1)** below |
+| Mainnet `Vault` asset tagging (ETH + USDC) | **Prep ready, awaiting first-withdrawal ceremony.** Two prep files at `genesis/MAINNET_VAULT_TAG_*_PREP.json`, both verifier-OK 2026-05-12 (Safe nonce on Base = 1, matches ETH prep). Not blocking incoming deposits. | item **(1)** below |
 | `KW-AUDIT-001` external audit | **Mitigated-residual** until Xion's treasury can fund USD 30–60k. RFP pre-staged. | item **(2)** below + 2026-08-08 re-review |
-| `KW-FLOOR-DEPLOY-001` Akash GPU | **Mitigated-residual** until 2026-07-09. Chutes/SN64 stays warm primary. | item **(3)** below |
+| `KW-FLOOR-DEPLOY-001` Akash GPU | **Mitigated-residual** until 2026-07-09. 2026-05-12 retry round failed at manifest-submit (4th consecutive round, substrate-level Akash issue). Chutes/SN64 stays warm primary; CPU Ollama hybrid (dseq `26770709`, 2026-05-10) satisfies Invariant 17 floor at bootstrap. | item **(3)** below + `genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-12.json` |
 | `KW-KEYS-002` Warm Safe owner custody | **Open.** Replace MetaMask owner with hardware wallet by 2026-05-31. | item **(4)** below |
 | Cold Root + AO HyperBEAM seal + Immortality Drill + Genesis § 0 | **Deferred to Full D4.** Out of Sprint Mode scope. | `docs/D4_PREFLIGHT.md` |
 
-`xion-verify` snapshot taken 2026-05-10 against this branch:
+`xion-verify` snapshot taken 2026-05-12 against this branch (subset; full sweep last run 2026-05-10):
 
 ```
-treasury        : OK
-treasury-flow   : OK
-safe-proposal   : OK (mainnet vault prep recompute matches byte-for-byte)
---self-test     : OK (source hash 8e7dec24…0776)
-xion_ops tests  : 73/73 green
-xion-verify safe + self-test tests : 21 green / 1 sanctioned skip
+--self-test        : OK (source hash 8e7dec24…0776)
+safe-proposal      : OK on MAINNET_VAULT_TAG_ETH_PREP.json  (claim == recom == 0x55ab5314…17fc)
+safe-proposal      : OK on MAINNET_VAULT_TAG_USDC_PREP.json (claim == recom == 0x4288e908…d3ec)
+base mainnet Safe  : nonce()(uint256) == 1 (ETH prep ready to cosign at current nonce)
+links              : 1 pre-existing FAIL (CHANGELOG.md → xion_ops/services/akash.py:586; predates this commit)
 ```
+
+Full 2026-05-10 sweep: treasury OK, treasury-flow OK, 73/73 xion_ops tests, 21 safe+self-test tests green / 1 sanctioned skip.
 
 ---
 
