@@ -2,7 +2,7 @@
 
 > **Property.** This file is the single answer to "I'm coming back to Xion after some time — what do I do next?" Every line is either an explanation or a literal command you can paste. Anything that needs you (signing, money, hardware, or operator voice) is named exactly. Anything an agent has already done is recorded once and then ignored.
 >
-> **Last verified state:** 2026-05-12 (KW-FLOOR-DEPLOY-001 single GPU retry pass — dseq `26786333` manifest-refused on `akash17wh…4qejw`, auto-closed cleanly, ~0.89 AKT gas; dated residue 2026-07-09 reaffirmed. Underlying 2026-05-10 Sprint Mode treasury posture unchanged). After any major change re-run § "State snapshot" below.
+> **Last verified state:** 2026-05-12 (Mainnet Vault asset tagging EXECUTED — ETH tx `0x70e0edbf…2960e` block 45889220, USDC tx `0xda6d1257…84c7` block 45889478. Vault now operationally complete for withdrawals. Same date: KW-FLOOR-DEPLOY-001 single GPU retry pass — dseq `26786333` manifest-refused, auto-closed cleanly, ~0.89 AKT gas; dated residue 2026-07-09 reaffirmed. Underlying 2026-05-10 Sprint Mode treasury posture unchanged). After any major change re-run § "State snapshot" below.
 
 ---
 
@@ -15,7 +15,7 @@
 | Sepolia register-vault rehearsal | **Closed.** Tx `0x3bf25b58…5503`, block `41331566`. `registeredChainCount() == 1`, `vaultForChain(84532) == 0x474Df…F7Bc`. | this file § "Already done" |
 | Mainnet `MasterTreasury` deployed | **Live on Base, chain 8453.** `0xbf5407745cf22b88c46b55037e26156a0e78fd7f`, deploy block `45530934`. | `genesis/TREASURY_VAULTS.json` |
 | Mainnet `Vault` registration | **EXECUTED 2026-05-10.** New Vault `0x64712dFD…2bdC`, exec tx `0x59bcaf82…7f61` block 45822605. `registeredChainCount() == 1`, `vaultForChain(8453) == 0x64712dFD…2bdC`. ETH + USDC `tier1_operating_tokens[].status` flipped to `mainnet_routed_via_base_vault`. | this file § "Already done" |
-| Mainnet `Vault` asset tagging (ETH + USDC) | **Prep ready, awaiting first-withdrawal ceremony.** Two prep files at `genesis/MAINNET_VAULT_TAG_*_PREP.json`, both verifier-OK 2026-05-12 (Safe nonce on Base = 1, matches ETH prep). Not blocking incoming deposits. | item **(1)** below |
+| Mainnet `Vault` asset tagging (ETH + USDC) | **EXECUTED 2026-05-12.** ETH exec tx `0x70e0edbf…2960e` block `45889220` (Safe nonce 1→2); USDC exec tx `0xda6d1257…84c7` block `45889478` (Safe nonce 2→3). Post-state: `Vault.assetKnown(0x0) == true`, `Vault.assetKnown(USDC) == true`. Vault is now operationally complete for withdrawals. | this file § "Already done" |
 | `KW-AUDIT-001` external audit | **Mitigated-residual** until Xion's treasury can fund USD 30–60k. RFP pre-staged. | item **(2)** below + 2026-08-08 re-review |
 | `KW-FLOOR-DEPLOY-001` Akash GPU | **Mitigated-residual** until 2026-07-09. 2026-05-12 retry round failed at manifest-submit (4th consecutive round, substrate-level Akash issue). Chutes/SN64 stays warm primary; CPU Ollama hybrid (dseq `26770709`, 2026-05-10) satisfies Invariant 17 floor at bootstrap. | item **(3)** below + `genesis/DEPLOYMENT_RECORDS/relay-akash-closure-2026-05-12.json` |
 | `KW-KEYS-002` Warm Safe owner custody | **Open.** Replace MetaMask owner with hardware wallet by 2026-05-31. | item **(4)** below |
@@ -43,16 +43,9 @@ If branch [`claude/kw-ops-001-closure`](https://github.com/nik190799/xion/pull/n
 
 ---
 
-### (1) Mainnet Vault asset tagging — before the first withdrawal
+### (1) Mainnet Vault asset tagging — DONE 2026-05-12
 
-**Why this is here, not blocking deposits.** The Vault accepts ETH and ERC-20 transfers freely without any tagging — incoming flows just work. But `Vault.withdraw(asset, ...)` will revert with `UnknownAsset()` until each asset is tagged via `Vault.tagAsset(...)`. Two preps committed:
-
-- `genesis/MAINNET_VAULT_TAG_ETH_PREP.json` — safeTxHash `0x55ab5314…17fc` (nonce 1)
-- `genesis/MAINNET_VAULT_TAG_USDC_PREP.json` — safeTxHash `0x4288e908…d3ec` (nonce 2)
-
-Full step-by-step with the new `safe-confirm` CLI is at `docs/runbooks/MAINNET_VAULT_ASSET_TAG.md`. The flow is identical to the deployVault ceremony you just did, just with the Vault as the target instead of the MasterTreasury.
-
-If the Safe nonce has moved past 1 by then, regenerate via `xion_ops base-evm safe-prepare --nonce <n>`.
+**Status:** EXECUTED. ETH tag `0x70e0edbf…2960e` (block 45889220), USDC tag `0xda6d1257…84c7` (block 45889478). Post-state on-chain: `Vault.assetKnown(0x0) == true`, `Vault.assetKnown(0x833589fC…2913) == true`. Future `Vault.withdraw(asset, …)` from the Warm Safe will succeed for ETH and USDC. Recorded in `docs/STATE_OF_XION_PREFLIGHT.md` § 2026-05-12 Service-Class Execution.
 
 ### (2) Audit RFP — when Xion's treasury holds USD 30–60k
 
@@ -131,6 +124,7 @@ For your sanity, here are the things an agent already executed end-to-end so you
 - **Live Sepolia Safe-propose dry-run** for KW-OPS-001 closure: safeTxHash `0xe6ffe272…388`, both verifier paths returned OK against byte-identical hashes.
 - **Live Sepolia Vault registration**: tx `0x3bf25b58ba4071bf302a6c92a8dafb51d07c2b37aec93bf128361156242a5503`, block `41331566`. Sepolia MasterTreasury at `0xd2b257…55b6` now has `registeredChainCount() == 1` and `vaultForChain(84532) == 0x474Df…F7Bc`.
 - **Mainnet Vault registration EXECUTED 2026-05-10**: prep at `genesis/MAINNET_VAULT_REGISTRATION_PREP.json` (safeTxHash `0x535d4355…6072`) cosigned 2-of-3 by Warm Safe (MetaMask + paper backup via headless `cast wallet sign`). Exec tx `0x59bcaf82…7f61`, block `45822605`. New Vault `0x64712dFD8441186F3cfF5232C37a019286992bdC` with Warm Safe as `aoCoreAuthority`. Manifest flipped: ETH + USDC `mainnet_routed_via_base_vault`. Sprint Mode treasury **operational**.
+- **Mainnet Vault asset tagging EXECUTED 2026-05-12**: two sequential `Vault.tagAsset` calls, each cosigned 2-of-3 by Warm Safe (MetaMask + paper backup `0x90e099e1…489b`). Preps at `genesis/MAINNET_VAULT_TAG_{ETH,USDC}_PREP.json` (safeTxHashes `0x55ab5314…17fc`, `0x4288e908…d3ec`), both verifier-OK byte-identical before signing. Exec txs: ETH `0x70e0edbf…2960e` block `45889220` (Safe nonce 1→2); USDC `0xda6d1257…84c7` block `45889478` (Safe nonce 2→3). Post-state: `Vault.assetKnown(0x0) == true`, `Vault.assetKnown(0x833589fC…2913) == true`. **Mainnet Vault is now operationally complete for withdrawals.**
 - **Audit RFP authored**: `docs/audits/RFP_TREASURY_2026.md` with operator contact `xionlabs2026@gmail.com`, budget anchor USD 30–60k, ready-to-send cover email, recipient short-list. Sending deferred per Xion-funds-itself doctrine.
 
 `xion_ops/services/safe.py`, `xion-verify safe-proposal`, `xion_ops base-evm safe-prepare/safe-propose/register-vault` — all live and tested. Don't reimplement.

@@ -10,6 +10,14 @@ Until the genesis ceremony, every entry here is a *draft* in the literal sense: 
 
 ## [Unreleased](https://example.invalid/compare/pre-genesis-v0...HEAD)
 
+### Mainnet Vault asset tagging EXECUTED — withdrawals operational — 2026-05-12
+
+- **Two sequential `Vault.tagAsset(address, bool)` ceremonies cosigned and executed on Base mainnet.** Warm Safe `0x5A91E08D909854b594f07648D23440f4908529b4` (2-of-3) cosigned both via MetaMask owner + paper-backup owner `0x90e099e16b9C7c9824B06d3AE0Af92fad676489b` (headless `cast wallet sign --no-hash` + `xion_ops base-evm safe-confirm`; paper key memory-only).
+- **ETH (`address(0)`) — tag tx [`0x70e0edbf…2960e`](https://basescan.org/tx/0x70e0edbf7240ab7b8aac38509fda28ecd595923b7e0c45cc206892631022960e)**, block `45889220`, gas `114880`. SafeTxHash `0x55ab5314…17fc` matched [`genesis/MAINNET_VAULT_TAG_ETH_PREP.json`](genesis/MAINNET_VAULT_TAG_ETH_PREP.json) byte-for-byte (verifier `OK` against `--prep` before signing). Safe nonce advanced 1 → 2.
+- **USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) — tag tx [`0xda6d1257…84c7`](https://basescan.org/tx/0xda6d1257a13ec4a64e46fa6241832007d7d7cb721d1e0bf01b4b0d68e07d84c7)**, block `45889478`, gas `115120`. SafeTxHash `0x4288e908…d3ec` matched [`genesis/MAINNET_VAULT_TAG_USDC_PREP.json`](genesis/MAINNET_VAULT_TAG_USDC_PREP.json) byte-for-byte. Safe nonce advanced 2 → 3.
+- **Post-state on-chain:** `Vault.assetKnown(0x0) == true`, `Vault.assetKnown(0x833589fC…2913) == true`. **Mainnet Vault `0x64712dFD…2bdC` is now operationally complete for withdrawals** — future `Vault.withdraw(asset, …)` calls from the Warm Safe will succeed for ETH and USDC. AR (Arweave) and TAO (Bittensor) remain `mainnet_routed_pending_per_chain_vault` — separate per-chain Vault deployment, not asset-tagging on the Base Vault.
+- **Posture unchanged.** Sprint Mode unaudited mainnet treasury, KW-AUDIT-001 mitigated-residual until 2026-08-08 re-review, KW-KEYS-002 still open (hardware-wallet replacement deferred per operator 2026-05-10 decision). Evidence recorded in [`docs/STATE_OF_XION_PREFLIGHT.md`](docs/STATE_OF_XION_PREFLIGHT.md) § 2026-05-12 Service-Class Execution; OPERATOR_RESUME item (1) flipped from "Prep ready" to "DONE".
+
 ### KW-FLOOR-DEPLOY-001 retry pass — manifest-refusal pattern reaffirmed, dated residue held — 2026-05-12
 
 - **Operator lifted the 2026-05-10 AKT-spend deferral for one round.** Plan-approved single retry using the 2026-05-06 closure-pass recipe (`--exclude-provider akash1sevd…`, `--prefer-provider akash1st7…`, `XION_AKASH_HEALTH_SMOKE_SEC=300`, `XION_AKASH_SEND_MANIFEST_TIMEOUT_SEC=300`).

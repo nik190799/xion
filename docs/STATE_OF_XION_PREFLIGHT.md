@@ -243,6 +243,16 @@ same heading.
 
   **Sprint Mode unaudited mainnet posture is now an explicit operator decision, dated 2026-05-10.** This is exactly the shortcut named in `docs/D4_PREFLIGHT.md` § "Skipping External Audit" and exactly the residue path (b) in `KW-AUDIT-001`'s pay-down line. The mitigations on which it relies are **not** an audit substitute: 119/119 Foundry tests at commit `f04f8d0`, 24–48 hour Base Sepolia soak, blast-radius caps (rotation lattice, daily egress cap `1000` bps, `onlyGovernance` / `onlyAOCoreAuthority` discipline), and Sprint Mode custody (Warm Safe 2-of-3, Cold Root deferred). Treasury is operational on Base mainnet under those constraints; it is not an audited mainnet treasury.
 
+## 2026-05-12 Service-Class Execution — Vault asset tagging
+
+- **Vault asset tagging — EXECUTED 2026-05-12.** Warm Safe (`0x5A91E08D909854b594f07648D23440f4908529b4`, 2-of-3) cosigned and executed two sequential `Vault.tagAsset(address, bool)` calls against the mainnet Vault (`0x64712dFD8441186F3cfF5232C37a019286992bdC`). Each call's SafeTxHash matched its committed prep file byte-for-byte (`xion-verify safe-proposal --prep …` returned `OK` against both `genesis/MAINNET_VAULT_TAG_ETH_PREP.json` and `genesis/MAINNET_VAULT_TAG_USDC_PREP.json` before signing; safeTxHashes `0x55ab5314f5ce59f5e96804e63fa87801d5de68bb9cf3df5105829f5c643317fc` and `0x4288e90810d285bff9b74adab3ac5aed1200e1aa40937067995471ab4992d3ec` respectively). Cosig collected MetaMask owner + paper-backup owner `0x90e099e16b9C7c9824B06d3AE0Af92fad676489b` via headless `cast wallet sign --no-hash` + `safe-confirm` (paper key memory-only, never written to disk, per `KW-KEYS-002` mitigations). Exec txs:
+  - **ETH (`address(0)`):** tx **`0x70e0edbf7240ab7b8aac38509fda28ecd595923b7e0c45cc206892631022960e`**, block **`45889220`**, gas `114880`, Safe nonce `1` → `2`.
+  - **USDC (Base canonical `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`):** tx **`0xda6d1257a13ec4a64e46fa6241832007d7d7cb721d1e0bf01b4b0d68e07d84c7`**, block **`45889478`**, gas `115120`, Safe nonce `2` → `3`.
+
+  Post-state on-chain: `Vault.assetKnown(address(0)) == true` and `Vault.assetKnown(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) == true`. **Mainnet Vault is now operationally complete:** future `Vault.withdraw(asset, …)` calls from the Warm Safe will succeed for ETH and USDC. AR (Arweave) and TAO (Bittensor) remain `mainnet_routed_pending_per_chain_vault` — those rails require separate per-chain Vault deployment, not asset tagging on the Base Vault.
+
+  **Why this is a 2026-05-12 entry and not appended to 2026-05-10.** The runbook (`docs/runbooks/MAINNET_VAULT_ASSET_TAG.md`) suggested appending under 2026-05-10, but the ceremony actually happened two days later when the operator returned for cosig — recording the honest date is the discipline. Posture unchanged: Sprint Mode unaudited mainnet, KW-AUDIT-001 mitigated-residual until 2026-08-08 re-review, KW-KEYS-002 still open (Warm Safe owner custody remains MetaMask + 2 paper backups; hardware-wallet replacement deferred per operator 2026-05-10 decision).
+
 ## What Does Not Close Today
 
 - Base Sepolia `MasterTreasury` redeploy and rotation rehearsal are proceeding now that the deployer key is present.
