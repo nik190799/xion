@@ -1,5 +1,18 @@
 # Mainnet Vault asset tagging — before first withdrawal
 
+> ## ✅ EXECUTED 2026-05-12 — DO NOT REDO
+>
+> Both ceremonies are complete. This runbook is preserved as evidence + reusable pattern (e.g. for tagging future assets), not as pending work.
+>
+> | Asset | Exec tx | Block | Post-state |
+> |---|---|---|---|
+> | ETH | [`0x70e0edbf…2960e`](https://basescan.org/tx/0x70e0edbf7240ab7b8aac38509fda28ecd595923b7e0c45cc206892631022960e) | 45889220 | `Vault.assetKnown(0x0) == true` |
+> | USDC | [`0xda6d1257…84c7`](https://basescan.org/tx/0xda6d1257a13ec4a64e46fa6241832007d7d7cb721d1e0bf01b4b0d68e07d84c7) | 45889478 | `Vault.assetKnown(0x833589fC…2913) == true` |
+>
+> Final Safe nonce on Base: **3**. Mainnet Vault `0x64712dFD…2bdC` is now operationally complete for ETH + USDC withdrawals. Full record at [`docs/STATE_OF_XION_PREFLIGHT.md`](../STATE_OF_XION_PREFLIGHT.md) § 2026-05-12 Service-Class Execution and [`genesis/TREASURY_VAULTS.json`](../../genesis/TREASURY_VAULTS.json) → `vaults[0].asset_tagging`.
+>
+> **If you need to tag a new asset later** (e.g. a new ERC-20 added to operations), regenerate a fresh prep with `python -m xion_ops.cli base-evm safe-prepare --nonce <current+1>` and reuse the ceremony pattern below.
+
 ## Property
 
 The mainnet `Vault` (`0x64712dFD8441186F3cfF5232C37a019286992bdC`) needs to know which assets are "native to this chain" vs "bridged in" before it will allow withdrawals. Until an asset is tagged via `Vault.tagAsset(address asset, bool nativeAsset)`, calls to `Vault.withdraw(asset, ...)` revert with `UnknownAsset()`.
@@ -9,7 +22,7 @@ The mainnet `Vault` (`0x64712dFD8441186F3cfF5232C37a019286992bdC`) needs to know
 - Anyone can `transfer` ETH directly to the Vault (the `receive() external payable {}` accepts it).
 - Anyone can `IERC20.transfer(<vault>, amount)` USDC/etc. into it. The Vault holds the tokens.
 
-Tagging is needed **before the first withdrawal call from the Safe**. Until the operator wants to make their first `Vault.withdraw(...)`, this runbook is purely preparatory.
+Tagging is needed **before the first withdrawal call from the Safe**. ~~Until the operator wants to make their first `Vault.withdraw(...)`, this runbook is purely preparatory.~~ *(Both ETH + USDC tags executed 2026-05-12; see banner above.)*
 
 ## Pre-built artifacts (already in this branch)
 

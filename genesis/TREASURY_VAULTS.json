@@ -49,7 +49,38 @@
       "ao_core_authority": "0x5A91E08D909854b594f07648D23440f4908529b4",
       "deploy_block": 45822605,
       "deploy_tx": "0x59bcaf82e00d283cfb304ec15b2101b5b08044cf076efedceb5ada00c2737f61",
-      "registration_method": "MasterTreasury.deployVault(8453, 0x5A91…29b4) via Warm Safe 2-of-3 cosig (MetaMask + paper backup); safeTxHash 0x535d43558150625405c62bf96fe81229758c3ad81b67904fd48ac3ab049c6072 (verifier-passed both offline --prep and online --safe-tx-hash)."
+      "registration_method": "MasterTreasury.deployVault(8453, 0x5A91…29b4) via Warm Safe 2-of-3 cosig (MetaMask + paper backup); safeTxHash 0x535d43558150625405c62bf96fe81229758c3ad81b67904fd48ac3ab049c6072 (verifier-passed both offline --prep and online --safe-tx-hash).",
+      "asset_tagging": {
+        "status": "complete_for_tier1_evm_assets",
+        "executed_on": "2026-05-12",
+        "final_safe_nonce": 3,
+        "method": "Two sequential Vault.tagAsset(address, bool) calls via Warm Safe 2-of-3 cosig (MetaMask + paper backup 0x90e099e16b9C7c9824B06d3AE0Af92fad676489b); each safeTxHash verifier-passed against committed prep byte-for-byte.",
+        "tags": [
+          {
+            "asset_symbol": "ETH",
+            "asset_address": "0x0000000000000000000000000000000000000000",
+            "native_asset": true,
+            "safe_tx_hash": "0x55ab5314f5ce59f5e96804e63fa87801d5de68bb9cf3df5105829f5c643317fc",
+            "prep_file": "genesis/MAINNET_VAULT_TAG_ETH_PREP.json",
+            "exec_tx": "0x70e0edbf7240ab7b8aac38509fda28ecd595923b7e0c45cc206892631022960e",
+            "exec_block": 45889220,
+            "exec_gas": 114880,
+            "post_state": "Vault.assetKnown(0x0) == true"
+          },
+          {
+            "asset_symbol": "USDC",
+            "asset_address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "native_asset": true,
+            "safe_tx_hash": "0x4288e90810d285bff9b74adab3ac5aed1200e1aa40937067995471ab4992d3ec",
+            "prep_file": "genesis/MAINNET_VAULT_TAG_USDC_PREP.json",
+            "exec_tx": "0xda6d1257a13ec4a64e46fa6241832007d7d7cb721d1e0bf01b4b0d68e07d84c7",
+            "exec_block": 45889478,
+            "exec_gas": 115120,
+            "post_state": "Vault.assetKnown(0x833589fC…2913) == true"
+          }
+        ],
+        "evidence": "docs/STATE_OF_XION_PREFLIGHT.md § 2026-05-12 Service-Class Execution; CHANGELOG.md entry of 2026-05-12; runbook docs/runbooks/MAINNET_VAULT_ASSET_TAG.md banner."
+      }
     },
     {
       "network": "base-sepolia",
@@ -61,5 +92,5 @@
       "registration_method": "Sepolia rehearsal: MasterTreasury.registerVault(84532, 0x474Df…F7Bc) via direct EOA cast send 2026-05-10, tx 0x3bf25b58ba4071bf302a6c92a8dafb51d07c2b37aec93bf128361156242a5503, block 41331566. Sepolia governance is the rehearsal EOA; mainnet governance is the Warm Safe."
     }
   ],
-  "residual": "Sprint Mode mainnet treasury OPERATIONAL on Base (8453): MasterTreasury 0xbf54...fd7f and per-chain Vault 0x6471...2bdC are live, registeredChainCount() == 1, EVM-side tier1 tokens (USDC, ETH) routed via the Vault. Non-EVM tier1 tokens (AR, TAO) remain pending separate non-EVM rail integration. KW-AUDIT-001 mitigated-residual until Xion's treasury / Improvement Fund can fund external audit (re-review 2026-08-08); see falsifier in docs/STATE_OF_XION_PREFLIGHT.md — these contracts are NOT externally audited. Cold Root deferred per OPERATOR_TRACK_D4. AO mainnet ceremony before any 'canonical substrate' or 'Xion is alive' messaging."
+  "residual": "Sprint Mode mainnet treasury OPERATIONAL on Base (8453): MasterTreasury 0xbf54...fd7f and per-chain Vault 0x6471...2bdC are live, registeredChainCount() == 1, EVM-side tier1 tokens (USDC, ETH) routed via the Vault. Asset tagging EXECUTED 2026-05-12 — Vault.assetKnown(ETH) == true (tx 0x70e0edbf...2960e, block 45889220) and Vault.assetKnown(USDC) == true (tx 0xda6d1257...84c7, block 45889478); Vault.withdraw(...) from the Warm Safe now succeeds for both. Non-EVM tier1 tokens (AR, TAO) remain pending separate non-EVM rail integration. KW-AUDIT-001 mitigated-residual until Xion's treasury / Improvement Fund can fund external audit (re-review 2026-08-08); see falsifier in docs/STATE_OF_XION_PREFLIGHT.md — these contracts are NOT externally audited. Cold Root deferred per OPERATOR_TRACK_D4. AO mainnet ceremony before any 'canonical substrate' or 'Xion is alive' messaging."
 }
