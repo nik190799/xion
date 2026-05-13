@@ -69,6 +69,15 @@
       "target": 10.0,
       "purpose": "Registry and audit publishes",
       "service": "arweave"
+    },
+    {
+      "id": "chutes_account",
+      "address": "5DP1emNNEEnttzLCNNp1mUt9RNe2SzH5T1ebdsWomtEqxybq",
+      "network": "bittensor",
+      "currency": "USD",
+      "target": 5.0,
+      "purpose": "Chutes hosted-inference credit account (Bittensor SN64 via Chutes gateway). Address is the Bittensor SS58 payment_address returned by GET /users/me; deposits are in TAO and converted to USD credits on receipt. Currency unit is the USD credit balance Chutes exposes (the only balance the API surfaces). Target=5.0 matches XION_CHUTES_CREDIT_FLOOR_USD floor.",
+      "service": "chutes"
     }
   ]
 }

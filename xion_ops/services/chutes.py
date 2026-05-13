@@ -763,7 +763,15 @@ class ChutesService(OpsService):
         )
 
     def base_url(self) -> str:
-        return os.environ.get("XION_CHUTES_BASE_URL") or os.environ.get("XION_SECONDARY_HTTPS_BASE", "")
+        # XION_CHUTES_DEPLOY_URL is the per-deployment chute URL for cord checks
+        # (/health, /quote, /self) — disambiguated from XION_CHUTES_BASE_URL,
+        # which the inference router uses for the OpenAI-compatible LLM gateway
+        # (https://llm.chutes.ai/v1) in orchestrator/inference_router/providers/chutes.py.
+        return (
+            os.environ.get("XION_CHUTES_DEPLOY_URL")
+            or os.environ.get("XION_SECONDARY_HTTPS_BASE")
+            or os.environ.get("XION_CHUTES_BASE_URL", "")
+        )
 
 
 def _extract_url(output: str) -> str | None:
