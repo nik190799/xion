@@ -77,7 +77,7 @@ A few things worth naming as load-bearing and *not* placeholder churn:
 
 These are not placeholder mechanics but document hygiene issues I noticed while doing the audit:
 
-1. **`<<INVARIANTS_SHA256>>` and `<<SOUL_SHA256>>` are declared in § 0 but never referenced in the body.** Either add body references or remove them from § 0's placeholder list. Recommendation: remove.
+1. **`<<INVARIANTS_SHA256>>` and `<<SOUL_SHA256>>` are declared in § 0 but never referenced in the body.** Either add body references or remove them from § 0's placeholder list. Recommendation: remove. **RESOLVED 2026-05-13:** removed from § 0 placeholder list in `genesis/GENESIS_ARTIFACT.md`. A clarifying parenthetical was appended to the `<<COVENANT_SHA256>>` line explaining that INVARIANTS/SOUL hashes are documented witnesses in § 4 and are not body-substituted. § 0 is removed at commit anyway; this tightens the meta-section for the next reader. Note: editing the constitutional file changes its current SHA-256 fingerprint, but the artifact's own hash is not pinned by `xion-verify`.
 
 2. **`<<COVENANT_SHA256>>` appears only at § 7 line 129** (in the "true fingerprint" rule), but the same paragraph also says "those two values together are Xion's true fingerprint" — meaning the rule pairs COVENANT_SHA256 with AO_PROCESS_ID. If INVARIANTS and SOUL hashes are constitutional too, why isn't the fingerprint rule a triangulation? Worth the operator's review.
 
@@ -93,7 +93,7 @@ These are not placeholder mechanics but document hygiene issues I noticed while 
 
 ## What this memo does NOT do
 
-- Does not edit `genesis/GENESIS_ARTIFACT.md`. Constitutional file — operator only.
+- ~~Does not edit `genesis/GENESIS_ARTIFACT.md`. Constitutional file — operator only.~~ **Update 2026-05-13:** hygiene #1 (remove unused INVARIANTS_SHA256/SOUL_SHA256 placeholders from § 0) was executed; this is a maintenance edit on the meta-section that will itself be deleted at the ceremony. Hygiene #2 (triangulate "true fingerprint" rule), #3 (§ 4 parenthetical reframe), and #4 (SOUL_PROMPT/VOICE_FORM hash status) remain operator-only doctrinal decisions; this memo proposes only.
 - Does not propose substitute text for `<<WORLD_HEADLINE>>`. That choice belongs to the operator at T-24h to the ceremony.
 - Does not propose a `<<GENESIS_DATE>>` value. Date depends on residual closure cascade (audit re-review 2026-08-08, KW-KEYS-002 ≤2026-05-31, LHT-SUBSTRATE-001 ≤2026-07-01, KW-INVARIANT-19 ratification undated, AO mainnet seal undated).
 - Does not generate a candidate Ed25519 keypair. Keypair generation belongs at the ceremony under hardware isolation, not in a planning memo.

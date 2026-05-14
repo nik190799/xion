@@ -382,14 +382,28 @@ class ChutesService(OpsService):
         )
 
     def credit_balance(self) -> float:
-        api_url = os.environ.get("XION_CHUTES_CREDITS_URL")
+        # Canonical path: mirror orchestrator/billing/providers/chutes_billing.py and
+        # query GET {XION_CHUTES_API_BASE_URL}/users/me. Legacy XION_CHUTES_CREDITS_URL
+        # remains supported as an explicit override (full URL) for backwards compat.
         token = os.environ.get("CHUTES_API_KEY") or os.environ.get("XION_CHUTES_API_KEY")
-        if not api_url:
-            return 0.0
+        explicit = os.environ.get("XION_CHUTES_CREDITS_URL", "").strip()
+        if explicit:
+            api_url = explicit
+        else:
+            api_base = os.environ.get("XION_CHUTES_API_BASE_URL", "").strip()
+            if not api_base:
+                return 0.0
+            api_url = api_base.rstrip("/") + "/users/me"
         request = Request(api_url, headers={"Authorization": f"Bearer {token}"} if token else {})
         with urlopen(request, timeout=20) as response:
             payload = json.loads(response.read().decode("utf-8"))
-        return float(payload.get("balance") or payload.get("credits") or payload.get("balance_usd") or 0)
+        return float(
+            payload.get("balance")
+            or payload.get("balance_usd")
+            or payload.get("credits")
+            or payload.get("credit_balance")
+            or 0
+        )
 
     def verify_cords(self, url: str | None = None) -> DeploymentResult:
         """Require ``GET /health``, ``GET /quote``, ``GET /self`` — matches public cords in ``xion_relay_chute.py``.

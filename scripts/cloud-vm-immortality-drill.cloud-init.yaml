@@ -1,0 +1,109 @@
+#cloud-config
+# Cloud-init user-data for the LHT-SUBSTRATE-001 third-party Immortality Drill.
+#
+# Use case: the operator rents a minimal cloud VM (DigitalOcean droplet, Hetzner
+# CX11, Linode Nanode, Fly.io, AWS EC2 t4g.nano — anything that accepts cloud-init
+# user-data) and pastes this file. The VM auto-installs deps, clones Xion at a
+# pinned commit SHA, runs scripts/immortality-drill-third-party.sh, and writes
+# the resulting immortality_drill_third_party_v1 JSON row to /var/log/xion-drill/
+# where the operator can scp it back or read it via cloud-console.
+#
+# What this DOES satisfy
+#   - Third-party-machine bar: the VM is not the operator workstation;
+#     `third_party_machine_fingerprint` will be a fresh hash distinct from the
+#     operator's daily machine fingerprint.
+#   - Public-artifact reachability: the repo is cloned from the public GitHub
+#     mirror, not bind-mounted from operator disk.
+#
+# What this does NOT satisfy (operator must know before running)
+#   - KW-FLOOR-DEPLOY-001 is still in dated residue to 2026-07-09. A third-party
+#     drill that does not exercise an `open_weights_only` chat turn against a
+#     reachable Akash GPU floor remains a structural-mechanics attestation, not
+#     the full pay-down evidence. Plan to re-run after floor closure for the
+#     ledger-significant row.
+#   - KW-RELAY-CHUTES-D3-001 follow-on (2026-05-13): pre-genesis-d3 chute is
+#     retired. The drill's chutes-secondary-health probe will return 502 until
+#     a fresh chute is redeployed. The row will record `status=failed` even
+#     though the verifier battery passes — this is operationally honest.
+#
+# Operator pre-flight
+#   1. Choose an inexpensive cloud VM tier (≥ 2 GB RAM, ≥ 4 GB disk, ≥ 1 vCPU).
+#      Cheapest known-good options as of 2026-05-13: Hetzner CX11 (~€4/mo,
+#      destroy after one run), Linode Nanode 1GB ($5/mo prorated), Fly.io shared
+#      micro (free tier). Do NOT use Cloudflare-fronted tunnels — that re-introduces
+#      a centralization surface.
+#   2. (Optional) Pin XION_REPO_REF to the exact commit SHA you want attested.
+#      Default = `main` HEAD at boot time.
+#   3. Provision the VM with this file as user-data.
+#   4. Wait 3-5 minutes; check /var/log/xion-drill/result.jsonl via the cloud
+#      console or `ssh user@vm tail /var/log/xion-drill/result.jsonl`.
+#   5. Append the row to `ledgers/IMMORTALITY_DRILL_LEDGER.jsonl` on the operator
+#      machine. Verify with `xion-verify substrate-portability`.
+#   6. Destroy the VM. There is no state on it worth preserving.
+#
+# Customization knobs (set under `write_files` below)
+#   XION_REPO_URL  — defaults to https://github.com/nik190799/xion.git
+#   XION_REPO_REF  — defaults to main; pin a commit SHA for deterministic attestation
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - git
+  - curl
+  - python3
+  - python3-venv
+  - python3-pip
+  - ca-certificates
+
+write_files:
+  - path: /etc/xion-drill/run.env
+    permissions: '0644'
+    content: |
+      XION_REPO_URL=https://github.com/nik190799/xion.git
+      XION_REPO_REF=main
+
+  - path: /usr/local/bin/xion-immortality-drill-runner
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      # shellcheck disable=SC1091
+      source /etc/xion-drill/run.env
+      export XION_REPO_URL XION_REPO_REF
+
+      LOG_DIR=/var/log/xion-drill
+      mkdir -p "$LOG_DIR"
+      WORK=$(mktemp -d)
+      cd "$WORK"
+
+      git clone --quiet "$XION_REPO_URL" repo
+      git -C repo checkout --quiet "$XION_REPO_REF"
+      COMMIT=$(git -C repo rev-parse HEAD)
+      echo "drill_commit_sha=$COMMIT" | tee -a "$LOG_DIR/meta.log"
+
+      bash repo/scripts/immortality-drill-third-party.sh \
+        > "$LOG_DIR/result.jsonl" \
+        2> "$LOG_DIR/stderr.log" \
+        || echo "drill exited non-zero; see stderr.log" | tee -a "$LOG_DIR/meta.log"
+
+      # Surface the result row directly to console for cloud-console scrape.
+      echo "===== IMMORTALITY DRILL RESULT ====="
+      cat "$LOG_DIR/result.jsonl"
+      echo "===== END RESULT ====="
+
+runcmd:
+  - [ /usr/local/bin/xion-immortality-drill-runner ]
+
+final_message: |
+  Xion immortality drill cloud-init complete.
+  Result row: /var/log/xion-drill/result.jsonl
+  Stderr / debug: /var/log/xion-drill/stderr.log
+  Meta: /var/log/xion-drill/meta.log
+
+  Next steps for the operator (off this VM):
+    1. SSH or use cloud console to read /var/log/xion-drill/result.jsonl
+    2. Append that one JSON row to ledgers/IMMORTALITY_DRILL_LEDGER.jsonl on
+       the operator machine; commit and push.
+    3. Run `xion-verify substrate-portability` to confirm chain integrity.
+    4. Destroy this VM.

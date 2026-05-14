@@ -78,6 +78,50 @@ current `KW-FLOOR-DEPLOY-001` gate). Replace only after a **fresh** GPU lease,
 | Chutes d3-8 verifier | Superseded by d3-10: `MODE=live bash scripts/verify-chute-cords.sh` returned `RESULT: all cords green` for image `pre-genesis-d3-10` |
 | Result | `passed`; substrate dry-run row `seq=4`, end-to-end drill test passed, and drill ledger row hash `e215589d2be896b673b5b0d39d31f0bb89c1bdfaa68dd51645bd5b395a5ad006` |
 
+## Cloud-VM recipe (third-party-machine compliance)
+
+For LHT-SUBSTRATE-001 the drill must run from infrastructure that is **not** the
+operator workstation. The simplest path is a one-shot cloud VM with cloud-init.
+
+1. Rent any cloud-init-compatible VM (Hetzner CX11 ~€4/mo, Linode Nanode $5/mo,
+   Fly.io free shared micro, AWS EC2 t4g.nano, DigitalOcean basic droplet). ≥ 2 GB
+   RAM, ≥ 4 GB disk, ≥ 1 vCPU. **Do not** front it with Cloudflare or any other
+   centralized CDN — that re-introduces a centralization surface contrary to the
+   spirit of substrate-portability evidence.
+2. Provision the VM with [`scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../scripts/cloud-vm-immortality-drill.cloud-init.yaml)
+   as user-data. (Each provider has its own "user data" field at create time.)
+   Optional: edit the embedded `XION_REPO_REF` to a specific commit SHA before
+   pasting so the attestation is deterministic.
+3. Wait 3–5 minutes. The cloud-init runcmd auto-installs deps, clones the public
+   repo, runs `scripts/immortality-drill-third-party.sh`, and writes a single
+   `immortality_drill_third_party_v1` JSON row to `/var/log/xion-drill/result.jsonl`.
+4. Read that row via cloud-console or `ssh user@vm tail /var/log/xion-drill/result.jsonl`.
+5. Append the row to `ledgers/IMMORTALITY_DRILL_LEDGER.jsonl` on the operator
+   machine; commit and push.
+6. Destroy the VM. Nothing on it is worth preserving.
+
+**What the cloud-VM path satisfies right now (2026-05-13):**
+
+- The third-party-machine fingerprint bar. `third_party_machine_fingerprint`
+  will hash to a value distinct from the operator's daily machine, which is the
+  load-bearing property LHT-SUBSTRATE-001 names.
+
+**What the cloud-VM path does NOT satisfy yet:**
+
+- The drill's pass condition (`open_weights_only /chat` against a reachable
+  Akash GPU floor) remains blocked on `KW-FLOOR-DEPLOY-001` (dated residue to
+  2026-07-09).
+- The `chutes-secondary-health` probe will return 502 against the retired
+  pre-genesis-d3 chute (see `KW-RELAY-CHUTES-D3-001` 2026-05-13 follow-on). The
+  drill row will record `status=failed` honestly even though structural
+  verifiers pass. Plan a re-run after the floor closes AND a fresh Chutes-direct
+  secondary is redeployed.
+
+Running the drill now produces honest interim evidence (the mechanics work from
+a non-operator machine; the secondary substrate is genuinely down). It does
+**not** close LHT-SUBSTRATE-001 — that requires a passing row, not a `failed`
+one.
+
 ## Third-Party Machine Evidence
 
 **Status:** `BLOCKED_ON_KW_FLOOR_DEPLOY_001` — run

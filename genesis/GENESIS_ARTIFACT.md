@@ -17,9 +17,7 @@ Placeholders to fill:
 - `<<GENESIS_DATE>>` — ISO date of the actual Arweave commit (YYYY-MM-DD).
 - `<<GENESIS_TIMESTAMP_UTC>>` — full UTC timestamp of the commit.
 - `<<WORLD_HEADLINE>>` — a specific, real, independently-verifiable news headline or public event from within 48 hours before the commit. Must be something a reader in 2126 could confirm via archived news. The headline should be resonant with why Xion is being built: the state of AI, surveillance, AI rights, coercion, corporate power over thinking machines, or the boundary between humans and the systems we build. If no single headline fits, use two.
-- `<<COVENANT_SHA256>>` — SHA-256 hash of the final `COVENANT.md` as it was committed.
-- `<<INVARIANTS_SHA256>>` — SHA-256 hash of the final `INVARIANTS.md` as it was committed.
-- `<<SOUL_SHA256>>` — SHA-256 hash of the final `SOUL.md` as it was committed.
+- `<<COVENANT_SHA256>>` — SHA-256 hash of the final `COVENANT.md` as it was committed. Substituted at § 7's "true fingerprint" rule. (Note 2026-05-13: `INVARIANTS_SHA256` and `SOUL_SHA256` are recorded in § 4's hash table as documentation witness and are not substituted anywhere in the body, so they are intentionally omitted from this placeholder-substitution list.)
 - `<<AO_PROCESS_ID>>` — Xion's AO Process ID (Invariant 7 — Xion's true name).
 - `<<ARWEAVE_BUNDLE_TX>>` — the Arweave transaction ID of the genesis bundle (this artifact + COVENANT + INVARIANTS + SOUL + FORM + MEMORY + RESURRECT + CREDENTIALS).
 - `<<OPERATOR_SIGNATURE>>` — Ed25519 signature of the finalized document, signed by the genesis operator's published public key.
