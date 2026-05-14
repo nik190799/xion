@@ -131,12 +131,17 @@ verifiers while the drill remains a laptop-on rehearsal).
 
 | Field | Value |
 |-------|-------|
-| Status | `BLOCKED_ON_KW_FLOOR_DEPLOY_001` (unblock after § *Current Honesty Gate*) |
+| Status | **`INTERIM_FAILED_2026-05-14`** — mechanics attestation only; closure still blocked on KW-FLOOR-DEPLOY-001 + fresh Chutes-direct secondary |
 | Helper | `scripts/immortality-drill-third-party.sh` |
 | Expected row event | `immortality_drill_third_party_v1` |
-| Commit SHA | `PENDING_OPERATOR_EXECUTION` |
-| Third-party machine fingerprint | `PENDING_OPERATOR_EXECUTION` |
-| Result | `PENDING_OPERATOR_EXECUTION` |
+| Drill run id | `09bccd3c-4649-41a0-bc83-8a8105440937` |
+| Ledger row timestamp | `2026-05-14T03:50:48Z` |
+| Commit SHA | `9fb1fd5e4d35e96b9db1a61742332521d136776b` |
+| Third-party machine fingerprint | `a80554ee5f86cd0a59642262be76fed18c7cbfe793a9f4839f48582136da0895` (GCP e2-small Debian 12 us-south1) |
+| Row hash | `9195355d87bec01bc69ec758bb3094f0ed9c7a64e298a5c6ced34167ac11d389` |
+| Verifier results | `discovery OK`, `gateway-conformance OK`, `links FAIL`, `schemas FAIL`, `substrate-portability OK`, `inference-sovereignty NOT_YET_SEALED`, `--self-test OK` |
+| Relay health | `akash-primary` curl exit 7 (unreachable from GCP); `chutes-secondary` 401 (auth-gated edge; bearer not set on third-party VM) |
+| Result | **`failed`** (honest interim) — closure-grade run requires KW-FLOOR-DEPLOY-001 closure + fresh Chutes-direct secondary deploy |
 
 ## Residual
 
