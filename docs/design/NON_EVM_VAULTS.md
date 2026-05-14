@@ -158,19 +158,28 @@ For Sprint Mode, **manifest authority** + `xion-verify treasury` enforcement is 
 3. Operator B calls `as_multi(threshold=2, other_signatories=[A, C], maybe_timepoint=Some(timepoint), call=…)` — dispatches the transfer.
 4. Record block, extrinsic hash, new Chutes balance in `STATE_OF_XION_PREFLIGHT`.
 
-## Open questions the operator owns
+## Resolved decisions (operator-confirmed 2026-05-13)
 
-These are real forks — each changes the design:
+The five open questions are decided as follows. Each decision is the recommendation as previously named in this memo; this section is the load-bearing record that fixes them.
 
-1. **AR custody target:** Stay at single hot JWK + threshold-unlock (Sprint, lowest risk), or build the AO process Vault now against legacynet (more constitutional but Genesis-misaligned)? *Recommended: Sprint shape now, AO process post-AO-seal.*
+1. **AR custody target — decided: Sprint shape now, AO-process Vault post-AO-seal.** The AR rail keeps a single operational Arweave JWK referenced via `XION_REGISTRY_WALLET_JWK_PATH`, with custody under the 2-of-3 threshold-unlock scheme in [`genesis/CREDENTIALS.md`](../../genesis/CREDENTIALS.md). Building an AO-process Vault against legacynet would not be Genesis-aligned and would be re-done after AO mainnet seal anyway; building it after AO mainnet seal lands is the honest path. KW-VAULT-001's pay-down covers the threshold-unlock implementation.
 
-2. **TAO multisig timing:** Build the 2-of-3 Bittensor multisig **before** the Base Safe hardware-wallet swap (KW-KEYS-002, deadline 2026-05-31) or **after**? Building before means the new HW wallet won't be in the Bittensor signer set; building after delays TAO custody by weeks. *Recommended: after — the hardware-wallet generation discipline is identical and parallel work risks key-management mistakes.*
+2. **TAO multisig timing — decided: AFTER the Base Safe hardware-wallet swap.** KW-KEYS-002 deadline is 2026-05-31. Building the 2-of-3 Bittensor `pallet-multisig` before the HW swap would (a) generate cold keys under the same operator discipline twice within ~3 weeks, (b) leave the HW wallet out of the Bittensor signer set (counter to the long-term custody model), and (c) risk key-management mistakes from parallel work. **TAO multisig deploy unblocks 2026-06-01 at earliest** (one day after the Base swap deadline), assuming HW swap closes on time. If HW swap slips, TAO multisig slips with it.
 
-3. **Manifest-only vs contract-registered:** Confirm the design uses manifest-only authority for non-EVM rails (Option B) and defers a `MasterTreasury.registerNonEvmVault` method until post-2026-08-08 audit decision. *Recommended: confirm Option B.*
+3. **Manifest-only vs contract-registered — decided: Option B (manifest-only).** No `MasterTreasury.registerNonEvmVault` method until post-2026-08-08 audit decision. Today's `MasterTreasury` at `0xbf54…fd7f` (block 45530934) stays as deployed; the `non_evm_vaults[]` block in `TREASURY_VAULTS.json` is the authority for non-EVM rails. `xion-verify treasury` enforces the manifest shape. If/when KW-AUDIT-001 closes and a contract revision is paid for itself, a cross-rail `registerNonEvmVault` can be considered then.
 
-4. **Verifier scope:** Should `xion-verify treasury` block on live RPC liveness for Bittensor (could fail in transient network conditions and make `xion-verify all` flaky), or should it stay manifest-shape-only with a separate `xion-verify treasury --check-non-evm-liveness` flag? *Recommended: manifest-only by default, opt-in liveness via flag — same pattern as `discovery --no-cloudflare`.*
+4. **Verifier scope — decided: manifest-only by default, opt-in liveness via flag.** `xion-verify treasury` validates the `non_evm_vaults[]` schema shape only. A separate `xion-verify treasury --check-non-evm-liveness` flag (analogous to `discovery --no-cloudflare`) queries live RPC balance when the operator wants liveness evidence. Default behavior stays deterministic for CI; `--check-non-evm-liveness` is for ceremony-class checks.
 
-5. **TAO funding source:** TAO isn't currently in any Xion wallet. Where does the initial TAO balance come from — operator personal funds (would violate Self-Provisioning doctrine), bridged USDC → TAO via a CEX (introduces a centralized step), or wait for Chutes-side revenue (passive)? This is a strategy question, not a design one, but the rail can't function without funding.
+5. **TAO funding source — RESOLVED 2026-05-13: Chutes is credit-funded; no TAO Vault urgency.** `ChutesBillingProvider.balance()` returns **$71.88 USD credits**. At current consumption rates that's runway for inference operations; the Bittensor multisig + TAO Vault deploy is no longer urgent. **New trigger:** the rail's first real top-up happens when Chutes credit balance falls below `XION_CHUTES_CREDIT_FLOOR_USD` (default $5.00) AND no Chutes-side revenue path is available. At that point the operator decides between (a) bridging USDC → TAO via CEX as a one-shot (single centralized step, recorded as residue), or (b) waiting for Chutes-side revenue via Bittensor ecosystem standing. Until then the TAO Vault design lands without urgency; the Bittensor SS58 multisig deploys at the operator's discretion (per decision 2 above, no earlier than 2026-06-01).
+
+## Implementation order (after this memo)
+
+With the decisions above:
+
+1. **Now → 2026-05-31:** Operator focuses on KW-KEYS-002 (HW swap). Non-EVM Vault work is paused.
+2. **2026-06-01 → 2026-06-15 (target window):** Author `docs/runbooks/AR_VAULT_DEPLOY.md` and `docs/runbooks/TAO_VAULT_DEPLOY.md`. Add the `non_evm_vaults[]` schema and verifier branch. No live deploys yet.
+3. **2026-06-15 → 2026-07-09 (target window):** If Chutes balance is healthy, the TAO multisig deploy can wait; otherwise, deploy it under the runbook with the HW-wallet-bound signer set.
+4. **AR Vault:** Implement the threshold-unlock flow (closes KW-VAULT-001 in parallel) without changing the operational JWK. Pin the manifest entry. No urgency.
 
 ## What this memo does NOT do
 
