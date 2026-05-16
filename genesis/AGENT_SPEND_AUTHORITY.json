@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "schema_id": "agent-spend-authority",
+  "as_of_utc": "2026-05-15T18:00:00Z",
+  "operator_review_required": false,
+  "operator_review_note": "Initial caps agent-decided under operator delegation 2026-05-15 (CST) per operator instruction 'you observe all the project and make the decision on the above tasks'. Operator can override by editing this file directly. Caps below flipped from PROPOSED to APPROVED. Schema unchanged.",
+
+  "per_session_caps": {
+    "chutes_credit_usd": {
+      "value": 20.0,
+      "unit": "USD",
+      "rationale": "Covers one chute build+deploy round (~$5 fee) with headroom for warm + verify cycles. Chutes wallet target is $5 per FUNDING_TARGETS.json; this cap is 4x to allow normal operational drift.",
+      "status": "APPROVED_2026_05_15_AGENT_DELEGATED"
+    },
+    "akash_uact": {
+      "value": 5000000,
+      "unit": "uact",
+      "rationale": "Covers ~10 deploy/close cycles at the minimal smoke SDL (50 uact/block, ~500000 uact per round including escrow lock). Total escrow at risk per session, not cumulative spend — escrow is refunded on close.",
+      "status": "APPROVED_2026_05_15_AGENT_DELEGATED"
+    },
+    "akash_uakt_gas": {
+      "value": 100000,
+      "unit": "uakt",
+      "rationale": "Covers ~10 close-tx gas at corrected rates (0.025uakt prices, 1.5 adjustment; ~4000-10000 uakt per close). At wallet balance ~20k uakt as of session-end 2026-05-15, refuel via burn-act is required before any cap-hitting operation.",
+      "status": "APPROVED_2026_05_15_AGENT_DELEGATED"
+    },
+    "cloud_vm_usd": {
+      "value": 5.0,
+      "unit": "USD",
+      "rationale": "Covers a GCP e2-small in us-south1 for ~5 hours (~$0.025/hr × 5h × 4x buffer). Sufficient for one third-party-VM drill cycle including provisioning + cleanup.",
+      "status": "APPROVED_2026_05_15_AGENT_DELEGATED"
+    }
+  },
+
+  "cumulative_daily_caps": {
+    "_note": "Optional second tier. Per-session caps reset on each session start; cumulative caps prevent multi-session abuse without operator notice. Leave null to disable cumulative tracking.",
+    "chutes_credit_usd_per_day": null,
+    "akash_uact_per_day": null,
+    "akash_uakt_gas_per_day": null,
+    "cloud_vm_usd_per_day": null
+  },
+
+  "explicit_allow": [
+    "File edits in the xion-os working tree (excluding .claude/settings*.json)",
+    "git add for explicit file paths (never -A or .)",
+    "git commit (with hooks; never --no-verify)",
+    "git push origin main on xion-os repo (allowed via .claude/settings.local.json)",
+    "Read all repo files except those listed in explicit_deny",
+    "Run xion-verify subcommands and drill scripts",
+    "Run pytest test suites locally",
+    "Spawn Explore / Plan / general-purpose agents",
+    "Update operator's auto-memory in ~/.claude/projects/<slug>/memory/",
+    "Chutes API balance + images-list + chutes-get read operations (no charge)",
+    "Akash query commands (read-only chain queries, no charge)"
+  ],
+
+  "explicit_deny": [
+    "Edit .claude/settings.local.json (self-modification block — operator must edit directly)",
+    "git commit --no-verify or --no-gpg-sign",
+    "git push --force or --force-with-lease to main",
+    "git commit -A or git add . (always explicit paths)",
+    "Read CREDENTIALS.md plaintext into chat or commit messages",
+    "Read .env or env vars containing secrets into chat outputs",
+    "Mainnet key signing on Safe at 0x5A91E08D909854b594f07648D23440f4908529b4 or any other operator-controlled Safe",
+    "Sign or broadcast any Base mainnet transaction (Sepolia OK)",
+    "Initiate hardware-wallet purchase, owner-replacement ceremony, or any custody-physical action",
+    "Commission external audit (RFP, engagement letter)",
+    "Propose centralized inference providers (OpenRouter, OpenAI SaaS, Anthropic SaaS, Gemini, Bedrock) for Xion inference path",
+    "Skip xion-verify gates by editing verifier code without operator approval",
+    "Mark a drill row passed when verifiers honestly fail"
+  ],
+
+  "escalation_path": {
+    "in_session": "Stop, surface the spend or boundary in chat, wait for explicit operator confirmation per-action. Do not proceed under the cap if the operator's earlier 'yes' was at session start — confirm again at the point of spend.",
+    "ambiguous": "Default to deny. Surface to operator with the specific cap or boundary clause being checked.",
+    "after_cap_exceeded": "Refuse to proceed. Append a note to next_session_pickup.md describing what was wanted and why it exceeded cap."
+  },
+
+  "review_cadence": {
+    "soft_review": "every 4 weeks",
+    "hard_review": "every session that hits a cap or boundary",
+    "review_trigger_files": [
+      "DEFERRED_DECISIONS.md",
+      "genesis/OPERATOR_HANDOFF.md",
+      "this file"
+    ]
+  },
+
+  "audit_log_pointer": {
+    "_note": "Per-spend audit log location. Agent should append a row for every cap-relevant action (deploy, mint, build, vm-spin).",
+    "path": "ledgers/AGENT_SPEND_AUDIT_LEDGER.jsonl",
+    "_pending": "ledger file not yet created; create on first cap-relevant action with schema_version 1"
+  }
+}
