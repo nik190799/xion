@@ -12,7 +12,7 @@ Deploy a Relay on Akash as the **genesis primary** hosted substrate in the regis
 
 **Money & denom (easy to get wrong).** Escrow and deployment deposits use **`uact` (ACT)**, not `uakt`, in the pricing block. Mint ACT with BME: burn/send `uakt` via `tx bme mint-act`, then wait until the BME ledger row is **`ledger_record_status_executed`** and **`uact` appears in bank balances**; pending mints are not spendable as `uact` yet. SDL `placement.*.pricing` must say **`denom: uact`**; using `uakt` there leads to denomination / deposit errors. **Convert ACT back to AKT:** `tx bme burn-act <uact>uact` mints/remints `uakt` (see [Mint and Burn ACT](https://akash.network/docs/developers/deployment/cli/act-mint-burn)); **transaction fees are still paid in `uakt`**, so you cannot run `burn-act` if spendable `uakt` is too low to cover gas — top up a little AKT first per upstream troubleshooting.
 
-**Chain & CLI.** Mainnet: `akashnet-2`, RPC e.g. `https://rpc.akashnet.net:443` (same as **Steps** below). Tooling: `provider-services` (deployment create, lease, manifest, `lease-status`). If txs fail with insufficient fees, raise `--gas-prices` (e.g. `0.5uakt`) with `--gas auto` / adjustment.
+**Chain & CLI.** Mainnet: `akashnet-2`, RPC e.g. `https://rpc.akashnet.net:443` (same as **Steps** below). Tooling: `provider-services` (deployment create, lease, manifest, `lease-status`). Documented gas: `--gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt` (matches `AKASH_MINIMUM_GAS_PRICES` on validators). Only raise from there if txs fail with `insufficient fees`; the old `0.5uakt / adjustment 2` setting overprices by ~20x and caused a 668623 uakt close-tx shortfall (2026-05-15, dseq 26842604).
 
 **Certificates.** A **client cert** must exist on disk before `deployment create`: `tx cert generate client` then `tx cert publish client` for the same key / keyring.
 
@@ -35,7 +35,7 @@ These are load-bearing for anyone repeating the CLI path; they are easy to misre
 | **`burn-act` vs gas** | Plenty of **`uact`** but **`deployment create`** / other txs fail for insufficient **`uakt`** | Fees and deposits tied to AKT use **`uakt`**. Use **`tx bme burn-act <amount>uact`** (or `python -m xion_ops akash burn-act <amount> --wait-ledger`) to remint **`uakt`** per [act-mint-burn](https://akash.network/docs/developers/deployment/cli/act-mint-burn). The **`burn-act` tx itself** still spends **`uakt` for gas** — if spendable **`uakt`** is near zero, top up AKT from an exchange first, then run **`burn-act`**, then deploy. |
 | Escrow is **`uact` (ACT)**, not `uakt` | `deposit invalid: insufficient balance` while wallet shows plenty of AKT | `tx bme mint-act …uakt`; wait until `query bme ledger --owner <addr>` is **`ledger_record_status_executed`** before `deployment create`. Pending mints do not credit `uact` yet. |
 | SDL pricing **`denom: uact`** | `Mismatched denominations (uact != uakt)` or deposit errors | Keep pricing block on **`uact`**; do not put `uakt` in `placement.*.pricing`. |
-| **`gas-prices`** too low | `insufficient fees` on `cert publish` / other txs | e.g. `--gas auto --gas-adjustment 2 --gas-prices 0.5uakt` (values drift with network). |
+| **`gas-prices`** mistuned | `insufficient fees` (too low) or **30-170x uakt waste** on every tx (too high) | Use documented `--gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt`. The previously-suggested `0.5uakt / 2` overcharged by ~20x. Only raise if the network demonstrably drifts; only lower if validators stop accepting. |
 | Client **cert** missing | `could not open certificate PEM file` on `deployment create` | `tx cert generate client` then `tx cert publish client` (same key / keyring). |
 | Provider status API **auth** | `JWT has invalid claims` on `lease-status` | Use **`--auth-type mtls`** (default JWT path failed in practice against provider gateway). |
 | Forwarded URL + TLS | Connection errors or cert warnings | Ingress uses **HTTPS** on forwarded port; Relay uses **ephemeral TLS** in image unless you mount real `XION_TLS_*` — use **`curl -k`** for smoke checks. **`xion_ops akash deploy`** probes **`GET /health`** via **WSL `curl -k`** on Windows (falls back to urllib on non-Windows) because native Windows stacks sometimes time out toward provider forwards that WSL reaches. |
@@ -122,7 +122,7 @@ pulls the floor model.
    The SDL pins `nikhilkadalge/xion-relay:pre-genesis-akash` for this operator fork; override with `RELAY_PUSH_IMAGE`, `DOCKERHUB_USER`, or `GHCR_IMAGE` / `GHCR_TAG` as documented in `scripts/push-relay-ghcr.sh`.
 3. **On-chain prep (`provider-services`, mainnet `akashnet-2`):**
 
-   - **Client cert** (once per key): `tx cert generate client` then `tx cert publish client` (if fees fail, add e.g. `--gas-prices 0.5uakt` with `--gas auto`).
+   - **Client cert** (once per key): `tx cert generate client` then `tx cert publish client` (add `--gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt` if not already env-default).
    - **ACT (uact) for escrow:** deployment deposits are in **`uact`**, not raw `uakt`. Mint with `tx bme mint-act <uakt-to-burn>uakt --from <key> ...`, then wait until `query bme ledger --owner <addr>` shows `ledger_record_status_executed` and `query bank balances` lists a `uact` balance.
    - **Remint AKT from ACT:** if **`uact`** is large but **`uakt`** is too small for `deployment create` gas/deposit, **`tx bme burn-act <uact-to-burn>uact`** (wrapper: `python -m xion_ops akash burn-act <amount> --wait-ledger`) converts ACT toward AKT per [act-mint-burn](https://akash.network/docs/developers/deployment/cli/act-mint-burn). You still need **enough `uakt` to pay gas for `burn-act`** itself; otherwise deposit a small amount of AKT first.
    - **SDL:** pricing block must use **`denom: uact`** (not `uakt`). Placement name is conventionally `akash` and must match the `deployment:` mapping.
@@ -135,7 +135,7 @@ pulls the floor model.
    provider-services tx deployment create infra/akash/relay-deployment.yaml \
      --from <key> --keyring-backend test \
      --chain-id "$AKASH_CHAIN_ID" --node "$AKASH_NODE" \
-     --gas auto --gas-adjustment 2 --gas-prices 0.5uakt -y
+     --gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt -y
 
    # Note dseq from tx events, then pick a provider from:
    provider-services query market bid list --owner <addr> --dseq <dseq> \
@@ -144,7 +144,7 @@ pulls the floor model.
    provider-services tx market lease create --dseq <dseq> --gseq 1 --oseq 1 \
      --provider <provider-address> --from <key> --keyring-backend test \
      --chain-id "$AKASH_CHAIN_ID" --node "$AKASH_NODE" \
-     --gas auto --gas-adjustment 2 --gas-prices 0.5uakt -y
+     --gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt -y
 
    provider-services send-manifest infra/akash/relay-deployment.yaml \
      --dseq <dseq> --provider <provider-address> \

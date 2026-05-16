@@ -843,9 +843,17 @@ class AkashService(OpsService):
         }
 
     def _gas_tx_flags(self) -> list[str]:
+        # Defaults align with Akash docs (https://docs.akash.network/akash-nodes/
+        # run-an-akash-node/step5-set-minimum-gas-price): AKASH_MINIMUM_GAS_PRICES
+        # is 0.025uakt and AKASH_GAS_ADJUSTMENT 1.5 is the common safe value.
+        # The previous defaults (0.5uakt / 2) overpriced close-tx fees ~20x and
+        # caused a 668623uakt shortfall when closing dseq 26842604 (2026-05-15);
+        # at the documented rate the same tx settled in 3895uakt
+        # (txhash 9D460E2519ABD70167E67FC0BB80A22C9CA134E95DE26131851C5483DE00D9A7).
+        # Override via env vars if a network-condition change requires it.
         gas = os.environ.get("AKASH_GAS", "auto")
-        adjustment = os.environ.get("AKASH_GAS_ADJUSTMENT", "2")
-        prices = os.environ.get("AKASH_GAS_PRICES", "0.5uakt")
+        adjustment = os.environ.get("AKASH_GAS_ADJUSTMENT", "1.5")
+        prices = os.environ.get("AKASH_GAS_PRICES", "0.025uakt")
         return ["--gas", gas, "--gas-adjustment", adjustment, "--gas-prices", prices]
 
     def _broadcast_json_confirm(self, stdout: str) -> dict[str, Any]:

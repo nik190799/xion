@@ -56,7 +56,7 @@ export AKASH_NODE=https://rpc.akashnet.net:443
 provider-services tx deployment create infra/akash/relay-deployment.yaml \
   --from <key> --keyring-backend test \
   --chain-id "$AKASH_CHAIN_ID" --node "$AKASH_NODE" \
-  --gas auto --gas-adjustment 2 --gas-prices 0.5uakt -y
+  --gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt -y
 
 provider-services query market bid list --owner <addr> --dseq <dseq> \
   --node "$AKASH_NODE" --chain-id "$AKASH_CHAIN_ID"
@@ -64,7 +64,7 @@ provider-services query market bid list --owner <addr> --dseq <dseq> \
 provider-services tx market lease create --dseq <dseq> --gseq 1 --oseq 1 \
   --provider <provider-address> --from <key> --keyring-backend test \
   --chain-id "$AKASH_CHAIN_ID" --node "$AKASH_NODE" \
-  --gas auto --gas-adjustment 2 --gas-prices 0.5uakt -y
+  --gas auto --gas-adjustment 1.5 --gas-prices 0.025uakt -y
 
 provider-services send-manifest infra/akash/relay-deployment.yaml \
   --dseq <dseq> --provider <provider-address> \

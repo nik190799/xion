@@ -1,0 +1,80 @@
+{
+  "artifact": "relay-akash-smoke-attempts",
+  "as_of": "2026-05-15T04:45Z",
+  "sdl_path": "infra/akash/relay-smoke-minimal.yaml",
+  "sdl_change": "added placement.akash.attributes (host: akash) + signedBy.anyOf=[akash1365yvmc4s7awdyj3n2sav7xfx76adc6dnmlx63] audited-provider filter",
+  "gas_config_change": "Switched from AKASH_GAS_PRICES=0.5uakt + GAS_ADJUSTMENT=2 (xion_ops defaults) to documented 0.025uakt + 1.5. Effect: close-deployment tx cost dropped from 268652-668623 uakt to 3895-10066 uakt (30x-170x reduction).",
+  "context": "Smoke retry against KW-FLOOR-DEPLOY-001. Three attempts in this session. Goal: isolate whether manifest-refusal pattern is SDL-shaped, provider-shaped, or network-shaped. Used minimal nginx /health SDL.",
+  "attempts": [
+    {
+      "dseq": "26842585",
+      "provider": "akash18ga02jzaq8cw52anyhzkwta5wygufgu6zsz6xc",
+      "audited": true,
+      "outcome": "health_smoke_failed",
+      "detail": "Manifest accepted (new — audited filter delivered a working bidder). Health-smoke HTTP 503. Auto-close succeeded at OLD gas (268652 uakt).",
+      "auto_close_txhash": "6509EF713619DCB0A52C5BEAF717C569BC35B6CCF6CDECEE191B0292752F5C0D"
+    },
+    {
+      "dseq": "26842604",
+      "provider": "akash1k94uya5rhrtj9rfw850az9aq2d6vdpjmtnlgd0",
+      "audited": true,
+      "outcome": "send_manifest_failed",
+      "detail": "'submit manifest to some providers has been failed' — same refusal string as 2026-05-06 batch, from a different audited provider. Audited filter is necessary but not sufficient.",
+      "auto_close_at_old_gas": "failed (spendable 51344uakt < 668623uakt required); orphan created",
+      "manual_close_at_new_gas_txhash": "9D460E2519ABD70167E67FC0BB80A22C9CA134E95DE26131851C5483DE00D9A7",
+      "manual_close_cost_uakt": "3895"
+    },
+    {
+      "dseq": "26844278",
+      "provider": "akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp",
+      "audited": true,
+      "outcome": "health_smoke_failed",
+      "detail": "Manifest accepted. Health-smoke '<urlopen error [Errno 111] Connection refused>'. Auto-close succeeded at NEW gas (10066 uakt).",
+      "auto_close_txhash": "2623D715449F387B6BE410A8A431BE6D7016FCEA4A45A7FD8F1861432AD39432",
+      "duration_s": 55.944
+    }
+  ],
+  "orphan_remediation": {
+    "older_orphan_predating_session": {
+      "dseq": "26595072",
+      "close_txhash": "E5984F6F39DDAC1BF3A974679A6A3991F1B09D0BA5EB845F34354F71812AD21D",
+      "cost_uakt": "~4172"
+    },
+    "session_orphan": {
+      "dseq": "26842604",
+      "close_txhash": "9D460E2519ABD70167E67FC0BB80A22C9CA134E95DE26131851C5483DE00D9A7",
+      "cost_uakt": "3895"
+    }
+  },
+  "rejected_providers_used": [
+    "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e",
+    "akash12v6dhc8awlwhv438jjyw80eguhgtm735mfv3fx",
+    "akash1ta6d9l4ujhj6ztvveyjuyr3zha3te3txz5nr5d",
+    "akash18ga02jzaq8cw52anyhzkwta5wygufgu6zsz6xc",
+    "akash1k94uya5rhrtj9rfw850az9aq2d6vdpjmtnlgd0",
+    "akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp"
+  ],
+  "wallet_state_final": {
+    "address": "akash1sgt75mdxy7tuufam364n59089hre7gyew227ml",
+    "uact_balance": "76008472",
+    "uakt_balance": "19921",
+    "active_deployments": []
+  },
+  "findings": [
+    "Audited-provider signedBy filter consistently delivers manifest-accepting bidders. The 2026-05-06 'send_manifest_failed' pattern is NOT inevitable with audited filter — attempt 1 and 3 today both got past send-manifest.",
+    "Audited providers' POST-lease ingress is the new failure surface: HTTP 503 (attempt 1) and 'Connection refused' (attempt 3) on a trivial nginx /health image. Two of three audited bidders failed the health-smoke step.",
+    "uakt-gas mispricing was a major self-inflicted blocker. xion_ops defaults (0.5uakt / adj 2) overprice tx fees ~20x vs Akash docs (0.025uakt / adj 1.5). Result: an unsuccessful deploy used to bleed ~270k uakt of gas per round; now it bleeds ~10k.",
+    "Even with all fixes, audited-provider ingress reliability is the bottleneck. Akash community feedback (akash-network/support#180) suggests provider economics under BME (launched 2026-03-23) are stressed; small providers may be deferring infrastructure maintenance, producing ingress-layer failures.",
+    "Akash announced Cosmos chain deprecation October 2025; RFP for new chain (Solana frontrunner) is open. akashnet-2 will continue to operate but has finite shelf life."
+  ],
+  "decision_implications_for_KW-FLOOR-DEPLOY-001": [
+    "Akash IS a viable decentralized-option proof for the genesis floor narrative — manifest-acceptance step now works with audited+excluded config.",
+    "Akash is NOT currently a reliable PRIMARY GPU floor for production traffic — three audited providers in a row had ingress problems on a smoke probe. Closure-grade probation would require an audited subset known to have working ingress, not a blind audited filter.",
+    "Chutes / Bittensor SN64 should stay as the primary GPU path. Akash as evidence-of-option only. Re-evaluate after Akash chain migration decision."
+  ],
+  "operational_artefacts_persisted": [
+    "infra/akash/relay-smoke-minimal.yaml — signedBy + host filter added (commit pending)",
+    "genesis/DEPLOYMENT_RECORDS/relay-akash-smoke-2026-05-15.json — this file"
+  ],
+  "next_recommended": "Set AKASH_GAS_PRICES=0.025uakt and AKASH_GAS_ADJUSTMENT=1.5 as defaults in scripts/demo-minimal-akash-deploy.sh (or update xion_ops/services/akash.py defaults). Do not attempt closure-grade Akash GPU until a known-good audited provider with verified ingress is identified."
+}

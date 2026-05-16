@@ -70,3 +70,15 @@ def test_gas_tx_flags_use_env(monkeypatch, tmp_path):
     monkeypatch.setenv("AKASH_GAS_PRICES", "0.025uakt")
     service = AkashService(repo_root=tmp_path)
     assert service._gas_tx_flags() == ["--gas", "500000", "--gas-adjustment", "1.5", "--gas-prices", "0.025uakt"]
+
+
+def test_gas_tx_flags_defaults_match_akash_docs(monkeypatch, tmp_path):
+    # Locks the Akash-docs-aligned defaults set on 2026-05-15 (see akash.py
+    # _gas_tx_flags comment). Regression guard: the previous 0.5uakt/2 defaults
+    # caused a 668623uakt close-tx shortfall; documented 0.025uakt/1.5 settled
+    # the same tx in 3895uakt.
+    monkeypatch.delenv("AKASH_GAS", raising=False)
+    monkeypatch.delenv("AKASH_GAS_ADJUSTMENT", raising=False)
+    monkeypatch.delenv("AKASH_GAS_PRICES", raising=False)
+    service = AkashService(repo_root=tmp_path)
+    assert service._gas_tx_flags() == ["--gas", "auto", "--gas-adjustment", "1.5", "--gas-prices", "0.025uakt"]

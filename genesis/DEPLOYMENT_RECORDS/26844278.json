@@ -1,0 +1,40 @@
+{
+  "created_at": "2026-05-16T04:40:30Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "publish_registry": false,
+      "rejected_providers": [
+        "akash12v6dhc8awlwhv438jjyw80eguhgtm735mfv3fx",
+        "akash18ga02jzaq8cw52anyhzkwta5wygufgu6zsz6xc",
+        "akash1k94uya5rhrtj9rfw850az9aq2d6vdpjmtnlgd0",
+        "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e",
+        "akash1ta6d9l4ujhj6ztvveyjuyr3zha3te3txz5nr5d"
+      ],
+      "sdl_path": "infra/akash/relay-smoke-minimal.yaml"
+    }
+  },
+  "id": "26844278",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "close_stderr": "",
+      "close_stdout": "{\"height\":\"26844287\",\"txhash\":\"2623D715449F387B6BE410A8A431BE6D7016FCEA4A45A7FD8F1861432AD39432\",\"codespace\":\"\",\"code\":0,\"data\":\"12360A342F616B6173682E6465706C6F796D656E742E763162657461342E4D7367436C6F73654465706C6F796D656E74526573706F6E7365\",\"raw_log\":\"\",\"logs\":[],\"info\":\"\",\"gas_wanted\":\"402636\",\"gas_used\":\"284131\",\"tx\":null,\"timestamp\":\"\",\"events\":[{\"type\":\"coin_spent\",\"attributes\":[{\"key\":\"spender\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true},{\"key\":\"amount\",\"value\":\"10066uakt\",\"index\":true}]},{\"type\":\"coin_received\",\"attributes\":[{\"key\":\"receiver\",\"value\":\"akash17xpfvakm2amg962yls6f84z3kell8c5lazw8j8\",\"index\":true},{\"key\":\"amount\",\"value\":\"10066uakt\",\"index\":true}]},{\"type\":\"transfer\",\"attributes\":[{\"key\":\"recipient\",\"value\":\"akash17xpfvakm2amg962yls6f84z3kell8c5lazw8j8\",\"index\":true},{\"key\":\"sender\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true},{\"key\":\"amount\",\"value\":\"10066uakt\",\"index\":true}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"sender\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true}]},{\"type\":\"tx\",\"attributes\":[{\"key\":\"fee\",\"value\":\"10066uakt\",\"index\":true},{\"key\":\"fee_payer\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true}]},{\"type\":\"tx\",\"attributes\":[{\"key\":\"acc_seq\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml/125\",\"index\":true}]},{\"type\":\"tx\",\"attributes\":[{\"key\":\"signature\",\"value\":\"FY6AQ//0gZqt7FE34icBp9NaG0ab1/3Wdp+3zyI2NgU714YEPgMNAww0CkEzwwO2R2AjZS/DqfsX7fj2cNqEng==\",\"index\":true}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"action\",\"value\":\"/akash.deployment.v1beta4.MsgCloseDeployment\",\"index\":true},{\"key\":\"sender\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true},{\"key\":\"module\",\"value\":\"deployment\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"coin_spent\",\"attributes\":[{\"key\":\"spender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"amount\",\"value\":\"5uact\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"coin_received\",\"attributes\":[{\"key\":\"receiver\",\"value\":\"akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp\",\"index\":true},{\"key\":\"amount\",\"value\":\"5uact\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"transfer\",\"attributes\":[{\"key\":\"recipient\",\"value\":\"akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp\",\"index\":true},{\"key\":\"sender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"amount\",\"value\":\"5uact\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"sender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"coin_spent\",\"attributes\":[{\"key\":\"spender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"amount\",\"value\":\"499995uact\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"coin_received\",\"attributes\":[{\"key\":\"receiver\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true},{\"key\":\"amount\",\"value\":\"499995uact\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"transfer\",\"attributes\":[{\"key\":\"recipient\",\"value\":\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\",\"index\":true},{\"key\":\"sender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"amount\",\"value\":\"499995uact\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"sender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"akash.deployment.v1.EventDeploymentClosed\",\"attributes\":[{\"key\":\"id\",\"value\":\"{\\\"owner\\\":\\\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\\\",\\\"dseq\\\":\\\"26844278\\\"}\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"akash.deployment.v1.EventGroupClosed\",\"attributes\":[{\"key\":\"id\",\"value\":\"{\\\"owner\\\":\\\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\\\",\\\"dseq\\\":\\\"26844278\\\",\\\"gseq\\\":1}\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"akash.market.v1.EventOrderClosed\",\"attributes\":[{\"key\":\"id\",\"value\":\"{\\\"owner\\\":\\\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\\\",\\\"dseq\\\":\\\"26844278\\\",\\\"gseq\\\":1,\\\"oseq\\\":1}\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"coin_spent\",\"attributes\":[{\"key\":\"spender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"amount\",\"value\":\"500000uakt\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"coin_received\",\"attributes\":[{\"key\":\"receiver\",\"value\":\"akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp\",\"index\":true},{\"key\":\"amount\",\"value\":\"500000uakt\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"transfer\",\"attributes\":[{\"key\":\"recipient\",\"value\":\"akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp\",\"index\":true},{\"key\":\"sender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"amount\",\"value\":\"500000uakt\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"sender\",\"value\":\"akash14pphss726thpwws3yc458hggufynm9x77l4l2u\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"akash.market.v1.EventBidClosed\",\"attributes\":[{\"key\":\"id\",\"value\":\"{\\\"owner\\\":\\\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\\\",\\\"dseq\\\":\\\"26844278\\\",\\\"gseq\\\":1,\\\"oseq\\\":1,\\\"provider\\\":\\\"akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp\\\",\\\"bseq\\\":0}\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]},{\"type\":\"akash.market.v1.EventLeaseClosed\",\"attributes\":[{\"key\":\"id\",\"value\":\"{\\\"owner\\\":\\\"akash1sgt75mdxy7tuufam364n59089hre7gyew227ml\\\",\\\"dseq\\\":\\\"26844278\\\",\\\"gseq\\\":1,\\\"oseq\\\":1,\\\"provider\\\":\\\"akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp\\\",\\\"bseq\\\":0}\",\"index\":true},{\"key\":\"reason\",\"value\":\"\\\"lease_closed_owner\\\"\",\"index\":true},{\"key\":\"msg_index\",\"value\":\"0\",\"index\":true}]}]}\n",
+      "duration_s": 55.944,
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "dseq": "26844278",
+    "id": "26844278",
+    "ok": false,
+    "provider": "akash10ttlnefhkfyvfpkgnq7trm68dw43hw6qaa4kvp",
+    "service": "akash",
+    "tx": null,
+    "url": null
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": false,
+    "output": ""
+  }
+}
