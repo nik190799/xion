@@ -33,7 +33,7 @@ The substrate-portability verifier (`verifier_results[4]`) **passed** at exit 0 
 
 ### Concrete Phase 1 fixes (cited from HEAD reproduction)
 
-**Fix 1.1 — `links` (CHANGELOG.md:55):** The link `[xion_ops/services/akash.py:586-617](xion_ops/services/akash.py:586)` parses with `:586` as part of the path. Quickest fix: change the link target to `xion_ops/services/akash.py` (drop the `:586`) and keep the line-range in the label only. Bigger fix: extend `xion-verify/src/xion_verify/commands/links.py:149` (`path_part = stripped.split("#", 1)[0].split("?", 1)[0]`) to also strip `:NNN` suffix before path resolution — but that risks false positives on Windows drive paths.
+**Fix 1.1 — `links` (CHANGELOG.md:55):** The CHANGELOG link has label `xion_ops/services/akash.py:586-617` and target ending in literal `:586` — the verifier's URL parser at `xion-verify/src/xion_verify/commands/links.py` line 149 only strips `#fragment` and `?query`, not `:line`, so `:586` is treated as part of the file path. Fix: change the URL form to `#L586` (GitHub-style line anchor) which the verifier strips, leaving a valid file path. Avoids touching the verifier.
 
 **Fix 1.2 — `schemas` (4 sha256 mismatches):** Rehash the four underlying docs and update `source_sha256` in:
 - `docs/schemas/ledger-immortality-drill.yaml` (source: `docs/runbooks/IMMORTALITY_DRILL.md`)

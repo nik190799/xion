@@ -1,7 +1,7 @@
 schema_id: spend-posture
 schema_version: 1
 source_doctrine: docs/SPEND-AUTONOMY.md
-source_sha256: 45b0ca69ff2865779d46dfe9eb45c8f7a2146974404d00eb087264d36acc173e
+source_sha256: 81afdca817c1edc154cb356d69e0230363f97aef353d92088d50b71850c4c43a
 status: doctrine_only
 defer_to: DEVELOPMENT_ROADMAP.md Phase 7.0
 invariant_parent: 19

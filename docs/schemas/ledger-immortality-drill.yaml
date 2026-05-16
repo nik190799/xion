@@ -1,7 +1,7 @@
 schema_id: ledger-immortality-drill
 schema_version: 1
 source_doctrine: docs/runbooks/IMMORTALITY_DRILL.md
-source_sha256: 1d681e1be42a34df62274060abd216b96fe6f6b1621ef8b083017dd215b8c838
+source_sha256: 055217f9fcbe3c9eb83be255e6c4314b1decf785a3d052c5e192db61596f4815
 status: canonical
 row_type: immortality_drill_rehearsal_v1
 

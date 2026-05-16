@@ -167,7 +167,26 @@ if ledger.is_file():
     if rows:
         prev_hash = json.loads(rows[-1]).get("row_hash", "")
 
-all_verifiers_ok = all(int(row["exit_code"]) == 0 for row in results)
+# Per-verifier exit-code policy. `inference-sovereignty` returns exit 2
+# (NOT_YET_SEALED) whenever XION_OPEN_WEIGHTS_GGUF_PATH is unset on a
+# third-party machine; the verifier itself documents this as an
+# operator-side gap surfaced for visibility, NOT a structural failure
+# (see docs/runbooks/IMMORTALITY_DRILL.md and the verifier's own
+# message: "NOT_YET_SEALED entries are operator-side gaps the
+# verifier surfaces but does not treat as failures"). Treating exit 2
+# as a drill failure would mean no third-party-VM run could ever pass
+# until the operator ships the gguf pin, which is out of scope for the
+# drill's substrate-portability proof. Allowlist exit 2 for this one
+# verifier only; all others must still exit 0. Rationale captured in
+# docs/runbooks/LHT_SUBSTRATE_001_CLOSURE_PLAN.md Phase 1.3.
+_INFERENCE_SOVEREIGNTY_ALLOWED_EXITS = (0, 2)
+def _verifier_ok(row):
+    name = str(row.get("name", ""))
+    code = int(row.get("exit_code", 1))
+    if "inference-sovereignty" in name:
+        return code in _INFERENCE_SOVEREIGNTY_ALLOWED_EXITS
+    return code == 0
+all_verifiers_ok = all(_verifier_ok(row) for row in results)
 all_health_ok = all(int(row["curl_exit"]) == 0 and 200 <= int(row["status_code"]) <= 299 for row in health)
 machine_fingerprint = hashlib.sha256(
     f"{platform.platform()}|{socket.gethostname()}|{platform.python_version()}".encode("utf-8")

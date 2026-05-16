@@ -1,7 +1,7 @@
 schema_id: ledger-pre-genesis-drill
 schema_version: 1
 source_doctrine: docs/STATE_OF_XION_PRE_GENESIS.md
-source_sha256: e9d03d3abfcd0ebbfba4cbe9c29d878c31cda3e12979aae3db0f189e222da479
+source_sha256: 603de0895cdf2fe882f76f3edbba4d1efa3e5628576d175681b1d7b1edc9a745
 status: canonical
 row_type: pre_genesis_drill_v1
 
