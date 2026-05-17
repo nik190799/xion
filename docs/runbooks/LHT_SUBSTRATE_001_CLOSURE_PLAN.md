@@ -97,41 +97,47 @@ Current `relays[1]` entry in [`ledgers/RELAY_REGISTRY.json`](../../ledgers/RELAY
 
 **Acceptance:** New chute returns 200 on `/health` with bearer; deployment record committed; KW-RELAY-CHUTES-D3-001 status flips from `open` to `mitigated`.
 
-### Phase 3 — Primary-swap configuration (½ session)
+### Phase 3 — Drill-semantics swap (¼ session, no registry edits)
 
-Two coordinated edits, plus a verifier change:
+**Discovery-verifier constraint** (found 2026-05-16): [`xion-verify discovery`](../../xion-verify/src/xion_verify/commands/discovery.py) lines 70–73 hard-asserts `relays[0]=akash` (genesis primary) and `relays[1]=chutes` (genesis secondary). Physically reordering the registry would break the discovery verifier and invalidate attestation history. **Registry ordering is a genesis doctrinal property** — decouple drill semantics from registry index instead.
 
-1. **[`ledgers/RELAY_REGISTRY.json`](../../ledgers/RELAY_REGISTRY.json):** Move the new Chutes entry to `relays[0]`, the Akash entry to `relays[1]`. Update `payload_sha256`. Add the Akash CPU-only entry as `relays[1]` if the operator picks option (a) from the architectural question above; otherwise leave the existing Akash entry there to be probed (it will fail health-check honestly).
+1. **[`ledgers/RELAY_REGISTRY.json`](../../ledgers/RELAY_REGISTRY.json):** NO EDITS. Genesis ordering (Akash relays[0], Chutes relays[1]) preserved.
 
-2. **[`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh) lines 180–181:** Change to `"primary_substrate": "chutes-sn64-primary"`, `"secondary_substrate": "akash-cpu-secondary"` (or whatever option (a)/(d) decides).
+2. **[`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh):**
+   - Swap the registry-read so `CHUTES_HEALTH_URL=relays[1].endpoint` (drill primary) and `AKASH_HEALTH_URL=relays[0].endpoint` (drill secondary). Genesis-vs-drill index decoupled with an in-script comment.
+   - Probe order: `probe_health "chutes-primary-health" "$CHUTES_HEALTH_URL"` first, then `probe_health "akash-secondary-health" "$AKASH_HEALTH_URL"` (chutes-substring still matches the bearer-attach logic).
+   - Row labels: `"primary_substrate": "chutes-sn64-primary"`, `"secondary_substrate": "akash-attestation-secondary"`.
 
-3. **No verifier change required.** `substrate_portability.py` line 18 already accepts `("akash", "aleph", "chutes")` regardless of primary/secondary role. Verifier change in the earlier plan draft was unnecessary.
+3. **No verifier change required.** `substrate_portability.py` line 18 already accepts `("akash", "aleph", "chutes")` in any role. Discovery verifier still passes (registry untouched).
 
-**Acceptance:** `scripts/substrate-portability-dry-run.sh` writes a row to `SUBSTRATE_DRYRUN_LEDGER.jsonl` with `secondary_substrate_id` matching the new layout; `xion-verify substrate-portability` exits 0.
+**Acceptance:** `xion-verify discovery` exits 0 (registry untouched); `xion-verify substrate-portability` exits 0; `scripts/substrate-portability-dry-run.sh` writes a row reflecting the new drill labels.
 
-### Phase 4 — Third-party-VM drill (1 session, requires cloud VM)
+### Phase 4 — Third-party-machine drill via GitHub Actions (1 session, zero cloud spend)
 
-1. **Spin a non-operator VM.** GCP us-south1 e2-small Debian 12 (matches the 2026-05-14 fingerprint pool), or equivalent. Cloud-init template at [`scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../scripts/cloud-vm-immortality-drill.cloud-init.yaml). Cold start ~3–5 min.
+**Runner choice:** GitHub Actions per [`DEFERRED_DECISIONS.md`](../../DEFERRED_DECISIONS.md) DD-004 (resolved 2026-05-15). The GCP cloud-init template at [`archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml) is the documented fallback if GH Actions free minutes are exhausted.
 
-2. **Set required env vars on VM:**
-   - `XION_SECONDARY_HEALTH_BEARER=<chutes API key>` — fixes the 2026-05-14 401.
-   - `XION_REPO_URL=https://github.com/nik190799/xion.git`, `XION_REPO_REF=main` (defaults are fine).
+1. **Author the workflow** at [`.github/workflows/immortality-drill.yml`](../../.github/workflows/immortality-drill.yml). Workflow contract:
+   - Triggers: `workflow_dispatch` (initial), `schedule: cron '0 13 * * 1'` (weekly Mondays 13:00 UTC = 08:00 CT, commented out until first manual run lands as expected).
+   - Permissions: `contents: write` (commits the new ledger row back).
+   - Concurrency: `group: immortality-drill, cancel-in-progress: false` (prevents races on the ledger commit).
+   - Steps: checkout main (drift is the point — drill attests *current* repo state) → setup-python 3.12 → run `scripts/immortality-drill-third-party.sh` with `XION_SECONDARY_HEALTH_BEARER=${{ secrets.XION_CHUTES_API_KEY }}` step-scoped → tail last stdout line as the row, validate JSON → append to ledger + audit-ledger → commit `[skip ci]` → push with `pull --rebase` retry loop.
 
-3. **Run [`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh).** Capture stdout. The script appends one row to `IMMORTALITY_DRILL_LEDGER.jsonl`.
+2. **Operator prerequisite:** add `XION_CHUTES_API_KEY` under repo Settings → Secrets and variables → Actions → New repository secret. Without it the chutes-side probe sends no Authorization header and gets HTTP 401.
 
-4. **Destroy the VM.** Nothing on it is worth preserving (per [`docs/runbooks/IMMORTALITY_DRILL.md`](IMMORTALITY_DRILL.md) line 101).
+3. **First manual run.** Trigger `workflow_dispatch`. Capture the row that lands.
 
-5. **Commit and push the new ledger row.**
+4. **Expected row shape** (per operator confirmation 2026-05-16): row lands `status: "failed"` (honest interim) — Akash secondary stays unreachable per DD-001 (d). Substantive pass-evidence is `verifier_results[substrate-portability] = exit 0` (the structural attestation). After the swap (Phase 3), primary-health on Chutes should land green (curl_exit=0, 2xx) IF Phase 2 deploy landed; if Phase 2 deploy is still pending, BOTH probes fail and the row still attests via the verifier.
+
+5. **If first run produces the expected shape:** uncomment the cron schedule in a follow-up commit.
 
 **Acceptance per row in the ledger:**
 - `event: "immortality_drill_third_party_v1"`
 - `primary_substrate: "chutes-sn64-primary"`
-- `status: "passed"`
-- All `verifier_results[].exit_code` in (0, 2) per Phase 1.3
-- All `relay_health_results[].curl_exit == 0` and `status_code` in 200–299
-- `third_party_machine_fingerprint` differs from operator's daily machine
+- `status: "failed"` (honest interim per DD-001 (d) / operator 2026-05-16) — closure-grade `passed` slips until a healthy second substrate lands in `relays[1]`
+- All `verifier_results[].exit_code` in (0, 2 for inference-sovereignty only)
+- `third_party_machine_fingerprint` differs from operator's daily machine (`GITHUB_ACTIONS=true` provenance)
 - Valid hash chain: `prev_hash` matches prior row's `row_hash`
-- `residual_closed: false` (closure-grade is later)
+- `residual_closed: false` (closure-grade is multi-quarter)
 
 ### Phase 5 — Iterate or escalate (conditional, 1–2 sessions)
 
@@ -163,14 +169,16 @@ Per [`docs/SUBSTRATE-RESILIENCE.md`](../SUBSTRATE-RESILIENCE.md) Part IV, closur
 - [`scripts/demo-minimal-chutes-deploy.sh`](../../scripts/demo-minimal-chutes-deploy.sh)
 - New: `genesis/DEPLOYMENT_RECORDS/relay-chutes-genesis-2026-05-XX.json`
 
-**Phase 3 (primary swap):**
-- [`ledgers/RELAY_REGISTRY.json`](../../ledgers/RELAY_REGISTRY.json)
-- [`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh) lines 180–181
+**Phase 3 (drill-semantics swap; registry untouched):**
+- [`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh) — read swap (registry → URL vars), probe order, row labels
+- [`xion-verify/src/xion_verify/commands/discovery.py`](../../xion-verify/src/xion_verify/commands/discovery.py) lines 70–73 — DO NOT edit; honor genesis ordering constraint
 
-**Phase 4 (drill run):**
-- [`scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../scripts/cloud-vm-immortality-drill.cloud-init.yaml)
-- [`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh) (no edit, run)
-- Append row to [`ledgers/IMMORTALITY_DRILL_LEDGER.jsonl`](../../ledgers/IMMORTALITY_DRILL_LEDGER.jsonl)
+**Phase 4 (drill run via GH Actions):**
+- [`.github/workflows/immortality-drill.yml`](../../.github/workflows/immortality-drill.yml) — primary runner per DD-004 (c)
+- [`scripts/immortality-drill-third-party.sh`](../../scripts/immortality-drill-third-party.sh) (no edit, run by the workflow)
+- [`archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml) — archived fallback only
+- Append row to [`ledgers/IMMORTALITY_DRILL_LEDGER.jsonl`](../../ledgers/IMMORTALITY_DRILL_LEDGER.jsonl) (workflow does this automatically)
+- Append spend-attestation row to [`ledgers/AGENT_SPEND_AUDIT_LEDGER.jsonl`](../../ledgers/AGENT_SPEND_AUDIT_LEDGER.jsonl) (workflow creates the ledger on first run)
 
 ## Functions / utilities to reuse
 

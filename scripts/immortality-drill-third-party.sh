@@ -81,7 +81,13 @@ run_check "xion-verify substrate-portability" xion-verify substrate-portability
 run_check "xion-verify inference-sovereignty" xion-verify inference-sovereignty
 run_check "xion-verify --self-test" xion-verify --self-test
 
-read -r AKASH_HEALTH_URL CHUTES_HEALTH_URL < <(
+# Registry ordering is doctrinal genesis property (relays[0]=akash,
+# relays[1]=chutes) enforced by xion-verify discovery. Drill primary/secondary
+# semantics are decoupled from registry index: per LHT-SUBSTRATE-001 closure
+# plan + 8513740 strategic posture, Chutes is the runtime primary path and
+# Akash is the decentralized-option attestation. Read both endpoints from
+# the registry, label them by their drill role rather than registry index.
+read -r CHUTES_HEALTH_URL AKASH_HEALTH_URL < <(
   python - <<'PY'
 from __future__ import annotations
 
@@ -90,11 +96,13 @@ from pathlib import Path
 
 registry = json.loads(Path("ledgers/RELAY_REGISTRY.json").read_text(encoding="utf-8"))
 relays = registry["relays"]
-print(f"{relays[0]['endpoint'].rstrip('/')}/health {relays[1]['endpoint'].rstrip('/')}/health")
+# relays[1] = chutes (genesis secondary index, drill primary role)
+# relays[0] = akash  (genesis primary index, drill attestation-secondary role)
+print(f"{relays[1]['endpoint'].rstrip('/')}/health {relays[0]['endpoint'].rstrip('/')}/health")
 PY
 )
-AKASH_HEALTH_URL="${XION_AKASH_HEALTH_URL:-$AKASH_HEALTH_URL}"
 CHUTES_HEALTH_URL="${XION_CHUTES_HEALTH_URL:-$CHUTES_HEALTH_URL}"
+AKASH_HEALTH_URL="${XION_AKASH_HEALTH_URL:-$AKASH_HEALTH_URL}"
 
 probe_health() {
   local name="$1"
@@ -142,8 +150,8 @@ print(
 PY
 }
 
-probe_health "akash-primary-health" "$AKASH_HEALTH_URL"
-probe_health "chutes-secondary-health" "$CHUTES_HEALTH_URL"
+probe_health "chutes-primary-health" "$CHUTES_HEALTH_URL"
+probe_health "akash-secondary-health" "$AKASH_HEALTH_URL"
 
 python - "$COMMIT_SHA" "$RESULTS_JSONL" "$HEALTH_JSONL" <<'PY'
 from __future__ import annotations
@@ -196,8 +204,8 @@ row = {
     "event": "immortality_drill_third_party_v1",
     "run_id": str(uuid.uuid4()),
     "as_of_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    "primary_substrate": "akash-public-primary",
-    "secondary_substrate": "chutes-public-secondary",
+    "primary_substrate": "chutes-sn64-primary",
+    "secondary_substrate": "akash-attestation-secondary",
     "status": "passed" if all_verifiers_ok and all_health_ok else "failed",
     "residual_closed": False,
     "residual": "LHT-SUBSTRATE-001",

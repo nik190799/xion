@@ -275,7 +275,7 @@ same heading.
 
 - **What this does NOT close.** LHT-SUBSTRATE-001 remains `open` — closure requires a `status=passed` row, not a `failed` one. The two genuine blockers for a passing run are (a) the Akash GPU floor closure (KW-FLOOR-DEPLOY-001, dated to 2026-07-09) so an `open_weights_only /chat` turn against a reachable deployed floor can succeed end-to-end, and (b) a fresh Chutes-direct secondary deployment to replace the retired pre-genesis-d3 chute. Plan the closure-grade drill for after both land.
 
-- **Operational note.** GCP's default Debian 12 image does NOT ship cloud-init, so [`scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../scripts/cloud-vm-immortality-drill.cloud-init.yaml) was bypassed for this run — the drill script was fetched and executed via a one-shot bash command on the booted VM. The cloud-init recipe remains valid for cloud-init-shipping images (Ubuntu 22.04/24.04 LTS, Hetzner default, Fly.io); Debian-on-GCP requires either Ubuntu substitution or the bash one-liner path. Worth adding a sibling Debian-bash recipe to `docs/runbooks/IMMORTALITY_DRILL.md` as a future polish.
+- **Operational note.** GCP's default Debian 12 image does NOT ship cloud-init, so [`archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml) was bypassed for this run — the drill script was fetched and executed via a one-shot bash command on the booted VM. The cloud-init recipe remains valid for cloud-init-shipping images (Ubuntu 22.04/24.04 LTS, Hetzner default, Fly.io); Debian-on-GCP requires either Ubuntu substitution or the bash one-liner path. Worth adding a sibling Debian-bash recipe to `docs/runbooks/IMMORTALITY_DRILL.md` as a future polish.
 
 ## What Does Not Close Today
 

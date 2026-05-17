@@ -1,4 +1,12 @@
 #cloud-config
+# ARCHIVED 2026-05-16 — superseded by .github/workflows/immortality-drill.yml.
+# DD-004 (resolved 2026-05-15) selected GitHub Actions as the third-party
+# runner: zero ongoing cost, no SSH keys to manage, clean
+# non-operator-fingerprint property (GITHUB_ACTIONS=true is auditor-legible),
+# and recurring cadence comes for free. This cloud-init template is preserved
+# as a documented fallback if GH Actions free minutes are ever exhausted or
+# the workflow is disabled — DO NOT use as the primary path.
+#
 # Cloud-init user-data for the LHT-SUBSTRATE-001 third-party Immortality Drill.
 #
 # Use case: the operator rents a minimal cloud VM (DigitalOcean droplet, Hetzner

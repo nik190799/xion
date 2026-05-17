@@ -1,0 +1,143 @@
+name: immortality-drill
+
+# LHT-SUBSTRATE-001 Phase 4 — third-party-machine Immortality Drill runner.
+#
+# Per DEFERRED_DECISIONS.md DD-004 (resolved 2026-05-15), the GH Actions
+# runner replaces the GCP cloud-init template at
+# archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml. Rationale:
+# zero ongoing cost, no SSH keys to manage, GITHUB_ACTIONS=true is an
+# auditor-legible non-operator-fingerprint, and weekly cadence comes for
+# free once this workflow lands.
+#
+# Acceptance criteria for a row produced by this workflow are in
+# docs/runbooks/LHT_SUBSTRATE_001_CLOSURE_PLAN.md Phase 4. Per operator
+# confirmation 2026-05-16, the first row is EXPECTED to land
+# status="failed" (honest interim) because Akash secondary remains
+# unreachable per DD-001 (d). The substantive pass-evidence is
+# verifier_results[substrate-portability] = exit 0.
+#
+# Operator prerequisite: add XION_CHUTES_API_KEY under
+#   repo Settings → Secrets and variables → Actions → New repository secret
+# Without it, the chutes-side health probe sends no Authorization header
+# and gets HTTP 401 instead of the live-chute response.
+
+on:
+  workflow_dispatch:
+  # Weekly cadence — left commented out until the first manual-dispatch run
+  # lands the expected honest-interim row. Uncomment in a follow-up commit
+  # once the workflow is proven stable on this repo's runners.
+  # schedule:
+  #   - cron: '0 13 * * 1'  # Mondays 13:00 UTC = 08:00 US Central
+
+# Prevent overlapping runs from racing on the ledger commit.
+concurrency:
+  group: immortality-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    name: third-party immortality drill
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 20
+    steps:
+      - name: Checkout (main HEAD — drift is intentional; the drill attests current state)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            xion-verify/pyproject.toml
+
+      - name: Configure git author (github-actions[bot])
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run immortality drill (captures row to drill-row.json)
+        env:
+          # Per scripts/immortality-drill-third-party.sh:105-106, the chutes
+          # secondary probe attaches Authorization: Bearer when this env var
+          # is set. Without it the probe sends no header and the gateway
+          # returns 401 — which would mask the real liveness signal.
+          XION_SECONDARY_HEALTH_BEARER: ${{ secrets.XION_CHUTES_API_KEY }}
+        run: |
+          set -o pipefail
+          bash scripts/immortality-drill-third-party.sh | tee drill-row.json
+          # The script's last stdout line is the JSON row (per script lines
+          # 148-213). Strip everything else and validate it's parseable JSON.
+          tail -n 1 drill-row.json > drill-row.tail.json
+          python -c "import json,sys; json.loads(open('drill-row.tail.json').read())" \
+            || { echo 'drill stdout did not end with a JSON row'; exit 1; }
+          mv drill-row.tail.json drill-row.json
+
+      - name: Append row to drill ledger + spend audit, push
+        run: |
+          set -euo pipefail
+
+          # Append to the immortality drill ledger.
+          cat drill-row.json >> ledgers/IMMORTALITY_DRILL_LEDGER.jsonl
+          echo "" >> ledgers/IMMORTALITY_DRILL_LEDGER.jsonl  # trailing newline
+
+          # Append a spend-attestation row (zero cost, but records that this
+          # cap-relevant action took place per AGENT_SPEND_AUTHORITY.json).
+          python <<'PY'
+          import hashlib, json, os, pathlib, time
+          ledger = pathlib.Path("ledgers/AGENT_SPEND_AUDIT_LEDGER.jsonl")
+          prev_hash = ""
+          if ledger.is_file():
+              rows = [l for l in ledger.read_text(encoding="utf-8").splitlines() if l.strip()]
+              if rows:
+                  prev_hash = json.loads(rows[-1]).get("row_hash", "")
+          row = {
+              "schema_version": 1,
+              "event": "drill_runner_spend_attestation_v1",
+              "as_of_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "spend_class": "cloud_vm_usd",
+              "actual_cost_usd": 0.0,
+              "runner": "github-actions",
+              "runner_url": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY','')}/actions/runs/{os.environ.get('GITHUB_RUN_ID','')}",
+              "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
+              "commit_sha": os.environ.get("GITHUB_SHA", ""),
+              "prev_hash": prev_hash,
+          }
+          payload = json.dumps(row, sort_keys=True, separators=(",", ":")).encode("utf-8")
+          row["row_hash"] = hashlib.sha256(payload).hexdigest()
+          with ledger.open("a", encoding="utf-8") as fh:
+              fh.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
+          PY
+
+          # Stage + commit explicit paths (never -A).
+          git add ledgers/IMMORTALITY_DRILL_LEDGER.jsonl ledgers/AGENT_SPEND_AUDIT_LEDGER.jsonl
+          DATE_UTC=$(date -u +%Y-%m-%d)
+          # [skip ci] prevents verify.yml from running on this bot commit;
+          # branch-protection checks (if any) still apply.
+          git commit -m "drill: immortality-drill third-party row ${DATE_UTC} [skip ci]" \
+                     -m "" \
+                     -m "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          # Push with retry: pull --rebase to absorb any concurrent operator commit.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              echo "push attempt ${attempt}: ok"; exit 0
+            fi
+            echo "push attempt ${attempt}: rebase + retry"
+            git pull --rebase origin main
+          done
+          echo "push failed after 3 attempts"; exit 1
+
+      - name: Upload drill stdout artifact (forensic replay)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drill-stdout-${{ github.run_id }}
+          path: drill-row.json
+          retention-days: 90

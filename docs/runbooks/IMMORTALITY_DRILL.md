@@ -78,27 +78,37 @@ current `KW-FLOOR-DEPLOY-001` gate). Replace only after a **fresh** GPU lease,
 | Chutes d3-8 verifier | Superseded by d3-10: `MODE=live bash scripts/verify-chute-cords.sh` returned `RESULT: all cords green` for image `pre-genesis-d3-10` |
 | Result | `passed`; substrate dry-run row `seq=4`, end-to-end drill test passed, and drill ledger row hash `e215589d2be896b673b5b0d39d31f0bb89c1bdfaa68dd51645bd5b395a5ad006` |
 
-## Cloud-VM recipe (third-party-machine compliance)
+## Third-party-machine compliance (GitHub Actions runner)
 
 For LHT-SUBSTRATE-001 the drill must run from infrastructure that is **not** the
-operator workstation. The simplest path is a one-shot cloud VM with cloud-init.
+operator workstation. Per [`DEFERRED_DECISIONS.md`](../../DEFERRED_DECISIONS.md)
+DD-004 (resolved 2026-05-15), the canonical runner is **GitHub Actions** via
+[`.github/workflows/immortality-drill.yml`](../../.github/workflows/immortality-drill.yml).
 
-1. Rent any cloud-init-compatible VM (Hetzner CX11 ~€4/mo, Linode Nanode $5/mo,
-   Fly.io free shared micro, AWS EC2 t4g.nano, DigitalOcean basic droplet). ≥ 2 GB
-   RAM, ≥ 4 GB disk, ≥ 1 vCPU. **Do not** front it with Cloudflare or any other
-   centralized CDN — that re-introduces a centralization surface contrary to the
-   spirit of substrate-portability evidence.
-2. Provision the VM with [`scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../scripts/cloud-vm-immortality-drill.cloud-init.yaml)
-   as user-data. (Each provider has its own "user data" field at create time.)
-   Optional: edit the embedded `XION_REPO_REF` to a specific commit SHA before
-   pasting so the attestation is deterministic.
-3. Wait 3–5 minutes. The cloud-init runcmd auto-installs deps, clones the public
-   repo, runs `scripts/immortality-drill-third-party.sh`, and writes a single
-   `immortality_drill_third_party_v1` JSON row to `/var/log/xion-drill/result.jsonl`.
-4. Read that row via cloud-console or `ssh user@vm tail /var/log/xion-drill/result.jsonl`.
-5. Append the row to `ledgers/IMMORTALITY_DRILL_LEDGER.jsonl` on the operator
-   machine; commit and push.
-6. Destroy the VM. Nothing on it is worth preserving.
+1. **Prerequisite:** add `XION_CHUTES_API_KEY` under repo Settings → Secrets and
+   variables → Actions → New repository secret. Without it the chutes-side probe
+   sends no Authorization header and gets HTTP 401.
+2. Trigger via `workflow_dispatch` (Actions tab → immortality-drill → Run workflow)
+   or wait for the weekly cron (Mondays 13:00 UTC).
+3. The workflow checks out main, installs the verifier, runs
+   `scripts/immortality-drill-third-party.sh`, appends one row to
+   `ledgers/IMMORTALITY_DRILL_LEDGER.jsonl`, appends a `drill_runner_spend_attestation_v1`
+   row to `ledgers/AGENT_SPEND_AUDIT_LEDGER.jsonl`, commits with `[skip ci]`,
+   and pushes back to main via the bot token. The row's
+   `third_party_machine_fingerprint` will be the GitHub-runner SHA256 —
+   provably distinct from any operator machine.
+4. Forensic replay: download the `drill-stdout-<run_id>` artifact from the
+   workflow run (90-day retention).
+
+### Fallback: cloud-init template (archived)
+
+If GH Actions minutes are exhausted or the workflow is disabled, the previous
+cloud-init template lives at
+[`archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml`](../../archive/scripts/cloud-vm-immortality-drill.cloud-init.yaml).
+Rent any cloud-init-compatible VM (Hetzner CX11 ~€4/mo, Linode Nanode $5/mo,
+Fly.io free shared micro, AWS EC2 t4g.nano, DigitalOcean basic droplet), paste
+as user-data, wait 3–5 minutes, read `/var/log/xion-drill/result.jsonl`, append
+to the ledger by hand, destroy the VM.
 
 **What the cloud-VM path satisfies right now (2026-05-13):**
 
