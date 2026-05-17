@@ -152,6 +152,7 @@ chute = Chute(
     max_instances=1,
     shutdown_after_seconds=900,
     allow_external_egress=True,
+    tee=True,
 )
 
 

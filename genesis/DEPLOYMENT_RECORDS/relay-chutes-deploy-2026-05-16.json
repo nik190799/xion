@@ -1,0 +1,57 @@
+{
+  "artifact": "relay-chutes-deploy-attempts",
+  "as_of": "2026-05-16T23:14Z",
+  "context": "LHT-SUBSTRATE-001 Phase 2: fresh Chutes primary deployment to replace the retired pre-genesis-d3-10 chute (KW-RELAY-CHUTES-D3-001 status mitigated-residual). Attempted under operator authorization 'Complete all' 2026-05-16. Pre-flight: Chutes credit balance $71.87 (target floor $5.00); 15/15 mocked test suites green; chutes CLI 0.6.8 bridged via WSL Ubuntu venv (~/.local/bin/chutes -> ~/chutes-venv/bin/chutes) because chutes/entrypoint/ssh.py imports the Unix-only pwd module at module-load time, breaking the CLI on Windows-native Python.",
+  "chute_module": "xion_relay_chute:chute",
+  "image_tag_pinned": "pre-genesis-d3-12",
+  "image_id": "ce38a5e1-346d-5a70-aa85-6cc07009a369",
+  "deployer_command": "python -m xion_ops deploy relay-chutes --accept-fee --no-publish-registry",
+  "attempts": [
+    {
+      "attempt": 1,
+      "as_of_utc": "2026-05-17T04:13Z",
+      "chute_constructor_kwargs": "default (no tee=True)",
+      "outcome": "rejected_pre_billing",
+      "platform_error": "Only TEE chutes are supported as of 2026-05-12, please set tee=True",
+      "fee_charged_usd": 0.0,
+      "warmup": "timed out 600s polling retired d3-10 endpoint (returns 502 — chute deleted 2026-05-13)",
+      "remediation_landed": "Added tee=True to Chute(...) in xion_relay_chute.py:155"
+    },
+    {
+      "attempt": 2,
+      "as_of_utc": "2026-05-17T04:24Z",
+      "chute_constructor_kwargs": "tee=True",
+      "outcome": "rejected_pre_billing",
+      "platform_error": "TEE private deployments are limited at this time due to infrastructure capacity limitations.",
+      "fee_charged_usd": 0.0,
+      "warmup": "timed out 600s (same retired endpoint)",
+      "remediation_unresolved": "Chutes platform capacity-limits TEE-private deployments. Workaround: deploy --public (anyone can invoke the chute). Posture change requires operator security review — XION_API_REQUIRE_BEARER=false on the chute means no app-level auth, only chute-platform auth gating."
+    }
+  ],
+  "wallet_state_final": {
+    "as_of_utc": "2026-05-17T04:30Z",
+    "chutes_credit_balance_usd": 71.8729,
+    "note": "Balance unchanged from pre-attempt $71.8729 — zero fee charged across both attempts (Chutes rejected both pre-billing)."
+  },
+  "findings": [
+    "Chutes platform added a hard TEE requirement on 2026-05-12 (4 days before this attempt). Existing chute module needed tee=True kwarg.",
+    "Even with tee=True, Chutes platform is capacity-limited on TEE-PRIVATE deployments as of 2026-05-16. Public TEE deployments may still be accepted, but flipping to --public requires operator security review because the chute itself has XION_API_REQUIRE_BEARER=false.",
+    "No fee charged across both attempts. Chutes platform rejects pre-billing when the policy/capacity check fails.",
+    "chutes 0.6.8 CLI imports pwd at module-load (chutes/entrypoint/ssh.py:2) — breaks on Windows-native Python. WSL venv install (~/chutes-venv) + ~/.local/bin symlink unblocks xion_ops Win-WSL bridge.",
+    "The retired pre-genesis-d3-10 chute subdomain (nikhilkadalge-xion-relay-pre-genesis-d3.chutes.ai) still serves HTTP 502 from the Chutes edge — the URL is sticky even though the chute was deleted 2026-05-13. Warmup polling against the deleted endpoint timed out 600s both attempts.",
+    "Phase 2 deploy is PLATFORM-BLOCKED until either (a) operator authorizes --public deployment, OR (b) Chutes TEE-private capacity returns. Phase 3 + Phase 4 wiring proceeded on the assumption of an honest-failed first drill row."
+  ],
+  "decision_implications_for_LHT_SUBSTRATE_001": "Phase 4 first drill row will land with BOTH probes failed (Akash GPU floor unreachable per 2026-05-14 evidence; Chutes secondary returns 502 from dead endpoint). Substantive pass-evidence is verifier_results[substrate-portability]=exit 0 — the structural attestation that the harness works and the registry shape is valid. This matches the operator-confirmed honest-interim posture 2026-05-16 ('accept failed-honest row').",
+  "operational_artefacts_persisted": [
+    "Added tee=True to xion_relay_chute.py:155 (now committed)",
+    "Phase 3 drill-script semantic swap landed (chutes=primary, akash=secondary in row labels; registry untouched per genesis ordering doctrine)",
+    "Phase 4 GH Actions workflow .github/workflows/immortality-drill.yml authored (per DD-004 (c))",
+    "Cloud-init template moved to archive/scripts/ with header note pointing at the workflow"
+  ],
+  "next_recommended": [
+    "Operator decision: authorize --public TEE deployment OR wait for TEE-private capacity to return. The chute is functionally public-protocol (Relay /health, /quote, /self are designed to be publicly probable); --public surfaces a posture difference but does NOT add a privacy regression vs the prior d3-10 deployment posture.",
+    "If --public authorized: re-run `python -m xion_ops deploy relay-chutes --accept-fee --public --no-publish-registry`. Capture chute_id/url/version, then publish to registry via the same deployer (drop --no-publish-registry) or via xion_ops.deployers.relay_chutes RelayRegistryPublisher.",
+    "If waiting: Phase 4 weekly cron will continue to produce honest-failed rows (verifiers green, both probes red). That's still 1-of-3 closure-grade attestation rows per closure plan 'Beyond Phase 5' item 1; the row attests harness mechanics from a non-operator-fingerprint.",
+    "Either way: flip KW-RELAY-CHUTES-D3-001 from mitigated-residual to either `mitigated` (if --public ships) or `open` (if platform capacity blocks indefinitely and this becomes a real weakness)."
+  ]
+}
