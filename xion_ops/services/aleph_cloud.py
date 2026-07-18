@@ -84,7 +84,9 @@ class AlephCloudService:
         payment_chain: str | None = None,
         rootfs: str | None = "ubuntu24",
     ) -> CommandResult:
-        payment = payment_type or os.environ.get("XION_ALEPH_PAYMENT_TYPE", "hold")
+        # Aleph retired hold-tier for instances (error 202 / "credits only",
+        # verified 2026-07-18); credits are the working payment mode.
+        payment = payment_type or os.environ.get("XION_ALEPH_PAYMENT_TYPE", "credit")
         chain = payment_chain or os.environ.get("XION_ALEPH_PAYMENT_CHAIN", "BASE")
         parts = [
             "aleph instance create",
