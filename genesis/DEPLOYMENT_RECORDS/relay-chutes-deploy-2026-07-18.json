@@ -1,0 +1,59 @@
+{
+  "artifact": "relay-chutes-deploy-attempts",
+  "as_of": "2026-07-18T07:35Z",
+  "context": "Retry of LHT-SUBSTRATE-001 Chutes-primary deployment under operator authorization 'Yes do everything' 2026-07-18 (operator had authorized the --public path 2026-07-17). Pre-flight: public image pre-genesis-d3-13 built and pushed as PUBLIC (image_id ff066d4c-...) after the --public deploy rejected the private d3-12 image. All four attempts below rejected pre-billing; zero fee charged.",
+  "chute_module": "xion_relay_chute:chute",
+  "image_tag_pinned": "pre-genesis-d3-13",
+  "image_id_public": "ff066d4c (built and pushed 2026-07-18T07:15Z, --public)",
+  "deployer_command": "python -m xion_ops deploy relay-chutes --accept-fee [--public] --no-publish-registry",
+  "attempts": [
+    {
+      "attempt": 1,
+      "as_of_utc": "2026-07-18T07:10Z",
+      "flags": "--public, image pre-genesis-d3-12 (private image)",
+      "outcome": "rejected_pre_billing",
+      "platform_error": "Unable to create public chutes from non-public images / Image 'ce38a5e1-...' is not available to be used (yet)!",
+      "fee_charged_usd": 0.0,
+      "remediation_landed": "Bumped IMAGE_TAG to pre-genesis-d3-13, rebuilt with chutes build --public --wait (succeeded: 'built and pushed')"
+    },
+    {
+      "attempt": 2,
+      "as_of_utc": "2026-07-18T07:19Z",
+      "flags": "--public, image pre-genesis-d3-13 (public image)",
+      "outcome": "rejected_pre_billing",
+      "platform_error": "Public chutes are no longer possible without special permissions, please create the chute as private and use `chutes share ...` command to share with others.",
+      "fee_charged_usd": 0.0,
+      "finding": "Platform policy changed between 2026-05-16 (public suggested as workaround) and 2026-07-18 (public requires special permissions). The --public escape hatch documented in relay-chutes-deploy-2026-05-16.json next_recommended no longer exists."
+    },
+    {
+      "attempt": 3,
+      "as_of_utc": "2026-07-18T07:29Z",
+      "flags": "private, tee=True",
+      "outcome": "rejected_pre_billing",
+      "platform_error": "TEE private deployments are limited at this time due to infrastructure capacity limitations.",
+      "fee_charged_usd": 0.0,
+      "finding": "Identical capacity error to 2026-05-16 — TEE-private capacity has not returned in 2 months."
+    },
+    {
+      "attempt": 4,
+      "as_of_utc": "2026-07-18T07:30Z",
+      "flags": "private, tee=False",
+      "outcome": "rejected_pre_billing",
+      "platform_error": "Only TEE chutes are supported as of 2026-05-12, please set tee=True",
+      "fee_charged_usd": 0.0,
+      "finding": "Non-TEE path also closed; tee=True reverted in xion_relay_chute.py after this attempt."
+    }
+  ],
+  "deadlock_statement": "As of 2026-07-18 the Chutes platform refuses all three deployment modes available to this account: public (special permissions required), TEE-private (capacity limited since at least 2026-05-16), and non-TEE private (TEE mandatory since 2026-05-12). No flag, image change, or code change under operator control can land a chute until the platform relaxes one of the three constraints.",
+  "wallet_state_final": {
+    "as_of_utc": "2026-07-18T07:35Z",
+    "chutes_credit_balance_usd": 71.8729,
+    "note": "Zero fees charged across all four attempts — every rejection was pre-billing."
+  },
+  "next_recommended": [
+    "Operator: request 'special permissions' for public chutes from Chutes support/Discord (SN64), citing account nikhilkadalge and the read-only cord surface (/health /quote /self).",
+    "Alternatively wait for TEE-private capacity; two months of no capacity suggests weekly re-probe (the Phase 4 drill cron produces honest-failed rows meanwhile).",
+    "Escalate substrate diversification: the closure plan's option (c) (Aleph or alternate substrate) moves from parked to justified — BOTH primary (Chutes) and secondary (Akash, gas-blocked + provider lottery) substrates are now externally blocked simultaneously.",
+    "KW-RELAY-CHUTES-D3-001 should flip from mitigated-residual to open: the platform block is persistent (2+ months), policy-driven, and outside operator control."
+  ]
+}
