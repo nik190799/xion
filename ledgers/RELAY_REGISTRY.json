@@ -1,15 +1,15 @@
 {
-  "as_of_utc_ns": 1778475321263106200,
+  "as_of_utc_ns": 1784398980593465600,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "a539df6fdfbda37f5ba5af053b8427efb8e8a167c4834f7ae7dd3e9ea7335ab2",
+  "payload_sha256": "ba3e1e66a411c70fb5f834f7a72a115317ecc70fb66bed11de8364217f3b4ffc",
   "relays": [
     {
-      "endpoint": "https://provider.akash-palmito.org:31301",
+      "endpoint": "https://provider.froggy-servers.com:30468",
       "image_tag": "pre-genesis-akash-wall120",
       "instance_class": "cpu-hybrid-ollama-floor",
       "last_seen_utc_ns": 1778475321263106200,

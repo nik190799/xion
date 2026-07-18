@@ -1,0 +1,43 @@
+{
+  "artifact": "relay-akash-cpu-deploy",
+  "as_of": "2026-07-18T18:35Z",
+  "context": "Akash CPU-only secondary relay redeploy under operator authorization 2026-07-18. Gas self-funded on-chain: operator executed BME burn-act converting 5,000,000 uact to 9,298,136 uakt (txhash 690D645642F672F9EDD5834542825D77779A73E508B397CDF7E12DFD607ACDED) after discovering the network gas floor is 0.0025uakt/gas (10x below the 0.025 the tooling assumed). Prior dead lease 27766512 (zencloud, pod never scheduled: provider over-bid) closed with 496,143 uact escrow refund (txhash 785BDFB7ECE0FD708EBB030D968234379C8BF9677686192DF87FCAD37BAC0535).",
+  "sdl": "infra/akash/relay-deployment-cpu-only.yaml",
+  "deployer_command": "python -m xion_ops deploy relay-akash --sdl-path infra/akash/relay-deployment-cpu-only.yaml --exclude-provider akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e --exclude-provider akash16yr3wxt97ae045a06kr3ycde9srcgpg8syjxxm --exclude-provider akash143m6954tvzh98m97g35f8xrwfagn0ze5tz43jq",
+  "attempts": [
+    {
+      "attempt": 1,
+      "dseq": "27775079",
+      "provider": "akash143m6954tvzh98m97g35f8xrwfagn0ze5tz43jq (provider.oregon.skyfall.cz)",
+      "outcome": "failed - /health never responded within 330s; auto-close succeeded (fee 1032 uakt), bid deposit refunded",
+      "provider_added_to_exclude_list": true
+    },
+    {
+      "attempt": 2,
+      "dseq": "27775160",
+      "provider": "akash1s3hq36mpas4nmkqasn7fgwhs9968cgl3u5esnw (provider.froggy-servers.com)",
+      "outcome": "SUCCESS in 94.9s",
+      "endpoint": "https://provider.froggy-servers.com:30468",
+      "health_evidence": "GET /health -> HTTP 200 {\"relay_healthy\":true,\"arbiter_healthy\":true,\"watchdog_fires_recent\":0} (independently curled from operator host 2026-07-18T18:33Z)"
+    }
+  ],
+  "registry": {
+    "relays0_endpoint_updated": "https://provider.froggy-servers.com:30468",
+    "payload_sha256": "ba3e1e66a411c70fb5f834f7a72a115317ecc70fb66bed11de8364217f3b4ffc",
+    "xion_verify_discovery": "OK",
+    "xion_verify_substrate_portability": "OK",
+    "arweave_publish": "PENDING operator run of scripts/publish-relay-registry-arweave.py — the deployer's in-band publish fell back to dry-run (content hash, no wallet env on Windows-native path; WSL bridge returned None silently). RELAY_REGISTRY_ARWEAVE_TX.txt intentionally left at prior real tx V6zE2gRB0vciDYC8kMWJ5mfQtkekIa34634k_RpH_10 until the new publish lands."
+  },
+  "wallet_state_final": {
+    "uact": "~71.0M (70.5M post-burn + 496,143 lease-27766512 escrow refund, minus new lease escrow deposit)",
+    "uakt": "~9.29M (gas for hundreds of future transactions at the 0.0025uakt floor)",
+    "funding_targets_note": "genesis/FUNDING_TARGETS.json akash_operator rebalanced: uact target 75M->60M, uakt secondary 15M->5M (GPU-era targets; CPU posture + BME gas conversion)"
+  },
+  "findings": [
+    "Network minimum gas price is 0.0025uakt (confirmed via /cosmos/base/node/v1beta1/config), not the 0.025uakt in Akash docs the tooling assumed. AKASH_GAS_PRICES=0.0026uakt cuts all fees 10x.",
+    "BME burn-act (uact->uakt) works and is the correct self-funding path for gas; 5M uact yielded 9.3M uakt (gasUsed 81,744).",
+    "Provider quality remains the dominant failure mode: zencloud over-bids capacity it cannot schedule; skyfall.cz accepts manifests but never serves ingress health. Both now on the exclude list alongside akash1sevd.",
+    "froggy-servers.com served the full live relay surface within 95 seconds of deploy start."
+  ],
+  "kw_implications": "Akash secondary relay leg is LIVE. KW-FLOOR-DEPLOY-001 (GPU open-weights floor) remains open — this CPU relay does not close it per the SDL header. KW-RELAY-CHUTES-D3-001 remains open (platform deadlock, see relay-chutes-deploy-2026-07-18.json)."
+}

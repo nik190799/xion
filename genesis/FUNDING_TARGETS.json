@@ -51,13 +51,13 @@
       "address": "akash1sgt75mdxy7tuufam364n59089hre7gyew227ml",
       "network": "akashnet-2",
       "currency": "uact",
-      "target": 75000000,
-      "purpose": "GPU lease escrow",
+      "target": 60000000,
+      "purpose": "CPU relay lease escrow (GPU-era 75M target rebalanced 2026-07-18: 5M uact burned via BME to replenish uakt gas)",
       "service": "akash",
       "secondary": [
         {
           "currency": "uakt",
-          "target": 15000000
+          "target": 5000000
         }
       ]
     },
