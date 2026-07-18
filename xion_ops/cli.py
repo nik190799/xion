@@ -755,6 +755,15 @@ def deploy_relay_akash(
     _run_deployer("relay-akash", params)
 
 
+@deploy_group.command(name="relay-aleph")
+@click.option("--instance-name", default="xion-relay-aleph", help="Aleph instance name (reused if it already exists).")
+@click.option("--compute-units", default=2, show_default=True, help="Aleph tier (2 = 2 vCPU / 4 GiB / 40 GiB).")
+def deploy_relay_aleph(instance_name: str, compute_units: int) -> None:
+    """Deploy the Relay on Aleph Cloud (tertiary substrate; hold-tier payment by default)."""
+
+    _run_deployer("relay-aleph", {"instance_name": instance_name, "compute_units": compute_units})
+
+
 @deploy_group.command(name="relay-chutes")
 @click.option(
     "--module-path",
