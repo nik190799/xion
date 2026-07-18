@@ -1,0 +1,62 @@
+{
+  "created_at": "2026-07-18T18:21:03Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "publish_registry": true,
+      "rejected_providers": [
+        "akash143m6954tvzh98m97g35f8xrwfagn0ze5tz43jq",
+        "akash16yr3wxt97ae045a06kr3ycde9srcgpg8syjxxm",
+        "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e"
+      ],
+      "sdl_path": "infra/akash/relay-deployment-cpu-only.yaml"
+    }
+  },
+  "id": "27775160",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "duration_s": 94.906,
+      "forwarded_ports": {
+        "xion-relay": [
+          {
+            "externalPort": 30468,
+            "host": "provider.froggy-servers.com",
+            "name": "xion-relay",
+            "port": 8443,
+            "proto": "TCP"
+          }
+        ]
+      },
+      "ips": null,
+      "relay_registry_tx": "c4fab89971007707febf058e5a4f9cb51677319c0fb74900977db33f6fd68e1a",
+      "services": {
+        "xion-relay": {
+          "available": 1,
+          "available_replicas": 1,
+          "name": "xion-relay",
+          "observed_generation": 1,
+          "ready_replicas": 1,
+          "replicas": 1,
+          "total": 1,
+          "updated_replicas": 1,
+          "uris": null
+        }
+      },
+      "survey_count": 1
+    },
+    "dseq": "27775160",
+    "id": "27775160",
+    "ok": true,
+    "provider": "akash1s3hq36mpas4nmkqasn7fgwhs9968cgl3u5esnw",
+    "service": "akash",
+    "tx": "c4fab89971007707febf058e5a4f9cb51677319c0fb74900977db33f6fd68e1a",
+    "url": "https://provider.froggy-servers.com:30468"
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": true,
+    "output": ""
+  }
+}

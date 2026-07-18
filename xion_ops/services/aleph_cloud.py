@@ -75,6 +75,31 @@ class AlephCloudService:
             raise OpsError(f"aleph instance list returned unparseable JSON: {raw[:200]}") from exc
         return payload if isinstance(payload, list) else []
 
+    def top_crn_url(self, *, min_score: float = 0.97) -> str:
+        """Pick the highest-scored CRN; override with XION_ALEPH_CRN_URL."""
+
+        return self.top_crn(min_score=min_score)[0]
+
+    def top_crn(self, *, min_score: float = 0.97) -> tuple[str, str]:
+        """Return (url, hash) of the best CRN; override with XION_ALEPH_CRN_URL/_HASH."""
+
+        override = os.environ.get("XION_ALEPH_CRN_URL")
+        if override:
+            return override, os.environ.get("XION_ALEPH_CRN_HASH", "")
+        result = self._wsl("aleph node compute --json 2>/dev/null", timeout=180)
+        raw = result.stdout
+        payload = json.loads(raw[raw.find("[") if raw.find("[") >= 0 else raw.find("{"):])
+        nodes = payload.get("nodes") if isinstance(payload, dict) else payload
+        candidates = [
+            n for n in (nodes or [])
+            if isinstance(n, dict) and (n.get("score") or 0) >= min_score and n.get("address")
+        ]
+        if not candidates:
+            raise OpsError(f"no CRN with score >= {min_score} found")
+        candidates.sort(key=lambda n: -(n.get("score") or 0))
+        best = candidates[0]
+        return str(best["address"]).rstrip("/"), str(best.get("hash") or "")
+
     def create_instance(
         self,
         name: str,
@@ -83,6 +108,7 @@ class AlephCloudService:
         payment_type: str | None = None,
         payment_chain: str | None = None,
         rootfs: str | None = "ubuntu24",
+        crn_url: str | None = None,
     ) -> CommandResult:
         # Aleph retired hold-tier for instances (error 202 / "credits only",
         # verified 2026-07-18); credits are the working payment mode.
@@ -101,6 +127,13 @@ class AlephCloudService:
         if rootfs:
             parts.append(f"--rootfs {shlex.quote(rootfs)}")
         parts.append(f"--rootfs-size {int(os.environ.get('XION_ALEPH_ROOTFS_MIB', '40960'))}")
+        if crn_url:
+            parts.append(f"--crn-url {shlex.quote(crn_url)}")
+        else:
+            url, crn_hash = self.top_crn()
+            parts.append(f"--crn-url {shlex.quote(url)}")
+            if crn_hash:
+                parts.append(f"--crn-hash {shlex.quote(crn_hash)}")
         return self._wsl(" ".join(parts), timeout=600)
 
     def delete_instance(self, item_hash: str) -> CommandResult:

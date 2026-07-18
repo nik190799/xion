@@ -1,12 +1,12 @@
 {
-  "as_of_utc_ns": 1784398980593465600,
+  "as_of_utc_ns": 1784409960933294800,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "ba3e1e66a411c70fb5f834f7a72a115317ecc70fb66bed11de8364217f3b4ffc",
+  "payload_sha256": "1fa098d2fc029c42c6b227c346afc80619b58b3a91a3bfc31efa8e96b9da3fca",
   "relays": [
     {
       "endpoint": "https://provider.froggy-servers.com:30468",
@@ -29,6 +29,18 @@
       "relay_id": "chutes-secondary-d3-10",
       "service": "xion-relay-chutes",
       "substrate": "chutes"
+    },
+    {
+      "endpoint": "https://[2001:4ba0:ffe7:348:3:a32a:ffc2:5b21]:8443",
+      "image_tag": "pre-genesis-akash-wall120",
+      "instance_class": "cpu-relay",
+      "last_seen_utc_ns": 1784409960933294800,
+      "public_key": "ed25519:a70db4615e02830c43e57f732d2f64e1eda551f0fd4993dd8d3330191bfb381f",
+      "relay_id": "aleph-tertiary-mainnet",
+      "service": "xion-relay-aleph",
+      "substrate": "aleph",
+      "aleph_item_hash": "a32affc25b202b568c9eecc5257dbffc21fd77c5c850d2861accb08662456939",
+      "crn": "https://moonlight5.zhuxx.site"
     }
   ],
   "schema_version": 1

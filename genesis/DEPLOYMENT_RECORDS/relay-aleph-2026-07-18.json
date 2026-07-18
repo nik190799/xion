@@ -1,0 +1,45 @@
+{
+  "artifact": "relay-aleph-deploy",
+  "as_of": "2026-07-18T21:35Z",
+  "context": "Tertiary substrate leg (LHT-SUBSTRATE-001 closure plan option (c), activated after Chutes platform deadlock + Akash provider-quality evidence 2026-07-18). Operator funded: ~2,866 ALEPH sent from Coinbase on Ethereum to 0x898d3d2Fd89c93f24B67b6dDA82994b1144c3466 (account shows 5,718 ALEPH — operator to reconcile), then converted to 1,003,036 credits via app.aleph.cloud console (+20% ALEPH-payment bonus).",
+  "deployer_command": "python -m xion_ops deploy relay-aleph --compute-units 2 (CRN iteration performed manually via aleph CLI after interactive-picker + capacity 503s; deployer backport pending)",
+  "instance": {
+    "item_hash": "a32affc25b202b568c9eecc5257dbffc21fd77c5c850d2861accb08662456939",
+    "name": "xion-relay-aleph",
+    "tier": "2 compute units (2 vCPU / 4 GiB RAM / 40 GiB disk), ~28,500 credits/mo of 1,003,036 held (~2.9 years runway)",
+    "payment": "credit, chain ETH",
+    "crn": "https://moonlight5.zhuxx.site (hash 1ea7989d3dd1e4e69618c946aaa91e9a147086d24f00c19234f8dad6a64d968a, score 0.994)",
+    "rootfs": "ubuntu24",
+    "networking": {
+      "ipv6": "2001:4ba0:ffe7:348:3:a32a:ffc2:5b21",
+      "ipv4_ssh": "62.141.40.252:44689 (CRN port mapping for 22)",
+      "ipv4_8443": "NOT YET MAPPED - follow-up: CRN port-forward or Cloudflare Worker proxy for IPv4 clients (GH Actions runners are IPv6-less)"
+    }
+  },
+  "provisioning": "infra/aleph/provision-relay.sh over SSH (key ~/.ssh/xion-aleph in WSL): docker.io installed, image nikhilkadalge/xion-relay:pre-genesis-akash-wall120 pulled, container xion-relay running with Akash-CPU-SDL-equivalent env, restart unless-stopped.",
+  "health_evidence": {
+    "internal": "https://127.0.0.1:8443/health -> {\"relay_healthy\":true,\"arbiter_healthy\":false,...} (container serves TLS; plain HTTP gets empty reply)",
+    "external_ipv6": "GET https://[2001:4ba0:ffe7:348:3:a32a:ffc2:5b21]:8443/health -> HTTP 200 relay_healthy:true from operator host 2026-07-18T21:32Z",
+    "arbiter_note": "arbiter_healthy:false at first probes (Akash leg reports true); watcher polling until true - if it stays false, diagnose arbiter boot on this image before counting the leg fully green."
+  },
+  "registry": {
+    "row": "relays[2] aleph-tertiary-mainnet appended (genesis ordering akash[0]/chutes[1] untouched); fresh Ed25519 identity, private half in gitignored secrets/relay_registry_ed25519.json under key 'aleph'",
+    "payload_sha256": "1fa098d2fc029c42c6b227c346afc80619b58b3a91a3bfc31efa8e96b9da3fca",
+    "verifiers": "xion-verify discovery OK; substrate-portability OK",
+    "arweave_publish": "PENDING operator (same gate as the Akash endpoint refresh - one publish covers both)"
+  },
+  "findings": [
+    "Aleph platform reality vs docs: hold-tier retired for ALL instances (error 202; confidential pricing shows hold Not Available too); credits are the only instance payment mode. CLI pricing table still advertises hold - stale.",
+    "aleph-client 1.9.3 create is interactive by default: needs --rootfs, --rootfs-size, and a CRN; --crn-url matching is broken (stored addresses have trailing slash, sanitized input does not, and URL check shadows hash check) - pass --crn-hash ONLY.",
+    "CRN admission (reserve_resources dry-run) 503s on nodes whose advertised capacity looks fine (dv1ca: disk actually exhausted; ncc3dlb: refused despite 148GB free) - iterate candidates by score, same discipline as the Akash exclude list. Third candidate (moonlight5) accepted.",
+    "Instance visible-to-started took ~25s once accepted; docker provision + image pull ~2 min. Total funded-to-live under 15 minutes.",
+    "SSH arrives via CRN IPv4 port mapping automatically; service ports are IPv6-only until a port-forward is configured."
+  ],
+  "follow_ups": [
+    "Backport CRN-hash iteration + capacity-503 retry into xion_ops/deployers/relay_aleph.py (currently top_crn only).",
+    "IPv4 exposure for 8443 (CRN port-forward API or Cloudflare Worker proxy) before pointing IPv4-only probes (GH Actions drill) at this leg.",
+    "Arweave registry republish (operator).",
+    "Reconcile 5,718 vs 2,866 ALEPH on the funding address in Coinbase history.",
+    "Arbiter health: confirm arbiter_healthy flips true; else diagnose."
+  ]
+}
