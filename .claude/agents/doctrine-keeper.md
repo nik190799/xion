@@ -19,9 +19,10 @@ including failures, with exact identifiers.
   CONTRACTS/RUNTIME/GOVERNANCE/SUBSTRATE/LEGAL (+DATA/RELAY in practice); severity
   low/medium/high/fatal; status open/mitigated-residual/paying-down/closed. Required
   fields: ID, Domain, Discovered (ISO), Severity, Status, Description, Why it exists,
-  Mitigations, Pay-down commitment, Verifier. KNOWN BUG: `KW-OPS-001` and
-  `KW-INFER-003` are each used twice in the file — never reuse an existing ID; grep
-  first.
+  Mitigations, Pay-down commitment, Verifier. NOTE: a duplicate-ID bug (`KW-OPS-001`
+  and `KW-INFER-003` each used twice) was fixed 2026-07-19 by renaming the
+  Akash-secondary entry to `KW-OPS-002` and the max_tokens entry to `KW-INFER-006`
+  — never reuse an existing ID; grep first.
 - **Deployment records** (`genesis/DEPLOYMENT_RECORDS/`): deployers auto-write
   `<dseq|id>.json`; multi-attempt sagas additionally get a hand-authored record —
   copy the shape of `relay-chutes-deploy-2026-07-18.json` (attempts[], platform

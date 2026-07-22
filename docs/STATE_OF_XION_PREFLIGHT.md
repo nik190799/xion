@@ -117,7 +117,7 @@ same heading.
 - `KW-BRIDGE-001`: deterministic AO checkpoint evidence is live; full
   trust-minimized AO light-client maturity remains post-Genesis hardening.
   Pay-down: first post-Genesis bridge-hardening phase after measurable traffic.
-- `KW-OPS-001`: the Genesis Relay substrate remains below the 3-host long-term
+- `KW-OPS-002`: the Genesis Relay substrate remains below the 3-host long-term
   floor until Xion's autonomous `provision-relay` path pays it down. Pay-down:
   30 days post-Genesis via `provision-relay`.
 - `KW-KEYS-001`: Sprint Mode uses software-Shamir Cold Root custody until the
@@ -295,7 +295,7 @@ same heading.
 
 - `LHT-SUBSTRATE-001`: falsified if Chutes outage plus Akash-secondary failure
   leaves no runnable Relay path before the third-party drill evidence exists.
-- `KW-OPS-001`: falsified if the 3-host floor is publicly advertised as closed
+- `KW-OPS-002`: falsified if the 3-host floor is publicly advertised as closed
   before `xion-verify discovery` can verify three independent Relay endpoints.
 - `KW-KEYS-001`: falsified if software-Shamir custody is represented as equal
   to the later hardware-token geographic ceremony.

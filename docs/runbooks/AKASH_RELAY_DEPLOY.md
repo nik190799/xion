@@ -296,4 +296,4 @@ going green on fake substrate ids.
 
 ## Non-goals
 
-This runbook does not decommission Cloudflare by itself and does not claim a three-host floor. Those remain `KW-OPS-001` operator actions until Chutes + Akash + any additional whitelisted paths are live and verified.
+This runbook does not decommission Cloudflare by itself and does not claim a three-host floor. Those remain `KW-OPS-002` operator actions until Chutes + Akash + any additional whitelisted paths are live and verified.

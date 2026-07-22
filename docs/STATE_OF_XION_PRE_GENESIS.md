@@ -29,7 +29,7 @@ This memo names what is sealed for Genesis, what remains an accepted residual, w
 | `KW-BRIDGE-001` | Bridge attestations become the authority instead of an interim guardrail. | Operator/governance | Phase 7+ light-client work |
 | `KW-EMBED-001` | Retrieval quality is asserted from no consented corpus. | Operator + first consented users | After production corpus exists |
 | `KW-CONTRIB-002` | Contributor identity claims become governance weight without ledger-backed bindings. | Operator/governance | First non-operator contributor cohort |
-| `KW-OPS-001` | The 3-host floor is advertised as complete while Chutes + Akash redundancy is not warm-verified. | Operator | 30 days post-Genesis |
+| `KW-OPS-002` | The 3-host floor is advertised as complete while Chutes + Akash redundancy is not warm-verified. | Operator | 30 days post-Genesis |
 | `KW-RESEARCH-SPEND-001` | `xion-verify research-spend` is claimed sealed before a real Auto-Research-approved `RESEARCH_SPEND_LEDGER` row exists. | Operator + first Auto-Research loop | First approved research-spend row |
 | `KW-VESSEL-REGISTRY-001` | A vessel claims registered/attested status without an append-only registry or disavowal row. | Vessel integrator + operator | First vessel attestation/disavowal |
 

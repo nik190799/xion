@@ -704,7 +704,7 @@ The Phase 6.1.b infrastructure shipped 2026-04-24 (Compose wrapper, bring-up scr
 ### Fixed
 
 - **KW-COGNITION-001 Opened:** `/chat` is system-prompt-only, bypassing Sensorium/memory.
-- **KW-INFER-003 Opened:** Global `max_tokens` floor applied to all requests.
+- **KW-INFER-006 Opened:** Global `max_tokens` floor applied to all requests. (renamed from KW-INFER-003 2026-07-19; duplicate ID)
 
 ## [Phase 6.1] — 2026-04-23
 

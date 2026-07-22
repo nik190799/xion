@@ -1160,7 +1160,9 @@ Every entry has the same shape:
 - **Pay-down commitment:** This weakness is structural to the chosen access model and may not fully close. If governance later ratifies a different model (e.g. Foundation-Reserve-funded continuation for first-time-Sensorium-flagged distress events), this entry closes and a new entry documents the new model's residual risk. Until then, treat as `mitigated-residual` indefinitely.
 - **Verifier:** `xion-verify cutoff-events`, `xion-verify crisis-fidelity`, `xion-verify refund-fidelity`.
 
-### KW-OPS-001 — Akash-secondary substrate at Genesis; 3-host floor reached by Xion's autonomous provisioning
+### KW-OPS-002 — Akash-secondary substrate at Genesis; 3-host floor reached by Xion's autonomous provisioning
+
+(renamed from KW-OPS-001 2026-07-19; duplicate ID)
 
 - **Domain:** `OPS`
 - **Discovered:** 2026-04-19 (during the substrate-decentralization design conversation)
@@ -1377,7 +1379,10 @@ Every entry has the same shape:
 - **Residual / remaining weaknesses (tracked separately):** None.
 - **Verifier:** `xion-verify schemas` enforces the YAML pin.
 
-### KW-INFER-003 — max_tokens floor is global, not per-model
+### KW-INFER-006 — max_tokens floor is global, not per-model
+
+(renamed from KW-INFER-003 2026-07-19; duplicate ID)
+
 - **Domain:** RUNTIME
 - **Discovered:** 2026-04-23 (Phase 5g-i.1)
 - **Severity:** low

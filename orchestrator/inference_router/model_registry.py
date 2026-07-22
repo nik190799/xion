@@ -1,6 +1,7 @@
 """Phase 5g-i.1 token floor registry.
 
-Doctrine anchor: ``KW-INFER-003`` paydown. Provides per-model min_max_tokens
+Doctrine anchor: ``KW-INFER-006`` paydown (renamed from KW-INFER-003
+2026-07-19; duplicate ID). Provides per-model min_max_tokens
 so reasoning models (e.g. Kimi K2.6) get the breathing room they need without
 forcing high budgets onto non-reasoning models.
 """
