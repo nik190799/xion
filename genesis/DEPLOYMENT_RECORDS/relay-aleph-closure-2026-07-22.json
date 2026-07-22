@@ -1,0 +1,21 @@
+{
+  "artifact": "relay-aleph-closure",
+  "as_of": "2026-07-22T13:30Z",
+  "outcome": "Instance a32affc25b202b568c9eecc5257dbffc21fd77c5c850d2861accb08662456939 consumed the full 1,003,036-credit balance in ~2 days and was deleted by the platform (aleph instance list: 'No instance found'; SSH and IPv6 health unreachable; credits history shows ~28,536-credit expense entries at high cadence, final balance 0).",
+  "economics_correction": {
+    "assumed": "28,500 credits/month for tier 2 (2 vCPU/4GiB) => ~2.9 years on 1M credits (recorded in relay-aleph-2026-07-18.json)",
+    "observed": "1,003,036 credits consumed 2026-07-18T21:36Z -> ~2026-07-20; effective burn ~= 20-30k credits/hour => the pricing-table figure is per-hour-scale, not per-month. Real cost at the operator's purchase rate (~$36 => 1M credits): roughly $15-20/day for tier 2.",
+    "discrepancy_note": "aleph.cloud marketing advertises VPS 'from $0.0143/h'; the credits purchase rate + observed burn imply ~30x that for the same tier. Do not fund Aleph credits again without reconciling this with Aleph support/console pricing.",
+    "salvage": "2,780 ALEPH (~$29) remains liquid at 0x898d3d2Fd89c93f24B67b6dDA82994b1144c3466 (ETH chain)."
+  },
+  "actions_taken": [
+    "relays[2] aleph row REMOVED from ledgers/RELAY_REGISTRY.json before any Arweave publish (dead endpoint must not enter the permanent record); discovery verifier OK with two rows.",
+    "Ed25519 'aleph' identity retained in secrets/relay_registry_ed25519.json for a future re-deploy.",
+    "Port-forwarding aggregate (8443) remains posted on-chain; harmless, reusable if an instance returns."
+  ],
+  "lessons": [
+    "Empirical burn measurement within the first hours of any new-platform payment model is mandatory; a pricing-table read is a hypothesis, not a fact (same lesson class as Akash escrow depletion, same week).",
+    "PAYG streaming (0.11 ALEPH/h ~= $20-25/mo if the advertised rate is honest) is the only Aleph mode worth re-testing, and only with a 24h burn check against the remaining 2,780 ALEPH.",
+    "Substrate diversity remains satisfied operationally by Akash (live hybrid) + Chutes (pending support reply); Aleph moves back to 'evaluated, not economical at credits rate' status."
+  ]
+}

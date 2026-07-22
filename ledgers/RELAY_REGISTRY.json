@@ -1,12 +1,12 @@
 {
-  "as_of_utc_ns": 1784704714038544800,
+  "as_of_utc_ns": 1784726179218248600,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "59a5d3a4a8d0f6ac0ca2d54bf3995c2571d8e881690b4dc7ea4d0885a544f7b2",
+  "payload_sha256": "7f9331ba5966d32c31ad2e8e3e41bebbf4a743a51a15cb30c63918c851e99df4",
   "relays": [
     {
       "endpoint": "https://provider.quanglong.org:30763",
@@ -29,18 +29,6 @@
       "relay_id": "chutes-secondary-d3-10",
       "service": "xion-relay-chutes",
       "substrate": "chutes"
-    },
-    {
-      "aleph_item_hash": "a32affc25b202b568c9eecc5257dbffc21fd77c5c850d2861accb08662456939",
-      "crn": "https://moonlight5.zhuxx.site",
-      "endpoint": "https://[2001:4ba0:ffe7:348:3:a32a:ffc2:5b21]:8443",
-      "image_tag": "pre-genesis-akash-wall120",
-      "instance_class": "cpu-relay",
-      "last_seen_utc_ns": 1784409960933294800,
-      "public_key": "ed25519:a70db4615e02830c43e57f732d2f64e1eda551f0fd4993dd8d3330191bfb381f",
-      "relay_id": "aleph-tertiary-mainnet",
-      "service": "xion-relay-aleph",
-      "substrate": "aleph"
     }
   ],
   "schema_version": 1
