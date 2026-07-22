@@ -103,7 +103,9 @@ services:
       # Open-weights floor (Invariant 17). CPU-served in this lease.
       - XION_OLLAMA_URL=http://xion-ollama:11434
       - XION_OLLAMA_FLOOR_MODEL=gemma4:e4b-it-q4_K_M
-      - XION_OLLAMA_BOOT_WAIT_S=1800
+      # 7200s: slow providers pull the 9.6GB floor model at ~2-3 MB/s
+      # (observed quanglong.org 2026-07-19: ~60 min); 1800s expired mid-pull.
+      - XION_OLLAMA_BOOT_WAIT_S=7200
       # Chutes hosted inference (Genesis Default primary path) via
       # Cloudflare Worker proxy. The real Chutes API key never leaves the
       # Worker's encrypted secrets store; the env value here is a
