@@ -51,8 +51,8 @@
       "address": "akash1sgt75mdxy7tuufam364n59089hre7gyew227ml",
       "network": "akashnet-2",
       "currency": "uact",
-      "target": 60000000,
-      "purpose": "CPU relay lease escrow (GPU-era 75M target rebalanced 2026-07-18: 5M uact burned via BME to replenish uakt gas)",
+      "target": 40000000,
+      "purpose": "CPU relay lease escrow reserve (2026-07-22: target counts LIQUID uact only; 10M+ now staged in live-lease escrow deposits, which the balance check cannot see. 40M liquid supports 3+ concurrent leases with 100-day deposits)",
       "service": "akash",
       "secondary": [
         {

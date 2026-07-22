@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from xion_ops.commands import run_command
-from xion_ops.exceptions import OpsError, ProviderUnreachable
+from xion_ops.exceptions import CommandFailed, OpsError, ProviderUnreachable
 from xion_ops.services.base import OpsService
 from xion_ops.types import (
     BalanceReport,
@@ -690,7 +690,19 @@ class AkashService(OpsService):
             for gseq, oseq in lease_orders:
                 lease_tx = self.accept_bid(dseq, provider, gseq=gseq, oseq=oseq)
                 self._broadcast_json_confirm(lease_tx.stdout)
-            self.send_manifest(sdl_path, dseq, provider)
+            # Providers 422 "manifest version validation failed" for up to a
+            # couple of minutes after deployment create/update while their
+            # chain view catches up (observed quanglong.org 2026-07-19 and
+            # 2026-07-22); retry instead of treating first refusal as fatal.
+            manifest_attempts = int(os.environ.get("XION_AKASH_SEND_MANIFEST_RETRIES", "5"))
+            for attempt in range(1, manifest_attempts + 1):
+                try:
+                    self.send_manifest(sdl_path, dseq, provider)
+                    break
+                except CommandFailed:
+                    if attempt == manifest_attempts:
+                        raise
+                    time.sleep(int(os.environ.get("XION_AKASH_SEND_MANIFEST_RETRY_SEC", "45")))
             ready_sec = int(os.environ.get("XION_AKASH_WAIT_READY_SEC", "900"))
             status = self._wait_for_ready(dseq, provider, timeout_seconds=ready_sec, service_name=svc_name)
             if not status.forwarded_url:
