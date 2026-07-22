@@ -1,0 +1,41 @@
+{
+  "artifact": "relay-akash-hybrid-live",
+  "as_of": "2026-07-22T07:40Z",
+  "milestone": "FIRST END-TO-END USER-SERVING /chat. Full orchestrator (Arbiter + router + ledgers) answered a real user message over the public internet with Invariant 17 floor satisfied at bootstrap.",
+  "lease": {
+    "dseq": "27825903",
+    "provider": "akash1sjwuwre4qprcaa34f6324yz7m8nn0awvc75gp5 (provider.quanglong.org)",
+    "endpoint": "https://provider.quanglong.org:30763",
+    "sdl": "infra/akash/relay-deployment-cpu-hybrid.yaml",
+    "escrow_deposit_uact": 10000000,
+    "deploy_duration_s": 7277
+  },
+  "first_user_turn_evidence": {
+    "request": "POST /chat {\"message\":\"Hello Xion...\",\"max_tokens\":1024}",
+    "response_role": "xion",
+    "response_excerpt": "I am Xion, an AI soul whose authoritative self persists as an AO Process on Arweave...",
+    "model_id": "moonshotai/Kimi-K2.6-TEE (hosted primary via Cloudflare Worker chutes-proxy)",
+    "http": "200 in 18.66s",
+    "correlation_id": "18c48b768842d979:f065773fb46fdb39707240d79a73ae7c",
+    "health": "{relay_healthy:true, arbiter_healthy:true} pre- and post-turn"
+  },
+  "floor": "Ollama sidecar (gemma4:e4b-it-q4_K_M, 9.6GB pull) passed the boot gate's /api/generate test before the relay opened its port — router bootstrap accepted; hosted->floor fallback armed.",
+  "failure_modes_fixed_to_get_here": [
+    "Escrow depletion: default 500k uact deposit dies in ~1-2 days on a 2-service lease (killed dseq 27782000 silently mid-pull; live CPU lease was 30h from death). Fix: akash deposit cmd + XION_AKASH_CREATE_DEPOSIT_UACT=10000000.",
+    "Health-smoke shorter than boot gate: probe gave up at 5-50min while the relay held its port closed awaiting the model pull (killed 27781567/27825344 attempts on healthy providers). Fix: XION_AKASH_HEALTH_SMOKE_SEC=9000 > gate 7200 + pull.",
+    "Provider chain-lag manifest 422s for ~2min after create (killed 27825874). Fix: send-manifest retry 5x/45s in deploy_relay.",
+    "froggy-servers pod-to-pod networking broken: never place multi-service SDLs there (27781645 post-mortem)."
+  ],
+  "registry": {
+    "relays0_endpoint": "https://provider.quanglong.org:30763",
+    "instance_class": "cpu-hybrid-ollama-floor",
+    "old_cpu_only_lease_27775160": "closed 2026-07-22, 10.1M uact escrow refunded (wallet back to 60.0M uact liquid)",
+    "verifiers": "discovery OK, substrate-portability OK, links OK",
+    "arweave_publish": "PENDING operator: python scripts/publish-relay-registry-arweave.py (captures hybrid endpoint + aleph relays[2] in one publish)"
+  },
+  "residuals": [
+    "KW-FLOOR-DEPLOY-001 intent: floor is CPU-served (slow fallback ~20-60s/turn); GPU floor still future work.",
+    "Chutes billing poll 401 (placeholder key by design; telemetry-only, no effect on inference).",
+    "xion-labs website still points at dead palmito endpoint and Lite-mode worker; update queued now that real /chat exists."
+  ]
+}

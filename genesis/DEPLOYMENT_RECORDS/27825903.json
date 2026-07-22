@@ -1,0 +1,74 @@
+{
+  "created_at": "2026-07-22T07:17:17Z",
+  "deployer": "relay-akash",
+  "evidence": {
+    "params": {
+      "prefer_provider": "akash1sjwuwre4qprcaa34f6324yz7m8nn0awvc75gp5",
+      "publish_registry": false,
+      "rejected_providers": [
+        "akash143m6954tvzh98m97g35f8xrwfagn0ze5tz43jq",
+        "akash16yr3wxt97ae045a06kr3ycde9srcgpg8syjxxm",
+        "akash1s3hq36mpas4nmkqasn7fgwhs9968cgl3u5esnw",
+        "akash1sevd2ymtty3dpq9ycxgkhuzzk4fe6mchqdwd4e"
+      ],
+      "sdl_path": "infra/akash/relay-deployment-cpu-hybrid.yaml"
+    }
+  },
+  "id": "27825903",
+  "operator": "local-operator",
+  "result": {
+    "details": {
+      "duration_s": 7277.453,
+      "forwarded_ports": {
+        "xion-relay": [
+          {
+            "externalPort": 30763,
+            "host": "provider.quanglong.org",
+            "name": "xion-relay",
+            "port": 8443,
+            "proto": "TCP"
+          }
+        ]
+      },
+      "ips": null,
+      "services": {
+        "xion-ollama": {
+          "available": 1,
+          "available_replicas": 1,
+          "name": "xion-ollama",
+          "observed_generation": 1,
+          "ready_replicas": 1,
+          "replicas": 1,
+          "total": 1,
+          "updated_replicas": 1,
+          "uris": null
+        },
+        "xion-relay": {
+          "available": 1,
+          "available_replicas": 1,
+          "name": "xion-relay",
+          "observed_generation": 1,
+          "ready_replicas": 1,
+          "replicas": 1,
+          "total": 1,
+          "updated_replicas": 1,
+          "uris": null
+        }
+      },
+      "survey_count": 1
+    },
+    "dseq": "27825903",
+    "id": "27825903",
+    "ok": true,
+    "provider": "akash1sjwuwre4qprcaa34f6324yz7m8nn0awvc75gp5",
+    "service": "akash",
+    "tx": null,
+    "url": "https://provider.quanglong.org:30763"
+  },
+  "verify": {
+    "code": 0,
+    "command": "akash health + relay registry publish",
+    "ok": true,
+    "output": ""
+  }
+}

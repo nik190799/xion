@@ -1,18 +1,18 @@
 {
-  "as_of_utc_ns": 1784409960933294800,
+  "as_of_utc_ns": 1784704714038544800,
   "discovery_paths": [
     "arweave_registry",
     "ao_process",
     "dns_seed",
     "akash_secondary"
   ],
-  "payload_sha256": "1fa098d2fc029c42c6b227c346afc80619b58b3a91a3bfc31efa8e96b9da3fca",
+  "payload_sha256": "59a5d3a4a8d0f6ac0ca2d54bf3995c2571d8e881690b4dc7ea4d0885a544f7b2",
   "relays": [
     {
-      "endpoint": "https://provider.froggy-servers.com:30468",
+      "endpoint": "https://provider.quanglong.org:30763",
       "image_tag": "pre-genesis-akash-wall120",
       "instance_class": "cpu-hybrid-ollama-floor",
-      "last_seen_utc_ns": 1778475321263106200,
+      "last_seen_utc_ns": 1784704714038544800,
       "public_key": "ed25519:1838c61178454b70036217da1ff545f5bb4219ffab3977b0c0e8f31d4371b688",
       "relay_id": "akash-primary-mainnet",
       "service": "xion-relay-akash",
@@ -31,6 +31,8 @@
       "substrate": "chutes"
     },
     {
+      "aleph_item_hash": "a32affc25b202b568c9eecc5257dbffc21fd77c5c850d2861accb08662456939",
+      "crn": "https://moonlight5.zhuxx.site",
       "endpoint": "https://[2001:4ba0:ffe7:348:3:a32a:ffc2:5b21]:8443",
       "image_tag": "pre-genesis-akash-wall120",
       "instance_class": "cpu-relay",
@@ -38,9 +40,7 @@
       "public_key": "ed25519:a70db4615e02830c43e57f732d2f64e1eda551f0fd4993dd8d3330191bfb381f",
       "relay_id": "aleph-tertiary-mainnet",
       "service": "xion-relay-aleph",
-      "substrate": "aleph",
-      "aleph_item_hash": "a32affc25b202b568c9eecc5257dbffc21fd77c5c850d2861accb08662456939",
-      "crn": "https://moonlight5.zhuxx.site"
+      "substrate": "aleph"
     }
   ],
   "schema_version": 1
