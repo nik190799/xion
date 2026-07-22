@@ -52,8 +52,8 @@ this RFP commissions the missing external work.
 **Build environment:**
 - Foundry `forge` / `cast` `1.6.0-v1.7.0` (or later patch within 1.6.x)
 - Solidity (per [`contracts/foundry.toml`](../../contracts/foundry.toml); auditor confirms compiler version in final report)
-- OpenZeppelin contracts pinned via Foundry remappings — see
-  [`contracts/lib/`](../../contracts/lib/) installation in
+- OpenZeppelin contracts pinned via Foundry remappings — installed into the
+  gitignored `contracts/lib/` directory by
   [`.github/workflows/foundry.yml`](../../.github/workflows/foundry.yml).
 
 **In-scope source files (read for findings):**
