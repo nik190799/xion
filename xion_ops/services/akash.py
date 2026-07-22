@@ -358,13 +358,48 @@ class AkashService(OpsService):
         self._broadcast_json_confirm(result.stdout)
         return result
 
+    def deposit_deployment(self, dseq: str, uact_amount: int) -> CommandResult:
+        """Top up a live deployment's escrow (leases die when escrow depletes;
+        observed burn ~95k uact/day for the CPU relay lease, 2026-07-22)."""
+
+        result = self._provider_services_tx(
+            [
+                "tx",
+                "escrow",
+                "deposit",
+                "deployment",
+                f"{int(uact_amount)}uact",
+                "--dseq",
+                str(dseq),
+                "--owner",
+                self.owner,
+                "--from",
+                self.key,
+                "--keyring-backend",
+                "test",
+                "--chain-id",
+                self.chain_id,
+                "--node",
+                self.node,
+                *self._gas_tx_flags(),
+                "-y",
+                "-o",
+                "json",
+            ]
+        )
+        self._broadcast_json_confirm(result.stdout)
+        return result
+
     def create_deployment(self, sdl_path: Path | str) -> str:
+        deposit = os.environ.get("XION_AKASH_CREATE_DEPOSIT_UACT", "").strip()
+        deposit_flags = ["--deposit", f"{int(deposit)}uact"] if deposit else []
         result = self._provider_services_tx(
             [
                 "tx",
                 "deployment",
                 "create",
                 self._wsl_repo_relative_path(sdl_path),
+                *deposit_flags,
                 "--from",
                 self.key,
                 "--keyring-backend",

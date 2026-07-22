@@ -233,6 +233,17 @@ def akash_lease_logs(dseq: str, provider: str, service_name: str, tail: int) -> 
     click.echo(service.lease_logs(dseq, provider, service=service_name, tail=tail))  # type: ignore[attr-defined]
 
 
+@akash_group.command(name="deposit")
+@click.argument("dseq")
+@click.argument("uact_amount", type=int)
+def akash_deposit(dseq: str, uact_amount: int) -> None:
+    """Top up a live deployment's escrow so the lease keeps running."""
+
+    svc = get_service("akash")
+    result = svc.deposit_deployment(dseq, uact_amount)  # type: ignore[attr-defined]
+    click.echo(result.stdout)
+
+
 @akash_group.command(name="close")
 @click.argument("dseq")
 def akash_close(dseq: str) -> None:
