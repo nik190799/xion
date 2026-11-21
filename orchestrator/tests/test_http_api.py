@@ -51,7 +51,8 @@ def test_create_app_returns_fastapi(app_factory) -> None:
     endpoints registered."""
     app = app_factory()
     assert isinstance(app, FastAPI)
-    paths = {route.path for route in app.routes}
+    # Newer FastAPI keeps included routers as wrapper entries with no ``path``.
+    paths = {getattr(route, "path", None) for route in app.routes}
     assert "/health" in paths
     assert "/drive" in paths
     assert "/sensorium" in paths
