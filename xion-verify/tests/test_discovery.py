@@ -4,8 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from xion_verify.commands.akash_deploy_discipline import evaluate as evaluate_akash_deploy_discipline
 from xion_verify.commands.discovery import evaluate_discovery
+from xion_verify.commands.akash_deploy_discipline import evaluate as evaluate_akash_deploy_discipline
 from xion_verify.exit_codes import NOT_YET_SEALED, OK
 
 

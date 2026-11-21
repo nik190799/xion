@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+import pytest
 from click.testing import CliRunner
 
 from xion_verify.commands.safe_proposal import safe_proposal
@@ -177,7 +178,7 @@ class _Resp:
     def __init__(self, payload: dict[str, Any]) -> None:
         self._payload = payload
 
-    def __enter__(self) -> _Resp:
+    def __enter__(self) -> "_Resp":
         return self
 
     def __exit__(self, *_a: Any) -> None:
@@ -208,56 +209,59 @@ class TestOnlineFlow:
 
     def test_online_by_safe_tx_hash_ok(self) -> None:
         payload = self._service_payload()
-        with _patch_keccak(), patch(
-            "xion_verify.commands.safe_proposal.urlopen",
-            lambda url, timeout=0: _Resp(payload),
-        ):
-            code, stdout, _stderr = _invoke(
-                [
-                    "--safe-address",
-                    SAFE_ADDRESS,
-                    "--network",
-                    "base-mainnet",
-                    "--safe-tx-hash",
-                    "0x" + "42" * 32,
-                ]
-            )
+        with _patch_keccak():
+            with patch(
+                "xion_verify.commands.safe_proposal.urlopen",
+                lambda url, timeout=0: _Resp(payload),
+            ):
+                code, stdout, _stderr = _invoke(
+                    [
+                        "--safe-address",
+                        SAFE_ADDRESS,
+                        "--network",
+                        "base-mainnet",
+                        "--safe-tx-hash",
+                        "0x" + "42" * 32,
+                    ]
+                )
         assert code == OK
         assert "safe-proposal: OK" in stdout
 
     def test_online_by_nonce_paginated_response_ok(self) -> None:
         payload = {"results": [self._service_payload()]}
-        with _patch_keccak(), patch(
-            "xion_verify.commands.safe_proposal.urlopen",
-            lambda url, timeout=0: _Resp(payload),
-        ):
-            code, _stdout, _stderr = _invoke(
-                [
-                    "--safe-address",
-                    SAFE_ADDRESS,
-                    "--network",
-                    "base-sepolia",
-                    "--nonce",
-                    "7",
-                ]
-            )
+        with _patch_keccak():
+            with patch(
+                "xion_verify.commands.safe_proposal.urlopen",
+                lambda url, timeout=0: _Resp(payload),
+            ):
+                code, _stdout, _stderr = _invoke(
+                    [
+                        "--safe-address",
+                        SAFE_ADDRESS,
+                        "--network",
+                        "base-sepolia",
+                        "--nonce",
+                        "7",
+                    ]
+                )
         assert code == OK
 
     def test_online_empty_results_fails(self) -> None:
-        with _patch_keccak(), patch(
-            "xion_verify.commands.safe_proposal.urlopen",
-            lambda url, timeout=0: _Resp({"results": []}),
-        ):
-            code, _stdout, stderr = _invoke(
-                [
-                    "--safe-address",
-                    SAFE_ADDRESS,
-                    "--network",
-                    "base-sepolia",
-                    "--nonce",
-                    "99",
-                ]
-            )
+        with _patch_keccak():
+            with patch(
+                "xion_verify.commands.safe_proposal.urlopen",
+                lambda url, timeout=0: _Resp({"results": []}),
+            ):
+                code, _stdout, stderr = _invoke(
+                    [
+                        "--safe-address",
+                        SAFE_ADDRESS,
+                        "--network",
+                        "base-sepolia",
+                        "--nonce",
+                        "99",
+                    ]
+                )
         assert code == FAIL
         assert "No proposal found" in stderr
 
@@ -277,23 +281,21 @@ class TestOnlineFlow:
 
     def test_online_hash_mismatch_fails(self) -> None:
         payload = self._service_payload(contractTransactionHash="0x" + "ff" * 32)
-        with (
-            _patch_keccak(),  # recomputes 0x42..32
-            patch(
+        with _patch_keccak():  # recomputes 0x42..32
+            with patch(
                 "xion_verify.commands.safe_proposal.urlopen",
                 lambda url, timeout=0: _Resp(payload),
-            ),
-        ):
-            code, _stdout, stderr = _invoke(
-                [
-                    "--safe-address",
-                    SAFE_ADDRESS,
-                    "--network",
-                    "base-mainnet",
-                    "--nonce",
-                    "7",
-                ]
-            )
+            ):
+                code, _stdout, stderr = _invoke(
+                    [
+                        "--safe-address",
+                        SAFE_ADDRESS,
+                        "--network",
+                        "base-mainnet",
+                        "--nonce",
+                        "7",
+                    ]
+                )
         # /multisig-transactions/{hash}/ would fail by hash; here we exercise
         # the nonce-listed path which returns the first result. Hash mismatch
         # against what the service itself stored should still FAIL because the
